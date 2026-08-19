@@ -9,8 +9,12 @@ import {
   isMonetaryPaymentMethod,
   type PaymentMethod,
 } from "./paymentMethod";
+import type { CheckOutcome } from "./checkContract";
 import type { SettlementTransactionInput } from "./settlementTransactionContract";
 import type { StaffSettlementLineInput } from "./staffSettlementDto";
+
+export const PAYMENT_COLLECTION_PROGRAM_ID =
+  "PAYMENT-COLLECTION-ARCHITECTURE-1" as const;
 
 export class SettlementValidationError extends Error {
   constructor(message: string) {
@@ -151,9 +155,54 @@ export function isCheckFullyCoveredBySettlements(
   grandTotal: string,
   capturedAmounts: readonly string[]
 ): boolean {
-  let sum = 0;
-  for (const a of capturedAmounts) {
-    sum += parseAmount(a);
+  return remainingCollectible(grandTotal, capturedAmounts) === "0.00";
+}
+
+/**
+ * Captured monetary collection only.
+ * Complimentary settlement lines are a Bill outcome publication, not Payment.
+ */
+export function capturedCollectionAmounts(
+  lines: readonly {
+    amount: string;
+    status: string;
+    paymentMethod: string;
+  }[]
+): string[] {
+  return lines
+    .filter(
+      (line) =>
+        line.status === "captured" && line.paymentMethod !== "complimentary"
+    )
+    .map((line) => line.amount);
+}
+
+/**
+ * amountDue = Bill.grandTotal − valid collected amount.
+ * Never Order, Session, or Order Settlement.
+ */
+export function remainingCollectible(
+  grandTotal: string,
+  capturedAmounts: readonly string[]
+): string {
+  const due = parseAmount(grandTotal);
+  let collected = 0;
+  for (const amount of capturedAmounts) {
+    collected += parseAmount(amount);
   }
-  return Math.abs(sum - parseAmount(grandTotal)) <= 0.001;
+  const remaining = Math.round((due - collected) * 100) / 100;
+  if (remaining < -0.001) {
+    throw new SettlementValidationError(
+      `Collected amount exceeds Bill grandTotal`
+    );
+  }
+  return formatAmount(Math.max(0, remaining));
+}
+
+export function assertBillAcceptsCollection(outcome: CheckOutcome): void {
+  if (outcome !== "open") {
+    throw new SettlementValidationError(
+      `Cannot collect payment on ${outcome} Bill`
+    );
+  }
 }

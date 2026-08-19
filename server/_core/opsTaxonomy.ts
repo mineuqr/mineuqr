@@ -183,6 +183,7 @@ export const OPS_EVENT = {
     "check_settlement_attribution_deferred_failed",
   check_terminal_transition_rejected: "check_terminal_transition_rejected",
   check_charge_on_terminal_rejected: "check_charge_on_terminal_rejected",
+  check_collection_rejected: "check_collection_rejected",
 
   // SESSION-AGGREGATES-1 Phase B
   session_aggregate_reader_fallback: "session_aggregate_reader_fallback",

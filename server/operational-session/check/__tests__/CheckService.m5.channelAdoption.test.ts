@@ -64,6 +64,7 @@ vi.mock("../checkRepository", () => ({
 
 vi.mock("../settlementTransactionRepository", () => ({
   insertSettlementTransactions: vi.fn(),
+  listSettlementTransactionsForCheck: vi.fn(async () => []),
 }));
 
 vi.mock("../checkMembershipService", () => ({

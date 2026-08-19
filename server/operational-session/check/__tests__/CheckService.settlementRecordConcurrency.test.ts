@@ -369,6 +369,7 @@ vi.mock("../settlementTransactionRepository", () => ({
       `batch=${harness.store.settlementTxBatches} lines=${input.lines.length}`
     );
   }),
+  listSettlementTransactionsForCheck: vi.fn(async () => []),
 }));
 
 vi.mock("../checkMembershipService", () => ({

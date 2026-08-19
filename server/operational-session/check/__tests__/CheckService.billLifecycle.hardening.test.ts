@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   finalizeCheckOutcome: vi.fn(),
   touchOpenCheck: vi.fn(),
   insertSettlementTransactions: vi.fn(),
+  listSettlementTransactionsForCheck: vi.fn(),
   getOrdersByIds: vi.fn(),
   getRestaurantById: vi.fn(),
   getDb: vi.fn(),
@@ -77,6 +78,8 @@ vi.mock("../checkRepository", () => ({
 vi.mock("../settlementTransactionRepository", () => ({
   insertSettlementTransactions: (...a: unknown[]) =>
     mocks.insertSettlementTransactions(...a),
+  listSettlementTransactionsForCheck: (...a: unknown[]) =>
+    mocks.listSettlementTransactionsForCheck(...a),
 }));
 
 vi.mock("../checkMembershipService", () => ({
@@ -169,6 +172,7 @@ describe("BILL-FINANCIAL-LIFECYCLE-HARDENING-1 CheckService", () => {
     mocks.ensureOpenCheckChargeComposition.mockResolvedValue(undefined);
     mocks.finalizeCheckOutcome.mockResolvedValue(1);
     mocks.insertSettlementTransactions.mockResolvedValue(undefined);
+    mocks.listSettlementTransactionsForCheck.mockResolvedValue([]);
     mocks.updateCheckMoney.mockResolvedValue(undefined);
     mocks.recalculateOrderSettlementsForCheck.mockResolvedValue({
       settlements: [],
@@ -426,5 +430,94 @@ describe("BILL-FINANCIAL-LIFECYCLE-HARDENING-1 CheckService", () => {
       restaurantId: 9,
     });
     await expect(getCheckById({ restaurantId: 1, checkId: 100 })).resolves.toBeNull();
+  });
+
+  it("PAID collection amount is Bill remaining, not Order total", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(openCheckRow)
+      .mockResolvedValueOnce(terminalRow("paid"));
+    mocks.listSettlementTransactionsForCheck.mockResolvedValue([]);
+    await settleCheckPaidById({
+      restaurantId: 1,
+      checkId: 100,
+      settlements: [{ paymentMethod: "cash", amount: "10.00" }],
+    });
+    expect(mocks.getOrdersByIds).not.toHaveBeenCalled();
+    expect(mocks.insertSettlementTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currencyCode: "SAR",
+        lines: [expect.objectContaining({ paymentMethod: "cash", amount: "10.00" })],
+      }),
+      fakeTx
+    );
+  });
+
+  it("rejects overpayment against Bill amountDue", async () => {
+    mocks.findCheckById.mockResolvedValue(openCheckRow);
+    await expect(
+      settleCheckPaidById({
+        restaurantId: 1,
+        checkId: 100,
+        settlements: [{ paymentMethod: "cash", amount: "99.00" }],
+      })
+    ).rejects.toThrow(/must equal Check grandTotal/);
+    expect(mocks.finalizeCheckOutcome).not.toHaveBeenCalled();
+  });
+
+  it("rejects zero-amount collection", async () => {
+    mocks.findCheckById.mockResolvedValue(openCheckRow);
+    await expect(
+      settleCheckPaidById({
+        restaurantId: 1,
+        checkId: 100,
+        settlements: [{ paymentMethod: "cash", amount: "0.00" }],
+      })
+    ).rejects.toThrow(/must be positive/);
+  });
+
+  it("if captured collection already exists, remaining due is Bill minus collection", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce({
+        ...openCheckRow,
+        subtotal: "10.00",
+        grandTotal: "10.00",
+      })
+      .mockResolvedValueOnce(terminalRow("paid"));
+    mocks.listSettlementTransactionsForCheck.mockResolvedValue([
+      {
+        amount: "4.00",
+        status: "captured",
+        paymentMethod: "cash",
+      },
+    ]);
+    await settleCheckPaidById({
+      restaurantId: 1,
+      checkId: 100,
+      settlements: [{ paymentMethod: "card", amount: "6.00" }],
+    });
+    expect(mocks.insertSettlementTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [expect.objectContaining({ paymentMethod: "card", amount: "6.00" })],
+      }),
+      fakeTx
+    );
+  });
+
+  it("complimentary settlement lines are not treated as Payment collection", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(openCheckRow)
+      .mockResolvedValueOnce(terminalRow("complimentary"));
+    await settleCheckComplimentaryById({ restaurantId: 1, checkId: 100 });
+    expect(mocks.insertSettlementTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [
+          expect.objectContaining({
+            paymentMethod: "complimentary",
+            amount: "10.00",
+          }),
+        ],
+      }),
+      fakeTx
+    );
   });
 });

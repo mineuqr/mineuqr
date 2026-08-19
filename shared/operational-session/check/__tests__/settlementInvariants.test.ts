@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertBillAcceptsCollection,
   assertPaidSettlementLines,
+  capturedCollectionAmounts,
   complimentarySettlementLine,
   defaultPaidSettlementLine,
   isCheckFullyCoveredBySettlements,
+  remainingCollectible,
   resolveStaffSettlementLines,
   SettlementValidationError,
 } from "../settlementInvariants";
@@ -56,6 +59,55 @@ describe("CHECK-SETTLEMENT-METHODS-1 settlement invariants", () => {
       true
     );
     expect(isCheckFullyCoveredBySettlements("30.00", ["10.00"])).toBe(false);
+  });
+
+  it("amountDue is Bill grandTotal minus captured collection", () => {
+    expect(remainingCollectible("100.00", [])).toBe("100.00");
+    expect(remainingCollectible("100.00", ["40.00", "25.00"])).toBe("35.00");
+    expect(
+      remainingCollectible(
+        "100.00",
+        capturedCollectionAmounts([
+          { amount: "40.00", status: "captured", paymentMethod: "cash" },
+          {
+            amount: "100.00",
+            status: "captured",
+            paymentMethod: "complimentary",
+          },
+          { amount: "10.00", status: "voided", paymentMethod: "card" },
+        ])
+      )
+    ).toBe("60.00");
+  });
+
+  it("rejects collected amount that exceeds the Bill", () => {
+    expect(() => remainingCollectible("10.00", ["10.01"])).toThrow(
+      /exceeds Bill grandTotal/
+    );
+  });
+
+  it("rejects collection on terminal Bills", () => {
+    expect(() => assertBillAcceptsCollection("paid")).toThrow(
+      /Cannot collect payment on paid Bill/
+    );
+    expect(() => assertBillAcceptsCollection("complimentary")).toThrow(
+      /complimentary/
+    );
+    expect(() => assertBillAcceptsCollection("voided")).toThrow(/voided/);
+    expect(() => assertBillAcceptsCollection("open")).not.toThrow();
+  });
+
+  it("rejects zero and negative paid tender amounts", () => {
+    expect(() =>
+      assertPaidSettlementLines("10.00", [
+        { paymentMethod: "cash", amount: "0.00" },
+      ])
+    ).toThrow(/must be positive/);
+    expect(() =>
+      assertPaidSettlementLines("10.00", [
+        { paymentMethod: "cash", amount: "-1.00" },
+      ])
+    ).toThrow(SettlementValidationError);
   });
 });
 

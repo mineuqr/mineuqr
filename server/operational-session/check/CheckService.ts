@@ -37,6 +37,8 @@ import {
   computeCheckMoney,
   decideCheckRecalculation,
   defaultPaidSettlementLine,
+  remainingCollectible,
+  capturedCollectionAmounts,
   resolveStaffSettlementLines,
   SettlementValidationError,
   type CheckOutcome,
@@ -55,7 +57,7 @@ import {
   touchOpenCheck,
   updateCheckMoney,
 } from "./checkRepository";
-import { insertSettlementTransactions } from "./settlementTransactionRepository";
+import { insertSettlementTransactions, listSettlementTransactionsForCheck } from "./settlementTransactionRepository";
 import {
   deactivateMembershipsOnCheckVoid,
   enrollOrderInCheck,
@@ -610,14 +612,39 @@ async function finalizeOpenCheckById(
   const validationStartedAt = Date.now();
   try {
     if (input.outcome === "paid") {
+      const existingCollection = await listSettlementTransactionsForCheck({
+        restaurantId: input.restaurantId,
+        checkId: check.id,
+      });
+      const amountDue = remainingCollectible(
+        money.grandTotal,
+        capturedCollectionAmounts(existingCollection)
+      );
+      const captured = capturedCollectionAmounts(existingCollection);
+      if (captured.length > 0 && amountDue === "0.00") {
+        throw new SettlementValidationError("Bill is already fully collected");
+      }
       settlementLines = input.settlements?.length
-        ? resolveStaffSettlementLines(money.grandTotal, input.settlements)
-        : [defaultPaidSettlementLine(money.grandTotal)];
+        ? resolveStaffSettlementLines(amountDue, input.settlements)
+        : [defaultPaidSettlementLine(amountDue)];
     } else if (input.outcome === "complimentary") {
       settlementLines = [complimentarySettlementLine(money.grandTotal)];
     }
   } catch (err) {
     if (err instanceof SettlementValidationError) {
+      opsLog({
+        type: OPS_EVENT.check_collection_rejected,
+        category: "ORDER",
+        severity: "warn",
+        ts: new Date().toISOString(),
+        restaurantId: input.restaurantId,
+        action: "finalizeOpenCheckById",
+        metadata: {
+          checkId: input.checkId,
+          outcome: input.outcome,
+          error: err.message,
+        },
+      });
       throw new DiningSessionValidationError(err.message);
     }
     throw err;
@@ -669,16 +696,45 @@ async function finalizeOpenCheckById(
       billDiscountAmount: check.billDiscountAmount,
       taxPolicySnapshot: check.taxPolicySnapshot,
     });
+    const existingCollection = await listSettlementTransactionsForCheck(
+      {
+        restaurantId: input.restaurantId,
+        checkId: check.id,
+      },
+      tx
+    );
+    const amountDue = remainingCollectible(
+      money.grandTotal,
+      capturedCollectionAmounts(existingCollection)
+    );
     try {
       if (input.outcome === "paid") {
+        const captured = capturedCollectionAmounts(existingCollection);
+        if (captured.length > 0 && amountDue === "0.00") {
+          throw new SettlementValidationError("Bill is already fully collected");
+        }
         settlementLines = input.settlements?.length
-          ? resolveStaffSettlementLines(money.grandTotal, input.settlements)
-          : [defaultPaidSettlementLine(money.grandTotal)];
+          ? resolveStaffSettlementLines(amountDue, input.settlements)
+          : [defaultPaidSettlementLine(amountDue)];
       } else if (input.outcome === "complimentary") {
         settlementLines = [complimentarySettlementLine(money.grandTotal)];
       }
     } catch (err) {
       if (err instanceof SettlementValidationError) {
+        opsLog({
+          type: OPS_EVENT.check_collection_rejected,
+          category: "ORDER",
+          severity: "warn",
+          ts: new Date().toISOString(),
+          restaurantId: input.restaurantId,
+          action: "finalizeOpenCheckById",
+          metadata: {
+            checkId: input.checkId,
+            outcome: input.outcome,
+            amountDue,
+            error: err.message,
+          },
+        });
         throw new DiningSessionValidationError(err.message);
       }
       throw err;

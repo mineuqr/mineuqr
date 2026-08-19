@@ -130,6 +130,10 @@ export {
   defaultPaidSettlementLine,
   resolveStaffSettlementLines,
   isCheckFullyCoveredBySettlements,
+  capturedCollectionAmounts,
+  remainingCollectible,
+  assertBillAcceptsCollection,
+  PAYMENT_COLLECTION_PROGRAM_ID,
 } from "./settlementInvariants";
 
 export {
