@@ -313,6 +313,7 @@ async function refreshOpenCheckMoneyFromDiscovery(
       taxAmount: money.taxAmount,
       taxBreakdown: money.taxBreakdown,
       grandTotal: money.grandTotal,
+      billDiscountAmount: input.billDiscountAmount,
     },
     client
   );
@@ -1000,6 +1001,7 @@ export async function recalculateOpenCheck(input: {
 export async function createOpenCheck(input: {
   restaurantId: number;
   sessionId: number | null;
+  billDiscountAmount?: string;
 }): Promise<OperationalCheck> {
   if (input.sessionId != null) {
     return createOpenCheckForSession({
@@ -1008,11 +1010,12 @@ export async function createOpenCheck(input: {
     });
   }
 
+  const billDiscountAmount = input.billDiscountAmount ?? "0.00";
   const { currencySnapshot, taxPolicySnapshot } =
     await captureSnapshotsFromBusinessSettings(input.restaurantId);
   const money = computeCheckMoney({
     chargesSubtotal: "0.00",
-    billDiscountAmount: "0.00",
+    billDiscountAmount,
     taxPolicySnapshot,
   });
   const snapshotsFrozenAt = formatDiningSessionTimestamp();
@@ -1022,6 +1025,7 @@ export async function createOpenCheck(input: {
     sessionId: null,
     currencySnapshot,
     taxPolicySnapshot,
+    billDiscountAmount,
     subtotal: money.subtotal,
     taxAmount: money.taxAmount,
     taxBreakdown: money.taxBreakdown,
@@ -1044,6 +1048,7 @@ export async function createOpenCheck(input: {
 export async function ensureCheckForOrder(input: {
   restaurantId: number;
   orderId: number;
+  billDiscountAmount?: string;
 }): Promise<OperationalCheck> {
   const blocking = await findBlockingMembershipForOrder(
     input.restaurantId,
@@ -1085,7 +1090,8 @@ export async function ensureCheckForOrder(input: {
         {
           restaurantId: input.restaurantId,
           checkId: existing.id,
-          billDiscountAmount: existing.billDiscountAmount,
+          billDiscountAmount:
+            input.billDiscountAmount ?? existing.billDiscountAmount,
           taxPolicySnapshot: existing.taxPolicySnapshot,
         },
         tx
@@ -1105,6 +1111,7 @@ export async function ensureCheckForOrder(input: {
   const created = await createOpenCheck({
     restaurantId: input.restaurantId,
     sessionId: null,
+    billDiscountAmount: input.billDiscountAmount,
   });
 
   return withCheckOwnedTransaction(undefined, async (tx) => {

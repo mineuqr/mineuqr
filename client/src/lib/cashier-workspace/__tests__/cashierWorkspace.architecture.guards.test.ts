@@ -64,7 +64,7 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
     expect(panel).not.toContain("IdentityPlaceOrder");
     expect(panel).toContain("resolveImageUrl");
     expect(panel).toContain("categoryNameAr");
-    expect(panel).toContain("listMonetaryPaymentMethodOptions");
+    expect(panel).toContain("tenderCash");
     expect(panel).toContain('section: "register"');
     expect(panel).toContain("syncDashboardUrl");
     expect(panel).toContain("SettlementReceiptDialog");

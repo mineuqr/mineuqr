@@ -55,4 +55,8 @@ export const cashierPos = {
   amountDueHuge: "text-4xl font-bold tabular-nums text-[#0b3d36]",
   moneyInput:
     "min-h-12 w-full rounded-xl border border-[#d8dee6] bg-white px-3 text-lg tabular-nums text-[#111827]",
+  methodBtn:
+    "min-h-12 flex-1 rounded-xl border border-[#d8dee6] bg-white px-3 text-sm font-semibold text-[#111827]",
+  methodBtnActive:
+    "min-h-12 flex-1 rounded-xl bg-[#0f766e] px-3 text-sm font-semibold text-white",
 } as const;

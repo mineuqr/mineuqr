@@ -57,7 +57,7 @@ describe("CASHIER-ORDER-CONFIRMATION-PAYMENT-FLOW-1", () => {
     expect(panel).toContain("orderCheck?.grandTotal");
     expect(panel).toContain("amountDueIsOrderFallback");
     expect(panel).not.toContain("settlementRow?.outstandingAmount");
-    expect(panel).toContain("listMonetaryPaymentMethodOptions");
+    expect(panel).toContain("tenderCash");
     expect(SELECTABLE_PAYMENT_METHODS).toEqual(["cash", "card"]);
     expect(panel).not.toContain("mada");
     expect(panel).not.toContain("apple_pay");

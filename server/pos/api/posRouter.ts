@@ -72,16 +72,17 @@ const saleCreateInput = terminalInput.extend({
   idempotencyKey: z.string().min(8).max(128),
 });
 
-const checkIntakeInput = terminalInput.extend({
-  orderId: z.number().int().positive(),
-  idempotencyKey: z.string().min(8).max(128),
-});
-
 const moneyAmountInput = z
   .string()
   .min(1)
   .max(32)
   .regex(/^\d+(\.\d{1,2})?$/, "invalid decimal amount");
+
+const checkIntakeInput = terminalInput.extend({
+  orderId: z.number().int().positive(),
+  idempotencyKey: z.string().min(8).max(128),
+  billDiscountAmount: moneyAmountInput.optional(),
+});
 
 const settlementLineInput = z.object({
   paymentMethod: z.enum(["cash", "card"]),
@@ -390,6 +391,7 @@ export const posRouter = router({
             terminalId: input.terminalId,
             orderId: input.orderId,
             idempotencyKey: input.idempotencyKey,
+            billDiscountAmount: input.billDiscountAmount,
           },
         });
       } catch (err) {

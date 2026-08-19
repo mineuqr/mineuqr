@@ -1036,6 +1036,9 @@ function RestaurantDetail({
         currencySymbol={
           (restaurant as { currencySymbol?: string | null })?.currencySymbol ?? null
         }
+        taxEnabled={(restaurant as { taxEnabled?: boolean | null }).taxEnabled}
+        taxMode={(restaurant as { taxMode?: string | null }).taxMode}
+        taxPolicyJson={(restaurant as { taxPolicyJson?: string | null }).taxPolicyJson}
       />
     );
   }

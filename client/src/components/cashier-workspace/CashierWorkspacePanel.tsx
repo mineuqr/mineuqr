@@ -55,6 +55,12 @@ import {
   writeCashierTerminalId,
 } from "@/lib/cashier-workspace/cashierTerminalStorage";
 import {
+  clampCashierDiscountAmount,
+  cashierDisplayTaxPolicy,
+  displayCashierTicketMoney,
+} from "@/lib/cashier-workspace/cashierTicketMoney";
+import type { CashierTenderMode } from "@/lib/cashier-workspace/cashierTenderMode";
+import {
   displayMoneyTimesQuantity,
   displayTicketTotal,
   isPositiveDisplayMoney,
@@ -64,11 +70,11 @@ import {
 } from "@/lib/cashier-workspace/cashierWorkspaceNav";
 import { CASHIER_V1_PERMISSIONS } from "@/lib/cashier-workspace/cashierWorkspacePermissions";
 import { syncDashboardUrl } from "@/lib/dashboardUrl";
-import { listMonetaryPaymentMethodOptions } from "@/lib/settlementPaymentMethodPresentation";
 import { formatTrpcErrorForUser } from "@/lib/trpcErrors";
 import { classifyQueryError } from "@/lib/ui-state/classifyQueryError";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
+import type { CheckMoneyResult } from "@shared/operational-session";
 import type { SelectablePaymentMethod } from "@shared/operational-session";
 import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -112,6 +118,9 @@ type Props = {
   language: CashierLang;
   restaurantName?: string | null;
   currencySymbol?: string | null;
+  taxEnabled?: boolean | null;
+  taxMode?: string | null;
+  taxPolicyJson?: string | null;
 };
 
 function isForbidden(error: unknown): boolean {
@@ -137,6 +146,9 @@ export function CashierWorkspacePanel({
   language,
   restaurantName,
   currencySymbol,
+  taxEnabled,
+  taxMode,
+  taxPolicyJson,
 }: Props) {
   const dir = language === "ar" ? "rtl" : "ltr";
   const t = (key: Parameters<typeof cashierUiLabel>[0]) =>
@@ -161,6 +173,12 @@ export function CashierWorkspacePanel({
   const [salePhase, setSalePhase] = useState<DirectSalePhase>("ticket");
   const [cashReceived, setCashReceived] = useState("");
   const [cardTender, setCardTender] = useState("");
+  const [tenderMode, setTenderMode] = useState<CashierTenderMode | null>(null);
+  const [ticketDiscount, setTicketDiscount] = useState("0.00");
+  const [discountDraft, setDiscountDraft] = useState("");
+  const [discountOpen, setDiscountOpen] = useState(false);
+  const [paymentDisplayMoney, setPaymentDisplayMoney] =
+    useState<CheckMoneyResult | null>(null);
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [paymentBusy, setPaymentBusy] = useState(false);
@@ -193,6 +211,11 @@ export function CashierWorkspacePanel({
     setRegisterGap(null);
     setCashReceived("");
     setCardTender("");
+    setTenderMode(null);
+    setTicketDiscount("0.00");
+    setDiscountDraft("");
+    setDiscountOpen(false);
+    setPaymentDisplayMoney(null);
     setOrdersOpen(false);
     setPrintOpen(false);
     const snapshot = readCashierDirectSale(restaurantId);
@@ -475,12 +498,25 @@ export function CashierWorkspacePanel({
     setSalePhase("ticket");
     setCashReceived("");
     setCardTender("");
+    setTenderMode(null);
+    setTicketDiscount("0.00");
+    setDiscountDraft("");
+    setDiscountOpen(false);
+    setPaymentDisplayMoney(null);
     setPrintOpen(false);
     clearCashierDirectSale(restaurantId);
   }
 
   function cancelPaymentSheet() {
-    if (payInFlightRef.current || settleMutation.isPending || paymentBusy) return;
+    if (
+      payInFlightRef.current ||
+      settleMutation.isPending ||
+      paymentBusy ||
+      saleInFlightRef.current ||
+      saleMutation.isPending
+    ) {
+      return;
+    }
     // Presentation-only: close the payment sheet. Do not cancel the Order,
     // void the Check, void a Settlement, or issue a refund.
     endCashierPaymentFlow("cancelled");
@@ -497,8 +533,8 @@ export function CashierWorkspacePanel({
   }
 
   async function placeSale() {
-    // Payment CTA persists the sale so Check/Charges can enroll. Does not collect.
-    // Kitchen lists cashier_pos only after Paid. Confirm is settlement.initiate.
+    // Open Payment immediately. sale.create + intake run behind the sheet.
+    // Confirm stays disabled until Check.grandTotal is ready.
     if (!terminalId || ticket.length === 0) return;
     if (saleInFlightRef.current || saleMutation.isPending) return;
     endCashierPaymentFlow("abandoned");
@@ -514,6 +550,31 @@ export function CashierWorkspacePanel({
     if (!saleKeyRef.current) {
       saleKeyRef.current = newCashierIdempotencyKey("sale");
     }
+    setPaidCheckout(null);
+    setRegisterGap(null);
+    setPaymentMethod(null);
+    setTenderMode(null);
+    setCashReceived("");
+    setCardTender("");
+    const catalogSubtotal = displayTicketTotal(ticket);
+    const discount = clampCashierDiscountAmount(ticketDiscount, catalogSubtotal);
+    setTicketDiscount(discount);
+    setPaymentDisplayMoney(
+      displayCashierTicketMoney({
+        catalogSubtotal,
+        billDiscountAmount: discount,
+        taxPolicySnapshot: cashierDisplayTaxPolicy({
+          taxEnabled,
+          taxMode,
+          taxPolicyJson,
+        }),
+      })
+    );
+    setSalePhase("payment");
+    cashierPaymentFlowTiming.mark(
+      cashierFlowIdRef.current,
+      "CASHIER_PAYMENT_WORKFLOW_START"
+    );
     try {
       cashierPaymentFlowTiming.mark(
         cashierFlowIdRef.current,
@@ -547,37 +608,30 @@ export function CashierWorkspacePanel({
       setTicket([]);
       setSelectedOrderId(result.orderId);
       setOpenCheck(null);
-      setPaidCheckout(null);
-      setPaymentMethod(null);
-      setRegisterGap(null);
       setDirectSale(sale);
-      setSalePhase("payment");
-      cashierPaymentFlowTiming.mark(
-        cashierFlowIdRef.current,
-        "CASHIER_PAYMENT_WORKFLOW_START"
-      );
-      setCashReceived(result.totalAmount);
-      setCardTender("");
       persistDirectSaleSnapshot({
         sale,
         phase: "payment",
         checkId: null,
         paid: null,
         method: null,
-        received: result.totalAmount,
+        received: "",
         card: "",
       });
-      toast.success(`${t("salePlaced")} ${result.displayReference}`);
-      void orchestrateIntake(result.orderId);
+      void orchestrateIntake(result.orderId, discount);
     } catch (error) {
       endCashierPaymentFlow("failed");
+      setSalePhase("ticket");
       toast.error(userFacingError(error, t("errorTitle")));
     } finally {
       saleInFlightRef.current = false;
     }
   }
 
-  function orchestrateIntake(orderId: number): Promise<OpenCheckResult | null> {
+  function orchestrateIntake(
+    orderId: number,
+    billDiscountAmount?: string
+  ): Promise<OpenCheckResult | null> {
     const existing = intakeByOrderRef.current.get(orderId);
     if (existing) return existing;
     const pending = (async (): Promise<OpenCheckResult | null> => {
@@ -592,6 +646,9 @@ export function CashierWorkspacePanel({
           terminalId,
           orderId,
           idempotencyKey: newCashierIdempotencyKey("check"),
+          ...(billDiscountAmount && billDiscountAmount !== "0.00"
+            ? { billDiscountAmount }
+            : {}),
         });
         cashierPaymentFlowTiming.mark(
           cashierFlowIdRef.current,
@@ -635,17 +692,20 @@ export function CashierWorkspacePanel({
   async function completePayment() {
     if (!terminalId || selectedOrderId == null) return;
     if (payInFlightRef.current || settleMutation.isPending) return;
+    if (tenderMode == null) return;
     const due = amountDue;
     if (!due) return;
+    const cashTender = tenderMode === "network" ? "" : cashReceived;
+    const cardTenderValue = tenderMode === "cash" ? "" : cardTender;
     const plan = resolveCashierSettlementPlan({
       amountDue: due,
-      cashTender: cashReceived,
-      cardTender,
+      cashTender,
+      cardTender: cardTenderValue,
     });
     if (!plan || !canConfirmCashierSettlement({
       amountDue: due,
-      cashTender: cashReceived,
-      cardTender,
+      cashTender,
+      cardTender: cardTenderValue,
     })) {
       return;
     }
@@ -729,15 +789,12 @@ export function CashierWorkspacePanel({
         "CASHIER_PAYMENT_SUCCESS"
       );
       endCashierPaymentFlow("completed");
-      persistDirectSaleSnapshot({
-        phase: "paid",
-        checkId: result.checkId,
-        paid,
-      });
       toast.success(
         `${t("paidSuccess")} · ${directSale.displayReference} · ${result.grandTotal}`
       );
       invalidateOrderReads();
+      startNewSale();
+      setPaidCheckout(paid);
       if (paid.settlementRecordId) {
         setPrintOpen(true);
       }
@@ -822,17 +879,11 @@ export function CashierWorkspacePanel({
         setPaidCheckout(recovered.paid);
         setRegisterGap(null);
         setSalePhase("paid");
-        setPaymentRecoveryUi(receiptIncomplete ? "incomplete" : "idle");
         cashierPaymentFlowTiming.mark(
           cashierFlowIdRef.current,
           "CASHIER_PAYMENT_SUCCESS"
         );
         endCashierPaymentFlow("completed");
-        persistDirectSaleSnapshot({
-          phase: "paid",
-          checkId: recovered.paid.checkId,
-          paid: recovered.paid,
-        });
         if (receiptIncomplete) {
           toast.error(t("recoveryIncomplete"));
         } else {
@@ -841,6 +892,8 @@ export function CashierWorkspacePanel({
           );
         }
         invalidateOrderReads();
+        startNewSale();
+        setPaidCheckout(recovered.paid);
         if (!receiptIncomplete && recovered.paid.settlementRecordId) {
           setPrintOpen(true);
         }
@@ -911,15 +964,31 @@ export function CashierWorkspacePanel({
       : items.filter((item) => item.categoryId === categoryFilter);
   const orders = ordersQuery.data?.items ?? [];
   const ticketTotal = displayTicketTotal(ticket);
-  const paymentOptions = listMonetaryPaymentMethodOptions(language);
+  const taxPolicySnapshot = useMemo(
+    () => cashierDisplayTaxPolicy({ taxEnabled, taxMode, taxPolicyJson }),
+    [taxEnabled, taxMode, taxPolicyJson]
+  );
+  const appliedDiscount = clampCashierDiscountAmount(
+    ticketDiscount,
+    ticketTotal
+  );
+  const ticketMoney = displayCashierTicketMoney({
+    catalogSubtotal: ticketTotal,
+    billDiscountAmount: appliedDiscount,
+    taxPolicySnapshot,
+  });
   const settlementRow = (settlementQuery.data ?? [])[0];
   const orderCheck = checkQuery.data ?? null;
+  const effectiveCashTender =
+    tenderMode === "network" || tenderMode == null ? "" : cashReceived;
+  const effectiveCardTender =
+    tenderMode === "cash" || tenderMode == null ? "" : cardTender;
   const paymentReadiness = resolveCashierPaymentReadiness({
     checkGrandTotal: orderCheck?.grandTotal,
     checkOutcome: orderCheck?.outcome,
-    cashTender: cashReceived,
-    cardTender,
-    intakePending: intakeMutation.isPending,
+    cashTender: effectiveCashTender,
+    cardTender: effectiveCardTender,
+    intakePending: intakeMutation.isPending || saleMutation.isPending,
     intakeFailed: intakeMutation.isError,
     paymentSubmitting: settleMutation.isPending || paymentBusy,
     checkReadFailed: checkQuery.isError,
@@ -929,38 +998,79 @@ export function CashierWorkspacePanel({
     !paidCheckout &&
     !paymentReadiness.checkAvailable &&
     Boolean(directSale?.totalAmount);
+  const sheetMoney = paymentReadiness.checkAvailable && orderCheck
+    ? {
+        subtotal: orderCheck.subtotal,
+        discount: orderCheck.billDiscountAmount,
+        taxAmount: orderCheck.taxAmount,
+        grandTotal: orderCheck.grandTotal,
+      }
+    : paymentDisplayMoney
+      ? {
+          subtotal: paymentDisplayMoney.subtotal,
+          discount: appliedDiscount,
+          taxAmount: paymentDisplayMoney.taxAmount,
+          grandTotal: paymentDisplayMoney.grandTotal,
+        }
+      : ticketMoney
+        ? {
+            subtotal: ticketMoney.subtotal,
+            discount: appliedDiscount,
+            taxAmount: ticketMoney.taxAmount,
+            grandTotal: ticketMoney.grandTotal,
+          }
+        : null;
 
   useEffect(() => {
-    if (salePhase !== "payment" || paidCheckout) return;
-    const checkDue =
-      orderCheck?.outcome === "open" ? orderCheck.grandTotal : null;
-    if (!checkDue) return;
-    setCashReceived((current) => {
-      if (current === "" || current === directSale?.totalAmount) {
-        return checkDue;
-      }
-      return current;
-    });
+    if (salePhase !== "payment" || paidCheckout || !amountDue) return;
+    if (tenderMode === "cash") {
+      setCashReceived((current) =>
+        current === "" || current === directSale?.totalAmount ? amountDue : current
+      );
+      setCardTender("");
+    } else if (tenderMode === "network") {
+      setCardTender((current) =>
+        current === "" ? amountDue : current
+      );
+      setCashReceived("");
+    }
   }, [
     salePhase,
     paidCheckout,
-    orderCheck?.grandTotal,
-    orderCheck?.outcome,
+    amountDue,
+    tenderMode,
     directSale?.totalAmount,
   ]);
   const money = (value: string) =>
     currencySymbol ? `${value} ${currencySymbol}` : value;
+  const displayDue = amountDue ?? sheetMoney?.grandTotal ?? null;
   const tenderDraft =
-    amountDue != null
+    amountDue != null && tenderMode != null
       ? {
           amountDue,
-          cashTender: cashReceived,
-          cardTender,
+          cashTender: effectiveCashTender,
+          cardTender: effectiveCardTender,
         }
       : null;
   const tenderPlan = tenderDraft
     ? resolveCashierSettlementPlan(tenderDraft)
     : null;
+  const displayTenderPlan =
+    amountDue == null && displayDue != null && tenderMode != null
+      ? resolveCashierSettlementPlan({
+          amountDue: displayDue,
+          cashTender: effectiveCashTender,
+          cardTender: effectiveCardTender,
+        })
+      : null;
+  const tenderedShown =
+    paymentReadiness.totalTenderedDisplay ??
+    displayCents(displayTenderPlan?.totalEnteredCents ?? 0);
+  const remainingShown =
+    paymentReadiness.remainingDisplay ??
+    (displayTenderPlan
+      ? displayCents(displayTenderPlan.remainingCents)
+      : displayDue);
   const canConfirmPayment = paymentReadiness.canConfirmPayment;
   const cashChange =
     tenderPlan && tenderPlan.changeCents > 0
@@ -1273,24 +1383,92 @@ export function CashierWorkspacePanel({
               <div className={cashierPos.totalBox}>
                 <p className="flex justify-between text-sm text-[#6b7280]">
                   <span>{t("ticketSubtotal")}</span>
-                  <span className="tabular-nums">{money(ticketTotal ?? "0.00")}</span>
+                  <span className="tabular-nums">
+                    {money(ticketMoney?.subtotal ?? ticketTotal ?? "0.00")}
+                  </span>
                 </p>
                 <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
                   <span>{t("ticketDiscount")}</span>
-                  <span className="tabular-nums">{money("0.00")}</span>
+                  <span className="tabular-nums">
+                    {isPositiveDisplayMoney(appliedDiscount)
+                      ? `-${money(appliedDiscount)}`
+                      : money("0.00")}
+                  </span>
                 </p>
                 <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
                   <span>{t("paymentTax")}</span>
-                  <span className="tabular-nums">{t("taxAtPayment")}</span>
+                  <span className="tabular-nums">
+                    {money(ticketMoney?.taxAmount ?? "0.00")}
+                  </span>
                 </p>
                 <p className="mt-2 flex items-end justify-between">
                   <span className="text-sm font-semibold text-[#111827]">
                     {t("ticketTotal")}
                   </span>
                   <span className={cashierPos.totalValue}>
-                    {money(ticketTotal ?? "0.00")}
+                    {money(ticketMoney?.grandTotal ?? ticketTotal ?? "0.00")}
                   </span>
                 </p>
+                {discountOpen ? (
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      className={cashierPos.moneyInput}
+                      inputMode="decimal"
+                      aria-label={t("discountAmount")}
+                      placeholder={t("discountAmount")}
+                      value={discountDraft}
+                      onChange={(event) => setDiscountDraft(event.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      className="min-h-12"
+                      onClick={() => {
+                        const next = clampCashierDiscountAmount(
+                          discountDraft,
+                          ticketTotal
+                        );
+                        if (
+                          discountDraft.trim() &&
+                          next !== discountDraft.trim() &&
+                          ticketTotal != null
+                        ) {
+                          toast.error(t("discountExceeds"));
+                        }
+                        setTicketDiscount(next);
+                        setDiscountOpen(false);
+                      }}
+                    >
+                      {t("applyDiscountAction")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-12"
+                      onClick={() => {
+                        setTicketDiscount("0.00");
+                        setDiscountDraft("");
+                        setDiscountOpen(false);
+                      }}
+                    >
+                      {t("clearDiscount")}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 min-h-11 w-full"
+                    disabled={ticket.length === 0}
+                    onClick={() => {
+                      setDiscountDraft(
+                        appliedDiscount === "0.00" ? "" : appliedDiscount
+                      );
+                      setDiscountOpen(true);
+                    }}
+                  >
+                    {t("applyDiscount")}
+                  </Button>
+                )}
               </div>
               <Button
                 type="button"
@@ -1299,7 +1477,7 @@ export function CashierWorkspacePanel({
                 onClick={() => void placeSale()}
               >
                 <ShoppingCart />
-                {saleMutation.isPending ? t("placing") : t("placeSale")}
+                {t("placeSale")}
               </Button>
               {directSale && salePhase === "ticket" && !paidCheckout ? (
                 <Button
@@ -1378,61 +1556,13 @@ export function CashierWorkspacePanel({
         </div>
       ) : null}
 
-      {salePhase !== "ticket" && directSale ? (
+      {salePhase === "payment" ? (
         <div className={cashierPos.overlay} role="dialog" aria-modal="true">
           <div className={cashierPos.sheet} dir={dir}>
-            {salePhase === "paid" && paidCheckout ? (
-              <>
-                <h2 className="text-lg font-semibold">{t("paidSuccess")}</h2>
-                <p className="mt-3 text-sm text-[#6b7280]">{t("orderNumber")}</p>
-                <p className="text-base font-semibold">{directSale.displayReference}</p>
-                <p className="mt-2 text-sm text-[#6b7280]">{t("paymentMethod")}</p>
-                <ul className="mt-1 space-y-1">
-                  {(paidCheckout.settlements.length > 0
-                    ? paidCheckout.settlements
-                    : [{ paymentMethod: paidCheckout.paymentMethod }]
-                  ).map((line) => (
-                    <li
-                      key={`${line.paymentMethod}-${line.amount ?? "full"}`}
-                      className="flex justify-between text-base font-semibold"
-                    >
-                      <span>
-                        {paymentOptions.find(
-                          (option) => option.paymentMethod === line.paymentMethod
-                        )?.label ?? line.paymentMethod}
-                      </span>
-                      {line.amount ? (
-                        <span className="tabular-nums">{money(line.amount)}</span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-4 text-sm text-[#6b7280]">{t("ticketTotal")}</p>
-                <p className={cashierPos.amountDueHuge}>{money(paidCheckout.grandTotal)}</p>
-                <Button
-                  type="button"
-                  className={cn(cashierPos.primaryAction, "mt-4")}
-                  disabled={!paidCheckout.settlementRecordId}
-                  onClick={() => setPrintOpen(true)}
-                >
-                  {t("printInvoice")}
-                </Button>
-                {!paidCheckout.settlementRecordId ? (
-                  <p className="mt-2 text-xs text-[#6b7280]">{t("printUnavailable")}</p>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-2 min-h-12 w-full"
-                  onClick={startNewSale}
-                >
-                  {t("newSale")}
-                </Button>
-              </>
-            ) : (
-              <>
                 <h2 className="text-lg font-semibold">{t("completePaymentTitle")}</h2>
-                <p className="mt-1 text-sm text-[#6b7280]">{directSale.displayReference}</p>
+                {directSale ? (
+                  <p className="mt-1 text-sm text-[#6b7280]">{directSale.displayReference}</p>
+                ) : null}
                 {paymentRecoveryUi === "verifying" ? (
                   <p className="mt-2 text-sm font-medium">{t("verifyingPayment")}</p>
                 ) : null}
@@ -1442,23 +1572,23 @@ export function CashierWorkspacePanel({
                 {paymentRecoveryUi === "unknown" ? (
                   <p className="mt-2 text-sm text-amber-700">{t("recoveryUnknown")}</p>
                 ) : null}
-                {paymentReadiness.checkAvailable && orderCheck ? (
+                {sheetMoney ? (
                   <div className="mt-4 space-y-1">
                     <p className="flex justify-between text-sm text-[#6b7280]">
                       <span>{t("ticketSubtotal")}</span>
-                      <span className="tabular-nums">{money(orderCheck.subtotal)}</span>
+                      <span className="tabular-nums">{money(sheetMoney.subtotal)}</span>
                     </p>
                     <p className="flex justify-between text-sm text-[#6b7280]">
                       <span>{t("ticketDiscount")}</span>
                       <span className="tabular-nums">
-                        {isPositiveDisplayMoney(orderCheck.billDiscountAmount)
-                          ? `-${money(orderCheck.billDiscountAmount)}`
+                        {isPositiveDisplayMoney(sheetMoney.discount)
+                          ? `-${money(sheetMoney.discount)}`
                           : money("0.00")}
                       </span>
                     </p>
                     <p className="flex justify-between text-sm text-[#6b7280]">
                       <span>{t("paymentTax")}</span>
-                      <span className="tabular-nums">{money(orderCheck.taxAmount)}</span>
+                      <span className="tabular-nums">{money(sheetMoney.taxAmount)}</span>
                     </p>
                   </div>
                 ) : null}
@@ -1466,12 +1596,14 @@ export function CashierWorkspacePanel({
                   {t("amountDue")}
                 </p>
                 <p className={cashierPos.amountDueHuge}>
-                  {paymentReadiness.checkAvailable && amountDue
+                  {amountDue
                     ? money(amountDue)
-                    : paymentReadiness.checkIntakeFailed ||
-                        paymentReadiness.checkReadFailed
-                      ? t("amountDueMissing")
-                      : t("preparingPayment")}
+                    : sheetMoney
+                      ? money(sheetMoney.grandTotal)
+                      : paymentReadiness.checkIntakeFailed ||
+                          paymentReadiness.checkReadFailed
+                        ? t("amountDueMissing")
+                        : money("0.00")}
                 </p>
                 {settlementRow &&
                 settlementRow.settledAmount &&
@@ -1481,68 +1613,103 @@ export function CashierWorkspacePanel({
                     <span className="tabular-nums">{money(settlementRow.settledAmount)}</span>
                   </p>
                 ) : null}
-                {amountDueIsOrderFallback ? (
-                  <p className="mt-1 text-xs text-[#6b7280]">
-                    {t("orderTotalHint")} · {money(directSale.totalAmount)}
-                  </p>
-                ) : null}
-                {paymentReadiness.showPreparingMessage ? (
-                  <p className="mt-2 text-sm text-[#6b7280]">{t("preparingPayment")}</p>
+                {!paymentReadiness.checkAvailable ? (
+                  <p className="mt-1 text-xs text-[#6b7280]">{t("verifyingAmount")}</p>
                 ) : null}
                 <p className="mb-2 mt-4 text-sm font-medium">{t("selectPaymentMethod")}</p>
-                <div className="space-y-3">
-                  {paymentOptions.map((option) => {
-                    const isCash = option.paymentMethod === "cash";
-                    const value = isCash ? cashReceived : cardTender;
-                    return (
-                      <div key={option.paymentMethod}>
-                        <label
-                          className="text-sm font-medium"
-                          htmlFor={`cashier-tender-${option.paymentMethod}`}
-                        >
-                          {option.label}
-                        </label>
-                        <input
-                          id={`cashier-tender-${option.paymentMethod}`}
-                          className={cn(cashierPos.moneyInput, "mt-1")}
-                          inputMode="decimal"
-                          disabled={paying}
-                          value={value}
-                          onChange={(event) => {
-                            const next = event.target.value;
-                            if (isCash) {
-                              setCashReceived(next);
-                              setPaymentMethod(next.trim() ? "cash" : cardTender.trim() ? "card" : null);
-                              persistDirectSaleSnapshot({
-                                received: next,
-                                method: next.trim() ? "cash" : cardTender.trim() ? "card" : null,
-                              });
-                            } else {
-                              setCardTender(next);
-                              setPaymentMethod(next.trim() ? "card" : cashReceived.trim() ? "cash" : null);
-                              persistDirectSaleSnapshot({
-                                card: next,
-                                method: next.trim() ? "card" : cashReceived.trim() ? "cash" : null,
-                              });
-                            }
-                          }}
-                        />
-                      </div>
-                    );
-                  })}
+                <div className="flex gap-2">
+                  {(
+                    [
+                      ["cash", "tenderCash"],
+                      ["network", "tenderNetwork"],
+                      ["mixed", "tenderMixed"],
+                    ] as const
+                  ).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={
+                        tenderMode === mode
+                          ? cashierPos.methodBtnActive
+                          : cashierPos.methodBtn
+                      }
+                      onClick={() => {
+                        setTenderMode(mode);
+                        if (mode === "cash") {
+                          setPaymentMethod("cash");
+                          setCardTender("");
+                          setCashReceived(amountDue ?? sheetMoney?.grandTotal ?? "");
+                        } else if (mode === "network") {
+                          setPaymentMethod("card");
+                          setCashReceived("");
+                          setCardTender(amountDue ?? sheetMoney?.grandTotal ?? "");
+                        } else {
+                          setPaymentMethod("cash");
+                          setCashReceived("");
+                          setCardTender("");
+                        }
+                      }}
+                    >
+                      {t(label)}
+                    </button>
+                  ))}
                 </div>
-                {paymentReadiness.checkAvailable ? (
+                {tenderMode === "cash" || tenderMode === "mixed" ? (
+                  <div className="mt-3">
+                    <label className="text-sm font-medium" htmlFor="cashier-tender-cash">
+                      {t("tenderCash")}
+                    </label>
+                    <input
+                      id="cashier-tender-cash"
+                      className={cn(cashierPos.moneyInput, "mt-1")}
+                      inputMode="decimal"
+                      disabled={paying}
+                      value={cashReceived}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        setCashReceived(next);
+                        persistDirectSaleSnapshot({
+                          received: next,
+                          method: "cash",
+                        });
+                      }}
+                    />
+                  </div>
+                ) : null}
+                {tenderMode === "network" || tenderMode === "mixed" ? (
+                  <div className="mt-3">
+                    <label className="text-sm font-medium" htmlFor="cashier-tender-card">
+                      {t("tenderNetwork")}
+                    </label>
+                    <input
+                      id="cashier-tender-card"
+                      className={cn(cashierPos.moneyInput, "mt-1")}
+                      inputMode="decimal"
+                      disabled={paying}
+                      value={cardTender}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        setCardTender(next);
+                        persistDirectSaleSnapshot({
+                          card: next,
+                          method: "card",
+                        });
+                      }}
+                    />
+                  </div>
+                ) : null}
+                {tenderMode != null ? (
                   <>
                 <p className="mt-3 flex justify-between text-sm">
                   <span>{t("totalTendered")}</span>
                   <span className="tabular-nums font-semibold">
-                    {money(paymentReadiness.totalTenderedDisplay ?? "0.00")}
+                    {money(tenderedShown)}
                   </span>
                 </p>
                 <p className="mt-1 flex justify-between text-sm">
                   <span>{t("remainingAmount")}</span>
                   <span className="tabular-nums font-semibold">
-                    {money(paymentReadiness.remainingDisplay ?? amountDue ?? "0.00")}
+                    {money(remainingShown ?? "0.00")}
                   </span>
                 </p>
                   </>
@@ -1588,7 +1755,7 @@ export function CashierWorkspacePanel({
                     type="button"
                     variant="outline"
                     className="min-h-12 min-w-28 flex-1"
-                    disabled={paying}
+                    disabled={paying || saleMutation.isPending}
                     onClick={cancelPaymentSheet}
                   >
                     {t("cancelPayment")}
@@ -1599,7 +1766,8 @@ export function CashierWorkspacePanel({
                     disabled={
                       paymentReadiness.confirmDisabled ||
                       amountDueIsOrderFallback ||
-                      paymentRecoveryUi !== "idle"
+                      paymentRecoveryUi !== "idle" ||
+                      tenderMode == null
                     }
                     onClick={() => void completePayment()}
                   >
@@ -1610,8 +1778,6 @@ export function CashierWorkspacePanel({
                         : t("confirmPayment")}
                   </Button>
                 </div>
-              </>
-            )}
           </div>
         </div>
       ) : null}

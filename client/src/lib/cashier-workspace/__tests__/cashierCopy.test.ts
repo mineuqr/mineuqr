@@ -29,7 +29,12 @@ describe("cashier presentation helpers", () => {
     );
     expect(cashierUiLabel("cancelPayment", "ar")).toBe("إلغاء");
     expect(cashierUiLabel("totalTendered", "ar")).toBe("إجمالي المدفوع");
-    expect(cashierUiLabel("remainingAmount", "ar")).toBe("المتبقي");
+    expect(cashierUiLabel("tenderCash", "ar")).toBe("نقدًا");
+    expect(cashierUiLabel("tenderNetwork", "ar")).toBe("شبكة");
+    expect(cashierUiLabel("tenderMixed", "ar")).toBe("تسوية");
+    expect(cashierUiLabel("applyDiscount", "ar")).toBe("خصم");
+    expect(cashierUiLabel("remainingAmount", "ar")).toBe("الباقي");
+    expect(cashierUiLabel("changeDue", "ar")).toBe("الباقي للعميل");
   });
 
   it("issues command idempotency keys in the existing POS length window", () => {

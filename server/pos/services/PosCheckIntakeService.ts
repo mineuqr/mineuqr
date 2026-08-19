@@ -32,6 +32,8 @@ export type PosCheckIntakeCommand = {
   terminalId: string;
   orderId: number;
   idempotencyKey: string;
+  /** Existing Bill-level discount. Not a second discount engine. */
+  billDiscountAmount?: string;
 };
 
 export type PosCheckIntakeResult = {
@@ -56,6 +58,7 @@ export type PosCheckIntakeOrderLookup = (orderId: number) => Promise<{
 export type PosCheckEnsure = (input: {
   restaurantId: number;
   orderId: number;
+  billDiscountAmount?: string;
 }) => Promise<Pick<OperationalCheck, "id" | "restaurantId" | "sessionId" | "outcome">>;
 
 const AUTH_DENIED_CODES = new Set([
@@ -71,6 +74,7 @@ function fingerprintOf(input: {
   terminalId: string;
   userId: number;
   orderId: number;
+  billDiscountAmount?: string;
 }): string {
   return createHash("sha256")
     .update(
@@ -79,6 +83,7 @@ function fingerprintOf(input: {
         terminalId: input.terminalId,
         userId: input.userId,
         orderId: input.orderId,
+        billDiscountAmount: input.billDiscountAmount ?? "0.00",
       })
     )
     .digest("hex");
@@ -170,6 +175,7 @@ export class PosCheckIntakeService {
       terminalId: context.terminalId,
       userId: context.userId,
       orderId: order.id,
+      billDiscountAmount: input.command.billDiscountAmount,
     });
     const idempotencyKey = {
       restaurantId: context.restaurantId,
@@ -206,6 +212,9 @@ export class PosCheckIntakeService {
         check = await this.ensureCheck({
           restaurantId: context.restaurantId,
           orderId: order.id,
+          ...(input.command.billDiscountAmount
+            ? { billDiscountAmount: input.command.billDiscountAmount }
+            : {}),
         });
         checkEnsureMs = clock.since(ensureStarted);
       } catch (err) {
