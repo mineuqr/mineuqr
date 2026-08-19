@@ -11,11 +11,10 @@ import { formatDiningSessionTimestamp } from "../../diningSession/sessionTypes";
 import type { SessionDbClient } from "../../diningSession/sessionRepository";
 import {
   ChargeCompositionError,
-  computeChargeNetAmount,
-  originNetAmount,
   parseChargeMoney,
   sumChargeNetAmounts,
-  buildReversalCharge,
+  planOpenChargeCorrections,
+  type IntendedChargeLine,
 } from "@shared/operational-session/check/charge";
 import { findCheckById } from "./checkRepository";
 import { parseCurrencySnapshot } from "./checkMapper";
@@ -29,13 +28,15 @@ import {
   nextCheckChargeSequence,
 } from "./checkChargeRepository";
 
-function assertOpenCheckOutcome(outcome: string, action: string): void {
-  if (outcome !== "open") {
-    throw new ChargeCompositionError(
-      `Cannot ${action} Charges on ${outcome} Check`
-    );
-  }
+function isDuplicateChargeKeyError(error: unknown): boolean {
+  const candidate = error as { errno?: number; code?: string };
+  return candidate.errno === 1062 || candidate.code === "ER_DUP_ENTRY";
 }
+
+export type OpenOrderChargeReconcileResult = {
+  checkId: number | null;
+  applied: boolean;
+};
 
 export async function loadChargesSubtotal(
   input: { restaurantId: number; checkId: number },
@@ -83,176 +84,176 @@ export async function snapshotChargesForEnrolledOrder(
   },
   client?: SessionDbClient
 ): Promise<void> {
-  const row = await findCheckById(input.checkId, client);
+  await reconcileOpenOrderCharges(
+    {
+      restaurantId: input.restaurantId,
+      orderId: input.orderId,
+      checkId: input.checkId,
+    },
+    client
+  );
+}
+
+/**
+ * OPEN-Bill Charge correction from an Order item snapshot.
+ * Bill calculation still sums persisted Charges only.
+ * Duplicate calls are no-ops once origin nets already match intended.
+ */
+export async function reconcileOpenOrderCharges(
+  input: {
+    restaurantId: number;
+    orderId: number;
+    checkId?: number;
+  },
+  client?: SessionDbClient
+): Promise<OpenOrderChargeReconcileResult> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await reconcileOpenOrderChargesOnce(input, client);
+    } catch (error) {
+      if (!isDuplicateChargeKeyError(error) || attempt === 2) {
+        throw error;
+      }
+    }
+  }
+  return { checkId: input.checkId ?? null, applied: false };
+}
+
+async function reconcileOpenOrderChargesOnce(
+  input: {
+    restaurantId: number;
+    orderId: number;
+    checkId?: number;
+  },
+  client?: SessionDbClient
+): Promise<OpenOrderChargeReconcileResult> {
+  let checkId = input.checkId ?? null;
+  if (checkId == null) {
+    const blocking = await findBlockingMembershipForOrder(
+      input.restaurantId,
+      input.orderId,
+      client
+    );
+    if (!blocking) {
+      return { checkId: null, applied: false };
+    }
+    checkId = blocking.membership.checkId;
+    if (blocking.checkOutcome !== "open") {
+      return { checkId, applied: false };
+    }
+  }
+
+  const row = await findCheckById(checkId, client);
   if (!row || row.restaurantId !== input.restaurantId) {
     throw new ChargeCompositionError("Check not found for Charge snapshot");
   }
   if (row.outcome !== "open") {
-    return;
+    return { checkId, applied: false };
   }
 
   const order = await getOrderById(input.orderId);
-  if (!order || order.restaurantId !== input.restaurantId) {
+  if (!order) {
     throw new ChargeCompositionError("Order not found for Charge snapshot");
   }
-  if (order.status === "cancelled") {
-    return;
+  if (order.restaurantId !== input.restaurantId) {
+    throw new ChargeCompositionError(
+      "Cross-tenant Charge correction rejected"
+    );
   }
 
   const charges = await listCheckCharges(
-    { restaurantId: input.restaurantId, checkId: input.checkId },
+    { restaurantId: input.restaurantId, checkId },
     client
   );
-  if (parseChargeMoney(originNetAmount(charges, { orderId: input.orderId })) !== 0) {
-    return;
+  const intended = await intendedLinesForOrder(order);
+  const plan = planOpenChargeCorrections({
+    orderId: input.orderId,
+    charges,
+    intended,
+  });
+  if (plan.length === 0) {
+    return { checkId, applied: false };
   }
 
-  const items = await getOrderItemsByOrderId(input.orderId);
   const currencyCode = parseCurrencySnapshot(row.currencySnapshotJson).currencyCode;
   const createdAt = formatDiningSessionTimestamp();
   const originChannel =
     typeof order.orderingChannel === "string" && order.orderingChannel.length > 0
       ? order.orderingChannel
       : null;
-
   let sequence = await nextCheckChargeSequence(
-    { restaurantId: input.restaurantId, checkId: input.checkId },
+    { restaurantId: input.restaurantId, checkId },
     client
   );
-
-  if (items.length === 0) {
-    const netAmount = computeChargeNetAmount({
-      unitPrice: String(order.totalAmount ?? "0.00"),
-      quantity: 1,
-      lineDiscount: "0.00",
-      modifierAmount: "0.00",
-    });
-    if (parseChargeMoney(netAmount) === 0) return;
+  for (const correction of plan) {
     await insertCheckCharge(
       {
         chargeId: `chg_${randomUUID()}`,
         restaurantId: input.restaurantId,
-        checkId: input.checkId,
+        checkId,
         sequence,
-        description: `Order ${order.orderNumber}`,
-        quantity: 1,
-        unitPrice: String(order.totalAmount ?? "0.00"),
-        lineDiscount: "0.00",
-        modifierAmount: "0.00",
-        netAmount,
+        description: correction.description,
+        quantity: correction.quantity,
+        unitPrice: correction.unitPrice,
+        lineDiscount: correction.lineDiscount,
+        modifierAmount: correction.modifierAmount,
+        netAmount: correction.netAmount,
         taxCategory: null,
         taxAmount: "0.00",
         currencyCode,
         originOrderId: input.orderId,
-        originOrderItemId: null,
+        originOrderItemId: correction.originOrderItemId,
         originChannel,
-        originReference: `order:${input.orderId}`,
-        createdAt,
-      },
-      client
-    );
-    return;
-  }
-
-  for (const item of items) {
-    const quantity = Number(item.quantity ?? 1);
-    if (!Number.isInteger(quantity) || quantity < 1) continue;
-    const unitPrice = String(item.price ?? "0.00");
-    const netAmount = computeChargeNetAmount({
-      unitPrice,
-      quantity,
-      lineDiscount: "0.00",
-      modifierAmount: "0.00",
-    });
-    await insertCheckCharge(
-      {
-        chargeId: `chg_${randomUUID()}`,
-        restaurantId: input.restaurantId,
-        checkId: input.checkId,
-        sequence,
-        description: item.nameEn || item.nameAr || `Item ${item.id}`,
-        quantity,
-        unitPrice,
-        lineDiscount: "0.00",
-        modifierAmount: "0.00",
-        netAmount,
-        taxCategory: null,
-        taxAmount: "0.00",
-        currencyCode,
-        originOrderId: input.orderId,
-        originOrderItemId: item.id,
-        originChannel,
-        originReference: `order_item:${item.id}`,
+        originReference: correction.originReference,
         createdAt,
       },
       client
     );
     sequence += 1;
   }
+  return { checkId, applied: true };
+}
+
+async function intendedLinesForOrder(order: {
+  id: number;
+  status: string;
+  orderNumber?: string | null;
+  totalAmount?: string | number | null;
+}): Promise<IntendedChargeLine[]> {
+  if (order.status === "cancelled") {
+    return [];
+  }
+  const items = (await getOrderItemsByOrderId(order.id)) ?? [];
+  if (items.length === 0) {
+    const unitPrice = String(order.totalAmount ?? "0.00");
+    if (parseChargeMoney(unitPrice) === 0) return [];
+    return [
+      {
+        originOrderItemId: null,
+        description: `Order ${order.orderNumber}`,
+        quantity: 1,
+        unitPrice,
+      },
+    ];
+  }
+  const lines: IntendedChargeLine[] = [];
+  for (const item of items) {
+    const quantity = Number(item.quantity ?? 1);
+    if (!Number.isInteger(quantity) || quantity < 1) continue;
+    lines.push({
+      originOrderItemId: item.id,
+      description: item.nameEn || item.nameAr || `Item ${item.id}`,
+      quantity,
+      unitPrice: String(item.price ?? "0.00"),
+    });
+  }
+  return lines;
 }
 
 export async function compensateChargesForCancelledOrder(
   input: { restaurantId: number; orderId: number },
   client?: SessionDbClient
 ): Promise<{ checkId: number | null; compensated: boolean }> {
-  const blocking = await findBlockingMembershipForOrder(
-    input.restaurantId,
-    input.orderId,
-    client
-  );
-  if (!blocking) {
-    return { checkId: null, compensated: false };
-  }
-  if (blocking.checkOutcome !== "open") {
-    return { checkId: blocking.membership.checkId, compensated: false };
-  }
-
-  const checkId = blocking.membership.checkId;
-  assertOpenCheckOutcome(blocking.checkOutcome, "compensate");
-  const charges = await listCheckCharges(
-    { restaurantId: input.restaurantId, checkId },
-    client
-  );
-  const originCharges = charges.filter(
-    (charge) => charge.originOrderId === input.orderId
-  );
-  if (originCharges.length === 0) {
-    return { checkId, compensated: false };
-  }
-  if (parseChargeMoney(originNetAmount(originCharges, { orderId: input.orderId })) === 0) {
-    return { checkId, compensated: false };
-  }
-
-  const createdAt = formatDiningSessionTimestamp();
-  let sequence = await nextCheckChargeSequence(
-    { restaurantId: input.restaurantId, checkId },
-    client
-  );
-  const netByItem = new Map<string, (typeof originCharges)[number][]>();
-  for (const charge of originCharges) {
-    const key = String(charge.originOrderItemId ?? "order");
-    const group = netByItem.get(key) ?? [];
-    group.push(charge);
-    netByItem.set(key, group);
-  }
-
-  for (const group of netByItem.values()) {
-    const net = originNetAmount(group, { orderId: input.orderId });
-    if (parseChargeMoney(net) === 0) continue;
-    const newest = group[group.length - 1];
-    const reversal = buildReversalCharge({
-      source: {
-        ...newest,
-        netAmount: net,
-        taxAmount: "0.00",
-      },
-      chargeId: `chg_${randomUUID()}`,
-      sequence,
-      createdAt,
-    });
-    await insertCheckCharge(reversal, client);
-    sequence += 1;
-  }
-
-  return { checkId, compensated: true };
+  const result = await reconcileOpenOrderCharges(input, client);
+  return { checkId: result.checkId, compensated: result.applied };
 }

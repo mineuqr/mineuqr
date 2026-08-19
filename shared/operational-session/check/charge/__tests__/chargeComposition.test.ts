@@ -4,7 +4,7 @@ import {
   originNetAmount,
   sumChargeNetAmounts,
 } from "../chargeMoney";
-import { buildReversalCharge } from "../chargeCommands";
+import { buildReversalCharge, planOpenChargeCorrections } from "../chargeCommands";
 import type { BillCharge } from "../chargeContract";
 
 const charge = (overrides: Partial<BillCharge> = {}): BillCharge => ({
@@ -85,5 +85,149 @@ describe("BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 compensating Charge", () => {
     expect(reversal.originOrderItemId).toBe(7);
     expect(reversal.originReference).toBe("reversal_of:chg_a");
     expect(reversal.chargeId).not.toBe(source.chargeId);
+  });
+});
+
+describe("BILL-CHARGE-COMPOSITION-HARDENING-1 OPEN-Bill correction plan", () => {
+  it("adds a Charge for a new Order item without rebuilding existing Charges", () => {
+    const existing = charge();
+    const plan = planOpenChargeCorrections({
+      orderId: 55,
+      charges: [existing],
+      intended: [
+        {
+          originOrderItemId: 7,
+          description: "Tea",
+          quantity: 2,
+          unitPrice: "5.00",
+        },
+        {
+          originOrderItemId: 8,
+          description: "Water",
+          quantity: 1,
+          unitPrice: "3.00",
+        },
+      ],
+    });
+    expect(plan).toEqual([
+      expect.objectContaining({
+        originOrderItemId: 8,
+        netAmount: "3.00",
+        quantity: 1,
+        unitPrice: "3.00",
+        modifierAmount: "0.00",
+      }),
+    ]);
+    expect(existing.netAmount).toBe("10.00");
+  });
+
+  it("represents a price change as a compensating fact, not a mutation", () => {
+    const existing = charge({
+      quantity: 1,
+      unitPrice: "50.00",
+      netAmount: "50.00",
+    });
+    const plan = planOpenChargeCorrections({
+      orderId: 55,
+      charges: [existing],
+      intended: [
+        {
+          originOrderItemId: 7,
+          description: "Burger",
+          quantity: 1,
+          unitPrice: "45.00",
+        },
+      ],
+    });
+    expect(existing.netAmount).toBe("50.00");
+    expect(plan).toEqual([
+      expect.objectContaining({
+        originOrderItemId: 7,
+        netAmount: "-5.00",
+        originReference: "correction:order_item:7",
+      }),
+    ]);
+  });
+
+  it("represents quantity increase and decrease as compensating facts", () => {
+    const existing = charge({
+      quantity: 2,
+      unitPrice: "50.00",
+      netAmount: "100.00",
+    });
+    expect(
+      planOpenChargeCorrections({
+        orderId: 55,
+        charges: [existing],
+        intended: [
+          {
+            originOrderItemId: 7,
+            description: "Burger",
+            quantity: 3,
+            unitPrice: "50.00",
+          },
+        ],
+      })[0]?.netAmount
+    ).toBe("50.00");
+    expect(
+      planOpenChargeCorrections({
+        orderId: 55,
+        charges: [existing],
+        intended: [
+          {
+            originOrderItemId: 7,
+            description: "Burger",
+            quantity: 1,
+            unitPrice: "50.00",
+          },
+        ],
+      })[0]?.netAmount
+    ).toBe("-50.00");
+  });
+
+  it("removes an item by compensating remaining origin net to zero", () => {
+    const existing = charge();
+    const plan = planOpenChargeCorrections({
+      orderId: 55,
+      charges: [existing],
+      intended: [],
+    });
+    expect(existing.netAmount).toBe("10.00");
+    expect(plan).toEqual([
+      expect.objectContaining({ originOrderItemId: 7, netAmount: "-10.00" }),
+    ]);
+  });
+
+  it("is idempotent when intended nets already match Charge composition", () => {
+    expect(
+      planOpenChargeCorrections({
+        orderId: 55,
+        charges: [charge()],
+        intended: [
+          {
+            originOrderItemId: 7,
+            description: "Tea",
+            quantity: 2,
+            unitPrice: "5.00",
+          },
+        ],
+      })
+    ).toEqual([]);
+  });
+
+  it("does not invent financial modifier amounts from display labels", () => {
+    const plan = planOpenChargeCorrections({
+      orderId: 55,
+      charges: [],
+      intended: [
+        {
+          originOrderItemId: 7,
+          description: "Tea",
+          quantity: 1,
+          unitPrice: "5.00",
+        },
+      ],
+    });
+    expect(plan[0]?.modifierAmount).toBe("0.00");
   });
 });

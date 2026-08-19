@@ -13,6 +13,7 @@ export {
   ensureCheckForOrder,
   recalculateOpenCheck,
   applyCancelledOrderChargeCompensation,
+  applyOpenOrderChargeReconciliation,
   settleCheckPaidById,
   settleCheckPaidByIdDetailed,
   settleCheckComplimentaryById,

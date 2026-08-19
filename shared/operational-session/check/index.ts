@@ -50,6 +50,7 @@ export {
   originNetAmount,
   assertChargeCreateInput,
   buildReversalCharge,
+  planOpenChargeCorrections,
   type BillCharge,
   type BillChargeCreateInput,
   type BillChargeMoneyField,

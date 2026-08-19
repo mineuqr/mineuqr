@@ -390,6 +390,7 @@ vi.mock("../checkChargeComposition", () => ({
   ensureOpenCheckChargeComposition: vi.fn(async () => undefined),
   snapshotChargesForEnrolledOrder: vi.fn(),
   compensateChargesForCancelledOrder: vi.fn(),
+  reconcileOpenOrderCharges: vi.fn(),
 }));
 
 vi.mock("../checkOrderSettlementIntegration", () => ({

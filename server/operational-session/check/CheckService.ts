@@ -68,6 +68,7 @@ import {
   ensureOpenCheckChargeComposition,
   loadChargesSubtotal,
   compensateChargesForCancelledOrder,
+  reconcileOpenOrderCharges,
 } from "./checkChargeComposition";
 import {
   applyComplimentaryToCheckOrders,
@@ -1145,6 +1146,24 @@ export async function applyCancelledOrderChargeCompensation(input: {
 }): Promise<{ checkId: number | null; compensated: boolean }> {
   const result = await compensateChargesForCancelledOrder(input);
   if (result.compensated && result.checkId != null) {
+    await recalculateOpenCheck({
+      restaurantId: input.restaurantId,
+      checkId: result.checkId,
+    });
+  }
+  return result;
+}
+
+/**
+ * BILL-CHARGE-COMPOSITION-HARDENING-1 — OPEN-Bill item composition correction.
+ * Does not load Orders from Bill calculation. Terminal Bills are unchanged.
+ */
+export async function applyOpenOrderChargeReconciliation(input: {
+  restaurantId: number;
+  orderId: number;
+}): Promise<{ checkId: number | null; applied: boolean }> {
+  const result = await reconcileOpenOrderCharges(input);
+  if (result.applied && result.checkId != null) {
     await recalculateOpenCheck({
       restaurantId: input.restaurantId,
       checkId: result.checkId,

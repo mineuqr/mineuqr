@@ -54,9 +54,34 @@ describe("BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 architecture guards", () => {
     );
     expect(composition).toContain("snapshotChargesForEnrolledOrder");
     expect(composition).toContain("compensateChargesForCancelledOrder");
+    expect(composition).toContain("reconcileOpenOrderCharges");
+    expect(composition).toContain("planOpenChargeCorrections");
     expect(composition).not.toContain("PaymentAggregate");
+    expect(composition).not.toContain("ChargeEngine");
     expect(composition).not.toContain("bill_orders");
     expect(composition).not.toContain("Order.checkId");
+  });
+
+  it("Bill money refresh does not reconcile live Orders on every calculation", () => {
+    const svc = read("server/operational-session/check/CheckService.ts");
+    const refreshStart = svc.indexOf("async function refreshOpenCheckMoneyFromDiscovery");
+    const refreshEnd = svc.indexOf("async function captureSnapshotsFromBusinessSettings");
+    const refresh = svc.slice(refreshStart, refreshEnd);
+    expect(refresh).toContain("ensureOpenCheckChargeComposition");
+    expect(refresh).toContain("loadChargesSubtotal");
+    expect(refresh).not.toContain("reconcileOpenOrderCharges");
+    expect(refresh).not.toContain("getOrderById");
+    expect(refresh).not.toContain("getOrdersByIds");
+  });
+
+  it("does not add a Charge correction table or migration 0096", () => {
+    const schema = read("drizzle/schema.ts");
+    expect(schema).toContain("checkCharges");
+    expect(schema).not.toContain("charge_corrections");
+    expect(schema).not.toContain("check_charge_corrections");
+    const journal = read("drizzle/meta/_journal.json");
+    expect(journal).toContain("0095_check_charges");
+    expect(journal).not.toContain("0096_");
   });
 
   it("membership table remains until Charge composition is adopted", () => {

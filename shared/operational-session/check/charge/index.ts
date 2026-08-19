@@ -15,4 +15,10 @@ export {
   originNetAmount,
 } from "./chargeMoney";
 
-export { assertChargeCreateInput, buildReversalCharge } from "./chargeCommands";
+export {
+  assertChargeCreateInput,
+  buildReversalCharge,
+  planOpenChargeCorrections,
+  type IntendedChargeLine,
+  type PlannedChargeCorrection,
+} from "./chargeCommands";
