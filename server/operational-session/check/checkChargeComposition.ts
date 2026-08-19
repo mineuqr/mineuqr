@@ -27,6 +27,10 @@ import {
   listCheckCharges,
   nextCheckChargeSequence,
 } from "./checkChargeRepository";
+import {
+  recordChargeInsert,
+  type ChargeInsertTiming,
+} from "./ensureCheckForOrderStageMs";
 
 function isDuplicateChargeKeyError(error: unknown): boolean {
   const candidate = error as { errno?: number; code?: string };
@@ -105,7 +109,8 @@ export async function snapshotChargesForEnrolledOrder(
     checkId: number;
     orderId: number;
   },
-  client?: SessionDbClient
+  client?: SessionDbClient,
+  chargeInsertTiming?: ChargeInsertTiming
 ): Promise<void> {
   await reconcileOpenOrderCharges(
     {
@@ -113,7 +118,8 @@ export async function snapshotChargesForEnrolledOrder(
       orderId: input.orderId,
       checkId: input.checkId,
     },
-    client
+    client,
+    chargeInsertTiming
   );
 }
 
@@ -128,11 +134,12 @@ export async function reconcileOpenOrderCharges(
     orderId: number;
     checkId?: number;
   },
-  client?: SessionDbClient
+  client?: SessionDbClient,
+  chargeInsertTiming?: ChargeInsertTiming
 ): Promise<OpenOrderChargeReconcileResult> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await reconcileOpenOrderChargesOnce(input, client);
+      return await reconcileOpenOrderChargesOnce(input, client, chargeInsertTiming);
     } catch (error) {
       if (!isDuplicateChargeKeyError(error) || attempt === 2) {
         throw error;
@@ -148,7 +155,8 @@ async function reconcileOpenOrderChargesOnce(
     orderId: number;
     checkId?: number;
   },
-  client?: SessionDbClient
+  client?: SessionDbClient,
+  chargeInsertTiming?: ChargeInsertTiming
 ): Promise<OpenOrderChargeReconcileResult> {
   let checkId = input.checkId ?? null;
   if (checkId == null) {
@@ -217,6 +225,7 @@ async function reconcileOpenOrderChargesOnce(
     client
   );
   for (const correction of plan) {
+    const insertStartedAt = Date.now();
     await insertCheckCharge(
       {
         chargeId: `chg_${randomUUID()}`,
@@ -240,6 +249,9 @@ async function reconcileOpenOrderChargesOnce(
       },
       client
     );
+    if (chargeInsertTiming) {
+      recordChargeInsert(chargeInsertTiming, Date.now() - insertStartedAt);
+    }
     sequence += 1;
   }
   return { checkId, applied: true };

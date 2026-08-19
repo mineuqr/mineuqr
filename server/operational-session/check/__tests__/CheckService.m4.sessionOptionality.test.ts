@@ -244,7 +244,11 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
         orderId: 55,
         enrolledReason: "order_place",
       }),
-      fakeTx
+      fakeTx,
+      expect.objectContaining({
+        count: expect.any(Number),
+        insertMs: expect.any(Number),
+      })
     );
     expect(mocks.ensureOrderSettlementForEnrollment).toHaveBeenCalledWith(
       expect.objectContaining({ checkId: 200, orderId: 55 }),

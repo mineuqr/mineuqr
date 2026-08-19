@@ -85,7 +85,7 @@ describe("CASHIER-PAYMENT-FLOW-BOUNDARY-INSTRUMENTATION-1 architecture", () => {
     expect(intake).toContain("durationMs");
     expect(intake).toContain("startedAt");
     expect(intake).toContain("completedAt");
-    expect(intake).toContain('type: "pos_check_intake"');
+    expect(intake).toContain("OPS_EVENT.pos_check_intake");
     expect(settle).toContain("durationMs");
     expect(settle).toContain('type: "pos_settlement_initiate"');
     expect(readSvc).toContain('type: "pos_check_read"');

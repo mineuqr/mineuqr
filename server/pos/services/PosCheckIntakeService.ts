@@ -7,9 +7,15 @@
 import { createHash } from "node:crypto";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 import { opsLog } from "../../_core/opsLog";
+import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import { getOrderById } from "../../db";
 import { ensureCheckForOrder } from "../../operational-session/check/CheckService";
 import { CheckMembershipError } from "../../operational-session/check/checkMembershipService";
+import {
+  createEmptyEnsureCheckForOrderStageMs,
+  ensureCheckForOrderStageMetadata,
+  type EnsureCheckForOrderStageMs,
+} from "../../operational-session/check/ensureCheckForOrderStageMs";
 import type { OperationalCheck } from "@shared/operational-session";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
 import type { PosCheckIntakeIdempotencyStore } from "../infrastructure/PosCheckIntakeIdempotencyStore";
@@ -59,6 +65,8 @@ export type PosCheckEnsure = (input: {
   restaurantId: number;
   orderId: number;
   billDiscountAmount?: string;
+  stageMs?: EnsureCheckForOrderStageMs;
+  terminalId?: string;
 }) => Promise<Pick<OperationalCheck, "id" | "restaurantId" | "sessionId" | "outcome">>;
 
 const AUTH_DENIED_CODES = new Set([
@@ -207,6 +215,7 @@ export class PosCheckIntakeService {
       }
 
       let check: Awaited<ReturnType<PosCheckEnsure>>;
+      const ensureStages = createEmptyEnsureCheckForOrderStageMs();
       try {
         const ensureStarted = clock.mark();
         check = await this.ensureCheck({
@@ -215,6 +224,8 @@ export class PosCheckIntakeService {
           ...(input.command.billDiscountAmount
             ? { billDiscountAmount: input.command.billDiscountAmount }
             : {}),
+          stageMs: ensureStages,
+          terminalId: context.terminalId,
         });
         checkEnsureMs = clock.since(ensureStarted);
       } catch (err) {
@@ -261,7 +272,7 @@ export class PosCheckIntakeService {
 
       const timing = clock.finish();
       opsLog({
-        type: "pos_check_intake",
+        type: OPS_EVENT.pos_check_intake,
         category: "ORDER",
         severity: "info",
         ts: timing.completedAt,
@@ -279,6 +290,7 @@ export class PosCheckIntakeService {
           authMs,
           orderLoadMs,
           checkEnsureMs,
+          ...ensureCheckForOrderStageMetadata(ensureStages),
         },
       });
 

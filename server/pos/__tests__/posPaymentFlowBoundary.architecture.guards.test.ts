@@ -23,6 +23,7 @@ describe("CASHIER-PAYMENT-FLOW-BOUNDARY-INSTRUMENTATION-1 server architecture", 
     expect(taxonomy).toContain("pos_check_read");
     expect(taxonomy).toContain("pos_settlement_initiate");
     expect(taxonomy).toContain("cashier_payment_flow");
+    expect(taxonomy).toContain("check_ensure_for_order");
     expect(schema).not.toMatch(
       /export const cashierPaymentFlows|export const posPaymentFlows|cashierFlowId/
     );

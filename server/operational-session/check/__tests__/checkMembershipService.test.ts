@@ -63,6 +63,7 @@ import {
   enrollOrderForSessionCheck,
   syncSessionOrdersToCheck,
 } from "../checkMembershipService";
+import { createEmptyChargeInsertTiming } from "../ensureCheckForOrderStageMs";
 
 describe("CHECK-GENERALIZATION-M1 membership service", () => {
   beforeEach(() => {
@@ -102,6 +103,27 @@ describe("CHECK-GENERALIZATION-M1 membership service", () => {
       }),
       undefined
     );
+  });
+
+  it("records Charge snapshot wall time onto optional insert timing", async () => {
+    mocks.findCheckById.mockResolvedValue({
+      id: 10,
+      restaurantId: 1,
+      outcome: "open",
+    });
+    mocks.getOrderById.mockResolvedValue({ id: 5, restaurantId: 1 });
+    const timing = createEmptyChargeInsertTiming();
+    await enrollOrderInCheck(
+      {
+        restaurantId: 1,
+        checkId: 10,
+        orderId: 5,
+        enrolledReason: "session_attach",
+      },
+      undefined,
+      timing
+    );
+    expect(timing.createMs).toBeGreaterThanOrEqual(0);
   });
 
   it("is idempotent when already active on same check", async () => {

@@ -138,6 +138,13 @@ import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextR
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import {
+  createEmptyChargeInsertTiming,
+  createEmptyEnsureCheckForOrderStageMs,
+  ensureCheckForOrderStageMetadata,
+  finishEnsureCheckForOrderStages,
+  type EnsureCheckForOrderStageMs,
+} from "./ensureCheckForOrderStageMs";
+import {
   adoptRefundAttributionAfterFinalize,
   adoptSettlementAttributionAfterFinalize,
 } from "./checkSettlementAttributionAdoption";
@@ -290,8 +297,10 @@ async function refreshOpenCheckMoneyFromDiscovery(
     billDiscountAmount: string;
     taxPolicySnapshot: OperationalCheck["taxPolicySnapshot"];
   },
-  client?: SessionDbClient
+  client?: SessionDbClient,
+  stages?: EnsureCheckForOrderStageMs
 ): Promise<void> {
+  const listEnsureStartedAt = Date.now();
   await ensureOpenCheckChargeComposition(
     {
       restaurantId: input.restaurantId,
@@ -299,6 +308,8 @@ async function refreshOpenCheckMoneyFromDiscovery(
     },
     client
   );
+  if (stages) stages.chargeListEnsureMs = elapsedSinceMs(listEnsureStartedAt);
+  const listSumStartedAt = Date.now();
   const chargesSubtotal = await loadChargesSubtotal(
     {
       restaurantId: input.restaurantId,
@@ -306,11 +317,15 @@ async function refreshOpenCheckMoneyFromDiscovery(
     },
     client
   );
+  if (stages) stages.chargeListSumMs = elapsedSinceMs(listSumStartedAt);
+  const computeStartedAt = Date.now();
   const money = computeCheckMoney({
     chargesSubtotal,
     billDiscountAmount: input.billDiscountAmount,
     taxPolicySnapshot: input.taxPolicySnapshot,
   });
+  if (stages) stages.computeCheckMoneyMs = elapsedSinceMs(computeStartedAt);
+  const persistStartedAt = Date.now();
   await updateCheckMoney(
     {
       checkId: input.checkId,
@@ -323,6 +338,110 @@ async function refreshOpenCheckMoneyFromDiscovery(
     },
     client
   );
+  if (stages) stages.checkMoneyPersistMs = elapsedSinceMs(persistStartedAt);
+}
+
+async function enrollRefreshAndReloadCheck(
+  input: {
+    restaurantId: number;
+    checkId: number;
+    orderId: number;
+    billDiscountAmount: string;
+    taxPolicySnapshot: OperationalCheck["taxPolicySnapshot"];
+    fallback: OperationalCheck;
+  },
+  tx: SessionDbClient,
+  stages: EnsureCheckForOrderStageMs
+): Promise<OperationalCheck> {
+  const chargeInsertTiming = createEmptyChargeInsertTiming();
+  const enrollStartedAt = Date.now();
+  await enrollOrderInCheck(
+    {
+      restaurantId: input.restaurantId,
+      checkId: input.checkId,
+      orderId: input.orderId,
+      enrolledReason: "order_place",
+    },
+    tx,
+    chargeInsertTiming
+  );
+  stages.enrollMs = elapsedSinceMs(enrollStartedAt);
+  stages.chargeCreateMs = chargeInsertTiming.createMs;
+  stages.chargeInsertCount = chargeInsertTiming.count;
+  stages.chargeInsertMs = chargeInsertTiming.insertMs;
+  stages.chargeInsertMaxMs = chargeInsertTiming.maxInsertMs;
+
+  const orderSettlementInsertStartedAt = Date.now();
+  await ensureOrderSettlementForEnrollment(
+    {
+      restaurantId: input.restaurantId,
+      checkId: input.checkId,
+      orderId: input.orderId,
+    },
+    tx
+  );
+  stages.orderSettlementInsertMs = elapsedSinceMs(orderSettlementInsertStartedAt);
+
+  await refreshOpenCheckMoneyFromDiscovery(
+    {
+      restaurantId: input.restaurantId,
+      checkId: input.checkId,
+      billDiscountAmount: input.billDiscountAmount,
+      taxPolicySnapshot: input.taxPolicySnapshot,
+    },
+    tx,
+    stages
+  );
+
+  const orderSettlementRecalcStartedAt = Date.now();
+  await recalculateOrderSettlementsForCheck(
+    {
+      restaurantId: input.restaurantId,
+      checkId: input.checkId,
+    },
+    tx
+  );
+  stages.orderSettlementRecalcMs = elapsedSinceMs(
+    orderSettlementRecalcStartedAt
+  );
+
+  const checkReloadStartedAt = Date.now();
+  const row = await findCheckById(input.checkId, tx);
+  stages.checkReloadMs = elapsedSinceMs(checkReloadStartedAt);
+  return row ? mapRowToOperationalCheck(row) : input.fallback;
+}
+
+function applyOwnedTransactionStages(
+  stages: EnsureCheckForOrderStageMs,
+  txStages: { current: CheckOwnedTransactionStageMs }
+): void {
+  stages.txPreparationMs = txStages.current.preparationMs;
+  stages.txWriteMs = txStages.current.writeMs;
+  stages.txWallMs = txStages.current.txWallMs;
+}
+
+function emitEnsureCheckForOrderStages(input: {
+  restaurantId: number;
+  orderId: number;
+  checkId: number;
+  terminalId?: string;
+  stages: EnsureCheckForOrderStageMs;
+}): void {
+  opsLog({
+    type: OPS_EVENT.check_ensure_for_order,
+    category: "ORDER",
+    severity: "info",
+    ts: new Date().toISOString(),
+    restaurantId: input.restaurantId,
+    action: "ensureCheckForOrder",
+    metadata: {
+      restaurantId: input.restaurantId,
+      orderId: input.orderId,
+      checkId: input.checkId,
+      terminalId: input.terminalId ?? null,
+      ...ensureCheckForOrderStageMetadata(input.stages),
+    },
+  });
 }
 
 async function captureSnapshotsFromBusinessSettings(restaurantId: number) {
@@ -1008,6 +1127,7 @@ export async function createOpenCheck(input: {
   restaurantId: number;
   sessionId: number | null;
   billDiscountAmount?: string;
+  stageMs?: EnsureCheckForOrderStageMs;
 }): Promise<OperationalCheck> {
   if (input.sessionId != null) {
     return createOpenCheckForSession({
@@ -1017,15 +1137,24 @@ export async function createOpenCheck(input: {
   }
 
   const billDiscountAmount = input.billDiscountAmount ?? "0.00";
+  const snapshotStartedAt = Date.now();
   const { currencySnapshot, taxPolicySnapshot } =
     await captureSnapshotsFromBusinessSettings(input.restaurantId);
+  if (input.stageMs) {
+    input.stageMs.taxSnapshotMs = elapsedSinceMs(snapshotStartedAt);
+  }
+  const seedComputeStartedAt = Date.now();
   const money = computeCheckMoney({
     chargesSubtotal: "0.00",
     billDiscountAmount,
     taxPolicySnapshot,
   });
+  if (input.stageMs) {
+    input.stageMs.computeCheckMoneySeedMs = elapsedSinceMs(seedComputeStartedAt);
+  }
   const snapshotsFrozenAt = formatDiningSessionTimestamp();
 
+  const insertStartedAt = Date.now();
   const checkId = await insertOperationalCheck({
     restaurantId: input.restaurantId,
     sessionId: null,
@@ -1038,6 +1167,9 @@ export async function createOpenCheck(input: {
     grandTotal: money.grandTotal,
     snapshotsFrozenAt,
   });
+  if (input.stageMs) {
+    input.stageMs.checkInsertMs = elapsedSinceMs(insertStartedAt);
+  }
 
   const row = await findCheckById(checkId);
   if (!row) {
@@ -1055,12 +1187,24 @@ export async function ensureCheckForOrder(input: {
   restaurantId: number;
   orderId: number;
   billDiscountAmount?: string;
+  /** Observability collector. POS Check Intake owns the pos_check_intake event. */
+  stageMs?: EnsureCheckForOrderStageMs;
+  terminalId?: string;
 }): Promise<OperationalCheck> {
+  const stages = input.stageMs ?? createEmptyEnsureCheckForOrderStageMs();
+  const startedAt = Date.now();
+  const txStages: { current: CheckOwnedTransactionStageMs } = {
+    current: { preparationMs: 0, writeMs: 0, txWallMs: null },
+  };
+
+  const membershipStartedAt = Date.now();
   const blocking = await findBlockingMembershipForOrder(
     input.restaurantId,
     input.orderId
   );
+  stages.membershipLookupMs = elapsedSinceMs(membershipStartedAt);
 
+  let check: OperationalCheck;
   if (blocking) {
     if (blocking.checkOutcome !== "open") {
       throw new CheckMembershipError(
@@ -1074,89 +1218,64 @@ export async function ensureCheckForOrder(input: {
     if (!existing) {
       throw new DiningSessionUnavailableError("Check not found for membership");
     }
-    return withCheckOwnedTransaction(undefined, async (tx) => {
-      await enrollOrderInCheck(
-        {
-          restaurantId: input.restaurantId,
-          checkId: existing.id,
-          orderId: input.orderId,
-          enrolledReason: "order_place",
-        },
-        tx
-      );
-      await ensureOrderSettlementForEnrollment(
-        {
-          restaurantId: input.restaurantId,
-          checkId: existing.id,
-          orderId: input.orderId,
-        },
-        tx
-      );
-      await refreshOpenCheckMoneyFromDiscovery(
-        {
-          restaurantId: input.restaurantId,
-          checkId: existing.id,
-          billDiscountAmount:
-            input.billDiscountAmount ?? existing.billDiscountAmount,
-          taxPolicySnapshot: existing.taxPolicySnapshot,
-        },
-        tx
-      );
-      await recalculateOrderSettlementsForCheck(
-        {
-          restaurantId: input.restaurantId,
-          checkId: existing.id,
-        },
-        tx
-      );
-      const row = await findCheckById(existing.id, tx);
-      return row ? mapRowToOperationalCheck(row) : existing;
+    stages.checkCreated = false;
+    check = await withCheckOwnedTransaction(
+      undefined,
+      async (tx) =>
+        enrollRefreshAndReloadCheck(
+          {
+            restaurantId: input.restaurantId,
+            checkId: existing.id,
+            orderId: input.orderId,
+            billDiscountAmount:
+              input.billDiscountAmount ?? existing.billDiscountAmount,
+            taxPolicySnapshot: existing.taxPolicySnapshot,
+            fallback: existing,
+          },
+          tx,
+          stages
+        ),
+      txStages
+    );
+  } else {
+    stages.checkCreated = true;
+    const createStartedAt = Date.now();
+    const created = await createOpenCheck({
+      restaurantId: input.restaurantId,
+      sessionId: null,
+      billDiscountAmount: input.billDiscountAmount,
+      stageMs: stages,
     });
+    stages.createOpenCheckMs = elapsedSinceMs(createStartedAt);
+    check = await withCheckOwnedTransaction(
+      undefined,
+      async (tx) =>
+        enrollRefreshAndReloadCheck(
+          {
+            restaurantId: input.restaurantId,
+            checkId: created.id,
+            orderId: input.orderId,
+            billDiscountAmount: created.billDiscountAmount,
+            taxPolicySnapshot: created.taxPolicySnapshot,
+            fallback: created,
+          },
+          tx,
+          stages
+        ),
+      txStages
+    );
   }
 
-  const created = await createOpenCheck({
+  applyOwnedTransactionStages(stages, txStages);
+  finishEnsureCheckForOrderStages(stages, elapsedSinceMs(startedAt));
+  emitEnsureCheckForOrderStages({
     restaurantId: input.restaurantId,
-    sessionId: null,
-    billDiscountAmount: input.billDiscountAmount,
+    orderId: input.orderId,
+    checkId: check.id,
+    terminalId: input.terminalId,
+    stages,
   });
-
-  return withCheckOwnedTransaction(undefined, async (tx) => {
-    await enrollOrderInCheck(
-      {
-        restaurantId: input.restaurantId,
-        checkId: created.id,
-        orderId: input.orderId,
-        enrolledReason: "order_place",
-      },
-      tx
-    );
-    await ensureOrderSettlementForEnrollment(
-      {
-        restaurantId: input.restaurantId,
-        checkId: created.id,
-        orderId: input.orderId,
-      },
-      tx
-    );
-    await refreshOpenCheckMoneyFromDiscovery(
-      {
-        restaurantId: input.restaurantId,
-        checkId: created.id,
-        billDiscountAmount: created.billDiscountAmount,
-        taxPolicySnapshot: created.taxPolicySnapshot,
-      },
-      tx
-    );
-    await recalculateOrderSettlementsForCheck(
-      {
-        restaurantId: input.restaurantId,
-        checkId: created.id,
-      },
-      tx
-    );
-    const row = await findCheckById(created.id, tx);
-    return row ? mapRowToOperationalCheck(row) : created;
-  });
+  return check;
 }
 
 /**

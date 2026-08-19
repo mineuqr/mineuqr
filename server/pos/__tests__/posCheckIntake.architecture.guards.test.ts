@@ -25,6 +25,10 @@ describe("POS Check Intake architecture guards", () => {
     const schema = read("drizzle/schema.ts");
     expect(POS_PERMISSIONS).toContain("CHECK_INTAKE");
     expect(intake).toContain("ensureCheckForOrder");
+    expect(intake).toContain("ensureCheckForOrderStageMetadata");
+    expect(intake).toContain("createEmptyEnsureCheckForOrderStageMs");
+    expect(intake).not.toContain("console.log");
+    expect(intake).not.toContain("console.info");
     expect(intake).toContain('requiredPermission: "CHECK_INTAKE"');
     expect(intake).toContain("resolvePosTerminalAccess");
     expect(intake).toContain("ORDERING_CHANNEL_CASHIER_POS");

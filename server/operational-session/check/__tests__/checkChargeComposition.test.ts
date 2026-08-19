@@ -47,6 +47,7 @@ import {
   snapshotChargesForEnrolledOrder,
 } from "../checkChargeComposition";
 import { ChargeCompositionError } from "@shared/operational-session";
+import { createEmptyChargeInsertTiming } from "../ensureCheckForOrderStageMs";
 
 const openCheckRow = {
   id: 10,
@@ -130,6 +131,36 @@ describe("checkChargeComposition", () => {
       }),
       undefined
     );
+  });
+
+  it("records row-by-row Charge insert timings without changing insert count", async () => {
+    mocks.findCheckById.mockResolvedValue(openCheckRow);
+    mocks.getOrderById.mockResolvedValue({
+      id: 55,
+      restaurantId: 1,
+      status: "pending",
+      orderNumber: "ORD-1",
+      orderingChannel: "qr",
+      totalAmount: "18.00",
+    });
+    mocks.getOrderItemsByOrderId.mockResolvedValue([
+      { id: 7, nameEn: "Tea", price: "6.00", quantity: 2 },
+      { id: 8, nameEn: "Water", price: "3.00", quantity: 2 },
+    ]);
+    const timing = createEmptyChargeInsertTiming();
+    await snapshotChargesForEnrolledOrder(
+      {
+        restaurantId: 1,
+        checkId: 10,
+        orderId: 55,
+      },
+      undefined,
+      timing
+    );
+    expect(mocks.insertCheckCharge).toHaveBeenCalledTimes(2);
+    expect(timing.count).toBe(2);
+    expect(timing.insertMs).toBeGreaterThanOrEqual(0);
+    expect(timing.maxInsertMs).toBeGreaterThanOrEqual(0);
   });
 
   it("skips snapshot when origin already has non-zero Charge net", async () => {

@@ -20,6 +20,7 @@ import {
 } from "./checkOrderMembershipRepository";
 import { ensureOrderSettlementForEnrollment } from "./checkOrderSettlementIntegration";
 import { snapshotChargesForEnrolledOrder } from "./checkChargeComposition";
+import type { ChargeInsertTiming } from "./ensureCheckForOrderStageMs";
 
 export class CheckMembershipError extends Error {
   constructor(message: string) {
@@ -39,7 +40,8 @@ export async function enrollOrderInCheck(
     orderId: number;
     enrolledReason: CheckMembershipEnrolledReason;
   },
-  client?: SessionDbClient
+  client?: SessionDbClient,
+  chargeInsertTiming?: ChargeInsertTiming
 ): Promise<"enrolled" | "already"> {
   const check = await findCheckById(input.checkId, client);
   if (!check || check.restaurantId !== input.restaurantId) {
@@ -59,6 +61,22 @@ export async function enrollOrderInCheck(
     throw new CheckMembershipError("Order not found for enrollment");
   }
 
+  const snapshotCharges = async (): Promise<void> => {
+    const chargeStartedAt = Date.now();
+    await snapshotChargesForEnrolledOrder(
+      {
+        restaurantId: input.restaurantId,
+        checkId: input.checkId,
+        orderId: input.orderId,
+      },
+      client,
+      chargeInsertTiming
+    );
+    if (chargeInsertTiming) {
+      chargeInsertTiming.createMs = Date.now() - chargeStartedAt;
+    }
+  };
+
   const existingOnCheck = await findMembershipOnCheck(
     input.restaurantId,
     input.checkId,
@@ -67,14 +85,7 @@ export async function enrollOrderInCheck(
   );
   if (existingOnCheck) {
     if (existingOnCheck.active === 1) {
-      await snapshotChargesForEnrolledOrder(
-        {
-          restaurantId: input.restaurantId,
-          checkId: input.checkId,
-          orderId: input.orderId,
-        },
-        client
-      );
+      await snapshotCharges();
       return "already";
     }
     await reactivateCheckOrderMembership(
@@ -85,14 +96,7 @@ export async function enrollOrderInCheck(
       },
       client
     );
-    await snapshotChargesForEnrolledOrder(
-      {
-        restaurantId: input.restaurantId,
-        checkId: input.checkId,
-        orderId: input.orderId,
-      },
-      client
-    );
+    await snapshotCharges();
     return "enrolled";
   }
 
@@ -117,14 +121,7 @@ export async function enrollOrderInCheck(
     },
     client
   );
-  await snapshotChargesForEnrolledOrder(
-    {
-      restaurantId: input.restaurantId,
-      checkId: input.checkId,
-      orderId: input.orderId,
-    },
-    client
-  );
+  await snapshotCharges();
   return "enrolled";
 }
 

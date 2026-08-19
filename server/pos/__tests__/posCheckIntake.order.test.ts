@@ -187,10 +187,14 @@ describe("POS Check Intake → existing Check Domain", () => {
       replayed: false,
     });
     expect(ensure).toHaveBeenCalledTimes(1);
-    expect(ensure).toHaveBeenCalledWith({
-      restaurantId: RESTAURANT_A,
-      orderId: ORDER_A,
-    });
+    expect(ensure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: RESTAURANT_A,
+        orderId: ORDER_A,
+        terminalId: TERMINAL_A,
+        stageMs: expect.any(Object),
+      })
+    );
     expect(ensure.mock.calls[0][0]).not.toHaveProperty("grandTotal");
     expect(ensure.mock.calls[0][0]).not.toHaveProperty("sessionId");
   });
@@ -350,10 +354,14 @@ describe("POS Check Intake → existing Check Domain", () => {
     expect(result.cashierUserId).toBe(STAFF_A);
     expect(result.orderingChannel).toBe(ORDERING_CHANNEL_CASHIER_POS);
     expect(result.outcome).toBe("open");
-    expect(ensure).toHaveBeenCalledWith({
-      restaurantId: RESTAURANT_A,
-      orderId: ORDER_A,
-    });
+    expect(ensure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: RESTAURANT_A,
+        orderId: ORDER_A,
+        terminalId: TERMINAL_A,
+        stageMs: expect.any(Object),
+      })
+    );
   });
 
   it("replays the same Check for the same idempotency key", async () => {
@@ -448,8 +456,12 @@ describe("POS Check Intake → existing Check Domain", () => {
         authMs: expect.any(Number),
         orderLoadMs: expect.any(Number),
         checkEnsureMs: expect.any(Number),
+        ensureTotalMs: expect.any(Number),
+        membershipLookupMs: expect.any(Number),
+        checkCreated: expect.any(Boolean),
       })
     );
+    expect(event?.metadata).toHaveProperty("unaccountedMs");
     expect((event?.metadata?.durationMs as number) >= 0).toBe(true);
     expect(event?.metadata).not.toHaveProperty("grandTotal");
     expect(event?.metadata).not.toHaveProperty("taxAmount");
