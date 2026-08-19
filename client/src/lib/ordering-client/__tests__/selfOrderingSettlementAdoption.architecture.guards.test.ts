@@ -13,9 +13,10 @@ function read(rel: string): string {
 }
 
 describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 architecture guards", () => {
-  it("settle façade reuses settleCheckPaidByIdDetailed only", () => {
+  it("settle façade routes Confirm Payment through confirmPayment", () => {
     const svc = read("server/order/application/SettleOrderPaidService.ts");
-    expect(svc).toContain("settleCheckPaidByIdDetailed");
+    expect(svc).toContain("confirmPayment");
+    expect(svc).not.toContain("settleCheckPaidByIdDetailed");
     expect(svc).toContain("findBlockingMembershipForOrder");
     expect(svc).not.toContain("insertSettlementRecord");
     expect(svc).not.toContain("createSettlementRecord(");
@@ -50,6 +51,6 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 architecture guards", () => {
   it("does not introduce a second Settlement Record writer on order path", () => {
     const svc = read("server/order/application/SettleOrderPaidService.ts");
     expect(svc).toContain("SELF-ORDERING-SETTLEMENT-ADOPTION-1");
-    expect(svc).toMatch(/certified Check settle pipeline|settleCheckPaidByIdDetailed/);
+    expect(svc).toMatch(/certified Check settle pipeline|confirmPayment/);
   });
 });

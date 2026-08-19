@@ -36,7 +36,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 guards", () => {
       "server/order/application/StaffCounterPickupSettlementService.ts"
     );
     expect(panel).not.toMatch(/createSession|openSession|fabricat/i);
-    expect(svc).toContain("settleCheckPaidByIdDetailed");
+    expect(svc).toContain("confirmPayment");
     expect(svc).toContain("voidCheckByIdDetailed");
     expect(svc).toContain("SHIFT_REQUIRED");
     expect(svc).toContain("REGISTER_REQUIRED");

@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getOrderById: vi.fn(),
   findBlockingMembershipForOrder: vi.fn(),
-  settleCheckPaidByIdDetailed: vi.fn(),
+  confirmPayment: vi.fn(),
   voidCheckByIdDetailed: vi.fn(),
   listSettlementRecordsForCheck: vi.fn(),
   resolveSettlementContextForSettle: vi.fn(),
@@ -30,10 +30,12 @@ vi.mock("../../../operational-session/check", () => ({
   CheckTransitionError: class CheckTransitionError extends Error {},
   findBlockingMembershipForOrder: (...a: unknown[]) =>
     mocks.findBlockingMembershipForOrder(...a),
-  settleCheckPaidByIdDetailed: (...a: unknown[]) =>
-    mocks.settleCheckPaidByIdDetailed(...a),
   voidCheckByIdDetailed: (...a: unknown[]) =>
     mocks.voidCheckByIdDetailed(...a),
+}));
+
+vi.mock("../../../operational-session/payment/PaymentConfirmService", () => ({
+  confirmPayment: (...a: unknown[]) => mocks.confirmPayment(...a),
 }));
 
 vi.mock("../../../operational-session/check/settlementRecordRepository", () => ({
@@ -105,7 +107,7 @@ describe("StaffCounterPickupSettlementService", () => {
       availability: "available",
       reasons: [],
     });
-    mocks.settleCheckPaidByIdDetailed.mockResolvedValue({
+    mocks.confirmPayment.mockResolvedValue({
       check: { id: 7, outcome: "paid" },
       orderSettlement: { settlements: [] },
       orderSettlementEvents: [],
@@ -136,7 +138,7 @@ describe("StaffCounterPickupSettlementService", () => {
     });
   });
 
-  it("settles via settleCheckPaidByIdDetailed when Register + Shift resolved", async () => {
+  it("settles via confirmPayment when Register + Shift resolved", async () => {
     const result = await settleCounterPickupPaid({
       restaurantId: 1,
       orderId: 42,
@@ -144,7 +146,7 @@ describe("StaffCounterPickupSettlementService", () => {
       registerId: "reg_1",
       settlements: [{ paymentMethod: "cash" }],
     });
-    expect(mocks.settleCheckPaidByIdDetailed).toHaveBeenCalledWith(
+    expect(mocks.confirmPayment).toHaveBeenCalledWith(
       expect.objectContaining({
         restaurantId: 1,
         checkId: 7,
@@ -175,7 +177,7 @@ describe("StaffCounterPickupSettlementService", () => {
         registerId: "reg_1",
       })
     ).rejects.toMatchObject({ code: "SHIFT_REQUIRED" });
-    expect(mocks.settleCheckPaidByIdDetailed).not.toHaveBeenCalled();
+    expect(mocks.confirmPayment).not.toHaveBeenCalled();
   });
 
   it("rejects empty registerId", async () => {

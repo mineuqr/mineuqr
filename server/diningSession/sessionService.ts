@@ -15,8 +15,8 @@ import {
   createOpenCheckForSession,
   ensureOpenCheckForSession,
   settleCheckComplimentaryByIdDetailed,
-  settleCheckPaidByIdDetailed,
 } from "../operational-session/check/CheckService";
+import { confirmPayment } from "../operational-session/payment/PaymentConfirmService";
 import { assertSessionCloseable } from "../operational-session/check/lifecycleSettlementGuardService";
 import { getOrderSettlementProjectionStore } from "../operational-session/check/api/orderSettlementReadComposition";
 import { tryMaterializeOrderSettlementProjections } from "../operational-session/check/read/orderSettlementProjectionMaterializer";
@@ -209,9 +209,11 @@ async function settleAndCloseSession(
 
   // CHECK-MANAGEMENT-ARCHITECTURE-1 — finalize Check before Session settle/close.
   // SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — pass operator tenders when provided.
+  // PAYMENT-CONFIRM-REMAINING-CALLERS-1 — paid Confirm enters Payment process.
+  // Complimentary is not Confirm Payment; it remains on Check complimentary settle.
   const financial =
     settlement === "paid"
-      ? await settleCheckPaidByIdDetailed({
+      ? await confirmPayment({
           restaurantId: session.restaurantId,
           checkId,
           settlements,

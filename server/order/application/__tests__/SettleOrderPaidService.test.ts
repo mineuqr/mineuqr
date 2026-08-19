@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   getOrderById: vi.fn(),
   findBlockingMembershipForOrder: vi.fn(),
   ensureCheckForOrder: vi.fn(),
-  settleCheckPaidByIdDetailed: vi.fn(),
+  confirmPayment: vi.fn(),
   listSettlementRecordsForCheck: vi.fn(),
   tryMaterializeOrderSettlementProjections: vi.fn(),
   getOrderSettlementProjectionStore: vi.fn(() => ({})),
@@ -27,8 +27,10 @@ vi.mock("../../../operational-session/check", () => ({
   ensureCheckForOrder: (...a: unknown[]) => mocks.ensureCheckForOrder(...a),
   findBlockingMembershipForOrder: (...a: unknown[]) =>
     mocks.findBlockingMembershipForOrder(...a),
-  settleCheckPaidByIdDetailed: (...a: unknown[]) =>
-    mocks.settleCheckPaidByIdDetailed(...a),
+}));
+
+vi.mock("../../../operational-session/payment/PaymentConfirmService", () => ({
+  confirmPayment: (...a: unknown[]) => mocks.confirmPayment(...a),
 }));
 
 vi.mock("../../../operational-session/check/settlementRecordRepository", () => ({
@@ -69,7 +71,7 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
       membership: { checkId: 100, orderId: 55, active: 1 },
       checkOutcome: "open",
     });
-    mocks.settleCheckPaidByIdDetailed.mockResolvedValue({
+    mocks.confirmPayment.mockResolvedValue({
       check: { id: 100, grandTotal: "42.00" },
       orderSettlement: { settlements: [] },
       orderSettlementEvents: [],
@@ -113,7 +115,7 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
     mocks.tryMaterializeOrderSettlementProjections.mockResolvedValue(undefined);
   });
 
-  it("reuses settleCheckPaidByIdDetailed and returns settlementRecordId", async () => {
+  it("confirms Payment and returns settlementRecordId", async () => {
     const result = await settleOrderPaid({
       restaurantId: 1,
       orderId: 55,
@@ -121,7 +123,7 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
       settlements: [{ paymentMethod: "cash" }],
     });
 
-    expect(mocks.settleCheckPaidByIdDetailed).toHaveBeenCalledWith({
+    expect(mocks.confirmPayment).toHaveBeenCalledWith({
       restaurantId: 1,
       checkId: 100,
       settlements: [{ paymentMethod: "cash" }],
@@ -146,7 +148,7 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
       registerId: "reg_1",
       deviceId: "dev_1",
     });
-    expect(mocks.settleCheckPaidByIdDetailed).toHaveBeenCalledWith(
+    expect(mocks.confirmPayment).toHaveBeenCalledWith(
       expect.objectContaining({
         settlementContextHints: expect.objectContaining({
           registerId: "reg_1",
@@ -178,7 +180,7 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
       trackingToken: "tok-abc",
     });
 
-    expect(mocks.settleCheckPaidByIdDetailed).not.toHaveBeenCalled();
+    expect(mocks.confirmPayment).not.toHaveBeenCalled();
     expect(result.alreadySettled).toBe(true);
     expect(result.settlementRecordId).toBe("sr:1:100:settlement:1");
   });
@@ -191,7 +193,7 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
         trackingToken: "wrong",
       })
     ).rejects.toBeInstanceOf(SettleOrderPaidError);
-    expect(mocks.settleCheckPaidByIdDetailed).not.toHaveBeenCalled();
+    expect(mocks.confirmPayment).not.toHaveBeenCalled();
   });
 
   it("ensures Check when membership missing then settles", async () => {
@@ -213,6 +215,6 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
       restaurantId: 1,
       orderId: 55,
     });
-    expect(mocks.settleCheckPaidByIdDetailed).toHaveBeenCalled();
+    expect(mocks.confirmPayment).toHaveBeenCalled();
   });
 });

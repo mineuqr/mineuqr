@@ -109,7 +109,7 @@ describe("PAYMENT-CONFIRM-SERVICE-1 architecture", () => {
     expect(settlePaid).not.toContain("db.transaction");
   });
 
-  it("migrates only the cashier Confirm caller; unrelated settle callers stay on CheckService", () => {
+  it("migrates Confirm Payment callers onto confirmPayment; complimentary stays on CheckService", () => {
     const pos = read(POS);
     const router = read(ROUTER);
     const session = read(SESSION);
@@ -120,11 +120,13 @@ describe("PAYMENT-CONFIRM-SERVICE-1 architecture", () => {
     expect(router).toContain("getPosSettlementInitiateService()");
     expect(router).not.toContain("confirmPayment");
     expect(router).not.toContain("PaymentConfirmService");
-    expect(session).toContain("settleCheckPaidByIdDetailed");
-    expect(session).not.toContain("confirmPayment");
-    expect(settleOrder).toContain("settleCheckPaidByIdDetailed");
-    expect(settleOrder).not.toContain("confirmPayment");
-    expect(counter).toContain("settleCheckPaidByIdDetailed");
-    expect(counter).not.toContain("confirmPayment");
+    expect(session).toContain("confirmPayment");
+    expect(session).not.toContain("settleCheckPaidByIdDetailed");
+    expect(session).toContain("settleCheckComplimentaryByIdDetailed");
+    expect(settleOrder).toContain("confirmPayment");
+    expect(settleOrder).not.toContain("settleCheckPaidByIdDetailed");
+    expect(counter).toContain("confirmPayment");
+    expect(counter).not.toContain("settleCheckPaidByIdDetailed");
+    expect(counter).toContain("voidCheckByIdDetailed");
   });
 });

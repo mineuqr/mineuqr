@@ -3,8 +3,10 @@
  * SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 — Orders Workspace adoption
  * Staff Cancel + Settle for sessionless Self Ordering / Counter Pickup Checks.
  *
+ * PAYMENT-CONFIRM-REMAINING-CALLERS-1 — Confirm Payment enters confirmPayment.
  * Reuses certified Check settle/void + Settlement Record + Attribution.
  * No trackingToken. No Session fabrication. No new money platform.
+ * Counter Pickup remains an operational entry; Payment owns confirmation.
  *
  * CSA-03: staff settle requires registerId + resolved active Financial Shift.
  * CS-14: underlying Attribution remains fail-open after money commits.
@@ -23,9 +25,9 @@ import {
 import {
   CheckTransitionError,
   findBlockingMembershipForOrder,
-  settleCheckPaidByIdDetailed,
   voidCheckByIdDetailed,
 } from "../../operational-session/check";
+import { confirmPayment } from "../../operational-session/payment/PaymentConfirmService";
 import { listSettlementRecordsForCheck } from "../../operational-session/check/settlementRecordRepository";
 import { getOrderSettlementProjectionStore } from "../../operational-session/check/api/orderSettlementReadComposition";
 import { tryMaterializeOrderSettlementProjections } from "../../operational-session/check/read/orderSettlementProjectionMaterializer";
@@ -240,8 +242,9 @@ async function requireOpenSessionlessMembership(input: {
 }
 
 /**
- * Staff settle — sessionless Check via certified pipeline.
+ * Staff settle — sessionless Check via Payment Confirm process.
  * Requires active Register hint + resolved Financial Shift (CSA-03).
+ * Authorization (Register/Shift) remains on this operational entry.
  */
 export async function settleCounterPickupPaid(input: {
   restaurantId: number;
@@ -334,7 +337,7 @@ export async function settleCounterPickupPaid(input: {
 
   let financial;
   try {
-    financial = await settleCheckPaidByIdDetailed({
+    financial = await confirmPayment({
       restaurantId: input.restaurantId,
       checkId,
       settlements: input.settlements,

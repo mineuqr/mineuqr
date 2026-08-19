@@ -39,7 +39,7 @@ describe("SELF-ORDERING-COUNTER-PICKUP-ARCHITECTURE-1 Phase 2 guards", () => {
   it("settlement backend façade remains for cashier reuse", () => {
     const svc = read("server/order/application/SettleOrderPaidService.ts");
     const routers = read("server/routers.ts");
-    expect(svc).toContain("settleCheckPaidByIdDetailed");
+    expect(svc).toContain("confirmPayment");
     expect(routers).toContain("settlePaid: publicProcedure");
   });
 });

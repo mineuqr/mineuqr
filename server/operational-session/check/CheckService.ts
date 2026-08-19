@@ -1172,9 +1172,9 @@ export async function settleCheckPaidById(input: {
 }
 
 /** Same as settleCheckPaidById, exposing collected Order Settlement events.
- * PAYMENT-CONFIRM-SERVICE-1 / I-PAY-14 — Cashier Confirm Payment enters via
- * confirmPayment, which delegates here. Do not treat this export as the
- * Payment process boundary.
+ * PAYMENT-CONFIRM-SERVICE-1 / I-PAY-14 — Confirm Payment callers enter via
+ * confirmPayment, which delegates here (PAYMENT-CONFIRM-REMAINING-CALLERS-1).
+ * Do not treat this export as the Payment process boundary.
  */
 export async function settleCheckPaidByIdDetailed(input: {
   restaurantId: number;

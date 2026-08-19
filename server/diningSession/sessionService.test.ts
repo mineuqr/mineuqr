@@ -42,9 +42,12 @@ vi.mock("../operational-session/check/CheckService", () => ({
     outcome: "open",
   })),
   ensureOpenCheckForSession: vi.fn(),
-  settleCheckPaidByIdDetailed: vi.fn(),
   settleCheckComplimentaryByIdDetailed: vi.fn(),
   voidCheckByIdDetailed: vi.fn(),
+}));
+
+vi.mock("../operational-session/payment/PaymentConfirmService", () => ({
+  confirmPayment: vi.fn(),
 }));
 
 vi.mock("../operational-session/check/api/orderSettlementReadComposition", () => ({

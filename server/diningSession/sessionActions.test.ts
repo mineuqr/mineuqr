@@ -43,16 +43,18 @@ const financialMocks = vi.hoisted(() => {
   };
   return {
     financialResult,
-    settleCheckPaidByIdDetailed: vi.fn(async () => financialResult),
+    confirmPayment: vi.fn(async () => financialResult),
     settleCheckComplimentaryByIdDetailed: vi.fn(async () => financialResult),
   };
 });
 
+vi.mock("../operational-session/payment/PaymentConfirmService", () => ({
+  confirmPayment: (...a: unknown[]) => financialMocks.confirmPayment(...a),
+}));
+
 vi.mock("../operational-session/check/CheckService", () => ({
   createOpenCheckForSession: vi.fn(),
   ensureOpenCheckForSession: vi.fn(),
-  settleCheckPaidByIdDetailed: (...a: unknown[]) =>
-    financialMocks.settleCheckPaidByIdDetailed(...a),
   settleCheckComplimentaryByIdDetailed: (...a: unknown[]) =>
     financialMocks.settleCheckComplimentaryByIdDetailed(...a),
 }));
@@ -123,9 +125,19 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A / LIFECYCLE-SETTLEMENT-GU
     });
   });
 
-  it("markPaid settles Check then closes session", async () => {
+  it("markPaid confirms Payment then closes session", async () => {
     await markPaid(actionInput);
-    expect(financialMocks.settleCheckPaidByIdDetailed).toHaveBeenCalled();
+    expect(financialMocks.confirmPayment).toHaveBeenCalledWith({
+      restaurantId: 1,
+      checkId: 900,
+      settlements: undefined,
+      settlementContextHints: {
+        operatorUserId: 42,
+        registerId: undefined,
+        deviceId: undefined,
+        operationalScreenId: undefined,
+      },
+    });
     expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "closed",
@@ -139,11 +151,31 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A / LIFECYCLE-SETTLEMENT-GU
     );
   });
 
+  it("markPaid forwards operator tenders into confirmPayment", async () => {
+    await markPaid({
+      ...actionInput,
+      settlements: [{ paymentMethod: "cash" }],
+      registerId: "reg_1",
+    });
+    expect(financialMocks.confirmPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: 1,
+        checkId: 900,
+        settlements: [{ paymentMethod: "cash" }],
+        settlementContextHints: expect.objectContaining({
+          operatorUserId: 42,
+          registerId: "reg_1",
+        }),
+      })
+    );
+  });
+
   it("markComplimentary settles Check then closes session", async () => {
     await markComplimentary(actionInput);
     expect(
       financialMocks.settleCheckComplimentaryByIdDetailed
     ).toHaveBeenCalled();
+    expect(financialMocks.confirmPayment).not.toHaveBeenCalled();
     expect(repoMocks.insertSessionEvent).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY }),
       expect.anything()
@@ -183,7 +215,7 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A / LIFECYCLE-SETTLEMENT-GU
       restaurantId: 1,
       sessionId: 10,
     });
-    expect(financialMocks.settleCheckPaidByIdDetailed).not.toHaveBeenCalled();
+    expect(financialMocks.confirmPayment).not.toHaveBeenCalled();
     expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "closed",

@@ -30,11 +30,11 @@ describe("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 architecture guards", () => {
     expect(pres).not.toContain("mada");
   });
 
-  it("session service passes settlements into settleCheckPaidByIdDetailed", () => {
+  it("session service passes settlements into confirmPayment", () => {
     const svc = read("server/diningSession/sessionService.ts");
     expect(svc).toContain("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1");
     expect(svc).toContain("input.settlements");
-    expect(svc).toMatch(/settleCheckPaidByIdDetailed\(\{[\s\S]*settlements/);
+    expect(svc).toMatch(/confirmPayment\(\{[\s\S]*settlements/);
   });
 
   it("domain resolves staff lines; legacy other fallback preserved", () => {

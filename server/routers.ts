@@ -2383,7 +2383,7 @@ const orderRouter = router({
 
   /**
    * SELF-ORDERING-SETTLEMENT-ADOPTION-1 — public Order settle façade.
-   * Resolves Check via membership → settleCheckPaidByIdDetailed (certified pipeline).
+   * Resolves Check via membership → confirmPayment (certified Check settle pipeline).
    * Auth: trackingToken proves order ownership (same capability as public status).
    */
   settlePaid: publicProcedure

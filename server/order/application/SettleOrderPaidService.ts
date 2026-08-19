@@ -1,10 +1,12 @@
 /**
  * SELF-ORDERING-SETTLEMENT-ADOPTION-1 — Order → Check settle façade.
+ * PAYMENT-CONFIRM-REMAINING-CALLERS-1 — Confirm Payment enters confirmPayment.
  *
  * Resolves the Check for an Order and reuses the certified Check settle pipeline
- * via settleCheckPaidByIdDetailed (Settlement Record publication included).
+ * via confirmPayment (Settlement Record included).
  *
  * No parallel payment model. No duplicate Settlement Record writer.
+ * Order Settlement remains operational publication/correlation, not Payment owner.
  */
 
 import { getOrderById } from "../../db";
@@ -12,8 +14,8 @@ import {
   CheckTransitionError,
   ensureCheckForOrder,
   findBlockingMembershipForOrder,
-  settleCheckPaidByIdDetailed,
 } from "../../operational-session/check";
+import { confirmPayment } from "../../operational-session/payment/PaymentConfirmService";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
 import type { SettlementContext, SettlementContextHints } from "@shared/crmp";
 import { unavailableSettlementContext } from "@shared/crmp";
@@ -76,7 +78,7 @@ function paymentSummaryFromRecord(
 }
 
 /**
- * Settle the Order's open Check as paid through the certified Check pipeline.
+ * Settle the Order's open Check as paid through the Payment Confirm process.
  * Idempotent when Check is already paid — returns existing Settlement Record.
  */
 export async function settleOrderPaid(input: {
@@ -180,7 +182,7 @@ export async function settleOrderPaid(input: {
 
   let financial;
   try {
-    financial = await settleCheckPaidByIdDetailed({
+    financial = await confirmPayment({
       restaurantId: input.restaurantId,
       checkId,
       settlements: input.settlements,

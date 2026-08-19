@@ -203,7 +203,7 @@ The façade MUST keep: same tables, same TX semantics, same lifecycle, same form
 
 **Cost:** CheckService remains a compatibility host until a successor implementation. Vocabulary must distinguish Payment **process** from ADR-024 Payment **capability**.
 
-**Follow-on implementation:** `PAYMENT-CONFIRM-SERVICE-1` established the cashier Confirm façade (`confirmPayment` → existing `settleCheckPaidByIdDetailed`). Remaining Session / self-order / counter-pickup callers stay on CheckService until a dedicated adoption program (I-PAY-14).
+**Follow-on implementation:** `PAYMENT-CONFIRM-SERVICE-1` established the Confirm façade (`confirmPayment` → existing `settleCheckPaidByIdDetailed`). `PAYMENT-CONFIRM-REMAINING-CALLERS-1` routed Session markPaid, SettleOrderPaid, and Counter Pickup Confirm through the same process. CheckService remains the I-PAY-14 compatibility host for `finalizeOpenCheckById`.
 
 ---
 

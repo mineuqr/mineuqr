@@ -1,8 +1,9 @@
 /**
- * PAYMENT-CONFIRM-SERVICE-1 / ADR-ARCH-037
+ * PAYMENT-CONFIRM-SERVICE-1 / PAYMENT-CONFIRM-REMAINING-CALLERS-1 / ADR-ARCH-037
  * Payment process entry for Confirm Payment. Delegates to the certified
  * Check settlement capability. Not an aggregate. Not a second money SSOT.
  *
+ * Callers: Cashier POS, Session markPaid, SettleOrderPaid, Counter Pickup.
  * I-PAY-01 process owner · I-PAY-02 Check remains the aggregate · I-PAY-14
  * CheckService may still host finalizeOpenCheckById.
  */

@@ -58,7 +58,7 @@ describe("CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 architecture", () => {
   it("still awaits Attribution for Session settle and never returns success before commit", () => {
     const session = read(SESSION);
     const finalize = sliceFinalizeOpenCheckById(read(CHECK));
-    expect(session).toContain("settleCheckPaidByIdDetailed({");
+    expect(session).toContain("confirmPayment");
     expect(session).not.toContain("awaitAttribution: false");
     expect(finalize).toContain("await adoptSettlementAttributionAfterFinalize(");
     const txAt = finalize.indexOf("await withCheckOwnedTransaction(");
