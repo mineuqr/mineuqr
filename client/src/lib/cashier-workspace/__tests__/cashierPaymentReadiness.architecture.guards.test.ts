@@ -37,6 +37,10 @@ describe("CASHIER-POS-CHECK-READ-CONTRACT-1 architecture", () => {
     expect(ready).not.toContain("outstandingAmount");
     expect(ready).not.toContain("totalAmount");
     expect(ready).not.toMatch(/0\.15|\* 15/);
+    expect(ready).toContain("input.saleReady && settlementValid");
+    expect(ready).toContain("showCardOverTender");
+    expect(panel).toContain("paymentReadiness.showCardOverTender");
+    expect(panel).not.toContain("tenderPlan.remainingCents === 0 &&");
   });
 
   it("keeps Confirm Payment on pos.settlement.initiate and does not pay from Order total", () => {

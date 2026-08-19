@@ -1022,6 +1022,7 @@ export function CashierWorkspacePanel({
       cashierPaymentFlowTiming.mark(flowId, "CASHIER_CHECK_READ_READY");
     }
     if (
+      canConfirmPayment &&
       !paymentReadiness.confirmDisabled &&
       paymentRecoveryUi === "idle" &&
       tenderMode != null
@@ -1031,6 +1032,7 @@ export function CashierWorkspacePanel({
   }, [
     salePhase,
     amountDue,
+    canConfirmPayment,
     paymentReadiness.confirmDisabled,
     paymentRecoveryUi,
     tenderMode,
@@ -1661,9 +1663,7 @@ export function CashierWorkspacePanel({
                 {tenderPlan && tenderPlan.remainingCents > 0 ? (
                   <p className="mt-1 text-sm text-red-700">{t("underpayment")}</p>
                 ) : null}
-                {tenderPlan &&
-                tenderPlan.remainingCents === 0 &&
-                !canConfirmPayment ? (
+                {paymentReadiness.showCardOverTender ? (
                   <p className="mt-1 text-sm text-red-700">{t("cardOverTender")}</p>
                 ) : null}
                 {registerGap ? (

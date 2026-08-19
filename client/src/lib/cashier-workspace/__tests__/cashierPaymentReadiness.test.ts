@@ -21,6 +21,83 @@ describe("ADR-ARCH-038 cashier payment readiness", () => {
     });
     expect(view.canConfirmPayment).toBe(false);
     expect(view.confirmDisabled).toBe(true);
+    expect(view.totalTenderedDisplay).toBe("10.00");
+    expect(view.remainingDisplay).toBe("0.00");
+    expect(view.showCardOverTender).toBe(false);
+  });
+
+  it("shows zero tendered while sale is not ready and tenders are empty", () => {
+    const view = resolveCashierPaymentReadiness({
+      previewGrandTotal: "10.00",
+      saleReady: false,
+      cashTender: "",
+      cardTender: "",
+      paymentSubmitting: false,
+    });
+    expect(view.totalTenderedDisplay).toBe("0.00");
+    expect(view.remainingDisplay).toBe("10.00");
+    expect(view.confirmDisabled).toBe(true);
+    expect(view.showCardOverTender).toBe(false);
+  });
+
+  it("does not treat cash underpayment as a card error", () => {
+    const view = resolveCashierPaymentReadiness({
+      ...ready,
+      previewGrandTotal: "10.00",
+      cashTender: "6.00",
+      cardTender: "",
+    });
+    expect(view.remainingDisplay).toBe("4.00");
+    expect(view.canConfirmPayment).toBe(false);
+    expect(view.showCardOverTender).toBe(false);
+  });
+
+  it("flags card over-tender as a card error while Confirm stays off", () => {
+    const view = resolveCashierPaymentReadiness({
+      ...ready,
+      previewGrandTotal: "10.00",
+      cashTender: "",
+      cardTender: "11.00",
+    });
+    expect(view.remainingDisplay).toBe("0.00");
+    expect(view.totalTenderedDisplay).toBe("11.00");
+    expect(view.canConfirmPayment).toBe(false);
+    expect(view.showCardOverTender).toBe(true);
+  });
+
+  it("still shows card over-tender while sale is not ready", () => {
+    const view = resolveCashierPaymentReadiness({
+      previewGrandTotal: "10.00",
+      saleReady: false,
+      cashTender: "",
+      cardTender: "11.00",
+      paymentSubmitting: false,
+    });
+    expect(view.confirmDisabled).toBe(true);
+    expect(view.showCardOverTender).toBe(true);
+  });
+
+  it("flags unequal split tender as a card error", () => {
+    const view = resolveCashierPaymentReadiness({
+      ...ready,
+      previewGrandTotal: "10.00",
+      cashTender: "6.00",
+      cardTender: "5.00",
+    });
+    expect(view.canConfirmPayment).toBe(false);
+    expect(view.showCardOverTender).toBe(true);
+  });
+
+  it("does not flag a valid cash-plus-card split", () => {
+    const view = resolveCashierPaymentReadiness({
+      ...ready,
+      previewGrandTotal: "10.00",
+      cashTender: "6.00",
+      cardTender: "4.00",
+    });
+    expect(view.canConfirmPayment).toBe(true);
+    expect(view.showCardOverTender).toBe(false);
+    expect(view.remainingDisplay).toBe("0.00");
   });
 
   it("does not enable Confirm from cash alone when preview is missing", () => {

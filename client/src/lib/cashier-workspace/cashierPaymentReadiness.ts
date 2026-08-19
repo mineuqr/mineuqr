@@ -1,7 +1,9 @@
 /**
  * CASHIER-POS-CHECK-READ-CONTRACT-1 / ADR-ARCH-038
+ * / CASHIER-PAYMENT-TRANSIENT-STATE-FIX-1
  * Presentation-only payment readiness. Preview grandTotal is display/tender
  * planning only — not payable authority. Confirm MUST NOT require an open Check.
+ * Preview totals are independent of saleReady; Confirm is not.
  */
 
 import {
@@ -35,6 +37,8 @@ export type CashierPaymentReadiness = {
   amountDue: string | null;
   remainingDisplay: string | null;
   totalTenderedDisplay: string | null;
+  /** Card/split inequality — not sale readiness. */
+  showCardOverTender: boolean;
 };
 
 export function resolveCashierPaymentReadiness(
@@ -44,7 +48,7 @@ export function resolveCashierPaymentReadiness(
     ? input.previewGrandTotal!.trim()
     : null;
   const tenderDraft =
-    input.saleReady && amountDue != null
+    amountDue != null
       ? {
           amountDue,
           cashTender: input.cashTender,
@@ -52,8 +56,9 @@ export function resolveCashierPaymentReadiness(
         }
       : null;
   const plan = tenderDraft ? resolveCashierSettlementPlan(tenderDraft) : null;
-  const canConfirmPayment =
+  const settlementValid =
     tenderDraft != null && canConfirmCashierSettlement(tenderDraft);
+  const canConfirmPayment = input.saleReady && settlementValid;
   return {
     canConfirmPayment,
     confirmDisabled: input.paymentSubmitting || !canConfirmPayment,
@@ -64,5 +69,7 @@ export function resolveCashierPaymentReadiness(
       : amountDue != null
         ? displayCents(0)
         : null,
+    showCardOverTender:
+      plan != null && plan.remainingCents === 0 && !settlementValid,
   };
 }
