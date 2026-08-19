@@ -34,7 +34,13 @@ export type PosCheckReadCheckLookup = (input: {
   checkId: number;
 }) => Promise<Pick<
   OperationalCheck,
-  "id" | "restaurantId" | "outcome" | "grandTotal" | "subtotal" | "taxAmount"
+  | "id"
+  | "restaurantId"
+  | "outcome"
+  | "grandTotal"
+  | "subtotal"
+  | "taxAmount"
+  | "billDiscountAmount"
 > | null>;
 
 function assertCheckOutcome(value: string): CheckOutcome {
@@ -132,6 +138,7 @@ export class PosCheckReadService {
         grandTotal: String(check.grandTotal),
         subtotal: String(check.subtotal),
         taxAmount: String(check.taxAmount),
+        billDiscountAmount: String(check.billDiscountAmount ?? "0.00"),
       };
     } finally {
       const timing = clock.finish();

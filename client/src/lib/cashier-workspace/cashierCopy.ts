@@ -1,6 +1,8 @@
 /**
  * POS-CASHIER-WORKSPACE-IMPLEMENTATION-1
  * Presentation copy only. Not a permission catalog. Not plan entitlements.
+ * CASHIER-PAYMENT-FLOW-IMPLEMENTATION-1 — cashier-facing strings stay inside
+ * the Cashier workspace. Internal Check / Bill / Settlement names are not UX.
  */
 
 export type CashierLang = "ar" | "en";
@@ -39,12 +41,12 @@ const COPY: Record<string, { ar: string; en: string }> = {
   allCategories: { ar: "الكل", en: "All" },
   unknownCategory: { ar: "بدون تصنيف", en: "Uncategorized" },
   unavailable: { ar: "غير متاح", en: "Unavailable" },
-  ticket: { ar: "الطلب الحالي", en: "Current ticket" },
+  ticket: { ar: "البيع الحالي", en: "Current sale" },
   ticketEmpty: { ar: "اختر أصنافًا من القائمة.", en: "Select items from the catalog." },
-  ticketTotal: { ar: "إجمالي التذكرة", en: "Ticket total" },
+  ticketTotal: { ar: "الإجمالي", en: "Total" },
   qty: { ar: "الكمية", en: "Qty" },
-  placeSale: { ar: "تأكيد الطلب", en: "Confirm order" },
-  placing: { ar: "جاري تأكيد الطلب…", en: "Confirming order…" },
+  placeSale: { ar: "الدفع", en: "Payment" },
+  placing: { ar: "جاري فتح الدفع…", en: "Opening payment…" },
   activeOrders: { ar: "الطلبات النشطة", en: "Active orders" },
   noOrders: { ar: "لا توجد طلبات نشطة.", en: "No active orders." },
   orderDetail: { ar: "تفاصيل الطلب", en: "Order detail" },
@@ -59,8 +61,8 @@ const COPY: Record<string, { ar: string; en: string }> = {
   },
   amountDue: { ar: "المبلغ المستحق", en: "Amount due" },
   orderTotalHint: {
-    ar: "إجمالي الطلب حتى يظهر مبلغ الشيك.",
-    en: "Order total until the Check amount is available.",
+    ar: "بانتظار المبلغ المستحق.",
+    en: "Waiting for the amount due.",
   },
   selectPaymentMethod: { ar: "اختر طريقة الدفع", en: "Select payment method" },
   paymentMethod: { ar: "طريقة الدفع", en: "Payment method" },
@@ -68,8 +70,8 @@ const COPY: Record<string, { ar: string; en: string }> = {
   paying: { ar: "جاري الدفع…", en: "Paying…" },
   paidTitle: { ar: "تم الدفع", en: "Payment successful" },
   paidBody: {
-    ar: "الشيك مدفوع. يمكنك بدء بيع جديد.",
-    en: "The check is paid. You can start a new sale.",
+    ar: "تم الدفع. يمكنك بدء بيع جديد.",
+    en: "Payment is complete. You can start a new sale.",
   },
   afterPayment: {
     ar: "التقارير تقرأ الشيك المدفوع. لا يُحسب إيراد منفصل للكاشير.",
@@ -86,7 +88,7 @@ const COPY: Record<string, { ar: string; en: string }> = {
   retry: { ar: "إعادة المحاولة", en: "Retry" },
   errorTitle: { ar: "تعذر تحميل الكاشير", en: "Cashier could not load" },
   emptyCatalog: { ar: "لا توجد أصناف متاحة.", en: "No available items." },
-  salePlaced: { ar: "تم إنشاء الطلب", en: "Order confirmed" },
+  salePlaced: { ar: "جاهز للدفع", en: "Ready to pay" },
   unpaidOrderHint: {
     ar: "الطلب مؤكد ولم يُدفع بعد.",
     en: "Order confirmed — unpaid.",
@@ -120,8 +122,18 @@ const COPY: Record<string, { ar: string; en: string }> = {
   },
   statusReady: { ar: "جاهز", en: "Ready" },
   statusShift: { ar: "يلزم وردية الصندوق", en: "Register shift required" },
+  statusAwaitingPayment: { ar: "بانتظار الدفع", en: "Awaiting payment" },
   ticketSubtotal: { ar: "المجموع الفرعي", en: "Subtotal" },
+  ticketDiscount: { ar: "الخصم", en: "Discount" },
   ticketTax: { ar: "الضريبة", en: "Tax" },
+  taxAtPayment: { ar: "عند الدفع", en: "At payment" },
+  paymentTax: { ar: "الضريبة", en: "Tax" },
+  preparingPayment: { ar: "جاري تجهيز الدفع…", en: "Preparing payment…" },
+  amountDueMissing: {
+    ar: "المبلغ المستحق غير جاهز.",
+    en: "Amount due is not ready.",
+  },
+  collectedAmount: { ar: "المدفوع", en: "Collected" },
   removeLine: { ar: "حذف الصنف", en: "Remove item" },
   completePaymentTitle: { ar: "إتمام الدفع", en: "Complete payment" },
   amountReceived: { ar: "المبلغ المدفوع", en: "Amount received" },
@@ -130,8 +142,8 @@ const COPY: Record<string, { ar: string; en: string }> = {
   paidSuccess: { ar: "تم الدفع بنجاح", en: "Payment successful" },
   printInvoice: { ar: "طباعة الفاتورة", en: "Print invoice" },
   printUnavailable: {
-    ar: "الفاتورة تطبع من سجل التسوية بعد نجاح الدفع. إن لم يظهر رقم التسوية، استخدم مساحة التسويات.",
-    en: "The invoice prints from the Settlement Record after payment. If no settlement id is available, use Settlements.",
+    ar: "الفاتورة غير جاهزة للطباعة بعد.",
+    en: "The receipt isn't ready to print yet.",
   },
   shiftBeforePay: {
     ar: "يجب فتح وردية الصندوق قبل إتمام الدفع",
@@ -149,16 +161,16 @@ const COPY: Record<string, { ar: string; en: string }> = {
     en: "Verifying payment…",
   },
   recoveryIncomplete: {
-    ar: "تم تسجيل الدفع. تعذر تحميل سجل التسوية للطباعة. لا تعِد المحاولة كدفعة جديدة.",
-    en: "Payment is recorded. The settlement receipt could not be loaded. Do not retry as a new payment.",
+    ar: "تم تسجيل الدفع. تعذر تحميل الفاتورة للطباعة. لا تعِد المحاولة كدفعة جديدة.",
+    en: "Payment is recorded. The receipt could not be loaded. Do not retry as a new payment.",
   },
   recoveryUnknown: {
     ar: "تعذر تأكيد نتيجة الدفع. لا تعِد المحاولة كدفعة جديدة قبل التحقق.",
     en: "Payment result could not be confirmed. Do not retry as a new payment until verified.",
   },
   recoveryInvalidTerminal: {
-    ar: "الشيك ليس مدفوعًا. لا يمكن اعتباره دفعًا ناجحًا.",
-    en: "The check is not paid. It cannot be treated as a successful payment.",
+    ar: "الدفع غير مكتمل. لا يمكن اعتباره دفعًا ناجحًا.",
+    en: "Payment is not complete. It cannot be treated as a successful payment.",
   },
   recoveryNotCommitted: {
     ar: "لم يُسجَّل الدفع. يمكنك المحاولة مرة أخرى.",

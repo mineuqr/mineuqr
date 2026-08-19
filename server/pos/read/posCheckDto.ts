@@ -14,4 +14,6 @@ export type PosOrderCheckDto = {
   grandTotal: string;
   subtotal: string;
   taxAmount: string;
+  /** Copied from Check. Not calculated here. */
+  billDiscountAmount: string;
 };

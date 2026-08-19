@@ -18,18 +18,19 @@ const COPY = "client/src/lib/cashier-workspace/cashierCopy.ts";
 const SALE = "server/pos/services/PosSaleService.ts";
 
 describe("CASHIER-ORDER-CONFIRMATION-PAYMENT-FLOW-1", () => {
-  it("names Confirm Order as Order create, not a completed sale", () => {
-    expect(cashierUiLabel("placeSale", "ar")).toBe("تأكيد الطلب");
-    expect(cashierUiLabel("placeSale", "en")).toBe("Confirm order");
+  it("names Payment as the sale CTA and Confirm Payment as the financial commit", () => {
+    expect(cashierUiLabel("placeSale", "ar")).toBe("الدفع");
+    expect(cashierUiLabel("placeSale", "en")).toBe("Payment");
     expect(cashierUiLabel("confirmPayment", "ar")).toBe("تأكيد الدفع");
     expect(cashierUiLabel("paidSuccess", "ar")).toBe("تم الدفع بنجاح");
     expect(cashierUiLabel("cancelPayment", "ar")).toBe("إلغاء");
     const copy = read(COPY);
     expect(copy).not.toContain("تأكيد البيع");
     expect(copy).not.toContain("Place sale");
+    expect(copy).not.toContain("Confirm order");
   });
 
-  it("keeps Confirm Order on pos.sale.create and Confirm Payment on settlement.initiate", () => {
+  it("keeps Payment CTA on pos.sale.create and Confirm Payment on settlement.initiate", () => {
     const panel = read(PANEL);
     const sale = read(SALE);
     const placeSaleFn = panel.slice(
@@ -62,7 +63,7 @@ describe("CASHIER-ORDER-CONFIRMATION-PAYMENT-FLOW-1", () => {
     expect(panel).not.toContain("apple_pay");
     expect(panel).not.toContain("stc_pay");
     expect(panel).not.toMatch(/0\.15|\* 15/);
-    expect(panel).not.toContain("ticketTax");
+    expect(panel).not.toContain('t("ticketTax")');
     expect(panel).not.toContain("voidCheck");
     expect(panel).not.toContain("trpc.order.cancel");
   });

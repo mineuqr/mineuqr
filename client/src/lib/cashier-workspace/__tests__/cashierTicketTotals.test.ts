@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   displayMoneyTimesQuantity,
   displayTicketTotal,
+  isPositiveDisplayMoney,
 } from "../cashierTicketTotals";
 
 describe("cashier ticket display totals", () => {
@@ -16,5 +17,11 @@ describe("cashier ticket display totals", () => {
 
   it("returns null when a line is not a catalog decimal", () => {
     expect(displayTicketTotal([{ price: "n/a", quantity: 1 }])).toBeNull();
+  });
+
+  it("treats catalog-decimal display helpers as non-authoritative", () => {
+    expect(isPositiveDisplayMoney("0.00")).toBe(false);
+    expect(isPositiveDisplayMoney("2.00")).toBe(true);
+    expect(isPositiveDisplayMoney("n/a")).toBe(false);
   });
 });

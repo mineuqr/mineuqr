@@ -57,6 +57,7 @@ import {
 import {
   displayMoneyTimesQuantity,
   displayTicketTotal,
+  isPositiveDisplayMoney,
 } from "@/lib/cashier-workspace/cashierTicketTotals";
 import {
   tryOpenCashierNewTab,
@@ -496,7 +497,8 @@ export function CashierWorkspacePanel({
   }
 
   async function placeSale() {
-    // Confirm Order → pos.sale.create. Does not pay Check or Settlement.
+    // Payment CTA persists the sale so Check/Charges can enroll. Does not collect.
+    // Kitchen lists cashier_pos only after Paid. Confirm is settlement.initiate.
     if (!terminalId || ticket.length === 0) return;
     if (saleInFlightRef.current || saleMutation.isPending) return;
     endCashierPaymentFlow("abandoned");
@@ -733,7 +735,7 @@ export function CashierWorkspacePanel({
         paid,
       });
       toast.success(
-        `${t("paidSuccess")} · ${t("checkLabel")} #${result.checkId} · ${result.grandTotal}`
+        `${t("paidSuccess")} · ${directSale.displayReference} · ${result.grandTotal}`
       );
       invalidateOrderReads();
       if (paid.settlementRecordId) {
@@ -835,7 +837,7 @@ export function CashierWorkspacePanel({
           toast.error(t("recoveryIncomplete"));
         } else {
           toast.success(
-            `${t("paidSuccess")} · ${t("checkLabel")} #${recovered.paid.checkId} · ${recovered.paid.grandTotal}`
+            `${t("paidSuccess")} · ${directSale?.displayReference ?? ""} · ${recovered.paid.grandTotal}`
           );
         }
         invalidateOrderReads();
@@ -1005,7 +1007,7 @@ export function CashierWorkspacePanel({
         : registerGap
           ? t("statusShift")
           : openCheck
-            ? t("checkOpenedResult")
+            ? t("statusAwaitingPayment")
             : allowed
               ? t("statusReady")
               : t("loading");
@@ -1273,6 +1275,14 @@ export function CashierWorkspacePanel({
                   <span>{t("ticketSubtotal")}</span>
                   <span className="tabular-nums">{money(ticketTotal ?? "0.00")}</span>
                 </p>
+                <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
+                  <span>{t("ticketDiscount")}</span>
+                  <span className="tabular-nums">{money("0.00")}</span>
+                </p>
+                <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
+                  <span>{t("paymentTax")}</span>
+                  <span className="tabular-nums">{t("taxAtPayment")}</span>
+                </p>
                 <p className="mt-2 flex items-end justify-between">
                   <span className="text-sm font-semibold text-[#111827]">
                     {t("ticketTotal")}
@@ -1376,10 +1386,6 @@ export function CashierWorkspacePanel({
                 <h2 className="text-lg font-semibold">{t("paidSuccess")}</h2>
                 <p className="mt-3 text-sm text-[#6b7280]">{t("orderNumber")}</p>
                 <p className="text-base font-semibold">{directSale.displayReference}</p>
-                <p className="mt-2 text-sm text-[#6b7280]">{t("invoiceNumber")}</p>
-                <p className="text-base font-semibold">
-                  {t("checkLabel")} #{paidCheckout.checkId}
-                </p>
                 <p className="mt-2 text-sm text-[#6b7280]">{t("paymentMethod")}</p>
                 <ul className="mt-1 space-y-1">
                   {(paidCheckout.settlements.length > 0
@@ -1401,9 +1407,8 @@ export function CashierWorkspacePanel({
                     </li>
                   ))}
                 </ul>
-                <p className="mt-4 text-sm text-[#6b7280]">{t("amountDue")}</p>
+                <p className="mt-4 text-sm text-[#6b7280]">{t("ticketTotal")}</p>
                 <p className={cashierPos.amountDueHuge}>{money(paidCheckout.grandTotal)}</p>
-                <p className="mt-2 text-xs text-[#6b7280]">{t("afterPayment")}</p>
                 <Button
                   type="button"
                   className={cn(cashierPos.primaryAction, "mt-4")}
@@ -1428,7 +1433,6 @@ export function CashierWorkspacePanel({
               <>
                 <h2 className="text-lg font-semibold">{t("completePaymentTitle")}</h2>
                 <p className="mt-1 text-sm text-[#6b7280]">{directSale.displayReference}</p>
-                <p className="mt-1 text-sm text-[#6b7280]">{t("unpaidOrderHint")}</p>
                 {paymentRecoveryUi === "verifying" ? (
                   <p className="mt-2 text-sm font-medium">{t("verifyingPayment")}</p>
                 ) : null}
@@ -1438,22 +1442,42 @@ export function CashierWorkspacePanel({
                 {paymentRecoveryUi === "unknown" ? (
                   <p className="mt-2 text-sm text-amber-700">{t("recoveryUnknown")}</p>
                 ) : null}
+                {paymentReadiness.checkAvailable && orderCheck ? (
+                  <div className="mt-4 space-y-1">
+                    <p className="flex justify-between text-sm text-[#6b7280]">
+                      <span>{t("ticketSubtotal")}</span>
+                      <span className="tabular-nums">{money(orderCheck.subtotal)}</span>
+                    </p>
+                    <p className="flex justify-between text-sm text-[#6b7280]">
+                      <span>{t("ticketDiscount")}</span>
+                      <span className="tabular-nums">
+                        {isPositiveDisplayMoney(orderCheck.billDiscountAmount)
+                          ? `-${money(orderCheck.billDiscountAmount)}`
+                          : money("0.00")}
+                      </span>
+                    </p>
+                    <p className="flex justify-between text-sm text-[#6b7280]">
+                      <span>{t("paymentTax")}</span>
+                      <span className="tabular-nums">{money(orderCheck.taxAmount)}</span>
+                    </p>
+                  </div>
+                ) : null}
                 <p className="mt-4 text-sm font-medium text-[#6b7280]">
-                  {amountDue ? t("checkAmountDue") : t("amountDue")}
+                  {t("amountDue")}
                 </p>
                 <p className={cashierPos.amountDueHuge}>
                   {paymentReadiness.checkAvailable && amountDue
                     ? money(amountDue)
                     : paymentReadiness.checkIntakeFailed ||
                         paymentReadiness.checkReadFailed
-                      ? t("checkMissing")
-                      : t("preparingCheck")}
+                      ? t("amountDueMissing")
+                      : t("preparingPayment")}
                 </p>
                 {settlementRow &&
                 settlementRow.settledAmount &&
                 settlementRow.settledAmount !== "0.00" ? (
                   <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
-                    <span>{t("checkSettledAmount")}</span>
+                    <span>{t("collectedAmount")}</span>
                     <span className="tabular-nums">{money(settlementRow.settledAmount)}</span>
                   </p>
                 ) : null}
@@ -1463,7 +1487,7 @@ export function CashierWorkspacePanel({
                   </p>
                 ) : null}
                 {paymentReadiness.showPreparingMessage ? (
-                  <p className="mt-2 text-sm text-[#6b7280]">{t("preparingCheck")}</p>
+                  <p className="mt-2 text-sm text-[#6b7280]">{t("preparingPayment")}</p>
                 ) : null}
                 <p className="mb-2 mt-4 text-sm font-medium">{t("selectPaymentMethod")}</p>
                 <div className="space-y-3">

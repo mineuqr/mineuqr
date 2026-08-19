@@ -102,6 +102,7 @@ function service(args: {
     grandTotal: string;
     subtotal: string;
     taxAmount: string;
+    billDiscountAmount?: string;
   } | null;
 }) {
   return new PosCheckReadService(
@@ -113,7 +114,13 @@ function service(args: {
     ),
     async () => args.order ?? null,
     async () => args.membership ?? null,
-    async () => args.check ?? null
+    async () =>
+      args.check
+        ? {
+            ...args.check,
+            billDiscountAmount: args.check.billDiscountAmount ?? "0.00",
+          }
+        : null
   );
 }
 
@@ -149,6 +156,7 @@ describe("POS Check read by Order", () => {
         grandTotal: "11.50",
         subtotal: "10.00",
         taxAmount: "1.50",
+        billDiscountAmount: "0.00",
       },
     }).getByOrder({
       user: user(STAFF_A),
@@ -166,6 +174,7 @@ describe("POS Check read by Order", () => {
       grandTotal: "11.50",
       subtotal: "10.00",
       taxAmount: "1.50",
+      billDiscountAmount: "0.00",
     });
   });
 
@@ -284,6 +293,38 @@ describe("POS Check read by Order", () => {
     });
     expect(result?.grandTotal).toBe("11.50");
     expect(result?.grandTotal).not.toBe("10.00");
+    expect(result?.billDiscountAmount).toBe("0.00");
+  });
+
+  it("copies billDiscountAmount from Check without calculating discount", async () => {
+    const store = new InMemoryPosTerminalStore();
+    const grants = new InMemoryPosPermissionGrantStore();
+    await seedTerminal(store);
+    await grant(grants);
+    const result = await service({
+      grants,
+      store,
+      order: { id: 55, restaurantId: RESTAURANT_A },
+      membership: { checkId: 9, checkOutcome: "open" },
+      check: {
+        id: 9,
+        restaurantId: RESTAURANT_A,
+        outcome: "open",
+        grandTotal: "11.50",
+        subtotal: "10.00",
+        taxAmount: "1.50",
+        billDiscountAmount: "2.00",
+      },
+    }).getByOrder({
+      user: user(STAFF_A),
+      command: {
+        restaurantId: RESTAURANT_A,
+        terminalId: TERMINAL_A,
+        orderId: 55,
+      },
+    });
+    expect(result?.billDiscountAmount).toBe("2.00");
+    expect(result?.grandTotal).toBe("11.50");
   });
 
   it("denies owner without POS_ACCESS", async () => {

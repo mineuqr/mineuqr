@@ -29,6 +29,14 @@ export function displayMoneyTimesQuantity(
   return fromCents(cents * quantity);
 }
 
+export function isPositiveDisplayMoney(
+  value: string | null | undefined
+): boolean {
+  if (value == null) return false;
+  const cents = toCents(value);
+  return cents != null && cents > 0;
+}
+
 export function displayTicketTotal(
   lines: readonly { price: string; quantity: number }[]
 ): string | null {

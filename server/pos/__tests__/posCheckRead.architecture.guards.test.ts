@@ -27,6 +27,7 @@ describe("CASHIER-POS-CHECK-READ-CONTRACT-1 POS Check read architecture", () => 
     expect(service).not.toContain("computeCheckMoney");
     expect(service).not.toContain("totalAmount");
     expect(dto).toContain("grandTotal");
+    expect(dto).toContain("billDiscountAmount");
     expect(dto).not.toContain("toFixed");
     expect(dto).not.toContain("computeCheckMoney");
     expect(dto).not.toContain("outstandingAmount");
