@@ -41,6 +41,7 @@ vi.mock("../checkOrderMembershipRepository", () => ({
 import {
   compensateChargesForCancelledOrder,
   ensureOpenCheckChargeComposition,
+  ensureOpenCheckChargesSubtotal,
   loadChargesSubtotal,
   reconcileOpenOrderCharges,
   snapshotChargesForEnrolledOrder,
@@ -217,11 +218,18 @@ describe("checkChargeComposition", () => {
     expect(mocks.insertCheckCharge).not.toHaveBeenCalled();
   });
 
-  it("ensureOpenCheckChargeComposition backfills only when Charge set is empty", async () => {
+  it("ensureOpenCheckChargesSubtotal lists Charges once when composition already exists", async () => {
     mocks.findCheckById.mockResolvedValue(openCheckRow);
-    mocks.listCheckCharges.mockResolvedValue([{ netAmount: "1.00" }]);
-    await ensureOpenCheckChargeComposition({ restaurantId: 1, checkId: 10 });
+    mocks.listCheckCharges.mockResolvedValue([
+      { netAmount: "10.00" },
+      { netAmount: "5.50" },
+    ]);
+    await expect(
+      ensureOpenCheckChargesSubtotal({ restaurantId: 1, checkId: 10 })
+    ).resolves.toBe("15.50");
+    expect(mocks.listCheckCharges).toHaveBeenCalledTimes(1);
     expect(mocks.listActiveOrderIdsForCheck).not.toHaveBeenCalled();
+    expect(mocks.getOrderById).not.toHaveBeenCalled();
   });
 
   it("reconcile is a no-op when intended item nets already match", async () => {

@@ -31,6 +31,7 @@ describe("BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 architecture guards", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
     expect(svc).toContain("loadChargesSubtotal");
     expect(svc).toContain("ensureOpenCheckChargeComposition");
+    expect(svc).toContain("ensureOpenCheckChargesSubtotal");
     expect(svc).not.toContain("loadOrdersSubtotal");
     expect(svc).not.toContain("getOrdersByIds");
     expect(svc).not.toContain("computeOrdersTotalAmount");

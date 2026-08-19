@@ -49,6 +49,19 @@ export async function loadChargesSubtotal(
 }
 
 /**
+ * PAYMENT-CONFIRM-CRITICAL-PATH-TRIM-1
+ * Catch-up empty Charge sets, then return SUM(netAmount) from the same list.
+ * Confirm freeze still reloads Charges inside the Check money TX.
+ */
+export async function ensureOpenCheckChargesSubtotal(
+  input: { restaurantId: number; checkId: number },
+  client?: SessionDbClient
+): Promise<string> {
+  const charges = await listOpenCheckChargesAfterEnsure(input, client);
+  return sumChargeNetAmounts(charges);
+}
+
+/**
  * One-time catch-up for open Checks that have membership but no Charges yet.
  * Not a live calculation path: subsequent recals sum Charges only.
  */
@@ -56,11 +69,18 @@ export async function ensureOpenCheckChargeComposition(
   input: { restaurantId: number; checkId: number },
   client?: SessionDbClient
 ): Promise<void> {
+  await listOpenCheckChargesAfterEnsure(input, client);
+}
+
+async function listOpenCheckChargesAfterEnsure(
+  input: { restaurantId: number; checkId: number },
+  client?: SessionDbClient
+): Promise<Awaited<ReturnType<typeof listCheckCharges>>> {
   const row = await findCheckById(input.checkId, client);
-  if (!row || row.restaurantId !== input.restaurantId) return;
-  if (row.outcome !== "open") return;
+  if (!row || row.restaurantId !== input.restaurantId) return [];
+  if (row.outcome !== "open") return [];
   const existing = await listCheckCharges(input, client);
-  if (existing.length > 0) return;
+  if (existing.length > 0) return existing;
   const orderIds = await listActiveOrderIdsForCheck(
     input.restaurantId,
     input.checkId,
@@ -76,6 +96,7 @@ export async function ensureOpenCheckChargeComposition(
       client
     );
   }
+  return listCheckCharges(input, client);
 }
 
 export async function snapshotChargesForEnrolledOrder(

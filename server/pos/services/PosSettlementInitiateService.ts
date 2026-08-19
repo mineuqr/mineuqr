@@ -14,6 +14,7 @@ import {
   type SelectablePaymentMethod,
   type StaffSettlementLineInput,
 } from "@shared/operational-session";
+import type { SettlementContext } from "@shared/crmp";
 import { opsLog } from "../../_core/opsLog";
 import { getOrderById } from "../../db";
 import {
@@ -118,11 +119,13 @@ export type PosSettlementFinancialStageMs = {
   financialTransactionStartedAt?: string;
   financialTransactionCommittedAt?: string;
   attributionCompletedAt?: string | null;
+  settlementContextReused?: boolean;
 };
 
 export type PosSettlementSettlePaid = (input: {
   restaurantId: number;
   checkId: number;
+  settlementContext: SettlementContext;
   settlementContextHints: {
     registerId: string;
     operatorUserId: number;
@@ -239,6 +242,7 @@ async function defaultCheckLookup(input: {
 async function defaultSettlePaid(input: {
   restaurantId: number;
   checkId: number;
+  settlementContext: SettlementContext;
   settlementContextHints: {
     registerId: string;
     operatorUserId: number;
@@ -254,6 +258,7 @@ async function defaultSettlePaid(input: {
     restaurantId: input.restaurantId,
     checkId: input.checkId,
     settlements: input.settlements,
+    settlementContext: input.settlementContext,
     settlementContextHints: {
       registerId: input.settlementContextHints.registerId,
       operatorUserId: input.settlementContextHints.operatorUserId,
@@ -488,10 +493,10 @@ export class PosSettlementInitiateService {
       }
 
       const contextStarted = clock.mark();
-      const [foundMembership, operational] = await Promise.all([
+      const [foundMembership, crmp] = await Promise.all([
         this.membershipLookup(context.restaurantId, order.id),
         this.registerShift
-          .requireForSettlement({
+          .requireResolvedContextForSettlement({
             restaurantId: context.restaurantId,
             terminalId: context.terminalId,
             operatorUserId: context.userId,
@@ -503,6 +508,7 @@ export class PosSettlementInitiateService {
             throw err;
           }),
       ]);
+      const operational = crmp.operational;
       settlementContextMs = clock.since(contextStarted);
       settlementContextCompletedAt = new Date().toISOString();
       let membership = foundMembership;
@@ -576,6 +582,7 @@ export class PosSettlementInitiateService {
         settled = await this.settlePaid({
           restaurantId: context.restaurantId,
           checkId: check.id,
+          settlementContext: crmp.settlementContext,
           settlementContextHints: {
             registerId: operational.registerId,
             operatorUserId: context.userId,
@@ -734,6 +741,7 @@ export class PosSettlementInitiateService {
           moneyTxMs: stages?.moneyTxMs ?? null,
           postCommitProcessingMs: stages?.postCommitProcessingMs ?? null,
           attributionMs: stages?.attributionMs ?? null,
+          settlementContextReused: stages?.settlementContextReused ?? null,
           responseConstructionMs,
           unexplainedGapMs: unexplainedFinancialTxnGapMs(financialTxnMs, stages),
           unaccountedMs,

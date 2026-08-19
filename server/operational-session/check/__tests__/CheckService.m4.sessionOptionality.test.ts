@@ -108,6 +108,10 @@ vi.mock("../checkChargeComposition", () => ({
   loadChargesSubtotal: (...a: unknown[]) => mocks.loadChargesSubtotal(...a),
   ensureOpenCheckChargeComposition: (...a: unknown[]) =>
     mocks.ensureOpenCheckChargeComposition(...a),
+  ensureOpenCheckChargesSubtotal: async (...a: unknown[]) => {
+    await mocks.ensureOpenCheckChargeComposition(...a);
+    return mocks.loadChargesSubtotal(...a);
+  },
   snapshotChargesForEnrolledOrder: vi.fn(),
   compensateChargesForCancelledOrder: vi.fn(),
   reconcileOpenOrderCharges: vi.fn(),

@@ -83,7 +83,7 @@ describe("POS Settlement Initiation architecture guards", () => {
     expect(service).not.toContain("createRegister");
     expect(service).not.toContain("openFinancialShift");
     expect(service).toContain("settlementContextHints");
-    expect(service).toContain("requireForSettlement");
+    expect(service).toContain("requireResolvedContextForSettlement");
   });
 
   it("does not accept client financial totals; payment method is a catalog key forwarded to Check", () => {

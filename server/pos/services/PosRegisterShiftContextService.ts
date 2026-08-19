@@ -155,12 +155,37 @@ export class PosRegisterShiftContextService {
     });
   }
 
+  /**
+   * PAYMENT-CONFIRM-CRITICAL-PATH-TRIM-1
+   * One CRMP resolve for the Cashier Confirm gate. Caller forwards
+   * `settlementContext` into confirmPayment so finalize does not resolve again.
+   */
+  async requireResolvedContextForSettlement(input: {
+    restaurantId: number;
+    terminalId: string;
+    operatorUserId: number;
+  }): Promise<{
+    operational: PosCanonicalRegisterShift;
+    settlementContext: SettlementContext;
+  }> {
+    const settlementContext = await this.resolveForTerminal(input);
+    return {
+      operational: requireCanonicalRegisterShift(
+        settlementContext,
+        input.restaurantId
+      ),
+      settlementContext,
+    };
+  }
+
   async requireForSettlement(input: {
     restaurantId: number;
     terminalId: string;
     operatorUserId: number;
   }): Promise<PosCanonicalRegisterShift> {
-    const context = await this.resolveForTerminal(input);
-    return requireCanonicalRegisterShift(context, input.restaurantId);
+    const { operational } = await this.requireResolvedContextForSettlement(
+      input
+    );
+    return operational;
   }
 }

@@ -80,7 +80,7 @@ describe("POS Register/Shift wiring architecture guards", () => {
       read("server/operational-session/payment/PaymentConfirmService.ts")
     ).toContain("settleCheckPaidByIdDetailed");
     expect(settle).toContain("settlementContextHints");
-    expect(settle).toContain("requireForSettlement");
+    expect(settle).toContain("requireResolvedContextForSettlement");
     expect(settle).not.toContain("StaffCounterPickupSettlementService");
     expect(settle).not.toMatch(/from ["'].*reporting-platform/);
     expect(settle).not.toContain("createRegister");

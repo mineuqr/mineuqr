@@ -25,7 +25,9 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     const check = read("server/operational-session/check/CheckService.ts");
     const finalize = sliceFinalizeOpenCheckById(check);
     const reloadAt = finalize.indexOf("await getCheckById(");
-    const discoveryAt = finalize.indexOf("await loadChargesSubtotal(");
+    const discoveryAt = finalize.indexOf(
+      "await ensureOpenCheckChargesSubtotal("
+    );
     const contextAt = finalize.indexOf("await resolveSettlementContextForSettle(");
     const moneyStartAt = finalize.indexOf("const moneyTxStartedAt = Date.now();");
     const txAt = finalize.indexOf("await withCheckOwnedTransaction(");
@@ -49,17 +51,19 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     expect(moneySlice).toContain("insertSettlementTransactions");
     expect(moneySlice).toContain("applyFullSettlementToCheckOrders");
     expect(moneySlice).toContain("createSettlementRecordForCheckFinalize");
+    expect(moneySlice).toContain("loadChargesSubtotal(");
     expect(moneySlice).not.toContain("getCheckById(");
-    expect(moneySlice).not.toContain("loadChargesSubtotal(");
+    expect(moneySlice).not.toContain("ensureOpenCheckChargesSubtotal");
     expect(moneySlice).not.toContain("resolveSettlementContextForSettle");
     expect(moneySlice).not.toContain("adoptSettlementAttributionAfterFinalize");
     expect(moneySlice).not.toContain("Promise.all");
   });
 
-  it("does not reuse outer Settlement Context or remove duplicate resolution", () => {
+  it("Cashier Confirm reuses the POS-resolved SettlementContext", () => {
     const pos = read("server/pos/services/PosSettlementInitiateService.ts");
     const check = read("server/operational-session/check/CheckService.ts");
     expect(pos).toContain("settlementContextHints");
+    expect(pos).toContain("requireResolvedContextForSettlement");
     expect(pos).toContain("confirmPayment");
     expect(
       read("server/operational-session/payment/PaymentConfirmService.ts")
@@ -68,11 +72,12 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
       pos.indexOf("async function defaultSettlePaid"),
       pos.indexOf("function unexplainedFinancialTxnGapMs")
     );
+    expect(settlePaid).toContain("settlementContext: input.settlementContext");
     expect(settlePaid).toContain("settlementContextHints:");
     expect(settlePaid).not.toMatch(/settlementContext:\s*operational/);
-    expect(settlePaid).not.toMatch(/settlementContext:\s*context/);
     expect(check).toContain("resolveSettlementContextForSettle");
     expect(check).toContain("input.settlementContext ??");
+    expect(check).toContain("settlementContextReused");
   });
 
   it("does not await Relay, enroll Check on POS sale, or change schema", () => {

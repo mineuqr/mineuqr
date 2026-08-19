@@ -69,6 +69,7 @@ import {
 } from "./checkOrderMembershipRepository";
 import {
   ensureOpenCheckChargeComposition,
+  ensureOpenCheckChargesSubtotal,
   loadChargesSubtotal,
   compensateChargesForCancelledOrder,
   reconcileOpenOrderCharges,
@@ -173,6 +174,11 @@ export type CheckFinancialFinalizeStageMs = Readonly<{
   financialTransactionCommittedAt: string;
   /** Null when Attribution is deferred after HTTP (Cashier POS path). */
   attributionCompletedAt: string | null;
+  /**
+   * PAYMENT-CONFIRM-CRITICAL-PATH-TRIM-1
+   * True when Confirm reused a pre-resolved SettlementContext (no second CRMP).
+   */
+  settlementContextReused: boolean;
 }>;
 
 type CheckOwnedTransactionStageMs = {
@@ -586,11 +592,7 @@ async function finalizeOpenCheckById(
   }
 
   const orderDiscoveryStartedAt = Date.now();
-  await ensureOpenCheckChargeComposition({
-    restaurantId: input.restaurantId,
-    checkId: check.id,
-  });
-  const chargesSubtotal = await loadChargesSubtotal({
+  const chargesSubtotal = await ensureOpenCheckChargesSubtotal({
     restaurantId: input.restaurantId,
     checkId: check.id,
   });
@@ -603,6 +605,7 @@ async function finalizeOpenCheckById(
   const now = formatDiningSessionTimestamp();
 
   // SETTLEMENT-CONTEXT-ADOPTION-1 — resolve outside money TX; fail-open.
+  // PAYMENT-CONFIRM-CRITICAL-PATH-TRIM-1 — reuse caller context when present.
   // No hints → unavailable without fabricating or querying CRMP.
   const hints = input.settlementContextHints ?? {};
   const hasOperationalHints = Boolean(
@@ -612,6 +615,7 @@ async function finalizeOpenCheckById(
       hints.operationalScreenId
   );
   const contextResolveStartedAt = Date.now();
+  const settlementContextReused = input.settlementContext != null;
   const settlementContext =
     input.settlementContext ??
     (hasOperationalHints
@@ -923,6 +927,7 @@ async function finalizeOpenCheckById(
         financialTransactionStartedAt,
         financialTransactionCommittedAt,
         attributionCompletedAt: null,
+        settlementContextReused,
       },
     };
   }
@@ -952,6 +957,7 @@ async function finalizeOpenCheckById(
       financialTransactionStartedAt,
       financialTransactionCommittedAt,
       attributionCompletedAt,
+      settlementContextReused,
     },
   };
 }

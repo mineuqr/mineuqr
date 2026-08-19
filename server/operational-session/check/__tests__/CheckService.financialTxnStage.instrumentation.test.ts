@@ -78,6 +78,10 @@ vi.mock("../checkChargeComposition", () => ({
   loadChargesSubtotal: (...a: unknown[]) => mocks.loadChargesSubtotal(...a),
   ensureOpenCheckChargeComposition: (...a: unknown[]) =>
     mocks.ensureOpenCheckChargeComposition(...a),
+  ensureOpenCheckChargesSubtotal: async (...a: unknown[]) => {
+    await mocks.ensureOpenCheckChargeComposition(...a);
+    return mocks.loadChargesSubtotal(...a);
+  },
   snapshotChargesForEnrolledOrder: vi.fn(),
   compensateChargesForCancelledOrder: vi.fn(),
   reconcileOpenOrderCharges: vi.fn(),
@@ -251,6 +255,22 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1", () => {
     expect(mocks.adoptSettlementAttributionAfterFinalize).toHaveBeenCalledTimes(
       1
     );
+    expect(detailed.finalizeStageMs.settlementContextReused).toBe(false);
+  });
+
+  it("reuses a caller SettlementContext and does not resolve CRMP again", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(openCheck)
+      .mockResolvedValueOnce({ ...openCheck, outcome: "paid" as const });
+    const detailed = await settleCheckPaidByIdDetailed({
+      restaurantId: 1,
+      checkId: 100,
+      settlementContext: resolvedContext,
+      settlementContextHints: hints,
+    });
+    expect(mocks.resolveSettlementContextForSettle).not.toHaveBeenCalled();
+    expect(detailed.finalizeStageMs.settlementContextReused).toBe(true);
+    expect(detailed.finalizeStageMs.contextResolveMs).toBeLessThan(30);
   });
 
   it("does not include pre-TX work in moneyTxMs", async () => {

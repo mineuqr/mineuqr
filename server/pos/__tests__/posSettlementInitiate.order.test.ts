@@ -299,6 +299,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).toHaveBeenCalledWith({
       restaurantId: RESTAURANT_A,
       checkId: CHECK_A,
+      settlementContext: resolvedContext(),
       settlementContextHints: {
         registerId: REGISTER_ID,
         operatorUserId: STAFF_A,
@@ -523,6 +524,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).toHaveBeenCalledWith({
       restaurantId: RESTAURANT_A,
       checkId: CHECK_A,
+      settlementContext: resolvedContext(),
       settlementContextHints: {
         registerId: REGISTER_ID,
         operatorUserId: STAFF_A,
@@ -550,6 +552,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).toHaveBeenCalledWith({
       restaurantId: RESTAURANT_A,
       checkId: CHECK_A,
+      settlementContext: resolvedContext(),
       settlementContextHints: {
         registerId: REGISTER_ID,
         operatorUserId: STAFF_A,
@@ -676,6 +679,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).toHaveBeenCalledWith({
       restaurantId: RESTAURANT_A,
       checkId: CHECK_A,
+      settlementContext: resolvedContext(),
       settlementContextHints: {
         registerId: REGISTER_ID,
         operatorUserId: STAFF_A,
@@ -854,6 +858,9 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle.mock.calls[0][0]).not.toHaveProperty("registerId");
     expect(settle.mock.calls[0][0]).not.toHaveProperty("shiftId");
     expect(settle.mock.calls[0][0].settlementContextHints.registerId).toBe(
+      REGISTER_ID
+    );
+    expect(settle.mock.calls[0][0].settlementContext.registerId).toBe(
       REGISTER_ID
     );
   });
