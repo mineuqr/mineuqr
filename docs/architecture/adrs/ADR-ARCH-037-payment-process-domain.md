@@ -78,7 +78,7 @@ Examples:
 9. **Order record ≠ operational Order.** An Order row MAY exist before payment (Charge `originOrderId`). Kitchen / Expo / Pickup MUST NOT treat unpaid Cashier `cashier_pos` sales as operational. Operational release follows certified paid/complimentary Check visibility.
 10. **Charges** remain sale composition facts **outside** Payment. Payment consumes `SUM(netAmount)`. `originOrderId` remains.
 11. **Confirm Payment** is the financial process boundary. Tender selection (نقدًا / شبكة / تسوية) is local UI state until that boundary. تسوية = cash + network collection, not Settlement Record UI.
-12. **CheckService MAY temporarily host** Payment process execution (`finalizeOpenCheckById`, `settleCheckPaidByIdDetailed`, `applyRefundOnCheck`) for transaction integrity. That hosting MUST NOT be mistaken for Payment process ownership.
+12. **CheckService MAY host** the certified financial execution implementation (`finalizeOpenCheckById`, `settleCheckPaidByIdDetailed`, `applyRefundOnCheck`) used by Payment. That hosting MUST NOT be mistaken for Payment process ownership. Application Confirm callers MUST enter `confirmPayment`.
 13. **Refund command** is a Payment process boundary. **`refundableBalance`** remains Settlement Record history law (ADR-032). No refunds table. No historical rewrite.
 14. **Restaurant Tax Policy** remains the policy source. Check retains the frozen tax snapshot. Payment calculates/validates using that snapshot at confirm (live policy only for Cashier preview).
 15. **Cashier Mixed collection is not Split Payment (ADR-024).** Incremental FSP Payment finality ≠ Check settlement remains a distinct dormant capability. Cashier Confirm MAY collect and settle atomically in the existing certified TX.
@@ -125,7 +125,7 @@ CASHIER (UX)
 
 Bill is **not** a Cashier screen, Payment screen, or workflow stage.
 
-**Current implementation** may still route Confirm through CheckService. That is compatibility (I-PAY-14), not target ownership.
+**Current implementation:** Confirm callers enter `confirmPayment`. CheckService hosts certified finalize (`settleCheckPaidByIdDetailed` → `finalizeOpenCheckById`) as I-PAY-14 **execution hosting**. That hosting is not an application Confirm API and MUST NOT be used to bypass Payment.
 
 ---
 
@@ -146,7 +146,7 @@ Bill is **not** a Cashier screen, Payment screen, or workflow stage.
 | **I-PAY-11** | Tender selection remains local UI state. |
 | **I-PAY-12** | Confirm Payment is the financial process boundary. |
 | **I-PAY-13** | Payment may operate on Check without becoming the Check aggregate. |
-| **I-PAY-14** | CheckService may temporarily host Payment process execution without changing constitutional ownership. |
+| **I-PAY-14** | CheckService may host the certified financial execution implementation used by Payment. Application Confirm callers MUST NOT bypass `confirmPayment`. |
 | **I-PAY-15** | No Payment table is required solely to establish Payment domain ownership. |
 | **I-PAY-16** | Refund history / `refundableBalance` remain governed by Settlement Record history law. |
 | **I-PAY-17** | Order Settlement is not Bill amount authority. |
@@ -203,7 +203,7 @@ The façade MUST keep: same tables, same TX semantics, same lifecycle, same form
 
 **Cost:** CheckService remains a compatibility host until a successor implementation. Vocabulary must distinguish Payment **process** from ADR-024 Payment **capability**.
 
-**Follow-on implementation:** `PAYMENT-CONFIRM-SERVICE-1` established the Confirm façade (`confirmPayment` → existing `settleCheckPaidByIdDetailed`). `PAYMENT-CONFIRM-REMAINING-CALLERS-1` routed Session markPaid, SettleOrderPaid, and Counter Pickup Confirm through the same process. CheckService remains the I-PAY-14 compatibility host for `finalizeOpenCheckById`.
+**Follow-on implementation:** `PAYMENT-CONFIRM-SERVICE-1` established the Confirm façade. `PAYMENT-CONFIRM-REMAINING-CALLERS-1` routed Session markPaid, SettleOrderPaid, and Counter Pickup through `confirmPayment`. `PAYMENT-CONFIRM-COMPATIBILITY-CLEANUP-1` removed public barrel paid-confirm re-exports (`settleCheckPaidById`, `settleCheckPaidByIdDetailed`). CheckService remains the I-PAY-14 execution host for `finalizeOpenCheckById`.
 
 ---
 

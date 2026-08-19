@@ -14,8 +14,6 @@ export {
   recalculateOpenCheck,
   applyCancelledOrderChargeCompensation,
   applyOpenOrderChargeReconciliation,
-  settleCheckPaidById,
-  settleCheckPaidByIdDetailed,
   settleCheckComplimentaryById,
   settleCheckComplimentaryByIdDetailed,
   voidCheckById,

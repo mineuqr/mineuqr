@@ -160,7 +160,6 @@ describe("PAYMENT-CONFIRM-REMAINING-CALLERS-1 architecture", () => {
     const allowedDirectSettle = new Set([
       PAYMENT,
       CHECK,
-      "server/operational-session/check/index.ts",
     ]);
     const scanned = [
       ...walkTs("server/diningSession"),

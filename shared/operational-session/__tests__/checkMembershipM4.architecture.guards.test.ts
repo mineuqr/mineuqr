@@ -36,8 +36,8 @@ describe("CHECK-GENERALIZATION-M4 architecture guards", () => {
     expect(svc).not.toMatch(/export async function settleCheckComplimentary\b/);
     expect(svc).not.toMatch(/export async function voidCheck\b/);
     const barrel = read("server/operational-session/index.ts");
-    expect(barrel).toContain("settleCheckPaidById");
     expect(barrel).toContain("ensureCheckForOrder");
+    expect(barrel).not.toContain("settleCheckPaidById");
     expect(barrel).not.toMatch(/\bsettleCheckPaid\b/);
     expect(barrel).not.toMatch(/\bvoidCheck\b/);
   });

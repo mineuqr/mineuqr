@@ -1153,6 +1153,11 @@ export async function ensureCheckForOrder(input: {
   });
 }
 
+/**
+ * Check implementation/test paid-finalize wrapper. Not a public Confirm API.
+ * PAYMENT-CONFIRM-COMPATIBILITY-CLEANUP-1 — application Confirm MUST enter
+ * confirmPayment. This export is not re-exported from public barrels.
+ */
 export async function settleCheckPaidById(input: {
   restaurantId: number;
   checkId: number;
@@ -1174,7 +1179,8 @@ export async function settleCheckPaidById(input: {
 /** Same as settleCheckPaidById, exposing collected Order Settlement events.
  * PAYMENT-CONFIRM-SERVICE-1 / I-PAY-14 — Confirm Payment callers enter via
  * confirmPayment, which delegates here (PAYMENT-CONFIRM-REMAINING-CALLERS-1).
- * Do not treat this export as the Payment process boundary.
+ * Check execution host, not the Payment process boundary.
+ * PAYMENT-CONFIRM-COMPATIBILITY-CLEANUP-1 — not re-exported from public barrels.
  */
 export async function settleCheckPaidByIdDetailed(input: {
   restaurantId: number;
