@@ -199,6 +199,22 @@ export function remainingCollectible(
   return formatAmount(Math.max(0, remaining));
 }
 
+/** Single Bill amountDue derivation from collection facts. */
+export function billAmountDueFromCollection(
+  grandTotal: string,
+  lines: readonly {
+    amount: string;
+    status: string;
+    paymentMethod: string;
+  }[]
+): { amountDue: string; captured: string[] } {
+  const captured = capturedCollectionAmounts(lines);
+  return {
+    captured,
+    amountDue: remainingCollectible(grandTotal, captured),
+  };
+}
+
 export function assertBillAcceptsCollection(outcome: CheckOutcome): void {
   if (outcome !== "open") {
     throw new SettlementValidationError(

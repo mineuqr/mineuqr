@@ -24,9 +24,8 @@ describe("PAYMENT-COLLECTION-ARCHITECTURE-1 architecture guards", () => {
 
   it("Check collection uses Bill remaining, not Order or Session totals", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
-    expect(svc).toContain("remainingCollectible");
+    expect(svc).toContain("billAmountDueFromCollection");
     expect(svc).toContain("listSettlementTransactionsForCheck");
-    expect(svc).toContain("capturedCollectionAmounts");
     expect(svc).not.toContain("getOrdersByIds");
     expect(svc).not.toContain("loadOrdersSubtotal");
     expect(svc).not.toMatch(/ordersTotalAmount/);
@@ -72,7 +71,7 @@ describe("PAYMENT-COLLECTION-ARCHITECTURE-1 architecture guards", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
     const paidSliceStart = svc.indexOf("async function finalizeOpenCheckById");
     const paidSlice = svc.slice(paidSliceStart, paidSliceStart + 8000);
-    expect(paidSlice).toContain("remainingCollectible");
+    expect(paidSlice).toContain("resolvePaidCollectionLines");
     expect(paidSlice).toContain("loadChargesSubtotal");
     expect(paidSlice).not.toContain("orderTotalSnapshot");
     expect(paidSlice).not.toContain("listActiveOrderIdsForCheck");

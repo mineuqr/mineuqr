@@ -246,7 +246,7 @@ describe("POS Check read by Order", () => {
 
   it("does not compute payable money; exclusive tax remains Check-owned", async () => {
     const money = computeCheckMoney({
-      ordersSubtotal: "10.00",
+      chargesSubtotal: "10.00",
       billDiscountAmount: "0.00",
       taxPolicySnapshot: {
         version: 1,

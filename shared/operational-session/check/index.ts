@@ -132,6 +132,7 @@ export {
   isCheckFullyCoveredBySettlements,
   capturedCollectionAmounts,
   remainingCollectible,
+  billAmountDueFromCollection,
   assertBillAcceptsCollection,
   PAYMENT_COLLECTION_PROGRAM_ID,
 } from "./settlementInvariants";

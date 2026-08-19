@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertBillAcceptsCollection,
   assertPaidSettlementLines,
+  billAmountDueFromCollection,
   capturedCollectionAmounts,
   complimentarySettlementLine,
   defaultPaidSettlementLine,
@@ -84,6 +85,24 @@ describe("CHECK-SETTLEMENT-METHODS-1 settlement invariants", () => {
     expect(() => remainingCollectible("10.00", ["10.01"])).toThrow(
       /exceeds Bill grandTotal/
     );
+  });
+
+  it("billAmountDueFromCollection is the single amountDue derivation", () => {
+    expect(
+      billAmountDueFromCollection("100.00", [
+        { amount: "40.00", status: "captured", paymentMethod: "cash" },
+        {
+          amount: "100.00",
+          status: "captured",
+          paymentMethod: "complimentary",
+        },
+        { amount: "10.00", status: "voided", paymentMethod: "card" },
+      ])
+    ).toEqual({ captured: ["40.00"], amountDue: "60.00" });
+    expect(billAmountDueFromCollection("25.00", [])).toEqual({
+      captured: [],
+      amountDue: "25.00",
+    });
   });
 
   it("rejects collection on terminal Bills", () => {

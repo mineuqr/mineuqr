@@ -11,6 +11,7 @@
  * REFUND-DOMAIN-IMPLEMENTATION-1 — Check Aggregate is sole Refund mutation authority (ADR-ARCH-032).
  *
  * BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 — Bill money from frozen Charges, not live Order totals.
+ * BILL-SIMPLIFICATION-1 — Bill obligation + Charge money + lifecycle; collection facts stay ST.
  * Owned by Operational Session Platform. Does not modify Order Domain.
  */
 
@@ -37,8 +38,7 @@ import {
   computeCheckMoney,
   decideCheckRecalculation,
   defaultPaidSettlementLine,
-  remainingCollectible,
-  capturedCollectionAmounts,
+  billAmountDueFromCollection,
   resolveStaffSettlementLines,
   SettlementValidationError,
   type CheckOutcome,
@@ -94,9 +94,6 @@ import {
   createPaymentOnCheck,
   failPaymentAttemptOnCheck,
   failPaymentOnCheck,
-  loadCheckOutstanding,
-  loadPaymentAttemptsForCheck,
-  loadSplitPaymentsForCheck,
   refundPaymentOnCheck,
   startPaymentAttemptOnCheck,
   succeedPaymentAttemptOnCheck,
@@ -109,8 +106,6 @@ import {
   cancelAllocationOnCheck,
   completeAllocationOnCheck,
   createAllocationOnCheck,
-  loadAllocationByIdentity,
-  loadAllocationsForSourceCheck,
   reserveAllocationOnCheck,
   reverseAllocationOnCheck,
   type CheckMultiCheckAllocationMutationResult,
@@ -210,6 +205,27 @@ export type CheckFinancialMutationResult = Readonly<{
 
 function elapsedSinceMs(startedAt: number): number {
   return Date.now() - startedAt;
+}
+
+function resolvePaidCollectionLines(input: {
+  grandTotal: string;
+  collection: readonly {
+    amount: string;
+    status: string;
+    paymentMethod: string;
+  }[];
+  settlements?: readonly StaffSettlementLineInput[];
+}): readonly SettlementTransactionInput[] {
+  const { amountDue, captured } = billAmountDueFromCollection(
+    input.grandTotal,
+    input.collection
+  );
+  if (captured.length > 0 && amountDue === "0.00") {
+    throw new SettlementValidationError("Bill is already fully collected");
+  }
+  return input.settlements?.length
+    ? resolveStaffSettlementLines(amountDue, input.settlements)
+    : [defaultPaidSettlementLine(amountDue)];
 }
 
 /**
@@ -616,17 +632,11 @@ async function finalizeOpenCheckById(
         restaurantId: input.restaurantId,
         checkId: check.id,
       });
-      const amountDue = remainingCollectible(
-        money.grandTotal,
-        capturedCollectionAmounts(existingCollection)
-      );
-      const captured = capturedCollectionAmounts(existingCollection);
-      if (captured.length > 0 && amountDue === "0.00") {
-        throw new SettlementValidationError("Bill is already fully collected");
-      }
-      settlementLines = input.settlements?.length
-        ? resolveStaffSettlementLines(amountDue, input.settlements)
-        : [defaultPaidSettlementLine(amountDue)];
+      settlementLines = resolvePaidCollectionLines({
+        grandTotal: money.grandTotal,
+        collection: existingCollection,
+        settlements: input.settlements,
+      });
     } else if (input.outcome === "complimentary") {
       settlementLines = [complimentarySettlementLine(money.grandTotal)];
     }
@@ -703,19 +713,13 @@ async function finalizeOpenCheckById(
       },
       tx
     );
-    const amountDue = remainingCollectible(
-      money.grandTotal,
-      capturedCollectionAmounts(existingCollection)
-    );
     try {
       if (input.outcome === "paid") {
-        const captured = capturedCollectionAmounts(existingCollection);
-        if (captured.length > 0 && amountDue === "0.00") {
-          throw new SettlementValidationError("Bill is already fully collected");
-        }
-        settlementLines = input.settlements?.length
-          ? resolveStaffSettlementLines(amountDue, input.settlements)
-          : [defaultPaidSettlementLine(amountDue)];
+        settlementLines = resolvePaidCollectionLines({
+          grandTotal: money.grandTotal,
+          collection: existingCollection,
+          settlements: input.settlements,
+        });
       } else if (input.outcome === "complimentary") {
         settlementLines = [complimentarySettlementLine(money.grandTotal)];
       }
@@ -731,7 +735,6 @@ async function finalizeOpenCheckById(
           metadata: {
             checkId: input.checkId,
             outcome: input.outcome,
-            amountDue,
             error: err.message,
           },
         });
@@ -1475,27 +1478,6 @@ export async function cancelSplitPaymentAttemptOnCheck(input: {
   );
 }
 
-export async function getSplitPaymentsForCheck(input: {
-  restaurantId: number;
-  checkId: number;
-}) {
-  return loadSplitPaymentsForCheck(input);
-}
-
-export async function getSplitPaymentAttemptsForCheck(input: {
-  restaurantId: number;
-  checkId: number;
-}) {
-  return loadPaymentAttemptsForCheck(input);
-}
-
-export async function getCheckOutstandingBalance(input: {
-  restaurantId: number;
-  checkId: number;
-}) {
-  return loadCheckOutstanding(input);
-}
-
 // ─── MULTI-CHECK-ALLOCATION-INTEGRATION-1 — Aggregate commands ─────
 
 export type { CheckMultiCheckAllocationMutationResult };
@@ -1588,20 +1570,6 @@ export async function cancelMultiCheckAllocationOnCheck(input: {
   return withCheckOwnedTransaction(undefined, async (tx) =>
     cancelAllocationOnCheck(input, tx)
   );
-}
-
-export async function getMultiCheckAllocationsForSourceCheck(input: {
-  restaurantId: number;
-  sourceCheckId: number;
-}) {
-  return loadAllocationsForSourceCheck(input);
-}
-
-export async function getMultiCheckAllocationByIdentity(input: {
-  restaurantId: number;
-  allocationId: string;
-}) {
-  return loadAllocationByIdentity(input);
 }
 
 /**

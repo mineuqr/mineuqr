@@ -91,6 +91,7 @@ export {
   isCheckFullyCoveredBySettlements,
   capturedCollectionAmounts,
   remainingCollectible,
+  billAmountDueFromCollection,
   assertBillAcceptsCollection,
   PAYMENT_COLLECTION_PROGRAM_ID,
   LIFECYCLE_SETTLEMENT_GUARDS_PROGRAM_ID,

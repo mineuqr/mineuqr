@@ -36,7 +36,7 @@ const multiExclusive: TaxPolicySnapshot = {
 describe("CHECK-MANAGEMENT-ARCHITECTURE-1 check money", () => {
   it("supports tax disabled (no VAT countries / businesses)", () => {
     const result = computeCheckMoney({
-      ordersSubtotal: "100.00",
+      chargesSubtotal: "100.00",
       billDiscountAmount: "0.00",
       taxPolicySnapshot: disabled,
     });
@@ -57,7 +57,7 @@ describe("CHECK-MANAGEMENT-ARCHITECTURE-1 check money", () => {
 
   it("extracts inclusive tax from taxable base", () => {
     const result = computeCheckMoney({
-      ordersSubtotal: "115.00",
+      chargesSubtotal: "115.00",
       billDiscountAmount: "0.00",
       taxPolicySnapshot: inclusive15,
     });
@@ -68,7 +68,7 @@ describe("CHECK-MANAGEMENT-ARCHITECTURE-1 check money", () => {
 
   it("applies bill-level discount before tax", () => {
     const result = computeCheckMoney({
-      ordersSubtotal: "100.00",
+      chargesSubtotal: "100.00",
       billDiscountAmount: "20.00",
       taxPolicySnapshot: exclusive15,
     });
@@ -79,7 +79,7 @@ describe("CHECK-MANAGEMENT-ARCHITECTURE-1 check money", () => {
 
   it("supports multiple tax components without single-rate hard-code", () => {
     const result = computeCheckMoney({
-      ordersSubtotal: "100.00",
+      chargesSubtotal: "100.00",
       billDiscountAmount: "0.00",
       taxPolicySnapshot: multiExclusive,
     });
