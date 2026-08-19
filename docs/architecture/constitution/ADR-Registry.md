@@ -43,6 +43,7 @@
 | ADR-ARCH-034 | Commercial Catalog Authority | **Accepted** (governance) | Architecture Authority | COMMERCIAL-ADR-REGISTRATION-1 · COMMERCIAL-CATALOG-ARCHITECTURE-1 · COMMERCIAL-PRICING-POLICY-UPDATE-1 | — | Live Plan catalog / entitlement template ≠ customer contract | **Governance only** | Rev 1.1: capabilities follow current Live Plan; price period lock is ADR-035. Catalog price edit must not rewrite Charged Terms. Does not modify Checkout, MRR code, Order, or Check Revenue (020). |
 | ADR-ARCH-035 | Commercial Price Semantics | **Accepted** (governance) | Architecture Authority | COMMERCIAL-ADR-REGISTRATION-1 · COMMERCIAL-CATALOG-ARCHITECTURE-1 · COMMERCIAL-PRICING-POLICY-UPDATE-1 | — | List / checkout / charged / renewal / upgrade / downgrade prices | **Governance only** | Rev 1.1: New Checkout and Renewal use current Offer List Price; Charged Terms locked for the current period; no lifetime lock; I-PRICE-01…07, I-PRICE-10. `subscription_plans` remains legacy charge layer. Checkout cutover design remains **open**. |
 | ADR-ARCH-036 | Commercial MRR Constitution | **Accepted** (governance) | Architecture Authority | COMMERCIAL-ADR-REGISTRATION-1 · COMMERCIAL-CATALOG-ARCHITECTURE-1 · COMMERCIAL-PRICING-POLICY-UPDATE-1 | — | Commercial recurring metric ≠ Check Revenue | **Governance only** | Rev 1.1: MRR follows current Charged Terms (I-PRICE-08/09); catalog edit during the period does not move MRR; Renewal that writes new Charged Terms does. FX policy and refund-to-binding remain **open**. Does not modify ADR-020. |
+| ADR-ARCH-037 | Payment Process Domain | **Accepted** (governance) | Architecture Authority | PAYMENT-CONSTITUTIONAL-REFINEMENT-1 | — | FSP Payment process vs Check aggregate | **Governance only** | Refines 020/023/024/026/032. Payment = process owner; Check = sole monetary aggregate. One formula `computeCheckMoney`. Collection stays ST. No payments table. I-PAY-01…18. Does not rewrite I-FIN-*. Next code: PAYMENT-CONFIRM-SERVICE-1. |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 
@@ -86,5 +87,6 @@
 | ADR-ARCH-034 | [ADR-ARCH-034-commercial-catalog-authority.md](../adrs/ADR-ARCH-034-commercial-catalog-authority.md) |
 | ADR-ARCH-035 | [ADR-ARCH-035-commercial-price-semantics.md](../adrs/ADR-ARCH-035-commercial-price-semantics.md) |
 | ADR-ARCH-036 | [ADR-ARCH-036-mrr-constitution.md](../adrs/ADR-ARCH-036-mrr-constitution.md) |
+| ADR-ARCH-037 | [ADR-ARCH-037-payment-process-domain.md](../adrs/ADR-ARCH-037-payment-process-domain.md) |
 
 **Related:** [Blueprint](../blueprints/Order-Centric-Architecture.md) · [ADR Lifecycle](../governance/ADR-Lifecycle.md)

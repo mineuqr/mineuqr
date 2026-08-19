@@ -15,6 +15,7 @@
 | **Related programs** | SETTLEMENT-RECORD-PLATFORM-1 (investigation + this ADR) · SETTLEMENT-UI-CLEANUP-1 · MULTI-CHECK-ALLOCATION-PRODUCTION-ADOPTION-1 Rev 2.0 · REPORTING-PLATFORM-ARCHITECTURE-1 · SETTLEMENT-RECORD-DOMAIN-1 (successor) |
 | **Implementation status** | **Write-side implemented** — SETTLEMENT-RECORD-IMPLEMENTATION-1 (Domain + Persistence + Check finalize integration). Reporting cutover remains SETTLEMENT-RECORD-REPORTING-ADOPTION-1. |
 | **Numbering note** | Next FSP ADR after ADR-ARCH-025. **ADR-ARCH-023 remains Financial Core Capabilities** and MUST NOT be reused. |
+| **Refined by** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) — Payment process may **call** financial finalization. Check Aggregate remains the Settlement Record **producer**. SR remains copy-only history (SR-INV-01). SR is not a Payment workspace or calculator. |
 
 ---
 

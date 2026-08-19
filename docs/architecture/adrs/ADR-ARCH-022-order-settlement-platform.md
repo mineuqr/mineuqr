@@ -14,6 +14,7 @@
 | **Related ADRs** | ADR-ARCH-001 · ADR-ARCH-002 · ADR-ARCH-003 · ADR-ARCH-007 · ADR-ARCH-019 · ADR-ARCH-020 · ADR-ARCH-021 |
 | **Related programs** | CHECK-MANAGEMENT-ARCHITECTURE-1 · CHECK-SETTLEMENT-METHODS-1 · CHECK-GENERALIZATION-* · COMPATIBILITY-CLEANUP-1 · ORDER-SETTLEMENT-ARCHITECTURE-HARDENING-1 · ORDER-SETTLEMENT-DOMAIN-1 (successor) |
 | **Implementation status** | **Not implemented** — constitutional + program architecture only; no schema/API/runtime changes authorized by this ADR alone |
+| **Refined by** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) — Order Settlement remains per-Order publication, not Bill amount authority (I-PAY-17). Payment MUST NOT derive amount due from OS amounts. |
 
 ### Revision notes
 

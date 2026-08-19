@@ -14,6 +14,7 @@
 | **Related ADRs** | ADR-ARCH-001 · ADR-ARCH-002 · ADR-ARCH-006 · ADR-ARCH-014 · ADR-ARCH-020 · ADR-ARCH-021 · ADR-ARCH-022 |
 | **Related programs** | FINANCIAL-CORE-CAPABILITIES-ARCHITECTURE-1 · successors: SPLIT-PAYMENT-ARCHITECTURE-1 · MULTI-CHECK-ALLOCATION-ARCHITECTURE-1 · OUTSTANDING-BALANCE-ARCHITECTURE-1 · REFUND-PLATFORM-ARCHITECTURE-1 · FINANCIAL-TIMELINE-ARCHITECTURE-1 |
 | **Implementation status** | **Not implemented** — constitutional + program architecture only; no schema/API/runtime changes authorized by this ADR alone |
+| **Refined by** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) — Confirm Payment is the financial **process** (calculate/collect/finalize). That process is distinct from ADR-024 Split Payment **capability**. Payment remains not an Aggregate Root (R1). Check remains the mutation root for persisted money. |
 
 ---
 

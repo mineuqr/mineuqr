@@ -8,7 +8,7 @@
 | **Prefix** | `OI-*` |
 | **Related** | [ADR-ARCH-018](../adrs/ADR-ARCH-018-ordering-client-platform.md) · [ORDERING-PLATFORM-ARCHITECTURE-1](../../engineering/programs/ORDERING-PLATFORM-ARCHITECTURE-1/ARCHITECTURE.md) · [SELF-ORDERING-KIOSK-ARCHITECTURE-1](../../engineering/programs/SELF-ORDERING-KIOSK-ARCHITECTURE-1/ARCHITECTURE.md) |
 
-Normative catalog of **Ordering Invariants**. Financial Settlement invariants remain `I-FIN-*` / `SR-INV-*` / `I-OS-*` under their ADRs and are **not** duplicated here. Financial Custody invariants remain `FC-INV-*` / `CR-INV-*` / `RRS-INV-*` under ADR-ARCH-028 / 030 / 033 and are **not** duplicated here.
+Normative catalog of **Ordering Invariants**. Financial Settlement invariants remain `I-FIN-*` / `SR-INV-*` / `I-OS-*` under their ADRs and are **not** duplicated here. Payment process invariants remain `I-PAY-*` under [ADR-ARCH-037](../adrs/ADR-ARCH-037-payment-process-domain.md) and are **not** duplicated here. Financial Custody invariants remain `FC-INV-*` / `CR-INV-*` / `RRS-INV-*` under ADR-ARCH-028 / 030 / 033 and are **not** duplicated here.
 
 ---
 

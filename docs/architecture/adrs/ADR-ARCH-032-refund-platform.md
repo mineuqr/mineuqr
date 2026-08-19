@@ -12,11 +12,12 @@
 | **Supersedes** | — |
 | **Refines** | [ADR-ARCH-020](./ADR-ARCH-020-financial-settlement-platform.md) · [ADR-ARCH-021](./ADR-ARCH-021-EVENT-IDEMPOTENCY-GOVERNANCE.md) · [ADR-ARCH-022](./ADR-ARCH-022-order-settlement-platform.md) · [ADR-ARCH-023](./ADR-ARCH-023-financial-core-capabilities.md) · [ADR-ARCH-026](./ADR-ARCH-026-settlement-record-platform.md) · [ADR-ARCH-028](./ADR-ARCH-028-cash-register-management-platform.md) · [ADR-ARCH-030](./ADR-ARCH-030-financial-shift-operational-lifecycle.md) |
 | **Does not modify** | ADR-ARCH-020 · 022 · 023 · 026 · 028 · 030 ownership of Check money, Order Settlement, Settlement Record immutability, or Register custody (additive Refund constitution only) |
-| **Related ADRs** | ADR-ARCH-001 · 002 · 003 · 006 · 014 · 020 · 021 · 022 · 023 · 024 · 025 · 026 · 028 · 030 · 031 · 033 |
+| **Related ADRs** | ADR-ARCH-001 · 002 · 003 · 006 · 014 · 020 · 021 · 022 · 023 · 024 · 025 · 026 · 028 · 030 · 031 · 033 · 037 |
 | **Related programs** | REFUND-PLATFORM-ARCHITECTURE-1 (investigation + this ADR) · FINANCIAL-CORE-CAPABILITIES-ARCHITECTURE-1 · SETTLEMENT-RECORD-PLATFORM-1 · successors listed in §22 |
 | **Investigation** | [ARCHITECTURE-INVESTIGATION.md](../../engineering/programs/REFUND-PLATFORM-ARCHITECTURE-1/ARCHITECTURE-INVESTIGATION.md) — verdict **READY FOR ADR** |
 | **Implementation status** | **Implemented (domain + SR + Register + Reporting + Presentation + Operational workflow)** — Full Refund Platform certified; Settlement Ledger executes Refund via CheckService façade (REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1). |
 | **Numbering note** | Next FSP capability ADR after ADR-ARCH-031. **ADR-ARCH-023 remains Financial Core Capabilities** and MUST NOT be reused. |
+| **Refined by** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) — Payment owns the Refund **command/process** boundary. Check remains the mutation root. `refundableBalance` / `calculateRefundBudget` remain Settlement Record history law. `applyRefundOnCheck` may be hosted on CheckService until a Payment façade exists. No refunds table. |
 
 ---
 
