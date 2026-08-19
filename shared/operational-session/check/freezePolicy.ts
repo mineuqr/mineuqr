@@ -34,6 +34,9 @@ import { isOpenCheckOutcome, isTerminalCheckOutcome } from "./checkContract";
 export const CHECK_FREEZE_POLICY_ID =
   "CHECK-MANAGEMENT-ARCHITECTURE-1/freeze-v1" as const;
 
+export const BILL_FINANCIAL_LIFECYCLE_PROGRAM_ID =
+  "BILL-FINANCIAL-LIFECYCLE-HARDENING-1" as const;
+
 export type CheckRecalculationDecision =
   | { allowed: true; reason: "open_check" }
   | { allowed: false; reason: "totals_frozen_terminal" | "unknown_outcome" };
@@ -53,4 +56,12 @@ export function decideCheckRecalculation(
 
 export function snapshotsAreImmutable(): true {
   return true;
+}
+
+/** OPEN is the only financially mutable Bill state. */
+export function isCheckFinanciallyMutable(
+  outcome: CheckOutcome,
+  totalsFrozenAt: string | null
+): boolean {
+  return decideCheckRecalculation(outcome, totalsFrozenAt).allowed;
 }

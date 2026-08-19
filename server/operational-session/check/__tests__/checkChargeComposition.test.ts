@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   findCheckById: vi.fn(),
+  touchOpenCheck: vi.fn(),
   listCheckCharges: vi.fn(),
   nextCheckChargeSequence: vi.fn(),
   insertCheckCharge: vi.fn(),
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../checkRepository", () => ({
   findCheckById: (...a: unknown[]) => mocks.findCheckById(...a),
+  touchOpenCheck: (...a: unknown[]) => mocks.touchOpenCheck(...a),
 }));
 
 vi.mock("../checkChargeRepository", () => ({
@@ -60,6 +62,7 @@ describe("checkChargeComposition", () => {
     mocks.insertCheckCharge.mockResolvedValue(undefined);
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([]);
     mocks.getOrderItemsByOrderId.mockResolvedValue([]);
+    mocks.touchOpenCheck.mockResolvedValue(1);
   });
 
   it("loadChargesSubtotal sums persisted Charges only", async () => {
@@ -322,6 +325,7 @@ describe("checkChargeComposition", () => {
       orderId: 55,
     });
     expect(result.applied).toBe(false);
+    expect(result.blocked).toBe("terminal");
     expect(mocks.insertCheckCharge).not.toHaveBeenCalled();
     expect(mocks.getOrderById).not.toHaveBeenCalled();
   });
@@ -337,6 +341,28 @@ describe("checkChargeComposition", () => {
       orderId: 55,
     });
     expect(result.applied).toBe(false);
+    expect(result.blocked).toBe("terminal");
+    expect(mocks.insertCheckCharge).not.toHaveBeenCalled();
+  });
+
+  it("does not insert Charges when the OPEN-row lock is lost", async () => {
+    mocks.findCheckById.mockResolvedValue(openCheckRow);
+    mocks.touchOpenCheck.mockResolvedValue(0);
+    mocks.getOrderById.mockResolvedValue({
+      id: 55,
+      restaurantId: 1,
+      status: "pending",
+    });
+    mocks.getOrderItemsByOrderId.mockResolvedValue([
+      { id: 7, nameEn: "Tea", price: "6.00", quantity: 2 },
+    ]);
+    const result = await reconcileOpenOrderCharges({
+      restaurantId: 1,
+      checkId: 10,
+      orderId: 55,
+    });
+    expect(result.applied).toBe(false);
+    expect(result.blocked).toBe("terminal");
     expect(mocks.insertCheckCharge).not.toHaveBeenCalled();
   });
 

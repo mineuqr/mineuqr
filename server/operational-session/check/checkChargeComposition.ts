@@ -16,7 +16,7 @@ import {
   planOpenChargeCorrections,
   type IntendedChargeLine,
 } from "@shared/operational-session/check/charge";
-import { findCheckById } from "./checkRepository";
+import { findCheckById, touchOpenCheck } from "./checkRepository";
 import { parseCurrencySnapshot } from "./checkMapper";
 import {
   findBlockingMembershipForOrder,
@@ -36,6 +36,8 @@ function isDuplicateChargeKeyError(error: unknown): boolean {
 export type OpenOrderChargeReconcileResult = {
   checkId: number | null;
   applied: boolean;
+  /** Set when Charge mutation is refused because the Bill is already terminal. */
+  blocked?: "terminal";
 };
 
 export async function loadChargesSubtotal(
@@ -139,7 +141,7 @@ async function reconcileOpenOrderChargesOnce(
     }
     checkId = blocking.membership.checkId;
     if (blocking.checkOutcome !== "open") {
-      return { checkId, applied: false };
+      return { checkId, applied: false, blocked: "terminal" };
     }
   }
 
@@ -148,7 +150,7 @@ async function reconcileOpenOrderChargesOnce(
     throw new ChargeCompositionError("Check not found for Charge snapshot");
   }
   if (row.outcome !== "open") {
-    return { checkId, applied: false };
+    return { checkId, applied: false, blocked: "terminal" };
   }
 
   const order = await getOrderById(input.orderId);
@@ -173,6 +175,14 @@ async function reconcileOpenOrderChargesOnce(
   });
   if (plan.length === 0) {
     return { checkId, applied: false };
+  }
+
+  const locked = await touchOpenCheck(
+    { restaurantId: input.restaurantId, checkId },
+    client
+  );
+  if (locked === 0) {
+    return { checkId, applied: false, blocked: "terminal" };
   }
 
   const currencyCode = parseCurrencySnapshot(row.currencySnapshotJson).currencyCode;

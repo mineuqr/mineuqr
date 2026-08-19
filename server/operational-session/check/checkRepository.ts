@@ -9,7 +9,10 @@ import {
   type SelectOperationalCheck,
 } from "../../../drizzle/schema";
 import { getDb } from "../../db";
-import { DiningSessionUnavailableError } from "../../diningSession/sessionTypes";
+import {
+  DiningSessionUnavailableError,
+  formatDiningSessionTimestamp,
+} from "../../diningSession/sessionTypes";
 import type { SessionDbClient } from "../../diningSession/sessionRepository";
 import type {
   CheckOutcome,
@@ -135,6 +138,32 @@ export async function updateCheckMoney(
         eq(operationalChecks.outcome, "open")
       )
     );
+}
+
+/**
+ * Row lock for OPEN-Bill financial mutation (Charge insert or terminal finalize).
+ * UPDATE WHERE outcome='open' — 0 rows means the Bill is already terminal.
+ */
+export async function touchOpenCheck(
+  input: { checkId: number; restaurantId: number },
+  client?: SessionDbClient
+): Promise<number> {
+  const db = await resolveDb(client);
+  const result = await db
+    .update(operationalChecks)
+    .set({
+      updatedAt: formatDiningSessionTimestamp(),
+    })
+    .where(
+      and(
+        eq(operationalChecks.id, input.checkId),
+        eq(operationalChecks.restaurantId, input.restaurantId),
+        eq(operationalChecks.outcome, "open")
+      )
+    );
+  return (
+    (result[0] as { affectedRows?: number } | undefined)?.affectedRows ?? 0
+  );
 }
 
 /**

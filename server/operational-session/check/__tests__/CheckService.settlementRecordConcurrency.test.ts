@@ -307,6 +307,9 @@ vi.mock("../checkRepository", () => ({
   findOpenCheckBySessionId: vi.fn(),
   insertOperationalCheck: vi.fn(),
   updateCheckMoney: vi.fn(),
+  touchOpenCheck: vi.fn(async () =>
+    harness.store.outcome === "open" ? 1 : 0
+  ),
   findCheckById: vi.fn(async (_id: number, client?: { __tx?: string }) => {
     if (!client) {
       await harness.awaitPreTxBarrier("pre-tx");

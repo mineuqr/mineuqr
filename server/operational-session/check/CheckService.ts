@@ -52,6 +52,7 @@ import {
   findCheckById,
   findOpenCheckBySessionId,
   insertOperationalCheck,
+  touchOpenCheck,
   updateCheckMoney,
 } from "./checkRepository";
 import { insertSettlementTransactions } from "./settlementTransactionRepository";
@@ -547,6 +548,19 @@ async function finalizeOpenCheckById(
     throw new DiningSessionUnavailableError("Check not found");
   }
   if (check.outcome !== "open") {
+    opsLog({
+      type: OPS_EVENT.check_terminal_transition_rejected,
+      category: "ORDER",
+      severity: "warn",
+      ts: new Date().toISOString(),
+      restaurantId: input.restaurantId,
+      action: "finalizeOpenCheckById",
+      metadata: {
+        checkId: input.checkId,
+        currentOutcome: check.outcome,
+        requestedOutcome: input.outcome,
+      },
+    });
     throw new CheckTransitionError(
       `Cannot finalize check from outcome ${check.outcome}`
     );
@@ -562,7 +576,7 @@ async function finalizeOpenCheckById(
     checkId: check.id,
   });
   const orderDiscoveryMs = elapsedSinceMs(orderDiscoveryStartedAt);
-  const money = computeCheckMoney({
+  let money = computeCheckMoney({
     chargesSubtotal,
     billDiscountAmount: check.billDiscountAmount,
     taxPolicySnapshot: check.taxPolicySnapshot,
@@ -618,6 +632,58 @@ async function finalizeOpenCheckById(
   const financial = await withCheckOwnedTransaction(
     client,
     async (tx) => {
+    const locked = await touchOpenCheck(
+      { checkId: check.id, restaurantId: input.restaurantId },
+      tx
+    );
+    if (locked === 0) {
+      const current = await findCheckById(check.id, tx);
+      opsLog({
+        type: OPS_EVENT.check_terminal_transition_rejected,
+        category: "ORDER",
+        severity: "warn",
+        ts: new Date().toISOString(),
+        restaurantId: input.restaurantId,
+        action: "finalizeOpenCheckById",
+        metadata: {
+          checkId: input.checkId,
+          currentOutcome: current?.outcome ?? "unknown",
+          requestedOutcome: input.outcome,
+          reason: "open_row_lock_lost",
+        },
+      });
+      throw new CheckTransitionError(
+        `Cannot finalize check from outcome ${current?.outcome ?? "unknown"}`
+      );
+    }
+
+    const latestChargesSubtotal = await loadChargesSubtotal(
+      {
+        restaurantId: input.restaurantId,
+        checkId: check.id,
+      },
+      tx
+    );
+    money = computeCheckMoney({
+      chargesSubtotal: latestChargesSubtotal,
+      billDiscountAmount: check.billDiscountAmount,
+      taxPolicySnapshot: check.taxPolicySnapshot,
+    });
+    try {
+      if (input.outcome === "paid") {
+        settlementLines = input.settlements?.length
+          ? resolveStaffSettlementLines(money.grandTotal, input.settlements)
+          : [defaultPaidSettlementLine(money.grandTotal)];
+      } else if (input.outcome === "complimentary") {
+        settlementLines = [complimentarySettlementLine(money.grandTotal)];
+      }
+    } catch (err) {
+      if (err instanceof SettlementValidationError) {
+        throw new DiningSessionValidationError(err.message);
+      }
+      throw err;
+    }
+
     const ownedRows = await finalizeCheckOutcome(
       {
         checkId: check.id,
@@ -1156,13 +1222,31 @@ export async function applyCancelledOrderChargeCompensation(input: {
 
 /**
  * BILL-CHARGE-COMPOSITION-HARDENING-1 — OPEN-Bill item composition correction.
- * Does not load Orders from Bill calculation. Terminal Bills are unchanged.
+ * Does not load Orders from Bill calculation.
+ * Explicit correction of a terminal Bill throws CheckTransitionError.
  */
 export async function applyOpenOrderChargeReconciliation(input: {
   restaurantId: number;
   orderId: number;
 }): Promise<{ checkId: number | null; applied: boolean }> {
   const result = await reconcileOpenOrderCharges(input);
+  if (result.blocked === "terminal") {
+    opsLog({
+      type: OPS_EVENT.check_charge_on_terminal_rejected,
+      category: "ORDER",
+      severity: "warn",
+      ts: new Date().toISOString(),
+      restaurantId: input.restaurantId,
+      action: "applyOpenOrderChargeReconciliation",
+      metadata: {
+        orderId: input.orderId,
+        checkId: result.checkId,
+      },
+    });
+    throw new CheckTransitionError(
+      `Cannot mutate charges on a terminal check`
+    );
+  }
   if (result.applied && result.checkId != null) {
     await recalculateOpenCheck({
       restaurantId: input.restaurantId,

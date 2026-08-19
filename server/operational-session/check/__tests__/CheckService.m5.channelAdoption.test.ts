@@ -59,6 +59,7 @@ vi.mock("../checkRepository", () => ({
   insertOperationalCheck: (...a: unknown[]) => mocks.insertOperationalCheck(...a),
   updateCheckMoney: (...a: unknown[]) => mocks.updateCheckMoney(...a),
   finalizeCheckOutcome: vi.fn(),
+  touchOpenCheck: vi.fn(async () => 1),
 }));
 
 vi.mock("../settlementTransactionRepository", () => ({

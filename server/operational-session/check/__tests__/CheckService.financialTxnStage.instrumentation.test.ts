@@ -47,6 +47,7 @@ vi.mock("../checkRepository", () => ({
   insertOperationalCheck: vi.fn(),
   updateCheckMoney: vi.fn(),
   finalizeCheckOutcome: (...a: unknown[]) => mocks.finalizeCheckOutcome(...a),
+  touchOpenCheck: vi.fn(async () => 1),
 }));
 
 vi.mock("../settlementTransactionRepository", () => ({
@@ -260,8 +261,8 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1", () => {
         ? openCheck
         : { ...openCheck, outcome: "paid" as const };
     });
-    mocks.loadChargesSubtotal.mockImplementation(async () => {
-      await delay(50);
+    mocks.loadChargesSubtotal.mockImplementation(async (_input, client) => {
+      if (client == null) await delay(50);
       return "20.00";
     });
     mocks.resolveSettlementContextForSettle.mockImplementation(async () => {

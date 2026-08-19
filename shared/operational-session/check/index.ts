@@ -58,7 +58,9 @@ export {
 
 export {
   CHECK_FREEZE_POLICY_ID,
+  BILL_FINANCIAL_LIFECYCLE_PROGRAM_ID,
   decideCheckRecalculation,
+  isCheckFinanciallyMutable,
   snapshotsAreImmutable,
   type CheckRecalculationDecision,
 } from "./freezePolicy";
