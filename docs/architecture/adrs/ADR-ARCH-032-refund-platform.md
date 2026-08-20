@@ -17,7 +17,8 @@
 | **Investigation** | [ARCHITECTURE-INVESTIGATION.md](../../engineering/programs/REFUND-PLATFORM-ARCHITECTURE-1/ARCHITECTURE-INVESTIGATION.md) — verdict **READY FOR ADR** |
 | **Implementation status** | **Implemented (domain + SR + Register + Reporting + Presentation + Operational workflow)** — Full Refund Platform certified; Settlement Ledger executes Refund via CheckService façade (REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1). |
 | **Numbering note** | Next FSP capability ADR after ADR-ARCH-031. **ADR-ARCH-023 remains Financial Core Capabilities** and MUST NOT be reused. |
-| **Refined by** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) — Payment owns the Refund **command/process** boundary. Check remains the mutation root. `refundableBalance` / `calculateRefundBudget` remain Settlement Record history law. `applyRefundOnCheck` may be hosted on CheckService until a Payment façade exists. No refunds table. |
+| **Refined by** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) — Payment owns the Refund **command/process** boundary. Check remains the mutation root **on non-adopted channels**. `refundableBalance` / `calculateRefundBudget` remain Settlement Record history law until ADR-ARCH-039 adoption. `applyRefundOnCheck` may be hosted on CheckService until a Payment façade exists. No refunds table. |
+| **Partially superseded by** | [ADR-ARCH-039](./ADR-ARCH-039-payment-collection-financial-authority.md) — Compensating-event **mechanism** retained. Refund **origin** on certified adopted channels is the Collection Fact (I-REF-C-01). **No runtime change from 039.** |
 
 ---
 

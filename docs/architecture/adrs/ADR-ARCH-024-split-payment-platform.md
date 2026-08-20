@@ -14,7 +14,8 @@
 | **Related ADRs** | ADR-ARCH-020 · ADR-ARCH-021 · ADR-ARCH-022 · ADR-ARCH-023 · ADR-ARCH-025 |
 | **Related programs** | SPLIT-PAYMENT-ARCHITECTURE-1 · SPLIT-PAYMENT-DOMAIN-1 (successor) · MULTI-CHECK-ALLOCATION-ARCHITECTURE-1 · OUTSTANDING-BALANCE-ARCHITECTURE-1 · FINANCIAL-TIMELINE-ARCHITECTURE-1 |
 | **Implementation status** | **Not implemented** — constitutional + program architecture only; no schema/API/runtime changes authorized by this ADR alone |
-| **Refined by** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) — Cashier Mixed (تسوية) is cash+network collection at Confirm Payment, persisted as SettlementTransaction lines. It is **not** this Split Payment capability. Payment Finality ≠ Settlement Finality remains law for incremental FSP Payments. Cashier Confirm MAY atomically collect and settle in the certified Check TX. |
+| **Refined by** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) — Cashier Mixed (تسوية) is cash+network collection at Confirm Payment, persisted as SettlementTransaction lines. It is **not** this Split Payment capability. Payment Finality ≠ Settlement Finality remains law for incremental FSP Payments. Cashier Confirm MAY atomically collect and settle in the certified Check TX **until ADR-ARCH-039 Cashier adoption**. |
+| **Amended by** | [ADR-ARCH-039](./ADR-ARCH-039-payment-collection-financial-authority.md) — Payment Success ≠ Settlement **retained**. Collection Fact supplies the missing collection identity. Cashier atomic Check settle remains **runtime** until adoption certification. |
 
 ---
 

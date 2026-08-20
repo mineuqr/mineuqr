@@ -11,7 +11,8 @@
 | **Revision** | **1.0** |
 | **Supersedes** | — |
 | **Refines** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) (Cashier Confirm sequencing) · [ADR-ARCH-020](./ADR-ARCH-020-financial-settlement-platform.md) (when OPEN Check appears for `cashier_pos`) |
-| **Does not modify** | I-FIN-01…12 monetary-aggregate law · I-PAY-01…18 process-vs-record law (except as **extended** below) · I-OS-* · SR-INV-* · Charge composition ownership · CRMP custody (028/030/033) · Business Tax Policy model · Order aggregate law |
+| **Does not modify** | I-FIN-01…12 monetary-aggregate law · I-PAY-01…18 process-vs-record law (except as **extended** below) · I-OS-* · SR-INV-* · Charge composition ownership · CRMP custody (028/030/033) · Business Tax Policy model · Order aggregate law — **until ADR-ARCH-039 certified adoption**, which **retains I-PAY-19** and **partially supersedes §7** (OS/SR in Confirm) only after Revenue reads Collection Facts |
+| **Partially superseded by** | [ADR-ARCH-039](./ADR-ARCH-039-payment-collection-financial-authority.md) — Target Cashier completion is Collection Fact COMMIT, not Check+OS+SR. **Until Cashier adoption is certified, this ADR’s §7 remains runtime law.** |
 | **Related ADRs** | ADR-ARCH-001 · 002 · 006 · 014 · 019 · 020 · 021 · 022 · 023 · 024 · 026 · 028 · 030 · 037 |
 | **Related programs** | PAYMENT-CASHIER-DIRECT-FINANCIAL-COMMIT-ARCHITECTURE-1 · PAYMENT-READINESS-CHECK-ENSURE-FORENSICS-1 · PAYMENT-READINESS-CHECK-ENSURE-STAGE-INSTRUMENTATION-1 · POS-CHECK-INTAKE-IMPLEMENTATION-1 · POS-SETTLEMENT-INITIATE-IMPLEMENTATION-1 · PAYMENT-CONFIRM-SERVICE-1 |
 | **Implementation status** | **Governance only.** This ADR authorizes **no** production code, schema, migration, or runtime change. Successor: `PAYMENT-CASHIER-DIRECT-FINANCIAL-COMMIT-IMPLEMENTATION-1`. |

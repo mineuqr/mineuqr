@@ -12,7 +12,8 @@
 | **Refines** | CHECK-MANAGEMENT-ARCHITECTURE-1 · CHECK-SETTLEMENT-METHODS-1 (Session-mandatory Check binding); ADR-ARCH-002 (financial SSOT); ADR-ARCH-003 (settlement ownership); ADR-ARCH-010 (Session integration remains event-driven; financial enrollment is Check-owned) |
 | **Implementation status** | Not implemented — constitutional decision only; no schema/API/runtime changes authorized by this ADR alone |
 | **Related investigations** | SALES-SETTLEMENT-PLATFORM-ARCHITECTURE-1 · CHECK-GENERALIZATION-ARCHITECTURE-1 |
-| **Refined by** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) — Payment is the financial **process** owner. Check remains the sole monetary **aggregate** (R5 / I-FIN-01 unchanged). I-FIN-04 MUST NOT be read as live Order totals for Bill amount; Charge composition + `computeCheckMoney` is the certified obligation path. |
+| **Refined by** | [ADR-ARCH-037](./ADR-ARCH-037-payment-process-domain.md) — Payment is the financial **process** owner. Check remains the sole monetary **aggregate** (R5 / I-FIN-01) **until a channel is certified under ADR-ARCH-039**. I-FIN-04 MUST NOT be read as live Order totals for Bill amount; Charge composition + `computeCheckMoney` is the certified obligation path. |
+| **Partially superseded by** | [ADR-ARCH-039](./ADR-ARCH-039-payment-collection-financial-authority.md) — On **certified adopted** channels, Collection Fact is monetary/Revenue authority; Check remains the operational bill. **Runtime unchanged** until adoption certification. I-FIN-01/02 remain binding for all non-adopted collections. |
 
 ---
 
