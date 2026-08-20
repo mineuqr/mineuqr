@@ -142,6 +142,7 @@ import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextR
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import { ensureRemainingCashierDownstreamSettlement } from "../payment/cashier-downstream-recovery/cashierDownstreamSettlementRecovery";
+import { continueAfterCashierHttp } from "../payment/cashier-downstream-recovery/continueAfterCashierHttp";
 import {
   createEmptyChargeInsertTiming,
   createEmptyEnsureCheckForOrderStageMs,
@@ -1811,27 +1812,29 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
   };
 
   if (input.deferOperationalSettlementAfterCollectionFact === true) {
-    void completeCashierOperationalSettlementAfterCollectionFact({
-      restaurantId: input.restaurantId,
-      checkId: financial.check.id,
-      settlements: input.settlements,
-      settlementContext: input.settlementContext,
-      settlementContextHints: input.settlementContextHints,
-    }).catch((err: unknown) => {
-      opsLog({
-        type: OPS_EVENT.check_operational_settlement_deferred_failed,
-        category: "ORDER",
-        severity: "warn",
-        ts: new Date().toISOString(),
+    continueAfterCashierHttp(
+      completeCashierOperationalSettlementAfterCollectionFact({
         restaurantId: input.restaurantId,
-        action: "completeCashierOperationalSettlementAfterCollectionFact",
-        metadata: {
-          checkId: financial.check.id,
-          orderId: input.orderId,
-          error: err instanceof Error ? err.message : String(err),
-        },
-      });
-    });
+        checkId: financial.check.id,
+        settlements: input.settlements,
+        settlementContext: input.settlementContext,
+        settlementContextHints: input.settlementContextHints,
+      }).catch((err: unknown) => {
+        opsLog({
+          type: OPS_EVENT.check_operational_settlement_deferred_failed,
+          category: "ORDER",
+          severity: "warn",
+          ts: new Date().toISOString(),
+          restaurantId: input.restaurantId,
+          action: "completeCashierOperationalSettlementAfterCollectionFact",
+          metadata: {
+            checkId: financial.check.id,
+            orderId: input.orderId,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
+      })
+    );
     return result;
   }
 

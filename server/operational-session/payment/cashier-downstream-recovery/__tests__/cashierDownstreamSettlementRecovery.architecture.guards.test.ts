@@ -28,7 +28,8 @@ describe("CASHIER-DOWNSTREAM-SETTLEMENT-RECOVERY-1 architecture", () => {
   it("recovery begins after financial commit and does not block HTTP", () => {
     const check = read("server/operational-session/check/CheckService.ts");
     const cashier = sliceSettleCashier(check);
-    expect(cashier).toContain("void completeCashierOperationalSettlementAfterCollectionFact");
+    expect(cashier).toContain("continueAfterCashierHttp");
+    expect(cashier).toContain("completeCashierOperationalSettlementAfterCollectionFact");
     expect(cashier).not.toContain(
       "await completeCashierOperationalSettlementAfterCollectionFact"
     );
@@ -97,5 +98,38 @@ describe("CASHIER-DOWNSTREAM-SETTLEMENT-RECOVERY-1 architecture", () => {
     expect(pos).toContain("scheduleCashierDownstreamSettlementRecovery");
     expect(pos).not.toContain("await recoverCashierDownstreamSettlementObligation");
     expect(pos).not.toContain("await sweepIncompleteCashierDownstreamSettlements");
+  });
+});
+
+describe("CASHIER-DOWNSTREAM-SETTLEMENT-RECOVERY-2 architecture", () => {
+  it("Production Vercel cron invokes the durable sweep without awaiting ST on Confirm", () => {
+    const vercelJson = read("vercel.json");
+    const app = read("server/_core/createApiApp.ts");
+    const http = read(
+      "server/operational-session/payment/cashier-downstream-recovery/cashierDownstreamSettlementRecoveryHttp.ts"
+    );
+    const pos = read("server/pos/services/PosSettlementInitiateService.ts");
+    const recovery = read(
+      "client/src/lib/cashier-workspace/cashierSettlementRecovery.ts"
+    );
+    expect(vercelJson).toContain("/api/internal/cashier-downstream-recovery/sweep");
+    expect(vercelJson).toContain("* * * * *");
+    expect(app).toContain("registerCashierDownstreamSettlementRecoveryHttp");
+    expect(http).toContain("CRON_SECRET");
+    expect(http).toContain("sweepIncompleteCashierDownstreamSettlements");
+    expect(pos).toContain("findProductionCollectionFactByOrderId");
+    expect(pos).toContain("existingFact?.checkId");
+    expect(recovery).toContain("check.financiallyPaid === true");
+  });
+
+  it("does not restore HTTP awaiting of ST OS SR or add migration 0098", () => {
+    const check = read("server/operational-session/check/CheckService.ts");
+    const cashier = sliceSettleCashier(check);
+    const journal = read("drizzle/meta/_journal.json");
+    expect(cashier).not.toContain(
+      "await completeCashierOperationalSettlementAfterCollectionFact"
+    );
+    expect(cashier).not.toContain("await insertSettlementTransactions");
+    expect(journal).not.toContain("0098");
   });
 });

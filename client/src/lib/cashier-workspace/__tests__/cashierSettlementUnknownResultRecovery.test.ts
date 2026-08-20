@@ -238,7 +238,7 @@ describe("recoverCashierUnknownSettlement", () => {
     expect(settleWrites).toBe(0);
   });
 
-  it("TEST 6: open Check stays unpaid", async () => {
+  it("TEST 6: open Check without Collection Fact stays unpaid", async () => {
     const result = await recoverCashierUnknownSettlement({
       restaurantId: 1,
       orderId: 55,
@@ -253,6 +253,27 @@ describe("recoverCashierUnknownSettlement", () => {
       kind: "PAYMENT_NOT_CONFIRMED",
       reason: "open",
     });
+  });
+
+  it("treats OPEN Check + financiallyPaid Collection Fact as PAYMENT_CONFIRMED", async () => {
+    const result = await recoverCashierUnknownSettlement({
+      restaurantId: 1,
+      orderId: 55,
+      readers: {
+        readCheck: async () => ({
+          ...paidCheck,
+          outcome: "open",
+          financiallyPaid: true,
+          collectionFactId: "pcf_1",
+        }),
+        readSettlementRecords: async () => [settlementRecord],
+      },
+    });
+    expect(result.kind).toBe("PAYMENT_CONFIRMED");
+    if (result.kind === "PAYMENT_CONFIRMED") {
+      expect(result.paid.checkId).toBe(9);
+      expect(result.paid.grandTotal).toBe("11.50");
+    }
   });
 
   it("TEST 9/10: complimentary and voided never become Paid", async () => {

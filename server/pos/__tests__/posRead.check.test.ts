@@ -95,7 +95,7 @@ function service(args: {
   store: InMemoryPosTerminalStore;
   order?: { id: number; restaurantId: number } | null;
   membership?: { checkId: number; checkOutcome: string } | null;
-  check?: {
+    check?: {
     id: number;
     restaurantId: number;
     outcome: string;
@@ -104,6 +104,7 @@ function service(args: {
     taxAmount: string;
     billDiscountAmount?: string;
   } | null;
+  collectionFact?: { collectionFactId: string; checkId: number | null } | null;
 }) {
   return new PosCheckReadService(
     args.grants,
@@ -120,7 +121,8 @@ function service(args: {
             ...args.check,
             billDiscountAmount: args.check.billDiscountAmount ?? "0.00",
           }
-        : null
+        : null,
+    async () => args.collectionFact ?? null
   );
 }
 
@@ -175,6 +177,8 @@ describe("POS Check read by Order", () => {
       subtotal: "10.00",
       taxAmount: "1.50",
       billDiscountAmount: "0.00",
+      collectionFactId: null,
+      financiallyPaid: false,
     });
   });
 
@@ -198,6 +202,81 @@ describe("POS Check read by Order", () => {
       },
     });
     expect(result).toBeNull();
+  });
+
+  it("treats a production Collection Fact as financially paid while Check remains OPEN", async () => {
+    const store = new InMemoryPosTerminalStore();
+    const grants = new InMemoryPosPermissionGrantStore();
+    await seedTerminal(store);
+    await grant(grants);
+    const result = await service({
+      grants,
+      store,
+      order: { id: 55, restaurantId: RESTAURANT_A },
+      membership: { checkId: 9, checkOutcome: "open" },
+      check: {
+        id: 9,
+        restaurantId: RESTAURANT_A,
+        outcome: "open",
+        grandTotal: "11.50",
+        subtotal: "10.00",
+        taxAmount: "1.50",
+        billDiscountAmount: "0.00",
+      },
+      collectionFact: { collectionFactId: "pcf_1", checkId: 9 },
+    }).getByOrder({
+      user: user(STAFF_A),
+      command: {
+        restaurantId: RESTAURANT_A,
+        terminalId: TERMINAL_A,
+        orderId: 55,
+      },
+    });
+    expect(result).toEqual({
+      checkId: 9,
+      orderId: 55,
+      restaurantId: RESTAURANT_A,
+      outcome: "open",
+      grandTotal: "11.50",
+      subtotal: "10.00",
+      taxAmount: "1.50",
+      billDiscountAmount: "0.00",
+      collectionFactId: "pcf_1",
+      financiallyPaid: true,
+    });
+  });
+
+  it("returns the Check from Collection Fact when membership is missing after commit", async () => {
+    const store = new InMemoryPosTerminalStore();
+    const grants = new InMemoryPosPermissionGrantStore();
+    await seedTerminal(store);
+    await grant(grants);
+    const result = await service({
+      grants,
+      store,
+      order: { id: 55, restaurantId: RESTAURANT_A },
+      membership: null,
+      check: {
+        id: 9,
+        restaurantId: RESTAURANT_A,
+        outcome: "open",
+        grandTotal: "11.50",
+        subtotal: "10.00",
+        taxAmount: "1.50",
+        billDiscountAmount: "0.00",
+      },
+      collectionFact: { collectionFactId: "pcf_1", checkId: 9 },
+    }).getByOrder({
+      user: user(STAFF_A),
+      command: {
+        restaurantId: RESTAURANT_A,
+        terminalId: TERMINAL_A,
+        orderId: 55,
+      },
+    });
+    expect(result?.financiallyPaid).toBe(true);
+    expect(result?.outcome).toBe("open");
+    expect(result?.checkId).toBe(9);
   });
 
   it("returns not_found when membership exists but Check is missing", async () => {

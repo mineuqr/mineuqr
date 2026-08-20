@@ -190,6 +190,8 @@ export const OPS_EVENT = {
     "cashier_downstream_settlement_recovery_failed",
   cashier_downstream_settlement_recovery_attention:
     "cashier_downstream_settlement_recovery_attention",
+  cashier_downstream_settlement_recovery_sweep:
+    "cashier_downstream_settlement_recovery_sweep",
   check_terminal_transition_rejected: "check_terminal_transition_rejected",
   check_charge_on_terminal_rejected: "check_charge_on_terminal_rejected",
   check_collection_rejected: "check_collection_rejected",

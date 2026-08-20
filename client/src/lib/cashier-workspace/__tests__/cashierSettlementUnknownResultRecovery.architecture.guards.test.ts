@@ -60,15 +60,16 @@ describe("CASHIER-SETTLEMENT-UNKNOWN-RESULT-RECOVERY-1 architecture", () => {
     expect(recovery).not.toContain("idempotencyKey");
   });
 
-  it("does not treat complimentary, voided, or open as Paid", () => {
+  it("does not treat complimentary or voided as Paid; OPEN without Collection Fact stays unpaid", () => {
     const recovery = read(RECOVERY);
     expect(recovery).toContain('check.outcome === "paid"');
+    expect(recovery).toContain("check.financiallyPaid === true");
     expect(recovery).toContain('reason: "complimentary"');
     expect(recovery).toContain('reason: "voided"');
     expect(recovery).toContain('reason: "open"');
     expect(recovery).toContain("PAYMENT_CONFIRMED_RECEIPT_INCOMPLETE");
     expect(recovery).toContain(
-      "Check paid is money truth. Missing SR read is receipt gap, not unpaid."
+      "Collection Fact is money truth. Missing SR is a receipt gap, not unpaid."
     );
   });
 

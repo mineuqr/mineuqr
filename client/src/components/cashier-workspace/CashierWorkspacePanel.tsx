@@ -705,16 +705,6 @@ export function CashierWorkspacePanel({
         result.checkId
       );
       let settlementRecordId = result.settlementRecordId;
-      if (!settlementRecordId) {
-        try {
-          settlementRecordId = await rediscoverSettlementRecordId(
-            result.checkId,
-            result.orderId
-          );
-        } catch {
-          settlementRecordId = null;
-        }
-      }
       const paid: PaidCheckoutResult = {
         checkId: result.checkId,
         orderId: result.orderId,
@@ -740,6 +730,14 @@ export function CashierWorkspacePanel({
       setPaidCheckout(paid);
       if (paid.settlementRecordId) {
         setPrintOpen(true);
+      } else {
+        void rediscoverSettlementRecordId(result.checkId, result.orderId)
+          .then((id) => {
+            if (!id) return;
+            setPaidCheckout({ ...paid, settlementRecordId: id });
+            setPrintOpen(true);
+          })
+          .catch(() => undefined);
       }
     } catch (error) {
       const gap = classifyCashierRegisterGap(error);

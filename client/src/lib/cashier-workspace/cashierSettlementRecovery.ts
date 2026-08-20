@@ -25,6 +25,8 @@ export type CashierCheckRecoveryView = {
   restaurantId: number;
   outcome: string;
   grandTotal: string;
+  collectionFactId?: string | null;
+  financiallyPaid?: boolean;
 };
 
 export type CashierSettlementRecordRecoveryView = {
@@ -81,6 +83,9 @@ export function evaluateRecoveredCheckOutcome(input: {
   if (check.restaurantId !== input.restaurantId) return { status: "invalid" };
   if (check.orderId !== input.orderId) return { status: "invalid" };
   if (check.outcome === "paid") return { status: "paid", check };
+  if (check.outcome === "open" && check.financiallyPaid === true) {
+    return { status: "paid", check };
+  }
   if (check.outcome === "open") return { status: "open" };
   if (check.outcome === "complimentary") return { status: "complimentary" };
   if (check.outcome === "voided") return { status: "voided" };
@@ -173,7 +178,9 @@ export type CashierSettlementRecoveryReaders = {
 };
 
 /**
- * Single Check read, then at most one SR list. No settlement write. No loop.
+ * Single Check read (includes Collection Fact financial flag), then at most
+ * one SR list. No settlement write. No loop.
+ * Collection Fact committed + Check OPEN = financially PAID.
  */
 export async function recoverCashierUnknownSettlement(input: {
   restaurantId: number;
@@ -213,7 +220,7 @@ export async function recoverCashierUnknownSettlement(input: {
   try {
     records = await input.readers.readSettlementRecords(evaluated.check.checkId);
   } catch {
-    // Check paid is money truth. Missing SR read is receipt gap, not unpaid.
+    // Collection Fact is money truth. Missing SR is a receipt gap, not unpaid.
     return {
       kind: "PAYMENT_CONFIRMED_RECEIPT_INCOMPLETE",
       paid: reconstructPaidResult({
@@ -245,6 +252,8 @@ export function toCheckRecoveryView(dto: {
   restaurantId: number;
   outcome: string;
   grandTotal: string;
+  collectionFactId?: string | null;
+  financiallyPaid?: boolean;
 }): CashierCheckRecoveryView {
   return {
     checkId: dto.checkId,
@@ -252,6 +261,8 @@ export function toCheckRecoveryView(dto: {
     restaurantId: dto.restaurantId,
     outcome: dto.outcome,
     grandTotal: dto.grandTotal,
+    collectionFactId: dto.collectionFactId ?? null,
+    financiallyPaid: dto.financiallyPaid === true,
   };
 }
 

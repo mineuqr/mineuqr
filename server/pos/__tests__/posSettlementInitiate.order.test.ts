@@ -20,9 +20,13 @@ import type { PosPermission } from "@shared/pos";
 import type { SettlementContext } from "@shared/crmp";
 import { PosRegisterShiftContextService } from "../services/PosRegisterShiftContextService";
 import { scheduleCashierDownstreamSettlementRecovery } from "../../operational-session/payment/cashier-downstream-recovery";
+import { findProductionCollectionFactByOrderId } from "../../operational-session/payment/collection-fact/collectionFactRepository";
 
 vi.mock("../../operational-session/payment/cashier-downstream-recovery", () => ({
   scheduleCashierDownstreamSettlementRecovery: vi.fn(),
+}));
+vi.mock("../../operational-session/payment/collection-fact/collectionFactRepository", () => ({
+  findProductionCollectionFactByOrderId: vi.fn(async () => null),
 }));
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
@@ -284,6 +288,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
       return undefined as never;
     });
     mockLimit(2);
+    vi.mocked(findProductionCollectionFactByOrderId).mockResolvedValue(null);
   });
 
   it("lets an authorized cashier initiate settlement on the existing open Check", async () => {
@@ -588,6 +593,37 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
       terminalId: TERMINAL_A,
       actorUserId: STAFF_A,
     });
+  });
+
+  it("replays an existing production Collection Fact without creating another financial commit", async () => {
+    vi.mocked(findProductionCollectionFactByOrderId).mockResolvedValue({
+      collectionFactId: "pcf_existing",
+      checkId: CHECK_A,
+      amount: GRAND_TOTAL,
+      paymentIntentId: "cpi_prior",
+    } as never);
+    const { store, grants, service, settle } = harness();
+    await seedTerminal(store);
+    await grantSettle(grants);
+    const result = await service.initiate({
+      user: user(STAFF_A),
+      command: {
+        ...command,
+        idempotencyKey: "settle-key-new",
+        paymentIntentId: "cpi_new-intent",
+      },
+    });
+    expect(result.replayed).toBe(true);
+    expect(result.outcome).toBe("paid");
+    expect(result.checkId).toBe(CHECK_A);
+    expect(settle).not.toHaveBeenCalled();
+    expect(scheduleCashierDownstreamSettlementRecovery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: RESTAURANT_A,
+        checkId: CHECK_A,
+        orderId: ORDER_A,
+      })
+    );
   });
 
   it("forwards existing Check settlement lines for a split payment mix", async () => {

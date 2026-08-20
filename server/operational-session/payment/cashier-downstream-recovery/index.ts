@@ -17,3 +17,7 @@ export {
   startCashierDownstreamSettlementRecoveryWorker,
   resetCashierDownstreamSettlementRecoveryWorkerForTests,
 } from "./cashierDownstreamSettlementRecoveryWorker";
+export {
+  registerCashierDownstreamSettlementRecoveryHttp,
+  CASHIER_DOWNSTREAM_RECOVERY_SWEEP_PATH,
+} from "./cashierDownstreamSettlementRecoveryHttp";

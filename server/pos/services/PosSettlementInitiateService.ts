@@ -15,6 +15,7 @@ import {
   type StaffSettlementLineInput,
 } from "@shared/operational-session";
 import { CollectionFactError } from "@shared/operational-session/payment/collection-fact";
+import { findProductionCollectionFactByOrderId } from "../../operational-session/payment/collection-fact/collectionFactRepository";
 import type { SettlementContext } from "@shared/crmp";
 import { opsLog } from "../../_core/opsLog";
 import { getOrderById } from "../../db";
@@ -103,6 +104,16 @@ export type PosSettlementCheckLookup = (input: {
   restaurantId: number;
   checkId: number;
 }) => Promise<PosSettlementCheckView | null>;
+
+export type PosProductionCollectionFactLookup = (input: {
+  restaurantId: number;
+  orderId: number;
+}) => Promise<{
+  collectionFactId: string;
+  checkId: number | null;
+  amount: string;
+  paymentIntentId: string;
+} | null>;
 
 export type PosSettlementEnsureCheck = (input: {
   restaurantId: number;
@@ -236,6 +247,25 @@ async function defaultMembershipLookup(
   const row = await findBlockingMembershipForOrder(restaurantId, orderId);
   if (!row) return null;
   return { checkId: row.membership.checkId, checkOutcome: row.checkOutcome };
+}
+
+async function defaultProductionCollectionFactByOrder(input: {
+  restaurantId: number;
+  orderId: number;
+}): Promise<{
+  collectionFactId: string;
+  checkId: number | null;
+  amount: string;
+  paymentIntentId: string;
+} | null> {
+  const fact = await findProductionCollectionFactByOrderId(input);
+  if (!fact) return null;
+  return {
+    collectionFactId: fact.collectionFactId,
+    checkId: fact.checkId,
+    amount: fact.amount,
+    paymentIntentId: fact.paymentIntentId,
+  };
 }
 
 async function defaultCheckLookup(input: {
@@ -392,7 +422,8 @@ export class PosSettlementInitiateService {
     private readonly orderLookup: PosSettlementInitiateOrderLookup = getOrderById,
     private readonly membershipLookup: PosSettlementMembershipLookup = defaultMembershipLookup,
     private readonly checkLookup: PosSettlementCheckLookup = defaultCheckLookup,
-    private readonly settlePaid: PosSettlementSettlePaid = defaultSettlePaid
+    private readonly settlePaid: PosSettlementSettlePaid = defaultSettlePaid,
+    private readonly productionCollectionFactByOrderLookup: PosProductionCollectionFactLookup = defaultProductionCollectionFactByOrder
   ) {}
 
   async initiate(input: {
@@ -618,6 +649,60 @@ export class PosSettlementInitiateService {
           "check_not_eligible",
           "Check is not eligible for settlement initiation"
         );
+      }
+
+      const existingFact = await this.productionCollectionFactByOrderLookup({
+        restaurantId: context.restaurantId,
+        orderId: order.id,
+      });
+      if (existingFact?.checkId != null) {
+        const checkStarted = clock.mark();
+        const already = await this.checkLookup({
+          restaurantId: context.restaurantId,
+          checkId: existingFact.checkId,
+        });
+        checkLoadMs = clock.since(checkStarted);
+        checkLoadedAt = new Date().toISOString();
+        if (!already || already.restaurantId !== context.restaurantId) {
+          throw new PosSettlementInitiateError(
+            "check_not_found",
+            "Check not found"
+          );
+        }
+        scheduleCashierDownstreamSettlementRecovery({
+          restaurantId: context.restaurantId,
+          checkId: already.id,
+          orderId: order.id,
+        });
+        await this.idempotency.put({
+          restaurantId: context.restaurantId,
+          terminalId: context.terminalId,
+          userId: context.userId,
+          idempotencyKey: input.command.idempotencyKey,
+          fingerprint,
+          orderId: order.id,
+          checkId: already.id,
+          outcome: "paid",
+          grandTotal: already.grandTotal,
+          settlementRecordId: null,
+          sessionId: already.sessionId,
+          registerId: operational.registerId,
+          financialShiftId: operational.financialShiftId,
+          createdAt: new Date().toISOString(),
+        });
+        return resultFrom({
+          checkId: already.id,
+          orderId: order.id,
+          restaurantId: context.restaurantId,
+          grandTotal: already.grandTotal,
+          settlementRecordId: null,
+          sessionId: already.sessionId,
+          terminalId: context.terminalId,
+          cashierUserId: context.userId,
+          registerId: operational.registerId,
+          financialShiftId: operational.financialShiftId,
+          replayed: true,
+        });
       }
 
       const settlements = resolveCommandSettlements(input.command);

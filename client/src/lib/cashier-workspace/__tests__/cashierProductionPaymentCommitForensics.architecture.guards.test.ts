@@ -35,22 +35,20 @@ describe("CASHIER-PRODUCTION-PAYMENT-COMMIT-FORENSICS-1", () => {
     );
     const cashier = check.slice(start, end);
     expect(confirm).toContain("deferOperationalSettlementAfterCollectionFact: true");
-    expect(cashier).toContain("void completeCashierOperationalSettlementAfterCollectionFact");
+    expect(cashier).toContain("continueAfterCashierHttp");
+    expect(cashier).toContain("completeCashierOperationalSettlementAfterCollectionFact");
     expect(cashier).not.toContain(
       "await completeCashierOperationalSettlementAfterCollectionFact"
     );
   });
 
-  it("unknown-result recovery treats an OPEN Check as payment not recorded", () => {
+  it("unknown-result recovery treats OPEN Check + Collection Fact as financially paid", () => {
     const recovery = read(
       "client/src/lib/cashier-workspace/cashierSettlementRecovery.ts"
     );
-    expect(recovery).toContain('if (evaluated.status === "open")');
-    expect(recovery).toContain(
-      'return { kind: "PAYMENT_NOT_CONFIRMED", reason: "open" }'
-    );
-    expect(recovery).not.toContain("collectionFactId");
-    expect(recovery).not.toContain("findProductionCollectionFactByCheckId");
+    expect(recovery).toContain("check.financiallyPaid === true");
+    expect(recovery).toContain('return { status: "paid", check }');
+    expect(recovery).toContain('if (check.outcome === "open") return { status: "open" }');
   });
 
   it("success toast is HTTP result; error copy is recoveryNotCommitted; rediscovery awaits after HTTP", () => {
@@ -66,16 +64,16 @@ describe("CASHIER-PRODUCTION-PAYMENT-COMMIT-FORENSICS-1", () => {
     );
     const tryBlock = complete.slice(complete.indexOf("try {"));
     const httpAt = tryBlock.indexOf("await settleMutation.mutateAsync");
-    const rediscoverAt = tryBlock.indexOf("await rediscoverSettlementRecordId");
     const successAt = tryBlock.indexOf("toast.success");
+    const rediscoverAt = tryBlock.indexOf("void rediscoverSettlementRecordId");
     const notCommittedAt = tryBlock.indexOf('t("recoveryNotCommitted")');
     expect(httpAt).toBeGreaterThan(-1);
-    expect(rediscoverAt).toBeGreaterThan(httpAt);
-    expect(successAt).toBeGreaterThan(rediscoverAt);
+    expect(successAt).toBeGreaterThan(httpAt);
+    expect(rediscoverAt).toBeGreaterThan(successAt);
     expect(notCommittedAt).toBeGreaterThan(successAt);
   });
 
-  it("HTTP still awaits POS idempotency store after settle; Vercel has no waitUntil", () => {
+  it("HTTP still awaits POS idempotency store after settle; Vercel cron is the durable recovery path", () => {
     const pos = read("server/pos/services/PosSettlementInitiateService.ts");
     const settleAt = pos.indexOf("settled = await this.settlePaid");
     const putAt = pos.indexOf("await this.idempotency.put", settleAt);
@@ -83,8 +81,14 @@ describe("CASHIER-PRODUCTION-PAYMENT-COMMIT-FORENSICS-1", () => {
     expect(putAt).toBeGreaterThan(settleAt);
     expect(pos).toContain('outcome: "paid"');
     const vercel = read("scripts/vercel-handler.ts");
-    expect(vercel).not.toContain("waitUntil");
+    const vercelJson = read("vercel.json");
+    const http = read(
+      "server/operational-session/payment/cashier-downstream-recovery/cashierDownstreamSettlementRecoveryHttp.ts"
+    );
     expect(vercel).not.toContain("startCashierDownstreamSettlementRecoveryWorker");
+    expect(vercelJson).toContain("/api/internal/cashier-downstream-recovery/sweep");
+    expect(http).toContain("sweepIncompleteCashierDownstreamSettlements");
+    expect(http).toContain("CRON_SECRET");
   });
 
   it("error-path retry keeps paymentIntent; success startNewSale clears it", () => {
@@ -104,7 +108,7 @@ describe("CASHIER-PRODUCTION-PAYMENT-COMMIT-FORENSICS-1", () => {
     expect(notCommitted).not.toContain("paymentIntentRef.current = null");
   });
 
-  it("payment-method buttons do not call tRPC; Vercel does not start the recovery worker", () => {
+  it("payment-method buttons do not call tRPC; in-process worker is not the Production entry", () => {
     const panel = read(
       "client/src/components/cashier-workspace/CashierWorkspacePanel.tsx"
     );
@@ -117,9 +121,11 @@ describe("CASHIER-PRODUCTION-PAYMENT-COMMIT-FORENSICS-1", () => {
     expect(methodClick).not.toContain("trpc.");
     const boot = read("server/_core/index.ts");
     const vercel = read("scripts/vercel-handler.ts");
+    const app = read("server/_core/createApiApp.ts");
     expect(boot).toContain("if (!process.env.VERCEL)");
     expect(boot).toContain("startCashierDownstreamSettlementRecoveryWorker");
     expect(vercel).not.toContain("startCashierDownstreamSettlementRecoveryWorker");
+    expect(app).toContain("registerCashierDownstreamSettlementRecoveryHttp");
   });
 
   it("does not introduce 0098, a payments table, or a second financial authority", () => {

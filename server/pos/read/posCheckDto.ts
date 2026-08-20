@@ -1,6 +1,8 @@
 /**
  * CASHIER-POS-CHECK-READ-CONTRACT-1
- * Operational POS DTO for an Order's Check. Check remains financial SSOT.
+ * Operational POS DTO for an Order's Check.
+ * Check remains the operational bill. Production Collection Fact is Cashier
+ * financial authority — `financiallyPaid` does not rewrite Check.outcome.
  * Copies Check-owned fields. No tax/grandTotal calculation.
  */
 
@@ -16,4 +18,8 @@ export type PosOrderCheckDto = {
   taxAmount: string;
   /** Copied from Check. Not calculated here. */
   billDiscountAmount: string;
+  /** Production cashier Collection Fact id when one exists for this order. */
+  collectionFactId: string | null;
+  /** True when a production cashier Collection Fact is committed. Not Check PAID. */
+  financiallyPaid: boolean;
 };

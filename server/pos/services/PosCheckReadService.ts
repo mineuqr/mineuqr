@@ -12,6 +12,7 @@ import { opsLog } from "../../_core/opsLog";
 import { getOrderById } from "../../db";
 import { getCheckById } from "../../operational-session/check/CheckService";
 import { findBlockingMembershipForOrder } from "../../operational-session/check/checkOrderMembershipRepository";
+import { findProductionCollectionFactByOrderId } from "../../operational-session/payment/collection-fact/collectionFactRepository";
 import type { PosPermissionGrantStore } from "../infrastructure/PosPermissionGrantStore";
 import { startPosCommandClock } from "../observability/posCommandClock";
 import type { PosOrderCheckDto } from "../read/posCheckDto";
@@ -28,6 +29,11 @@ export type PosCheckReadMembershipLookup = (
   restaurantId: number,
   orderId: number
 ) => Promise<{ checkId: number; checkOutcome: string } | null>;
+
+export type PosCheckReadCollectionFactLookup = (input: {
+  restaurantId: number;
+  orderId: number;
+}) => Promise<{ collectionFactId: string; checkId: number | null } | null>;
 
 export type PosCheckReadCheckLookup = (input: {
   restaurantId: number;
@@ -66,13 +72,23 @@ async function defaultMembershipLookup(
   return { checkId: row.membership.checkId, checkOutcome: row.checkOutcome };
 }
 
+async function defaultCollectionFactLookup(input: {
+  restaurantId: number;
+  orderId: number;
+}): Promise<{ collectionFactId: string; checkId: number | null } | null> {
+  const fact = await findProductionCollectionFactByOrderId(input);
+  if (!fact) return null;
+  return { collectionFactId: fact.collectionFactId, checkId: fact.checkId };
+}
+
 export class PosCheckReadService {
   constructor(
     private readonly grants: PosPermissionGrantStore,
     private readonly access: PosAccessService,
     private readonly orderLookup: PosCheckReadOrderLookup = getOrderById,
     private readonly membershipLookup: PosCheckReadMembershipLookup = defaultMembershipLookup,
-    private readonly checkLookup: PosCheckReadCheckLookup = getCheckById
+    private readonly checkLookup: PosCheckReadCheckLookup = getCheckById,
+    private readonly collectionFactLookup: PosCheckReadCollectionFactLookup = defaultCollectionFactLookup
   ) {}
 
   async getByOrder(input: {
@@ -101,10 +117,17 @@ export class PosCheckReadService {
         throw new PosReadError("not_found", "Order not found");
       }
 
-      const membership = await this.membershipLookup(
+      const fact = await this.collectionFactLookup({
+        restaurantId: context.restaurantId,
+        orderId: order.id,
+      });
+      let membership = await this.membershipLookup(
         context.restaurantId,
         order.id
       );
+      if (!membership && fact?.checkId != null) {
+        membership = { checkId: fact.checkId, checkOutcome: "open" };
+      }
       if (!membership) {
         resultState = "no_membership";
         return null;
@@ -139,6 +162,8 @@ export class PosCheckReadService {
         subtotal: String(check.subtotal),
         taxAmount: String(check.taxAmount),
         billDiscountAmount: String(check.billDiscountAmount ?? "0.00"),
+        collectionFactId: fact?.collectionFactId ?? null,
+        financiallyPaid: fact != null,
       };
     } finally {
       const timing = clock.finish();

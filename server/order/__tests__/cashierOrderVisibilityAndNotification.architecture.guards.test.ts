@@ -12,7 +12,7 @@ function read(rel: string): string {
 }
 
 describe("CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 architecture guards", () => {
-  it("keeps Order as SSOT and lists cashier_pos only after a Paid Check", () => {
+  it("keeps Order as SSOT and lists cashier_pos after a Paid Check or production Collection Fact", () => {
     const list = read(
       "server/order/read/infrastructure/DrizzleOrderOperationalReadStore.ts"
     );
@@ -23,8 +23,8 @@ describe("CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 architecture guards", () =
     expect(visibility).toContain("isCashierPosOperationallyListed");
     expect(visibility).toContain("checkOrderMembership");
     expect(visibility).toContain("operationalChecks");
-    expect(visibility).toContain("paid");
-    expect(visibility).toContain("complimentary");
+    expect(visibility).toContain("paymentCollectionFacts");
+    expect(visibility).toContain("COLLECTION_FACT_PRODUCTION_PURPOSE");
     expect(visibility).not.toMatch(/\bcheck_id\b/);
     expect(visibility).not.toMatch(/\border_id\b/);
     expect(visibility).not.toMatch(/\brestaurant_id\b/);

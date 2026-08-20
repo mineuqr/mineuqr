@@ -51,7 +51,8 @@ describe("CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 operational listing", () =
     expect(
       isCashierPosOperationallyListed({
         orderingChannel: "cashier_pos",
-        paidCheck: true,
+        paidCheck: false,
+        productionCollectionFact: true,
       })
     ).toBe(true);
   });
@@ -68,9 +69,10 @@ describe("CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 operational listing", () =
     expect(sql).toContain("`active`");
     expect(sql).toContain("`outcome`");
     expect(sql).toContain("`check_order_membership`");
-    expect(sql).toContain("`operational_checks`");
+    expect(sql).toContain("`payment_collection_facts`");
     expect(params).toContain("cashier_pos");
     expect(params).toContain("paid");
     expect(params).toContain("complimentary");
+    expect(params).toContain("production");
   });
 });

@@ -8,10 +8,12 @@
 import { and, eq, exists, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { QueryBuilder } from "drizzle-orm/mysql-core";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
+import { COLLECTION_FACT_PRODUCTION_PURPOSE } from "@shared/operational-session/payment/collection-fact";
 import {
   checkOrderMembership,
   operationalChecks,
   orderReadOrders,
+  paymentCollectionFacts,
 } from "../../../drizzle/schema";
 import { isCashierPosOrderingChannel } from "../application/cashierPosOrderLifecycle";
 
@@ -20,9 +22,10 @@ export { isCashierPosOrderingChannel };
 export function isCashierPosOperationallyListed(input: {
   orderingChannel?: string | null;
   paidCheck: boolean;
+  productionCollectionFact?: boolean;
 }): boolean {
   if (!isCashierPosOrderingChannel(input.orderingChannel)) return true;
-  return input.paidCheck;
+  return input.paidCheck || input.productionCollectionFact === true;
 }
 
 /**
@@ -51,9 +54,25 @@ export function cashierPosPaidOperationalVisibilitySql() {
       )
     );
 
+  const productionCollectionFact = qb
+    .select({ present: sql`1` })
+    .from(paymentCollectionFacts)
+    .where(
+      and(
+        eq(paymentCollectionFacts.orderId, orderReadOrders.orderId),
+        eq(paymentCollectionFacts.restaurantId, orderReadOrders.restaurantId),
+        eq(paymentCollectionFacts.purpose, COLLECTION_FACT_PRODUCTION_PURPOSE),
+        eq(
+          paymentCollectionFacts.orderingChannel,
+          ORDERING_CHANNEL_CASHIER_POS
+        )
+      )
+    );
+
   return or(
     isNull(orderReadOrders.orderingChannel),
     ne(orderReadOrders.orderingChannel, ORDERING_CHANNEL_CASHIER_POS),
-    exists(paidCheckMembership)
+    exists(paidCheckMembership),
+    exists(productionCollectionFact)
   );
 }

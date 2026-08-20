@@ -3,7 +3,7 @@
  * Drizzle Collection Fact repository. Insert + retrieve only. No money UPDATE.
  */
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import {
   paymentCollectionFacts,
   type SelectPaymentCollectionFact,
@@ -191,6 +191,27 @@ export async function findProductionCollectionFactByCheckId(
         eq(paymentCollectionFacts.orderingChannel, ORDERING_CHANNEL_CASHIER_POS)
       )
     )
+    .limit(1);
+  return row ? mapRowToCollectionFact(row) : null;
+}
+
+export async function findProductionCollectionFactByOrderId(
+  input: { restaurantId: number; orderId: number },
+  client?: SessionDbClient
+): Promise<CollectionFact | null> {
+  const db = await resolveDb(client);
+  const [row] = await db
+    .select()
+    .from(paymentCollectionFacts)
+    .where(
+      and(
+        eq(paymentCollectionFacts.restaurantId, input.restaurantId),
+        eq(paymentCollectionFacts.orderId, input.orderId),
+        eq(paymentCollectionFacts.purpose, COLLECTION_FACT_PRODUCTION_PURPOSE),
+        eq(paymentCollectionFacts.orderingChannel, ORDERING_CHANNEL_CASHIER_POS)
+      )
+    )
+    .orderBy(asc(paymentCollectionFacts.committedAt))
     .limit(1);
   return row ? mapRowToCollectionFact(row) : null;
 }

@@ -12,6 +12,7 @@ export {
   findCollectionFactByPaymentIntent,
   findCollectionFactByFactId,
   findProductionCollectionFactByCheckId,
+  findProductionCollectionFactByOrderId,
   updateCollectionFact,
   deleteCollectionFact,
   createDrizzleCollectionFactStore,

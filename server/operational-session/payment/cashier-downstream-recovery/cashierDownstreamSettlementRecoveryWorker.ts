@@ -12,6 +12,7 @@ import {
   CASHIER_DOWNSTREAM_RECOVERY_PROGRAM_ID,
   tendersToSettlementLines,
 } from "./cashierDownstreamSettlementRecovery";
+import { continueAfterCashierHttp } from "./continueAfterCashierHttp";
 import { listIncompleteCashierDownstreamObligations } from "./cashierDownstreamSettlementRecoveryRepository";
 
 const BACKOFF_MS = [0, 1_000, 5_000, 15_000, 30_000, 60_000] as const;
@@ -28,6 +29,10 @@ const retries = new Map<string, RetryBook>();
 const inFlight = new Map<string, Promise<void>>();
 
 let timer: ReturnType<typeof setInterval> | null = null;
+
+function continueAfterResponse(work: Promise<unknown>): void {
+  continueAfterCashierHttp(work);
+}
 
 function bookFor(recoveryId: string): RetryBook {
   return (
@@ -54,23 +59,25 @@ export function scheduleCashierDownstreamSettlementRecovery(input: {
   checkId: number;
   orderId?: number;
 }): void {
-  void recoverCashierDownstreamSettlementObligation(input).catch(
-    (err: unknown) => {
-      opsLog({
-        type: OPS_EVENT.cashier_downstream_settlement_recovery_failed,
-        category: "ORDER",
-        severity: "warn",
-        ts: new Date().toISOString(),
-        restaurantId: input.restaurantId,
-        action: "scheduleCashierDownstreamSettlementRecovery",
-        metadata: {
-          program: CASHIER_DOWNSTREAM_RECOVERY_PROGRAM_ID,
-          checkId: input.checkId,
-          orderId: input.orderId ?? null,
-          error: err instanceof Error ? err.message : String(err),
-        },
-      });
-    }
+  continueAfterResponse(
+    recoverCashierDownstreamSettlementObligation(input).catch(
+      (err: unknown) => {
+        opsLog({
+          type: OPS_EVENT.cashier_downstream_settlement_recovery_failed,
+          category: "ORDER",
+          severity: "warn",
+          ts: new Date().toISOString(),
+          restaurantId: input.restaurantId,
+          action: "scheduleCashierDownstreamSettlementRecovery",
+          metadata: {
+            program: CASHIER_DOWNSTREAM_RECOVERY_PROGRAM_ID,
+            checkId: input.checkId,
+            orderId: input.orderId ?? null,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
+      }
+    )
   );
 }
 
@@ -151,9 +158,11 @@ export async function recoverCashierDownstreamSettlementObligation(input: {
 
 export async function sweepIncompleteCashierDownstreamSettlements(): Promise<number> {
   const obligations = await listIncompleteCashierDownstreamObligations();
+  const attentionAfterMs = 15 * 60 * 1000;
   for (const obligation of obligations) {
     const book = bookFor(obligation.collectionFactId);
     if (Date.now() < book.nextRetryAtMs) continue;
+    const committedAgeMs = Date.now() - Date.parse(obligation.committedAt);
     try {
       await recoverCashierDownstreamSettlementObligation({
         restaurantId: obligation.restaurantId,
@@ -162,7 +171,25 @@ export async function sweepIncompleteCashierDownstreamSettlements(): Promise<num
         collectionFactId: obligation.collectionFactId,
       });
     } catch {
-      // Logged in recover. Continue remaining obligations.
+      if (Number.isFinite(committedAgeMs) && committedAgeMs >= attentionAfterMs) {
+        opsLog({
+          type: OPS_EVENT.cashier_downstream_settlement_recovery_attention,
+          category: "ORDER",
+          severity: "error",
+          ts: new Date().toISOString(),
+          restaurantId: obligation.restaurantId,
+          action: "sweepIncompleteCashierDownstreamSettlements",
+          metadata: {
+            program: CASHIER_DOWNSTREAM_RECOVERY_PROGRAM_ID,
+            recoveryId: obligation.collectionFactId,
+            checkId: obligation.checkId,
+            orderId: obligation.orderId,
+            paymentIntentId: obligation.paymentIntentId,
+            committedAt: obligation.committedAt,
+            committedAgeMs,
+          },
+        });
+      }
     }
   }
   return obligations.length;
