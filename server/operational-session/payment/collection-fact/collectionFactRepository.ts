@@ -14,11 +14,13 @@ import type { SessionDbClient } from "../../../diningSession/sessionRepository";
 import {
   assertCollectionFactAppendOnly,
   CollectionFactError,
+  COLLECTION_FACT_PRODUCTION_PURPOSE,
   isCollectionFactPurpose,
   type CollectionFact,
   type CollectionFactCompositionLine,
   type CollectionFactTender,
 } from "@shared/operational-session/payment/collection-fact";
+import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 import { freezeCollectionFact } from "./collectionFactImmutability";
 import type { CollectionFactStore } from "./collectionFactStore";
 import type { CurrencySnapshot, TaxBreakdown, TaxPolicySnapshot } from "@shared/operational-session";
@@ -167,6 +169,26 @@ export async function findCollectionFactByPaymentIntent(
       and(
         eq(paymentCollectionFacts.restaurantId, input.restaurantId),
         eq(paymentCollectionFacts.paymentIntentId, input.paymentIntentId)
+      )
+    )
+    .limit(1);
+  return row ? mapRowToCollectionFact(row) : null;
+}
+
+export async function findProductionCollectionFactByCheckId(
+  input: { restaurantId: number; checkId: number },
+  client?: SessionDbClient
+): Promise<CollectionFact | null> {
+  const db = await resolveDb(client);
+  const [row] = await db
+    .select()
+    .from(paymentCollectionFacts)
+    .where(
+      and(
+        eq(paymentCollectionFacts.restaurantId, input.restaurantId),
+        eq(paymentCollectionFacts.checkId, input.checkId),
+        eq(paymentCollectionFacts.purpose, COLLECTION_FACT_PRODUCTION_PURPOSE),
+        eq(paymentCollectionFacts.orderingChannel, ORDERING_CHANNEL_CASHIER_POS)
       )
     )
     .limit(1);

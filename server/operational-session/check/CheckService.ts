@@ -141,6 +141,7 @@ import {
 import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextResolver";
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
+import { ensureRemainingCashierDownstreamSettlement } from "../payment/cashier-downstream-recovery/cashierDownstreamSettlementRecovery";
 import {
   createEmptyChargeInsertTiming,
   createEmptyEnsureCheckForOrderStageMs,
@@ -1650,8 +1651,10 @@ function adoptAttributionAfterOwnedCommit(input: {
 
 /**
  * CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1
+ * CASHIER-DOWNSTREAM-SETTLEMENT-RECOVERY-1
  * Downstream of Cashier HTTP: Check PAID + ST + OS + SR after Collection Fact.
- * Does not commit Collection Fact. Already-paid Checks are idempotent.
+ * Does not commit Collection Fact. OPEN Checks use the certified finalize TX.
+ * PAID Checks fill only missing ST / OS / SR. Already-complete work is skipped.
  */
 export async function completeCashierOperationalSettlementAfterCollectionFact(input: {
   restaurantId: number;
@@ -1660,6 +1663,31 @@ export async function completeCashierOperationalSettlementAfterCollectionFact(in
   settlementContext?: SettlementContext;
   settlementContextHints?: SettlementContextHints;
 }): Promise<void> {
+  const row = await findCheckById(input.checkId);
+  if (!row || row.restaurantId !== input.restaurantId) {
+    throw new DiningSessionUnavailableError("Check not found");
+  }
+  if (row.outcome === "voided") {
+    opsLog({
+      type: OPS_EVENT.cashier_downstream_settlement_recovery_attention,
+      category: "ORDER",
+      severity: "error",
+      ts: new Date().toISOString(),
+      restaurantId: input.restaurantId,
+      action: "completeCashierOperationalSettlementAfterCollectionFact",
+      metadata: {
+        checkId: input.checkId,
+        checkOutcome: row.outcome,
+      },
+    });
+    return;
+  }
+  if (row.outcome === "paid" || row.outcome === "complimentary") {
+    if (row.outcome === "paid") {
+      await ensureRemainingCashierDownstreamSettlement(input);
+    }
+    return;
+  }
   try {
     await finalizeOpenCheckById({
       restaurantId: input.restaurantId,
@@ -1672,11 +1700,19 @@ export async function completeCashierOperationalSettlementAfterCollectionFact(in
     });
   } catch (err) {
     if (err instanceof CheckTransitionError) {
-      const row = await findCheckById(input.checkId);
+      const current = await findCheckById(input.checkId);
       if (
-        row &&
-        row.restaurantId === input.restaurantId &&
-        (row.outcome === "paid" || row.outcome === "complimentary")
+        current &&
+        current.restaurantId === input.restaurantId &&
+        current.outcome === "paid"
+      ) {
+        await ensureRemainingCashierDownstreamSettlement(input);
+        return;
+      }
+      if (
+        current &&
+        current.restaurantId === input.restaurantId &&
+        current.outcome === "complimentary"
       ) {
         return;
       }

@@ -19,7 +19,11 @@ import type { SelectUser } from "../../../drizzle/schema";
 import type { PosPermission } from "@shared/pos";
 import type { SettlementContext } from "@shared/crmp";
 import { PosRegisterShiftContextService } from "../services/PosRegisterShiftContextService";
+import { scheduleCashierDownstreamSettlementRecovery } from "../../operational-session/payment/cashier-downstream-recovery";
 
+vi.mock("../../operational-session/payment/cashier-downstream-recovery", () => ({
+  scheduleCashierDownstreamSettlementRecovery: vi.fn(),
+}));
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
 }));
@@ -498,6 +502,27 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(result.checkId).toBe(CHECK_A);
     expect(result.replayed).toBe(true);
     expect(settle).not.toHaveBeenCalled();
+  });
+
+  it("schedules downstream recovery on POS idempotency replay without waiting", async () => {
+    const { store, grants, service, settle } = harness({
+      membership: null,
+      check: null,
+    });
+    await seedTerminal(store);
+    await grantSettle(grants);
+    await service.initiate({ user: user(STAFF_A), command });
+    vi.mocked(scheduleCashierDownstreamSettlementRecovery).mockClear();
+    const result = await service.initiate({ user: user(STAFF_A), command });
+    expect(result.replayed).toBe(true);
+    expect(settle).toHaveBeenCalledTimes(1);
+    expect(scheduleCashierDownstreamSettlementRecovery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: RESTAURANT_A,
+        checkId: CHECK_A,
+        orderId: ORDER_A,
+      })
+    );
   });
 
   it("rejects complimentary and voided Checks", async () => {

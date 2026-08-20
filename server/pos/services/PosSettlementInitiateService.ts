@@ -24,6 +24,7 @@ import {
 } from "../../operational-session/check/CheckService";
 import { CheckMembershipError } from "../../operational-session/check/checkMembershipService";
 import { confirmPayment } from "../../operational-session/payment/PaymentConfirmService";
+import { scheduleCashierDownstreamSettlementRecovery } from "../../operational-session/payment/cashier-downstream-recovery";
 import { findBlockingMembershipForOrder } from "../../operational-session/check/checkOrderMembershipRepository";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
 import type { PosSettlementInitiateIdempotencyStore } from "../infrastructure/PosSettlementInitiateIdempotencyStore";
@@ -513,6 +514,11 @@ export class PosSettlementInitiateService {
             "Idempotency key was already used for a different settlement"
           );
         }
+        scheduleCashierDownstreamSettlementRecovery({
+          restaurantId: context.restaurantId,
+          checkId: existing.checkId,
+          orderId: existing.orderId,
+        });
         return resultFrom({
           checkId: existing.checkId,
           orderId: existing.orderId,

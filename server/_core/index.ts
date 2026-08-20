@@ -37,6 +37,13 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    void import("../operational-session/payment/cashier-downstream-recovery")
+      .then(({ startCashierDownstreamSettlementRecoveryWorker }) => {
+        startCashierDownstreamSettlementRecoveryWorker();
+      })
+      .catch((e) => {
+        console.warn("[CashierDownstreamRecovery] worker start skipped:", e);
+      });
     void import("../services/commercial-catalog")
       .then(({ ensureCatalogReady }) => ensureCatalogReady())
       .then((r) => {
