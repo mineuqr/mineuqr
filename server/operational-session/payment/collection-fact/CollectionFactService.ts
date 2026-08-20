@@ -4,6 +4,7 @@
  *
  * NOT connected to Cashier Confirm, PAID, Revenue, or Settlement.
  * Callers must supply a store. Production payment paths must not call this.
+ * Production purpose additionally enforces PRODUCTION-COLLECTION-FACT-COMMIT-CONTRACT-1.
  */
 
 import { createHash, randomUUID } from "node:crypto";
@@ -20,6 +21,8 @@ import {
   collectionFactSchemaVersion,
   CollectionFactError,
   PAYMENT_COLLECTION_FACT_PROGRAM_ID,
+  assertProductionCollectionFactCommit,
+  isCollectionFactProductionPurpose,
   type CollectionFact,
   type CollectionFactCommitContext,
   type CommitCollectionFactCommand,
@@ -88,6 +91,9 @@ export async function commitCollectionFact(
   try {
     assertCollectionFactCommitContext(context, command);
     assertCommitCollectionFactCommand(command);
+    if (isCollectionFactProductionPurpose(command.purpose)) {
+      assertProductionCollectionFactCommit({ context, command });
+    }
   } catch (error) {
     const code =
       error instanceof CollectionFactError ? error.code : "VALIDATION";

@@ -44,6 +44,21 @@ export {
 } from "./collectionFactPurposeGovernance";
 
 export {
+  PRODUCTION_COLLECTION_FACT_COMMIT_PROGRAM_ID,
+  COLLECTION_FACT_IDENTITY,
+  COLLECTION_FACT_FINALITY,
+  PRODUCTION_COLLECTION_FACT_KIND,
+  PRODUCTION_COLLECTION_FACT_SNAPSHOT,
+  PRODUCTION_COLLECTION_FACT_IDENTITY_RULES,
+  PRODUCTION_COLLECTION_FACT_FAILURE,
+  assertProductionCollectionFactCommit,
+  isProductionCollectionFactCommitCommand,
+  collectionFactCommitIsPaid,
+  committedFactIsAuthoritative,
+  type ProductionCollectionFactCommitCommand,
+} from "./productionCollectionFactCommitContract";
+
+export {
   deriveShadowCollectionFactCommand,
   compareCollectionFactToFreeze,
   type CollectionFactFreezeSource,
