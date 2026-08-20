@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0096 contiguously", () => {
+  it("journal contains canonical migrations 0000–0097 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -56,13 +56,16 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[93]?.tag).toBe("0093_pos_sale_idempotency");
     expect(journal.entries[94]?.tag).toBe("0094_commercial_limit_occupancy_locks");
     expect(journal.entries[95]?.tag).toBe("0095_check_charges");
-    expect(journal.entries[96]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[96]?.tag).toBe("0096_payment_collection_facts");
+    expect(journal.entries[97]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0096_payment_collection_facts");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(97);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe(
+      "0097_payment_collection_facts_production_purpose"
+    );
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(98);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -226,6 +229,28 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/FOREIGN KEY/i);
     expect(hashMigrationSql("0096_payment_collection_facts")).toBe(
       "ae387c23fc92e9ac9769552f125fec5780d58eff3af59c3baa6306c235a0cb1f"
+    );
+  });
+
+  it("0097 is additive purpose enum expansion and is not a payments table or financial rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0097_payment_collection_facts_production_purpose.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("ALTER TABLE `payment_collection_facts`");
+    expect(sql).toContain(
+      "enum('synthetic','shadow','test','validation','production')"
+    );
+    expect(sql).not.toMatch(/CREATE TABLE `payments`/);
+    expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+    expect(sql).not.toMatch(/ALTER TABLE `settlement_records`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/^\s*UPDATE\b/im);
+    expect(sql).not.toMatch(/^\s*DELETE\b/im);
+    expect(sql).not.toMatch(/DROP\s+/i);
+    expect(sql).not.toMatch(/FOREIGN KEY/i);
+    expect(hashMigrationSql("0097_payment_collection_facts_production_purpose")).toBe(
+      "8c92973d8d62797db46067b61e485d2036d6fae0e7e6c952a7e9ffcdf636fc45"
     );
   });
 

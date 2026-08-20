@@ -3,12 +3,11 @@
  * ADR-ARCH-039 I-REV-U-01/02
  *
  * Union engine + published authority resolution.
- * Collection Fact contribution to published Revenue remains ineligible until a
- * persistable production purpose and Collection Fact-native compensating events
- * exist (separate programs). Isolated purposes never publish.
+ * Isolated purposes never publish. Production purpose may publish when valid.
  */
 
 import type { CollectionFactPurpose } from "../../operational-session/payment/collection-fact/collectionFactContract";
+import { COLLECTION_FACT_PRODUCTION_PURPOSE } from "../../operational-session/payment/collection-fact/collectionFactContract";
 import type { CurrencySnapshot, TaxPolicySnapshot } from "../../operational-session/check/checkContract";
 
 export const REVENUE_UNION_PROGRAM_ID = "REVENUE-UNION-ADOPTION-1" as const;
@@ -29,12 +28,13 @@ export type RevenueAuthorityClass = (typeof REVENUE_AUTHORITY_CLASSES)[number];
 
 /**
  * Persistable Collection Fact purposes that may enter Published Revenue.
- * Empty by governance: 0096 MySQL enum has no `production` value, and
- * Collection Fact-native refund/void/complimentary kinds do not exist.
- * Do not add isolated purposes here.
+ * Production only. Isolated purposes must never be added here.
+ * Compensating refund/void/complimentary Collection Fact kinds do not exist;
+ * a production fact is a paid collection. Cashier must not write these facts
+ * until a separate compensating-event program is certified.
  */
 export const PUBLISHED_COLLECTION_FACT_PURPOSES: readonly CollectionFactPurpose[] =
-  [];
+  [COLLECTION_FACT_PRODUCTION_PURPOSE];
 
 export type RevenueUnionSaleKey = Readonly<{
   restaurantId: number;
@@ -90,7 +90,7 @@ export type RevenueUnionRefundFact = Readonly<{
 /**
  * none — never contribute (alias of published while the allowlist is empty)
  * isolated — synthetic|shadow|test|validation; shadow/tests only
- * published — only PUBLISHED_COLLECTION_FACT_PURPOSES (currently empty)
+ * published — only PUBLISHED_COLLECTION_FACT_PURPOSES (production)
  */
 export type CollectionFactEligibility = "none" | "isolated" | "published";
 

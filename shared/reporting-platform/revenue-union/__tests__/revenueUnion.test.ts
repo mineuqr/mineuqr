@@ -298,14 +298,20 @@ describe("REVENUE-UNION-ADOPTION-1", () => {
 });
 
 describe("REVENUE-UNION-PUBLISHED-ADOPTION-1", () => {
-  it("keeps the published Collection Fact purpose allowlist empty", () => {
-    expect(PUBLISHED_COLLECTION_FACT_PURPOSES).toEqual([]);
+  it("publishes only the production Collection Fact purpose", () => {
+    expect(PUBLISHED_COLLECTION_FACT_PURPOSES).toEqual(["production"]);
+    expect(
+      isCollectionFactRevenueEligible("production", "published")
+    ).toBe(true);
     expect(
       isCollectionFactRevenueEligible("validation", "published")
     ).toBe(false);
     expect(isCollectionFactRevenueEligible("shadow", "published")).toBe(false);
     expect(isCollectionFactRevenueEligible("test", "published")).toBe(false);
     expect(isCollectionFactRevenueEligible("synthetic", "published")).toBe(
+      false
+    );
+    expect(isCollectionFactRevenueEligible("production", "isolated")).toBe(
       false
     );
   });
@@ -334,6 +340,51 @@ describe("REVENUE-UNION-PUBLISHED-ADOPTION-1", () => {
     expect(union.totals.grossRevenue).toBe("115.00");
     expect(union.totals.collectionFactCount).toBe(0);
     expect(union.eligibilityRejectedFactCount).toBe(1);
+  });
+
+  it("counts one production Collection Fact as one published contribution", () => {
+    const union = computeRevenueUnion({
+      legacy: [],
+      facts: [
+        fact({
+          paymentIntentId: "int-prod",
+          amount: "80.00",
+          taxAmount: "10.43",
+          orderId: 44,
+          purpose: "production",
+        }),
+      ],
+      eligibility: "published",
+    });
+    expect(union.totals.grossRevenue).toBe("80.00");
+    expect(union.totals.collectionFactCount).toBe(1);
+    expect(union.contributions[0]?.authority).toBe("COLLECTION_FACT");
+  });
+
+  it("publishes neither side when a paid Check and production Fact share identity", () => {
+    const union = computeRevenueUnion({
+      legacy: [
+        legacy({
+          checkId: 10,
+          outcome: "paid",
+          grandTotal: "80.00",
+          orderIds: [44],
+        }),
+      ],
+      facts: [
+        fact({
+          paymentIntentId: "int-prod",
+          amount: "80.00",
+          orderId: 44,
+          checkId: 10,
+          purpose: "production",
+        }),
+      ],
+      eligibility: "published",
+    });
+    expect(union.conflicts.some((c) => c.code === "BOTH")).toBe(true);
+    expect(union.totals.grossRevenue).toBe("0.00");
+    expect(union.totals.paidContributionCount).toBe(0);
   });
 
   it("classifies BOTH as unpublished and UNRESOLVED as unpublished", () => {
@@ -389,5 +440,23 @@ describe("REVENUE-UNION-PUBLISHED-ADOPTION-1", () => {
     expect(union.totals.collectionFactCount).toBe(0);
     expect(union.totals.grossRevenue).toBe("0.00");
     expect(union.unresolvedCount).toBe(1);
+  });
+
+  it("does not publish an invalid production Collection Fact", () => {
+    const union = computeRevenueUnion({
+      legacy: [],
+      facts: [
+        fact({
+          paymentIntentId: "int-bad-prod",
+          amount: "-12.00",
+          orderId: 44,
+          purpose: "production",
+        }),
+      ],
+      eligibility: "published",
+    });
+    expect(union.conflicts.some((c) => c.code === "UNRESOLVED")).toBe(true);
+    expect(union.totals.collectionFactCount).toBe(0);
+    expect(union.totals.grossRevenue).toBe("0.00");
   });
 });

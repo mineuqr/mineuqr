@@ -6,7 +6,7 @@
  */
 
 import type { CollectionFactPurpose } from "../../operational-session/payment/collection-fact/collectionFactContract";
-import { COLLECTION_FACT_PURPOSES } from "../../operational-session/payment/collection-fact/collectionFactContract";
+import { COLLECTION_FACT_ISOLATED_PURPOSES } from "../../operational-session/payment/collection-fact/collectionFactContract";
 import type {
   CollectionFactEligibility,
   ResolvedRevenueContribution,
@@ -25,7 +25,7 @@ import {
   legacySaleKeys,
 } from "./revenueUnionIdentity";
 
-const ISOLATED_PURPOSES = new Set<string>(COLLECTION_FACT_PURPOSES);
+const ISOLATED_PURPOSES = new Set<string>(COLLECTION_FACT_ISOLATED_PURPOSES);
 const PUBLISHED_PURPOSES = new Set<string>(PUBLISHED_COLLECTION_FACT_PURPOSES);
 
 export function isCollectionFactRevenueEligible(

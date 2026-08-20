@@ -233,11 +233,27 @@ describe("commitCollectionFact", () => {
       commit(
         store,
         command({
-          purpose: "production" as CommitCollectionFactCommand["purpose"],
+          purpose: "live" as CommitCollectionFactCommand["purpose"],
         })
       )
     ).rejects.toMatchObject({ code: "VALIDATION" });
     expect(store.snapshot()).toHaveLength(0);
+  });
+
+  it("persists a production-purpose fact in the isolated writer without Cashier", async () => {
+    const store = new InMemoryCollectionFactStore();
+    const result = await commit(
+      store,
+      command({
+        purpose: "production",
+        paymentIntentId: "intent-prod-1",
+        idempotencyKey: "idem-prod-0001",
+      })
+    );
+    expect(result.outcome).toBe("created");
+    expect(result.fact.purpose).toBe("production");
+    expect(result.fact.amount).toBe("115.00");
+    expect(result.fact.currencyCode).toBe("SAR");
   });
 
   it("does not mutate Check, PAID, Revenue, or Settlement through the writer", async () => {

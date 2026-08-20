@@ -1045,8 +1045,9 @@ export type SelectSettlementRecord = typeof settlementRecords.$inferSelect;
 
 // ─── Payment Collection Facts (PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 / ADR-ARCH-039) ──
 /**
- * Immutable Collection Fact. Insert-only. Dormant — not Cashier/Revenue/Settlement/PAID.
- * purpose excludes production collections. checkId is an operational reference only.
+ * Immutable Collection Fact. Insert-only. Not Cashier Confirm / PAID / Settlement writers.
+ * purpose includes production (0097) plus isolated synthetic|shadow|test|validation.
+ * Isolated purposes must not publish. checkId is an operational reference only.
  */
 export const paymentCollectionFacts = mysqlTable(
 	"payment_collection_facts",
@@ -1058,7 +1059,7 @@ export const paymentCollectionFacts = mysqlTable(
 		paymentIntentId: varchar({ length: 128 }).notNull(),
 		orderingChannel: varchar({ length: 32 }).notNull(),
 		kind: mysqlEnum(["collection"]).default("collection").notNull(),
-		purpose: mysqlEnum(["synthetic", "shadow", "test", "validation"]).notNull(),
+		purpose: mysqlEnum(["synthetic", "shadow", "test", "validation", "production"]).notNull(),
 		schemaVersion: int().default(1).notNull(),
 		subtotal: decimal({ precision: 10, scale: 2 }).notNull(),
 		discountAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),

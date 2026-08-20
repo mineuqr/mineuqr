@@ -680,6 +680,13 @@
       "when": 1785000000000,
       "tag": "0096_payment_collection_facts",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "5",
+      "when": 1785100000000,
+      "tag": "0097_payment_collection_facts_production_purpose",
+      "breakpoints": true
     }
   ]
 }

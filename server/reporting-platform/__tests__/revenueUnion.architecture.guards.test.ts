@@ -52,7 +52,8 @@ describe("REVENUE-UNION-ADOPTION-1 architecture", () => {
     );
     expect(schema).toContain("paymentCollectionFacts");
     expect(schema).not.toMatch(/mysqlTable\(\s*"payments"/);
-    expect(journal).not.toContain("0097_");
+    expect(journal).not.toContain("0097_payments");
+    expect(journal).not.toContain("0096_payments");
     expect(sr).not.toContain("commitCollectionFact");
   });
 

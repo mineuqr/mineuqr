@@ -1,7 +1,7 @@
 /**
- * PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 / ADR-ARCH-039
+ * PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 / PAYMENT-COLLECTION-FACT-PRODUCTION-ELIGIBILITY-1
  * Immutable Collection Fact contract. Insert-only financial authority infrastructure.
- * Dormant: not Cashier, Revenue, Settlement, or PAID.
+ * Not Cashier Confirm, PAID runtime, or Settlement writers.
  */
 
 import type {
@@ -20,14 +20,30 @@ export const COLLECTION_FACT_SCHEMA_VERSION = 1 as const;
 export const COLLECTION_FACT_KIND = "collection" as const;
 export type CollectionFactKind = typeof COLLECTION_FACT_KIND;
 
-/** Isolation purposes only. Production collections are not persistable in this program. */
-export const COLLECTION_FACT_PURPOSES = [
+/**
+ * Isolated purposes may persist for tests/shadow/validation only.
+ * They MUST NEVER enter Published Revenue.
+ */
+export const COLLECTION_FACT_ISOLATED_PURPOSES = [
   "synthetic",
   "shadow",
   "test",
   "validation",
 ] as const;
 
+/**
+ * Production purpose: committed immutable collection authority.
+ * Persistable after 0097. Not Cashier adoption. Not a refund/void/complimentary kind.
+ */
+export const COLLECTION_FACT_PRODUCTION_PURPOSE = "production" as const;
+
+export const COLLECTION_FACT_PURPOSES = [
+  ...COLLECTION_FACT_ISOLATED_PURPOSES,
+  COLLECTION_FACT_PRODUCTION_PURPOSE,
+] as const;
+
+export type CollectionFactIsolatedPurpose =
+  (typeof COLLECTION_FACT_ISOLATED_PURPOSES)[number];
 export type CollectionFactPurpose = (typeof COLLECTION_FACT_PURPOSES)[number];
 
 export type CollectionFactTender = Readonly<{

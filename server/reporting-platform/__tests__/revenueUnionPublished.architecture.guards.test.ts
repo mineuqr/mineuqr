@@ -46,8 +46,11 @@ describe("REVENUE-UNION-PUBLISHED-ADOPTION-1 architecture", () => {
     expect(check).not.toContain("commitCollectionFact");
   });
 
-  it("does not add a production purpose, payments table, or 0097 migration", () => {
+  it("does not add a payments table; production purpose is 0097 only", () => {
     const sql = read("drizzle/0096_payment_collection_facts.sql");
+    const sql0097 = read(
+      "drizzle/0097_payment_collection_facts_production_purpose.sql"
+    );
     const schema = read("drizzle/schema.ts");
     const journal = read("drizzle/meta/_journal.json");
     const contract = read(
@@ -57,14 +60,15 @@ describe("REVENUE-UNION-PUBLISHED-ADOPTION-1 architecture", () => {
       /`purpose` enum\('synthetic','shadow','test','validation'\) NOT NULL/
     );
     expect(sql).not.toMatch(/'production'/);
+    expect(sql0097).toContain("'production'");
+    expect(sql0097).not.toMatch(/CREATE TABLE `payments`/);
     expect(schema).not.toMatch(/mysqlTable\(\s*"payments"/);
-    expect(journal).not.toContain("0097_");
+    expect(journal).toContain("0097_payment_collection_facts_production_purpose");
+    expect(journal).not.toContain("0097_payments");
     expect(contract).toContain(
       "export const PUBLISHED_COLLECTION_FACT_PURPOSES"
     );
-    expect(contract).toContain(
-      "export const PUBLISHED_COLLECTION_FACT_PURPOSES: readonly CollectionFactPurpose[] =\n  []"
-    );
+    expect(contract).toContain("COLLECTION_FACT_PRODUCTION_PURPOSE");
   });
 
   it("does not make Settlement the financial authority or add a second Revenue root", () => {

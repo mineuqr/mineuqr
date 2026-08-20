@@ -244,6 +244,7 @@ const REQUIRED = {
     ["payment_collection_facts", "purpose", "shadow"],
     ["payment_collection_facts", "purpose", "test"],
     ["payment_collection_facts", "purpose", "validation"],
+    ["payment_collection_facts", "purpose", "production"],
     ["payment_collection_facts", "kind", "collection"],
   ],
 };

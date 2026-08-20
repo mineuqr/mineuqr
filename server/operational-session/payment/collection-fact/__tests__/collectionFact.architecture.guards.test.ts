@@ -72,7 +72,7 @@ describe("PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 non-adoption", () => {
     expect(st).not.toContain("paymentCollectionFacts");
   });
 
-  it("requires non-production purpose and insert-only uniqueness", () => {
+  it("0096 remains isolated-purpose CREATE TABLE; production is 0097 only", () => {
     const sql = read("drizzle/0096_payment_collection_facts.sql");
     expect(sql).toContain("CREATE TABLE `payment_collection_facts`");
     expect(sql).toMatch(

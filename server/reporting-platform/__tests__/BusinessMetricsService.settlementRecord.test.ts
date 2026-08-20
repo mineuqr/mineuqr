@@ -230,6 +230,39 @@ describe("BusinessMetricsService — Revenue Union published pipeline", () => {
     expect(summary.paidCheckCount).toBe(1);
   });
 
+  it("publishes a production Collection Fact when no Check authority exists", async () => {
+    vi.mocked(srAdapter.listSettlementRecordsForReporting).mockResolvedValue([]);
+    vi.mocked(cfAdapter.listCollectionFactsForRevenueUnion).mockResolvedValue([
+      {
+        collectionFactId: "pcf-prod",
+        restaurantId: 1,
+        orderId: 88,
+        paymentIntentId: "int-prod",
+        orderingChannel: "cashier_pos",
+        purpose: "production",
+        amount: "80.00",
+        taxAmount: "10.43",
+        discountAmount: "0.00",
+        currencyCode: "SAR",
+        currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
+        taxPolicySnapshot: {
+          version: 1,
+          enabled: true,
+          mode: "exclusive",
+          components: [{ id: "vat", name: "VAT", ratePercent: "15.00" }],
+        },
+        tenders: [{ paymentMethod: "cash", amount: "80.00" }],
+        checkId: null,
+        businessDay: "2026-07-16",
+        committedAt: "2026-07-16T12:00:00.000Z",
+      },
+    ]);
+    const summary = await getBusinessMetricsSummary({ restaurantId: 1 });
+    expect(summary.revenue).toBe("80.00");
+    expect(summary.taxCollected).toBe("10.43");
+    expect(summary.paidCheckCount).toBe(1);
+  });
+
   it("skips Collection Fact reads on legacy publication rollback", async () => {
     process.env.REPORTING_REVENUE_UNION = "legacy";
     vi.mocked(srAdapter.listSettlementRecordsForReporting).mockResolvedValue([

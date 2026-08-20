@@ -157,7 +157,7 @@ export function assertCommitCollectionFactCommand(
   if (!isCollectionFactPurpose(command.purpose)) {
     throw new CollectionFactError(
       "VALIDATION",
-      "purpose must be synthetic|shadow|test|validation"
+      "purpose must be synthetic|shadow|test|validation|production"
     );
   }
   const key = command.idempotencyKey.trim();
