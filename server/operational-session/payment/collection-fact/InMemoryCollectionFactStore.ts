@@ -6,6 +6,7 @@
 
 import { CollectionFactError } from "@shared/operational-session/payment/collection-fact";
 import type { CollectionFact } from "@shared/operational-session/payment/collection-fact";
+import { freezeCollectionFact } from "./collectionFactImmutability";
 import type { CollectionFactStore } from "./collectionFactStore";
 
 function idempotencyKeyOf(fact: Pick<CollectionFact, "restaurantId" | "idempotencyKey">): string {
@@ -46,10 +47,11 @@ export class InMemoryCollectionFactStore implements CollectionFactStore {
       if (this.byIdempotency.has(idempotencyKey) || this.byIntent.has(intentKey)) {
         throw new CollectionFactError("DUPLICATE", "Collection Fact already exists");
       }
-      this.facts.set(fact.collectionFactId, fact);
-      this.byIdempotency.set(idempotencyKey, fact.collectionFactId);
-      this.byIntent.set(intentKey, fact.collectionFactId);
-      return fact;
+      const stored = freezeCollectionFact(fact);
+      this.facts.set(stored.collectionFactId, stored);
+      this.byIdempotency.set(idempotencyKey, stored.collectionFactId);
+      this.byIntent.set(intentKey, stored.collectionFactId);
+      return stored;
     });
   }
 

@@ -19,6 +19,7 @@ import {
   type CollectionFactCompositionLine,
   type CollectionFactTender,
 } from "@shared/operational-session/payment/collection-fact";
+import { freezeCollectionFact } from "./collectionFactImmutability";
 import type { CollectionFactStore } from "./collectionFactStore";
 import type { CurrencySnapshot, TaxBreakdown, TaxPolicySnapshot } from "@shared/operational-session";
 
@@ -124,7 +125,7 @@ export async function insertCollectionFact(
   const db = await resolveDb(client);
   try {
     await db.insert(paymentCollectionFacts).values(toCollectionFactInsertValues(fact));
-    return fact;
+    return freezeCollectionFact(fact);
   } catch (error) {
     if (isMysqlDuplicateKeyError(error)) {
       throw new CollectionFactError("DUPLICATE", "Collection Fact already exists");

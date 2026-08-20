@@ -28,6 +28,7 @@ import {
   type CommitCollectionFactCommand,
   type CommitCollectionFactResult,
 } from "@shared/operational-session/payment/collection-fact";
+import { freezeCollectionFact } from "./collectionFactImmutability";
 import type { CollectionFactStore } from "./collectionFactStore";
 
 function hashFingerprint(payload: string): string {
@@ -191,7 +192,7 @@ export async function commitCollectionFact(
   };
 
   try {
-    const inserted = await store.insert(fact);
+    const inserted = await store.insert(freezeCollectionFact(fact));
     logCollectionFact({
       type: OPS_EVENT.payment_collection_fact_committed,
       severity: "info",
