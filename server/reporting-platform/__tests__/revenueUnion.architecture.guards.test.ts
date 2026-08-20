@@ -35,13 +35,12 @@ describe("REVENUE-UNION-ADOPTION-1 architecture", () => {
     expect(panel).not.toContain("commitCollectionFact");
   });
 
-  it("does not replace published Business Metrics with Union", () => {
+  it("does not replace published Business Metrics with isolated Union eligibility", () => {
     const metrics = read("server/reporting-platform/BusinessMetricsService.ts");
     const router = read("server/reporting-platform/reportingRouter.ts");
     expect(metrics).toContain("listSettlementRecordsForReporting");
-    expect(metrics).not.toContain("computeShadowRevenueUnion");
-    expect(metrics).not.toContain("eligibility: \"isolated\"");
-    expect(router).not.toContain("computeShadowRevenueUnion");
+    expect(metrics).not.toContain('eligibility: "isolated"');
+    expect(metrics).not.toContain("commitCollectionFact");
     expect(router).not.toContain("getRevenueUnion");
   });
 
@@ -64,5 +63,8 @@ describe("REVENUE-UNION-ADOPTION-1 architecture", () => {
     expect(resolver).toContain('code: "BOTH"');
     expect(resolver).toContain("isCollectionFactRevenueEligible");
     expect(resolver).toContain('eligibility === "none"');
+    expect(resolver).toContain('eligibility === "published"');
+    expect(resolver).toContain("UNRESOLVED");
+    expect(resolver).toContain("PUBLISHED_COLLECTION_FACT_PURPOSES");
   });
 });

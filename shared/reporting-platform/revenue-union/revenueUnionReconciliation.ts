@@ -22,7 +22,11 @@ export function compareLegacyToUnion(input: {
     if (expected !== actual) mismatches.push({ field, expected, actual });
   };
   push("legacyGross", input.legacyGross, input.union.totals.legacyGross);
-  if (input.union.eligibility === "none" || input.union.totals.collectionFactCount === 0) {
+  if (
+    input.union.eligibility === "none" ||
+    input.union.eligibility === "published" ||
+    input.union.totals.collectionFactCount === 0
+  ) {
     push("grossRevenue", input.legacyGross, input.union.totals.grossRevenue);
     push("taxCollected", input.legacyTax, input.union.totals.taxCollected);
     if (input.legacyPaidCount !== input.union.totals.paidContributionCount) {

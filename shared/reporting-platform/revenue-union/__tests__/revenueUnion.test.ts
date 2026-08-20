@@ -4,10 +4,14 @@
 import { describe, expect, it } from "vitest";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform";
 import {
+  classifyEconomicTransaction,
   compareFactToContribution,
   compareLegacyToUnion,
   computeRevenueUnion,
+  isCollectionFactRevenueEligible,
+  isPublishableAuthorityClass,
   periodKeyFromFrozenBusinessDay,
+  PUBLISHED_COLLECTION_FACT_PURPOSES,
   type RevenueUnionCollectionFact,
   type RevenueUnionLegacyFact,
 } from "../index";
@@ -290,5 +294,100 @@ describe("REVENUE-UNION-ADOPTION-1", () => {
         union,
       })
     ).toEqual([]);
+  });
+});
+
+describe("REVENUE-UNION-PUBLISHED-ADOPTION-1", () => {
+  it("keeps the published Collection Fact purpose allowlist empty", () => {
+    expect(PUBLISHED_COLLECTION_FACT_PURPOSES).toEqual([]);
+    expect(
+      isCollectionFactRevenueEligible("validation", "published")
+    ).toBe(false);
+    expect(isCollectionFactRevenueEligible("shadow", "published")).toBe(false);
+    expect(isCollectionFactRevenueEligible("test", "published")).toBe(false);
+    expect(isCollectionFactRevenueEligible("synthetic", "published")).toBe(
+      false
+    );
+  });
+
+  it("does not let isolated facts suppress published Check revenue", () => {
+    const union = computeRevenueUnion({
+      legacy: [
+        legacy({
+          checkId: 10,
+          outcome: "paid",
+          grandTotal: "115.00",
+          orderIds: [44],
+        }),
+      ],
+      facts: [
+        fact({
+          paymentIntentId: "int-1",
+          amount: "115.00",
+          orderId: 44,
+          checkId: 10,
+        }),
+      ],
+      eligibility: "published",
+    });
+    expect(union.conflicts.some((c) => c.code === "BOTH")).toBe(false);
+    expect(union.totals.grossRevenue).toBe("115.00");
+    expect(union.totals.collectionFactCount).toBe(0);
+    expect(union.eligibilityRejectedFactCount).toBe(1);
+  });
+
+  it("classifies BOTH as unpublished and UNRESOLVED as unpublished", () => {
+    expect(
+      classifyEconomicTransaction({
+        paidLegacyPresent: true,
+        eligibleFactPresent: false,
+      })
+    ).toBe("LEGACY_CHECK");
+    expect(
+      classifyEconomicTransaction({
+        paidLegacyPresent: false,
+        eligibleFactPresent: true,
+      })
+    ).toBe("COLLECTION_FACT");
+    expect(
+      classifyEconomicTransaction({
+        paidLegacyPresent: true,
+        eligibleFactPresent: true,
+      })
+    ).toBe("BOTH");
+    expect(
+      classifyEconomicTransaction({
+        paidLegacyPresent: false,
+        eligibleFactPresent: false,
+      })
+    ).toBe("UNRESOLVED");
+    expect(
+      classifyEconomicTransaction({
+        paidLegacyPresent: false,
+        eligibleFactPresent: true,
+        eligibleFactValid: false,
+      })
+    ).toBe("UNRESOLVED");
+    expect(isPublishableAuthorityClass("BOTH")).toBe(false);
+    expect(isPublishableAuthorityClass("UNRESOLVED")).toBe(false);
+    expect(isPublishableAuthorityClass("LEGACY_CHECK")).toBe(true);
+  });
+
+  it("marks an eligible but invalid Collection Fact as UNRESOLVED and does not publish it", () => {
+    const union = computeRevenueUnion({
+      legacy: [],
+      facts: [
+        fact({
+          paymentIntentId: "int-bad",
+          amount: "-12.00",
+          orderId: 44,
+        }),
+      ],
+      eligibility: "isolated",
+    });
+    expect(union.conflicts.some((c) => c.code === "UNRESOLVED")).toBe(true);
+    expect(union.totals.collectionFactCount).toBe(0);
+    expect(union.totals.grossRevenue).toBe("0.00");
+    expect(union.unresolvedCount).toBe(1);
   });
 });

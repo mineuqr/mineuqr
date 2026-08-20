@@ -1,9 +1,16 @@
 /**
- * REVENUE-UNION-ADOPTION-1 — canonical union identity (ADR-ARCH-039 §7).
+ * REVENUE-UNION-ADOPTION-1 / REVENUE-UNION-PUBLISHED-ADOPTION-1
+ * Canonical union identity (ADR-ARCH-039 §7).
  *
- * Legacy: one paid Check / gen=1 SR is one contribution (`check:{restaurantId}:{checkId}`).
- * Collection Fact: one payment intent is one contribution (`intent:{restaurantId}:{paymentIntentId}`).
- * Sale overlap key: `sale:{restaurantId}:{orderingChannel}:{orderId}` (Cashier 1:1).
+ * No single identifier is sufficient. Contribution identity is composite:
+ * - Legacy: `check:{restaurantId}:{checkId}`
+ * - Collection Fact: `intent:{restaurantId}:{paymentIntentId}`
+ * - Sale overlap: `sale:{restaurantId}:{orderingChannel}:{orderId}`
+ * - Optional Check overlap: `checkref:{restaurantId}:{checkId}`
+ *
+ * Persist-time uniqueness remains `(restaurantId, idempotencyKey)` and
+ * `(restaurantId, paymentIntentId)`. Settlement ids are publication metadata,
+ * not a second Gross root. Split tenders share one contribution id.
  */
 
 import type {

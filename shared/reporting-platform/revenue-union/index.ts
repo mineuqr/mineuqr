@@ -1,7 +1,11 @@
 export {
   REVENUE_UNION_PROGRAM_ID,
+  REVENUE_UNION_PUBLISHED_PROGRAM_ID,
   REVENUE_AUTHORITIES,
+  REVENUE_AUTHORITY_CLASSES,
+  PUBLISHED_COLLECTION_FACT_PURPOSES,
   type RevenueAuthority,
+  type RevenueAuthorityClass,
   type RevenueUnionSaleKey,
   type RevenueUnionLegacyFact,
   type RevenueUnionCollectionFact,
@@ -26,6 +30,13 @@ export {
   isCollectionFactRevenueEligible,
   resolveRevenueUnionSets,
 } from "./revenueUnionResolver";
+
+export {
+  classifyEconomicTransaction,
+  isPublishableAuthorityClass,
+} from "./revenueUnionClassifier";
+
+export { isValidCollectionFactAuthority } from "./revenueUnionFactValidation";
 
 export {
   computeRevenueUnion,

@@ -107,5 +107,9 @@ export function computeRevenueUnion(input: {
     totals,
     contributions: resolved.contributions,
     conflicts: resolved.conflicts,
+    excludedLegacyIds: [...resolved.excludedLegacyIds],
+    excludedFactIds: [...resolved.excludedFactIds],
+    eligibilityRejectedFactCount: resolved.eligibilityRejectedFactCount,
+    unresolvedCount: resolved.unresolvedCount,
   };
 }

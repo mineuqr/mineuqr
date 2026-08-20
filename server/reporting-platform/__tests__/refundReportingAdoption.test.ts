@@ -12,6 +12,7 @@ import {
   buildPaymentMethodAnalyticsFromCapturedLines,
 } from "../PaymentMethodAnalyticsService";
 import * as srAdapter from "../settlementRecordReportingAdapter";
+import * as cfAdapter from "../revenue-union/collectionFactReportingAdapter";
 import type { SettlementRecordReportingFact } from "../settlementRecordReportingAdapter";
 import type { CheckReportingRow } from "../checkReportingRepository";
 
@@ -20,6 +21,11 @@ vi.mock("../settlementRecordReportingAdapter", () => ({
   listSettlementRecordPaymentLinesForReporting: vi.fn(),
   listRefundSettlementRecordsForReporting: vi.fn(),
   listRefundSettlementRecordPaymentLinesForReporting: vi.fn(),
+}));
+
+vi.mock("../revenue-union/collectionFactReportingAdapter", () => ({
+  listCollectionFactsForRevenueUnion: vi.fn(),
+  listCollectionFactsForShadowRevenue: vi.fn(),
 }));
 
 function check(
@@ -212,16 +218,22 @@ describe("REFUND-REPORTING-ADOPTION-1 — Payment method refund buckets", () => 
 
 describe("REFUND-REPORTING-ADOPTION-1 — Service integration + tenant isolation", () => {
   const prev = process.env.REPORTING_FINANCIAL_SOURCE;
+  const prevUnion = process.env.REPORTING_REVENUE_UNION;
 
   beforeEach(() => {
     process.env.REPORTING_FINANCIAL_SOURCE = "settlement_record";
+    delete process.env.REPORTING_REVENUE_UNION;
     vi.mocked(srAdapter.listSettlementRecordsForReporting).mockReset();
     vi.mocked(srAdapter.listRefundSettlementRecordsForReporting).mockReset();
+    vi.mocked(cfAdapter.listCollectionFactsForRevenueUnion).mockReset();
+    vi.mocked(cfAdapter.listCollectionFactsForRevenueUnion).mockResolvedValue([]);
   });
 
   afterEach(() => {
     if (prev === undefined) delete process.env.REPORTING_FINANCIAL_SOURCE;
     else process.env.REPORTING_FINANCIAL_SOURCE = prev;
+    if (prevUnion === undefined) delete process.env.REPORTING_REVENUE_UNION;
+    else process.env.REPORTING_REVENUE_UNION = prevUnion;
   });
 
   it("loads refund publications per restaurant query (tenant-scoped adapter)", async () => {

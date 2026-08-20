@@ -1,15 +1,40 @@
 /**
- * REVENUE-UNION-ADOPTION-1 / ADR-ARCH-039 I-REV-U-01/02
- * Shadow Revenue Union contract. Not published Dashboard authority.
+ * REVENUE-UNION-ADOPTION-1 / REVENUE-UNION-PUBLISHED-ADOPTION-1
+ * ADR-ARCH-039 I-REV-U-01/02
+ *
+ * Union engine + published authority resolution.
+ * Collection Fact contribution to published Revenue remains ineligible until a
+ * persistable production purpose and Collection Fact-native compensating events
+ * exist (separate programs). Isolated purposes never publish.
  */
 
 import type { CollectionFactPurpose } from "../../operational-session/payment/collection-fact/collectionFactContract";
 import type { CurrencySnapshot, TaxPolicySnapshot } from "../../operational-session/check/checkContract";
 
 export const REVENUE_UNION_PROGRAM_ID = "REVENUE-UNION-ADOPTION-1" as const;
+export const REVENUE_UNION_PUBLISHED_PROGRAM_ID =
+  "REVENUE-UNION-PUBLISHED-ADOPTION-1" as const;
 
 export const REVENUE_AUTHORITIES = ["LEGACY_CHECK", "COLLECTION_FACT"] as const;
 export type RevenueAuthority = (typeof REVENUE_AUTHORITIES)[number];
+
+/** Transaction classifier output. BOTH and UNRESOLVED are never published. */
+export const REVENUE_AUTHORITY_CLASSES = [
+  "LEGACY_CHECK",
+  "COLLECTION_FACT",
+  "UNRESOLVED",
+  "BOTH",
+] as const;
+export type RevenueAuthorityClass = (typeof REVENUE_AUTHORITY_CLASSES)[number];
+
+/**
+ * Persistable Collection Fact purposes that may enter Published Revenue.
+ * Empty by governance: 0096 MySQL enum has no `production` value, and
+ * Collection Fact-native refund/void/complimentary kinds do not exist.
+ * Do not add isolated purposes here.
+ */
+export const PUBLISHED_COLLECTION_FACT_PURPOSES: readonly CollectionFactPurpose[] =
+  [];
 
 export type RevenueUnionSaleKey = Readonly<{
   restaurantId: number;
@@ -62,8 +87,12 @@ export type RevenueUnionRefundFact = Readonly<{
   businessDay: string | null;
 }>;
 
-/** Isolated facts may contribute only in shadow/validation. Published allowlist is empty. */
-export type CollectionFactEligibility = "none" | "isolated";
+/**
+ * none — never contribute (alias of published while the allowlist is empty)
+ * isolated — synthetic|shadow|test|validation; shadow/tests only
+ * published — only PUBLISHED_COLLECTION_FACT_PURPOSES (currently empty)
+ */
+export type CollectionFactEligibility = "none" | "isolated" | "published";
 
 export type ResolvedRevenueContribution = Readonly<{
   authority: RevenueAuthority;
@@ -78,7 +107,13 @@ export type ResolvedRevenueContribution = Readonly<{
 }>;
 
 export type RevenueUnionConflict = Readonly<{
-  code: "BOTH" | "DUPLICATE_LEGACY" | "DUPLICATE_FACT" | "CURRENCY";
+  code:
+    | "BOTH"
+    | "DUPLICATE_LEGACY"
+    | "DUPLICATE_FACT"
+    | "CURRENCY"
+    | "UNRESOLVED"
+    | "ELIGIBILITY_REJECTED";
   contributionId: string;
   message: string;
 }>;
@@ -105,4 +140,8 @@ export type RevenueUnionResult = Readonly<{
   totals: RevenueUnionTotals;
   contributions: readonly ResolvedRevenueContribution[];
   conflicts: readonly RevenueUnionConflict[];
+  excludedLegacyIds: readonly string[];
+  excludedFactIds: readonly string[];
+  eligibilityRejectedFactCount: number;
+  unresolvedCount: number;
 }>;

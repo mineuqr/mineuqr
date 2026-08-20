@@ -141,12 +141,17 @@ export {
 
 export {
   REVENUE_UNION_PROGRAM_ID,
+  REVENUE_UNION_PUBLISHED_PROGRAM_ID,
+  PUBLISHED_COLLECTION_FACT_PURPOSES,
   computeRevenueUnion,
   compareLegacyToUnion,
   compareFactToContribution,
   periodKeyFromFrozenBusinessDay,
   resolveRevenueUnionSets,
+  classifyEconomicTransaction,
+  isCollectionFactRevenueEligible,
   type RevenueAuthority,
+  type RevenueAuthorityClass,
   type RevenueUnionResult,
   type CollectionFactEligibility,
 } from "./revenue-union";

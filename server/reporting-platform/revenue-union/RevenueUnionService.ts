@@ -1,7 +1,7 @@
 /**
- * REVENUE-UNION-ADOPTION-1 — shadow / dual-run Revenue Union service.
+ * REVENUE-UNION-ADOPTION-1 / REVENUE-UNION-PUBLISHED-ADOPTION-1
+ * Union mapping + dual-run comparison helpers.
  *
- * Does not replace getBusinessMetricsSummary.
  * Does not write Collection Facts.
  * Does not change PAID, Cashier, or Settlement.
  */
@@ -18,7 +18,7 @@ import {
   type RevenueUnionResult,
 } from "@shared/reporting-platform/revenue-union";
 import { buildBusinessMetricsSummary } from "../businessMetricsAggregator";
-import { listCollectionFactsForShadowRevenue } from "./collectionFactReportingAdapter";
+import { listCollectionFactsForRevenueUnion } from "./collectionFactReportingAdapter";
 import {
   listRefundSettlementRecordsForReporting,
   listSettlementRecordsForReporting,
@@ -79,7 +79,7 @@ export function toRevenueUnionRefundFact(
 
 /**
  * Shadow Union from already-loaded facts. Isolated eligibility counts Collection Facts.
- * Published eligibility ("none") ignores facts so Union Gross = legacy Gross.
+ * Published eligibility ignores isolated facts so Union Gross = legacy Gross.
  */
 export function computeShadowRevenueUnion(input: {
   legacy: readonly RevenueUnionLegacyFact[];
@@ -97,7 +97,7 @@ export function computeShadowRevenueUnion(input: {
 
 /**
  * Production-safe dual-run: load SR (legacy publication) + Collection Facts,
- * compute Union with eligibility=none (facts do not publish) and isolated (shadow).
+ * compute Union with eligibility=published (facts do not publish) and isolated (shadow).
  * Zero Collection Fact rows → both equal legacy.
  */
 export async function comparePublishedLegacyToShadowUnion(input: {
@@ -113,7 +113,7 @@ export async function comparePublishedLegacyToShadowUnion(input: {
   const [srRows, refundRows, facts] = await Promise.all([
     listSettlementRecordsForReporting(input),
     listRefundSettlementRecordsForReporting(input),
-    listCollectionFactsForShadowRevenue({ restaurantId: input.restaurantId }),
+    listCollectionFactsForRevenueUnion({ restaurantId: input.restaurantId }),
   ]);
   const legacy = srRows.map((row) => toRevenueUnionLegacyFromSettlement(row));
   const refunds = refundRows.map((row) =>
@@ -126,7 +126,7 @@ export async function comparePublishedLegacyToShadowUnion(input: {
     legacy,
     facts,
     refunds,
-    eligibility: "none",
+    eligibility: "published",
   });
   const shadowUnion = computeShadowRevenueUnion({
     legacy,

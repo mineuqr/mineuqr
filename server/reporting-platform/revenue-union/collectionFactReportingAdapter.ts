@@ -1,6 +1,6 @@
 /**
- * REVENUE-UNION-ADOPTION-1 — read-only Collection Fact projection for shadow Union.
- * Does not write facts. Does not contribute to published Dashboard Revenue.
+ * Read-only Collection Fact projection for Revenue Union.
+ * Does not write facts. Isolated purposes cannot enter Published Revenue.
  */
 
 import { eq } from "drizzle-orm";
@@ -32,7 +32,7 @@ function asTenders(
   }));
 }
 
-export async function listCollectionFactsForShadowRevenue(input: {
+export async function listCollectionFactsForRevenueUnion(input: {
   restaurantId: number;
 }): Promise<readonly RevenueUnionCollectionFact[]> {
   const db = await getDb();
@@ -73,3 +73,6 @@ export async function listCollectionFactsForShadowRevenue(input: {
   }
   return out;
 }
+
+export const listCollectionFactsForShadowRevenue =
+  listCollectionFactsForRevenueUnion;

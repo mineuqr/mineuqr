@@ -1,6 +1,8 @@
 /**
- * REVENUE-UNION-ADOPTION-1 — one authority per transaction (I-REV-U-01).
- * BOTH is never published. Duplicate identities collapse (idempotent).
+ * REVENUE-UNION-ADOPTION-1 / REVENUE-UNION-PUBLISHED-ADOPTION-1
+ * One authority per transaction (I-REV-U-01).
+ * BOTH and UNRESOLVED are never published. Duplicate identities collapse.
+ * Isolated purposes never enter published eligibility.
  */
 
 import type { CollectionFactPurpose } from "../../operational-session/payment/collection-fact/collectionFactContract";
@@ -12,6 +14,9 @@ import type {
   RevenueUnionConflict,
   RevenueUnionLegacyFact,
 } from "./revenueUnionContract";
+import { PUBLISHED_COLLECTION_FACT_PURPOSES } from "./revenueUnionContract";
+import { classifyEconomicTransaction } from "./revenueUnionClassifier";
+import { isValidCollectionFactAuthority } from "./revenueUnionFactValidation";
 import {
   checkOverlapKey,
   collectionContributionId,
@@ -21,12 +26,16 @@ import {
 } from "./revenueUnionIdentity";
 
 const ISOLATED_PURPOSES = new Set<string>(COLLECTION_FACT_PURPOSES);
+const PUBLISHED_PURPOSES = new Set<string>(PUBLISHED_COLLECTION_FACT_PURPOSES);
 
 export function isCollectionFactRevenueEligible(
   purpose: CollectionFactPurpose,
   eligibility: CollectionFactEligibility
 ): boolean {
   if (eligibility === "none") return false;
+  if (eligibility === "published") {
+    return PUBLISHED_PURPOSES.has(purpose);
+  }
   return ISOLATED_PURPOSES.has(purpose);
 }
 
@@ -35,6 +44,8 @@ export type ResolvedRevenueUnionSets = Readonly<{
   conflicts: readonly RevenueUnionConflict[];
   excludedLegacyIds: ReadonlySet<string>;
   excludedFactIds: ReadonlySet<string>;
+  eligibilityRejectedFactCount: number;
+  unresolvedCount: number;
 }>;
 
 function paidLegacy(fact: RevenueUnionLegacyFact): boolean {
@@ -66,11 +77,28 @@ export function resolveRevenueUnionSets(input: {
   }
 
   const factsById = new Map<string, RevenueUnionCollectionFact>();
+  let eligibilityRejectedFactCount = 0;
   for (const row of input.facts) {
     if (!isCollectionFactRevenueEligible(row.purpose, input.eligibility)) {
+      eligibilityRejectedFactCount += 1;
+      if (input.eligibility === "published") {
+        conflicts.push({
+          code: "ELIGIBILITY_REJECTED",
+          contributionId: collectionContributionId(row),
+          message: "Collection Fact purpose is not published-eligible",
+        });
+      }
       continue;
     }
     const id = collectionContributionId(row);
+    if (!isValidCollectionFactAuthority(row)) {
+      conflicts.push({
+        code: "UNRESOLVED",
+        contributionId: id,
+        message: "Eligible Collection Fact failed authority validation",
+      });
+      continue;
+    }
     if (factsById.has(id)) {
       conflicts.push({
         code: "DUPLICATE_FACT",
@@ -107,7 +135,11 @@ export function resolveRevenueUnionSets(input: {
       ? factsBySale.get(overlappingSale)
       : undefined;
     const factId = factFromCheck ?? factFromSale;
-    if (factId && paidLegacy(legacy)) {
+    const authority = classifyEconomicTransaction({
+      paidLegacyPresent: paidLegacy(legacy),
+      eligibleFactPresent: Boolean(factId),
+    });
+    if (factId && authority === "BOTH") {
       conflicts.push({
         code: "BOTH",
         contributionId: `${legacyId}|${factId}`,
@@ -164,5 +196,14 @@ export function resolveRevenueUnionSets(input: {
     });
   }
 
-  return { contributions, conflicts, excludedLegacyIds, excludedFactIds };
+  const unresolvedCount = conflicts.filter((c) => c.code === "UNRESOLVED").length;
+
+  return {
+    contributions,
+    conflicts,
+    excludedLegacyIds,
+    excludedFactIds,
+    eligibilityRejectedFactCount,
+    unresolvedCount,
+  };
 }
