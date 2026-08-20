@@ -52,15 +52,15 @@ describe("PRODUCTION-COLLECTION-FACT-COMMIT-CONTRACT-1 architecture", () => {
     expect(contract).not.toContain("cashier-workspace");
     expect(contract).not.toContain("CashierWorkspacePanel");
     expect(writer).toContain("assertProductionCollectionFactCommit");
-    expect(writer).toContain("NOT connected to Cashier Confirm");
-    expect(writer).toContain("Production payment paths must not call this");
+    expect(writer).toContain("Cashier Confirm is the first certified");
     expect(paymentIndex).not.toContain("commitCollectionFact");
     expect(paymentIndex).toContain("confirmPayment");
-    for (const body of [confirm, panel, settle, sale, router]) {
-      expect(body).not.toContain("commitCollectionFact");
-      expect(body).not.toContain("assertProductionCollectionFactCommit");
-      expect(body).not.toContain("productionCollectionFactCommitContract");
-    }
+    expect(confirm).toContain("commitCashierProductionCollectionFact");
+    expect(confirm).not.toContain("insertCollectionFact");
+    expect(panel).not.toContain("commitCollectionFact");
+    expect(settle).not.toContain("commitCollectionFact");
+    expect(sale).not.toContain("commitCollectionFact");
+    expect(router).not.toContain("commitCollectionFact");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(confirm).toContain("await settleCheckPaidByIdDetailed({");
   });

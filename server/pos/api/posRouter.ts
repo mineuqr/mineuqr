@@ -93,6 +93,7 @@ const settlementLineInput = z.object({
 const settlementInitiateInput = terminalInput.extend({
   orderId: z.number().int().positive(),
   idempotencyKey: z.string().min(8).max(128),
+  paymentIntentId: z.string().min(8).max(128),
   /** Catalog keys from SELECTABLE_PAYMENT_METHODS. Amounts stay Check-owned. */
   paymentMethod: z.enum(["cash", "card"]).optional(),
   settlements: z.array(settlementLineInput).min(1).max(8).optional(),
@@ -413,6 +414,7 @@ export const posRouter = router({
               terminalId: input.terminalId,
               orderId: input.orderId,
               idempotencyKey: input.idempotencyKey,
+              paymentIntentId: input.paymentIntentId,
               paymentMethod: input.paymentMethod,
               settlements: input.settlements,
               billDiscountAmount: input.billDiscountAmount,

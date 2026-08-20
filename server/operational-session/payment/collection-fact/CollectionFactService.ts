@@ -2,9 +2,9 @@
  * PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 / ADR-ARCH-039
  * Server-side Collection Fact writer. Insert-only. Idempotent. Tenant-scoped.
  *
- * NOT connected to Cashier Confirm, PAID, Revenue, or Settlement.
- * Callers must supply a store. Production payment paths must not call this.
- * Production purpose additionally enforces PRODUCTION-COLLECTION-FACT-COMMIT-CONTRACT-1.
+ * Callers must supply a store. Cashier Confirm is the first certified
+ * production caller (PRODUCTION-COLLECTION-FACT-CASHIER-ADOPTION-1).
+ * Other channels must not call this until separately certified.
  */
 
 import { createHash, randomUUID } from "node:crypto";

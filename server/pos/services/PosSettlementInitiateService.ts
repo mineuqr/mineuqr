@@ -14,6 +14,7 @@ import {
   type SelectablePaymentMethod,
   type StaffSettlementLineInput,
 } from "@shared/operational-session";
+import { CollectionFactError } from "@shared/operational-session/payment/collection-fact";
 import type { SettlementContext } from "@shared/crmp";
 import { opsLog } from "../../_core/opsLog";
 import { getOrderById } from "../../db";
@@ -49,6 +50,7 @@ export type PosSettlementInitiateCommand = {
   terminalId: string;
   orderId: number;
   idempotencyKey: string;
+  paymentIntentId: string;
   /** Canonical catalog key forwarded to Check. Not a POS amount. */
   paymentMethod?: SelectablePaymentMethod;
   /**
@@ -135,6 +137,10 @@ export type PosSettlementSettlePaid = (input: {
     deviceId?: string | null;
   };
   settlements?: readonly StaffSettlementLineInput[];
+  paymentIntentId: string;
+  idempotencyKey: string;
+  terminalId: string;
+  actorUserId: number;
 }) => Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
@@ -185,6 +191,7 @@ function fingerprintOf(input: {
   terminalId: string;
   userId: number;
   orderId: number;
+  paymentIntentId: string;
   paymentMethod?: SelectablePaymentMethod | null;
   settlements?: readonly StaffSettlementLineInput[];
   billDiscountAmount?: string | null;
@@ -203,6 +210,7 @@ function fingerprintOf(input: {
         terminalId: input.terminalId,
         userId: input.userId,
         orderId: input.orderId,
+        paymentIntentId: input.paymentIntentId,
         paymentMethod: input.paymentMethod ?? null,
         billDiscountAmount: input.billDiscountAmount ?? null,
         ...(settlements && !singleMethodOnly ? { settlements } : {}),
@@ -255,6 +263,10 @@ async function defaultSettlePaid(input: {
     deviceId?: string | null;
   };
   settlements?: readonly StaffSettlementLineInput[];
+  paymentIntentId: string;
+  idempotencyKey: string;
+  terminalId: string;
+  actorUserId: number;
 }): Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
@@ -271,6 +283,11 @@ async function defaultSettlePaid(input: {
       operatorUserId: input.settlementContextHints.operatorUserId,
       deviceId: input.settlementContextHints.deviceId,
     },
+    paymentIntentId: input.paymentIntentId,
+    idempotencyKey: input.idempotencyKey,
+    terminalId: input.terminalId,
+    actorType: "staff_user",
+    actorUserId: input.actorUserId,
     // CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 — do not wait for Attribution.
     awaitAttribution: false,
   });
@@ -394,6 +411,17 @@ export class PosSettlementInitiateService {
     let checkLoadedAt: string | undefined;
     let financialTransactionStartedAt: string | undefined;
     assertIdempotencyKey(input.command.idempotencyKey);
+    if (
+      !input.command.paymentIntentId.trim() ||
+      input.command.paymentIntentId.length > 128 ||
+      input.command.paymentIntentId === String(input.command.orderId) ||
+      input.command.paymentIntentId === input.command.idempotencyKey
+    ) {
+      throw new PosSettlementInitiateError(
+        "invalid_payment_intent",
+        "A legitimate paymentIntentId is required"
+      );
+    }
     if (!Number.isInteger(input.command.orderId) || input.command.orderId <= 0) {
       throw new PosSettlementInitiateError("order_not_found", "Order is invalid");
     }
@@ -462,6 +490,7 @@ export class PosSettlementInitiateService {
       terminalId: context.terminalId,
       userId: context.userId,
       orderId: order.id,
+      paymentIntentId: input.command.paymentIntentId,
       paymentMethod: input.command.paymentMethod ?? null,
       settlements: input.command.settlements,
       billDiscountAmount: input.command.billDiscountAmount ?? null,
@@ -601,10 +630,20 @@ export class PosSettlementInitiateService {
             operatorUserId: context.userId,
             deviceId: operational.deviceId,
           },
+          paymentIntentId: input.command.paymentIntentId,
+          idempotencyKey: input.command.idempotencyKey,
+          terminalId: context.terminalId,
+          actorUserId: context.userId,
           ...(settlements ? { settlements } : {}),
         });
         financialTxnMs = clock.since(txnStarted);
       } catch (err) {
+        if (err instanceof CollectionFactError) {
+          throw new PosSettlementInitiateError(
+            err.code === "CONFLICT" ? "idempotency_conflict" : "collection_fact_rejected",
+            err.message
+          );
+        }
         if (
           err instanceof CheckTransitionError ||
           err instanceof CheckMembershipError

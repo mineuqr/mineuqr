@@ -29,7 +29,8 @@ describe("REVENUE-UNION-ADOPTION-1 architecture", () => {
     expect(union).not.toContain("commitCollectionFact");
     expect(adapter).not.toContain("insert(");
     expect(adapter).not.toContain("commitCollectionFact");
-    expect(confirm).not.toContain("commitCollectionFact");
+    expect(confirm).toContain("commitCashierProductionCollectionFact");
+    expect(confirm).not.toContain("insertCollectionFact");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(settle).toContain("confirmPayment");
     expect(panel).not.toContain("commitCollectionFact");

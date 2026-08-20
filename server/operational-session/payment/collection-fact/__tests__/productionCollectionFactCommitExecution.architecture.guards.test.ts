@@ -41,14 +41,17 @@ describe("PRODUCTION-COLLECTION-FACT-COMMIT-EXECUTION-HARDENING-1 architecture",
     const settle = read(SETTLE);
     const paymentIndex = read(PAYMENT_INDEX);
     const writer = read(WRITER);
-    for (const body of [confirm, panel, settle, paymentIndex]) {
+    for (const body of [panel, settle, paymentIndex]) {
       expect(body).not.toContain("commitCollectionFact");
       expect(body).not.toContain("insertCollectionFact");
       expect(body).not.toContain("createDrizzleCollectionFactStore");
       expect(body).not.toContain("freezeCollectionFact");
     }
+    expect(confirm).toContain("commitCashierProductionCollectionFact");
+    expect(confirm).not.toContain("insertCollectionFact");
+    expect(confirm).not.toContain("createDrizzleCollectionFactStore");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
-    expect(writer).toContain("Production payment paths must not call this");
+    expect(writer).toContain("Cashier Confirm is the first certified");
     expect(writer).toContain("freezeCollectionFact");
     expect(read(STORE)).toContain("freezeCollectionFact");
   });

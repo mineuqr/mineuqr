@@ -1,4 +1,9 @@
 export { commitCollectionFact } from "./CollectionFactService";
+export {
+  commitCashierProductionCollectionFact,
+  type CashierPaidMoneyFreeze,
+  type CashierProductionCollectionCommitInput,
+} from "./commitCashierProductionCollectionFact";
 export type { CollectionFactStore } from "./collectionFactStore";
 export { InMemoryCollectionFactStore } from "./InMemoryCollectionFactStore";
 export {

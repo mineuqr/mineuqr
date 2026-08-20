@@ -34,7 +34,7 @@ import {
   displayCents,
   resolveCashierSettlementPlan,
 } from "@/lib/cashier-workspace/cashierSplitTender";
-import { newCashierIdempotencyKey } from "@/lib/cashier-workspace/cashierIdempotency";
+import { newCashierIdempotencyKey, newCashierPaymentIntentId } from "@/lib/cashier-workspace/cashierIdempotency";
 import {
   cashierUiLabel,
   type CashierLang,
@@ -189,6 +189,7 @@ export function CashierWorkspacePanel({
   const payInFlightRef = useRef(false);
   const saleKeyRef = useRef<string | null>(null);
   const settleKeyRef = useRef<string | null>(null);
+  const paymentIntentRef = useRef<string | null>(null);
   const cashierFlowIdRef = useRef<string | null>(null);
 
   function endCashierPaymentFlow(outcome: CashierPaymentFlowOutcome) {
@@ -485,6 +486,7 @@ export function CashierWorkspacePanel({
     setPaymentRecoveryUi("idle");
     saleKeyRef.current = null;
     settleKeyRef.current = null;
+    paymentIntentRef.current = null;
     intakeByOrderRef.current.clear();
     setTicket([]);
     setSelectedOrderId(null);
@@ -603,6 +605,7 @@ export function CashierWorkspacePanel({
         totalAmount: result.totalAmount,
       };
       settleKeyRef.current = newCashierIdempotencyKey("settle");
+      paymentIntentRef.current = newCashierPaymentIntentId();
       setTicket([]);
       setSelectedOrderId(result.orderId);
       setOpenCheck(null);
@@ -655,6 +658,9 @@ export function CashierWorkspacePanel({
     if (!settleKeyRef.current) {
       settleKeyRef.current = newCashierIdempotencyKey("settle");
     }
+    if (!paymentIntentRef.current) {
+      paymentIntentRef.current = newCashierPaymentIntentId();
+    }
     const presentationHint = {
       paymentMethod: plan.paymentMethod,
       settlements: plan.settlements,
@@ -683,6 +689,7 @@ export function CashierWorkspacePanel({
         terminalId,
         orderId: selectedOrderId,
         idempotencyKey: settleKeyRef.current,
+        paymentIntentId: paymentIntentRef.current,
         paymentMethod: plan.paymentMethod,
         settlements: [...plan.settlements],
         ...(ticketDiscount && ticketDiscount !== "0.00"

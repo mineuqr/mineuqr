@@ -14,6 +14,7 @@ import {
   PosSettlementInitiateService,
 } from "../services/PosSettlementInitiateService";
 import { CheckTransitionError } from "../../operational-session/check/CheckService";
+import { CollectionFactError } from "@shared/operational-session/payment/collection-fact";
 import type { SelectUser } from "../../../drizzle/schema";
 import type { PosPermission } from "@shared/pos";
 import type { SettlementContext } from "@shared/crmp";
@@ -262,6 +263,7 @@ const command = {
   terminalId: TERMINAL_A,
   orderId: ORDER_A,
   idempotencyKey: "settle-key-01",
+  paymentIntentId: "cpi_test-intent-01",
 };
 
 describe("POS Settlement Initiation → existing Check Domain", () => {
@@ -306,11 +308,40 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
         operatorUserId: STAFF_A,
         deviceId: null,
       },
+      paymentIntentId: "cpi_test-intent-01",
+      idempotencyKey: "settle-key-01",
+      terminalId: TERMINAL_A,
+      actorUserId: STAFF_A,
     });
     expect(settle.mock.calls[0][0]).not.toHaveProperty("settlements");
     expect(settle.mock.calls[0][0]).not.toHaveProperty("totalAmount");
     expect(settle.mock.calls[0][0]).not.toHaveProperty("registerId");
     expect(settle.mock.calls[0][0]).not.toHaveProperty("shiftId");
+  });
+
+  it("rejects a paymentIntentId that equals orderId before settle", async () => {
+    const { store, grants, service, settle } = harness();
+    await seedTerminal(store);
+    await grantSettle(grants);
+    await expect(
+      service.initiate({
+        user: user(STAFF_A),
+        command: { ...command, paymentIntentId: String(ORDER_A) },
+      })
+    ).rejects.toMatchObject({ code: "invalid_payment_intent" });
+    expect(settle).not.toHaveBeenCalled();
+  });
+
+  it("does not treat Collection Fact storage failure as a paid settle", async () => {
+    const { store, grants, service, settle } = harness();
+    await seedTerminal(store);
+    await grantSettle(grants);
+    settle.mockRejectedValueOnce(
+      new CollectionFactError("STORAGE", "disk full")
+    );
+    await expect(
+      service.initiate({ user: user(STAFF_A), command })
+    ).rejects.toMatchObject({ code: "collection_fact_rejected" });
   });
 
   it("denies POS_ACCESS without SETTLEMENT_INITIATE and SETTLEMENT_INITIATE without POS_ACCESS", async () => {
@@ -506,6 +537,10 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
         operatorUserId: STAFF_A,
         deviceId: null,
       },
+      paymentIntentId: "cpi_test-intent-01",
+      idempotencyKey: "settle-key-01",
+      terminalId: TERMINAL_A,
+      actorUserId: STAFF_A,
     });
   });
 
@@ -535,6 +570,10 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
         operatorUserId: STAFF_A,
         deviceId: null,
       },
+      paymentIntentId: "cpi_test-intent-01",
+      idempotencyKey: "settle-key-01",
+      terminalId: TERMINAL_A,
+      actorUserId: STAFF_A,
       settlements: [
         { paymentMethod: "cash", amount: "6.00" },
         { paymentMethod: "card", amount: "36.50" },
@@ -684,6 +723,10 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
         operatorUserId: STAFF_A,
         deviceId: null,
       },
+      paymentIntentId: "cpi_test-intent-01",
+      idempotencyKey: "settle-key-01",
+      terminalId: TERMINAL_A,
+      actorUserId: STAFF_A,
       settlements: [{ paymentMethod: "cash" }],
     });
   });

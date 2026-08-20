@@ -76,6 +76,8 @@ import {
   compensateChargesForCancelledOrder,
   reconcileOpenOrderCharges,
 } from "./checkChargeComposition";
+import { listCheckCharges } from "./checkChargeRepository";
+import { freezeBusinessDayFromTimestamp } from "@shared/operational-session/check/settlementRecord/settlementRecordSnapshot";
 import {
   applyComplimentaryToCheckOrders,
   applyFullSettlementToCheckOrders,
@@ -163,6 +165,35 @@ export class CheckTransitionError extends Error {
  * Observability-only elapsed stages inside finalizeOpenCheckById.
  * Not financial state. Durations use Date.now() at existing source boundaries.
  */
+/**
+ * PRODUCTION-COLLECTION-FACT-CASHIER-ADOPTION-1
+ * Authoritative paid freeze from Check money + charges + collection lines.
+ * Payment Confirm maps this onto the certified Collection Fact command.
+ * Check does not persist Collection Facts.
+ */
+export type CashierAuthoritativePaidFreeze = Readonly<{
+  restaurantId: number;
+  checkId: number;
+  orderId: number;
+  orderingChannel: string;
+  subtotal: string;
+  discountAmount: string;
+  taxAmount: string;
+  grandTotal: string;
+  currencySnapshot: OperationalCheck["currencySnapshot"];
+  taxPolicySnapshot: OperationalCheck["taxPolicySnapshot"];
+  taxBreakdown: OperationalCheck["taxBreakdown"];
+  businessDay: string;
+  tenders: readonly { paymentMethod: string; amount: string }[];
+  composition: readonly {
+    sequence: number;
+    description: string;
+    netAmount: string;
+    taxAmount: string;
+    originOrderId: number | null;
+  }[];
+}>;
+
 export type CheckFinancialFinalizeStageMs = Readonly<{
   checkReloadMs: number;
   orderDiscoveryMs: number;
@@ -681,6 +712,17 @@ async function finalizeOpenCheckById(
      * Cashier POS passes false so HTTP returns immediately after financial commit.
      */
     awaitAttribution?: boolean;
+    /**
+     * PRODUCTION-COLLECTION-FACT-CASHIER-ADOPTION-1
+     * Cashier Confirm supplies this after money freeze, before ST/OS/SR writes.
+     * Uses a separate Collection Fact persistence connection so downstream
+     * rollback cannot delete a committed fact.
+     */
+    productionCollectionCommit?: (
+      freeze: CashierAuthoritativePaidFreeze
+    ) => Promise<void>;
+    economicOrderId?: number;
+    economicOrderingChannel?: string;
   },
   client?: SessionDbClient
 ): Promise<CheckFinancialMutationResult> {
@@ -886,6 +928,54 @@ async function finalizeOpenCheckById(
         throw new DiningSessionValidationError(err.message);
       }
       throw err;
+    }
+
+    if (input.productionCollectionCommit) {
+      if (input.outcome !== "paid" || !settlementLines) {
+        throw new DiningSessionValidationError(
+          "Production Collection Fact requires a paid collection freeze"
+        );
+      }
+      if (
+        input.economicOrderId == null ||
+        !input.economicOrderingChannel
+      ) {
+        throw new DiningSessionValidationError(
+          "Production Collection Fact requires economic sale identity"
+        );
+      }
+      const charges = await listCheckCharges(
+        {
+          restaurantId: input.restaurantId,
+          checkId: check.id,
+        },
+        tx
+      );
+      await input.productionCollectionCommit({
+        restaurantId: input.restaurantId,
+        checkId: check.id,
+        orderId: input.economicOrderId,
+        orderingChannel: input.economicOrderingChannel,
+        subtotal: money.subtotal,
+        discountAmount: check.billDiscountAmount,
+        taxAmount: money.taxAmount,
+        grandTotal: money.grandTotal,
+        currencySnapshot: check.currencySnapshot,
+        taxPolicySnapshot: check.taxPolicySnapshot,
+        taxBreakdown: money.taxBreakdown,
+        businessDay: freezeBusinessDayFromTimestamp(now),
+        tenders: settlementLines.map((line) => ({
+          paymentMethod: line.paymentMethod,
+          amount: line.amount,
+        })),
+        composition: charges.map((charge) => ({
+          sequence: charge.sequence,
+          description: charge.description,
+          netAmount: charge.netAmount,
+          taxAmount: charge.taxAmount,
+          originOrderId: charge.originOrderId,
+        })),
+      });
     }
 
     const ownedRows = await finalizeCheckOutcome(
@@ -1522,6 +1612,9 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
   settlementContext?: SettlementContext;
   settlementContextHints?: SettlementContextHints;
   awaitAttribution?: boolean;
+  productionCollectionCommit?: (
+    freeze: CashierAuthoritativePaidFreeze
+  ) => Promise<void>;
 }): Promise<CheckFinancialMutationResult> {
   const order = await getOrderById(input.orderId);
   if (!order || order.restaurantId !== input.restaurantId) {
@@ -1568,6 +1661,9 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
           settlementContext: input.settlementContext,
           settlementContextHints: input.settlementContextHints,
           awaitAttribution: input.awaitAttribution,
+          productionCollectionCommit: input.productionCollectionCommit,
+          economicOrderId: input.orderId,
+          economicOrderingChannel: ORDERING_CHANNEL_CASHIER_POS,
         },
         tx
       );

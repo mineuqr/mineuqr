@@ -32,7 +32,7 @@ describe("PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 non-adoption", () => {
   it("owns Collection Fact under Payment collection-fact, not Confirm/Check/UI/Reporting", () => {
     const writer = read(WRITER);
     expect(writer).toContain("export async function commitCollectionFact");
-    expect(writer).toContain("NOT connected to Cashier Confirm");
+    expect(writer).toContain("Cashier Confirm is the first certified");
     expect(read(PAYMENT_INDEX)).not.toContain("commitCollectionFact");
     expect(read(PAYMENT_INDEX)).toContain("confirmPayment");
     expect(read(REPO)).toContain("assertCollectionFactAppendOnly");
@@ -40,19 +40,24 @@ describe("PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 non-adoption", () => {
     expect(read(REPO)).toContain("deleteCollectionFact");
   });
 
-  it("does not connect Cashier Confirm, PAID, or sale.create to the Collection Fact writer", () => {
+  it("does not connect Cashier UI, sale.create, or Settlement writers to Collection Fact persistence", () => {
     const confirm = read(CONFIRM);
     const settle = read(SETTLE);
     const check = read(CHECK);
     const panel = read(PANEL);
     const router = read(ROUTER);
     const sale = read(SALE);
-    for (const body of [confirm, settle, check, panel, router, sale]) {
-      expect(body).not.toContain("commitCollectionFact");
-      expect(body).not.toContain("collection-fact");
-      expect(body).not.toContain("paymentCollectionFacts");
-      expect(body).not.toContain("insertCollectionFact");
-    }
+    expect(confirm).toContain("commitCashierProductionCollectionFact");
+    expect(confirm).not.toContain("insertCollectionFact");
+    expect(confirm).not.toContain("paymentCollectionFacts");
+    expect(settle).not.toContain("commitCollectionFact");
+    expect(settle).not.toContain("insertCollectionFact");
+    expect(check).not.toContain("commitCollectionFact");
+    expect(check).not.toContain("paymentCollectionFacts");
+    expect(panel).not.toContain("commitCollectionFact");
+    expect(panel).toContain("paymentIntentId");
+    expect(router).not.toContain("commitCollectionFact");
+    expect(sale).not.toContain("commitCollectionFact");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(confirm).toContain("await settleCheckPaidByIdDetailed({");
     expect(settle).toContain("confirmPayment");

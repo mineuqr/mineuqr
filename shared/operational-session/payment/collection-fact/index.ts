@@ -64,3 +64,8 @@ export {
   type CollectionFactFreezeSource,
   type CollectionFactShadowMismatch,
 } from "./shadowCollectionFact";
+
+export {
+  CASHIER_PRODUCTION_ACTOR_TYPE,
+  assertCashierProductionPaymentIdentities,
+} from "./cashierProductionPaymentIdentity";

@@ -33,12 +33,15 @@ describe("REVENUE-UNION-PRODUCTION-COLLECTION-AUTHORITY-1 architecture", () => {
     const writer = read(
       "server/operational-session/payment/collection-fact/CollectionFactService.ts"
     );
-    for (const body of [confirm, settle, panel, check, sr, st, os]) {
+    for (const body of [settle, panel, check, sr, st, os]) {
       expect(body).not.toContain("PRODUCTION_OVERLAP");
       expect(body).not.toContain("commitCollectionFact");
     }
+    expect(confirm).not.toContain("PRODUCTION_OVERLAP");
+    expect(confirm).toContain("commitCashierProductionCollectionFact");
+    expect(confirm).not.toContain("insertCollectionFact");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
-    expect(writer).toContain("Production payment paths must not call this");
+    expect(writer).toContain("Cashier Confirm is the first certified");
   });
 
   it("does not add a payments table, Payment aggregate, or 0098", () => {

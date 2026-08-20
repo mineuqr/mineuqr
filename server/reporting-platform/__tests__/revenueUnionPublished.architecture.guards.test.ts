@@ -39,7 +39,8 @@ describe("REVENUE-UNION-PUBLISHED-ADOPTION-1 architecture", () => {
     );
     const check = read("server/operational-session/check/CheckService.ts");
     expect(metrics).not.toContain("commitCollectionFact");
-    expect(confirm).not.toContain("commitCollectionFact");
+    expect(confirm).toContain("commitCashierProductionCollectionFact");
+    expect(confirm).not.toContain("insertCollectionFact");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(settle).toContain("confirmPayment");
     expect(panel).not.toContain("commitCollectionFact");

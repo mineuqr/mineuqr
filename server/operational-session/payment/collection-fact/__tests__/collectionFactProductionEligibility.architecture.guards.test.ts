@@ -50,9 +50,11 @@ describe("PAYMENT-COLLECTION-FACT-PRODUCTION-ELIGIBILITY-1", () => {
     );
     const check = read("server/operational-session/check/CheckService.ts");
     const paymentIndex = read("server/operational-session/payment/index.ts");
-    for (const body of [confirm, settle, panel, check, paymentIndex]) {
+    for (const body of [settle, panel, check, paymentIndex]) {
       expect(body).not.toContain("commitCollectionFact");
     }
+    expect(confirm).toContain("commitCashierProductionCollectionFact");
+    expect(confirm).not.toContain("insertCollectionFact");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
   });
 

@@ -1,5 +1,6 @@
 /**
  * PAYMENT-CONFIRM-SERVICE-1 / PAYMENT-CONFIRM-REMAINING-CALLERS-1 / ADR-ARCH-037
+ * PRODUCTION-COLLECTION-FACT-CASHIER-ADOPTION-1
  * Payment process entry for Confirm Payment. Delegates to the certified
  * Check settlement capability. Not an aggregate. Not a second money SSOT.
  *
@@ -7,6 +8,7 @@
  * I-PAY-01 process owner · I-PAY-02 Check remains the aggregate · I-PAY-14
  * CheckService may still host finalizeOpenCheckById.
  * ADR-ARCH-038 — cashier_pos may Confirm with orderId (no pre-existing Check).
+ * Cashier orderId path consumes the certified Collection Fact writer.
  */
 
 import { opsLog } from "../../_core/opsLog";
@@ -14,10 +16,17 @@ import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import type { SettlementContext, SettlementContextHints } from "@shared/crmp";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
 import {
+  CollectionFactError,
+  assertCashierProductionPaymentIdentities,
+  type CollectionFactTender,
+} from "@shared/operational-session/payment/collection-fact";
+import {
   settleCashierPosOrderPaidByIdDetailed,
   settleCheckPaidByIdDetailed,
   type CheckFinancialMutationResult,
 } from "../check/CheckService";
+import { commitCashierProductionCollectionFact } from "./collection-fact/commitCashierProductionCollectionFact";
+import type { CollectionFactStore } from "./collection-fact/collectionFactStore";
 
 export const PAYMENT_CONFIRM_PROGRAM_ID = "PAYMENT-CONFIRM-SERVICE-1" as const;
 
@@ -36,18 +45,59 @@ export type PaymentConfirmCommand = {
    * Omitted callers keep CheckService default (await fail-open Attribution).
    */
   awaitAttribution?: boolean;
+  /** Cashier production Collection Fact — payment identity. */
+  paymentIntentId?: string;
+  /** Cashier production Collection Fact — retry identity. */
+  idempotencyKey?: string;
+  /** Cashier production Collection Fact — mandatory terminal attribution. */
+  terminalId?: string;
+  actorType?: string;
+  actorUserId?: number;
+  /** Tests inject an in-memory store. Production uses the Drizzle store. */
+  collectionFactStore?: CollectionFactStore;
 };
+
+function asCollectionTenders(
+  tenders: readonly { paymentMethod: string; amount: string }[]
+): CollectionFactTender[] {
+  return tenders.map((line) => {
+    const paymentMethod = line.paymentMethod;
+    if (
+      paymentMethod !== "cash" &&
+      paymentMethod !== "card" &&
+      paymentMethod !== "other"
+    ) {
+      throw new CollectionFactError(
+        "VALIDATION",
+        "Collection Fact tender paymentMethod is not canonical"
+      );
+    }
+    return { paymentMethod, amount: line.amount };
+  });
+}
 
 /**
  * Confirm a paid collection.
  * checkId path: existing OPEN Check (Session / kiosk / leftover OPEN).
- * orderId path: cashier_pos materialize+finalize in one financial TX.
+ * orderId path: cashier_pos materialize+finalize in one financial TX,
+ * with Production Collection Fact commit from the Check money freeze.
  * Does not compute grandTotal / amountDue / remaining. Check finalize does.
  */
 export async function confirmPayment(
   command: PaymentConfirmCommand
 ): Promise<CheckFinancialMutationResult> {
   const startedAt = Date.now();
+  if (command.orderId != null) {
+    assertCashierProductionPaymentIdentities({
+      paymentIntentId: command.paymentIntentId ?? "",
+      idempotencyKey: command.idempotencyKey ?? "",
+      orderId: command.orderId,
+      terminalId: command.terminalId ?? "",
+      actorType: command.actorType ?? "",
+      actorUserId: command.actorUserId ?? 0,
+    });
+  }
+  let collectionFactOutcome: "created" | "replayed" | null = null;
   const result =
     command.orderId != null
       ? await settleCashierPosOrderPaidByIdDetailed({
@@ -58,6 +108,35 @@ export async function confirmPayment(
           settlementContext: command.settlementContext,
           settlementContextHints: command.settlementContextHints,
           awaitAttribution: command.awaitAttribution,
+          productionCollectionCommit: async (freeze) => {
+            const committed = command.collectionFactStore
+              ? await commitCashierProductionCollectionFact(
+                  {
+                    paymentIntentId: command.paymentIntentId as string,
+                    idempotencyKey: command.idempotencyKey as string,
+                    terminalId: command.terminalId as string,
+                    actorType: command.actorType as string,
+                    actorUserId: command.actorUserId as number,
+                    freeze: {
+                      ...freeze,
+                      tenders: asCollectionTenders(freeze.tenders),
+                    },
+                  },
+                  command.collectionFactStore
+                )
+              : await commitCashierProductionCollectionFact({
+                  paymentIntentId: command.paymentIntentId as string,
+                  idempotencyKey: command.idempotencyKey as string,
+                  terminalId: command.terminalId as string,
+                  actorType: command.actorType as string,
+                  actorUserId: command.actorUserId as number,
+                  freeze: {
+                    ...freeze,
+                    tenders: asCollectionTenders(freeze.tenders),
+                  },
+                });
+            collectionFactOutcome = committed.outcome;
+          },
         })
       : await settleCheckPaidByIdDetailed({
           restaurantId: command.restaurantId,
@@ -81,6 +160,8 @@ export async function confirmPayment(
       outcome: result.check.outcome,
       durationMs: Date.now() - startedAt,
       awaitAttribution: command.awaitAttribution !== false,
+      collectionFactCommit: command.orderId != null,
+      collectionFactOutcome,
     },
   });
   return result;
