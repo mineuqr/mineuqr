@@ -9,7 +9,11 @@ import {
   averageReportingAmount,
   parseReportingAmount,
 } from "@shared/reporting-platform";
-import type { RevenueUnionResult } from "@shared/reporting-platform/revenue-union";
+import {
+  collectionContributionId,
+  type RevenueUnionCollectionFact,
+  type RevenueUnionResult,
+} from "@shared/reporting-platform/revenue-union";
 import type { CheckReportingRow } from "../checkReportingRepository";
 
 export function businessMetricsSummaryFromUnion(input: {
@@ -21,7 +25,9 @@ export function businessMetricsSummaryFromUnion(input: {
   now?: Date;
 }): BusinessMetricsSummaryDto {
   const now = input.now ?? new Date();
-  const excluded = new Set(input.union.excludedLegacyIds);
+  const excluded = reportingExclusionSet(input.union, {
+    retainProductionOverlapLegacy: true,
+  });
   const sample =
     input.sampleRows.find((row) => {
       const id = `check:${row.restaurantId}:${row.id}`;
@@ -62,11 +68,27 @@ export function businessMetricsSummaryFromUnion(input: {
   };
 }
 
+function reportingExclusionSet(
+  union: RevenueUnionResult,
+  options: { retainProductionOverlapLegacy?: boolean } = {}
+): Set<string> {
+  const excluded = new Set(union.excludedLegacyIds);
+  if (options.retainProductionOverlapLegacy) {
+    for (const id of union.productionOverlapExcludedLegacyIds) {
+      excluded.delete(id);
+    }
+  }
+  return excluded;
+}
+
 export function filterReportingRowsByUnion(input: {
   rows: readonly CheckReportingRow[];
   union: RevenueUnionResult;
+  retainProductionOverlapLegacy?: boolean;
 }): CheckReportingRow[] {
-  const excluded = new Set(input.union.excludedLegacyIds);
+  const excluded = reportingExclusionSet(input.union, {
+    retainProductionOverlapLegacy: input.retainProductionOverlapLegacy,
+  });
   const seen = new Set<string>();
   const out: CheckReportingRow[] = [];
   for (const row of input.rows) {
@@ -76,6 +98,68 @@ export function filterReportingRowsByUnion(input: {
     out.push(row);
   }
   return out;
+}
+
+function collectionFactToTrendRow(
+  fact: RevenueUnionCollectionFact
+): CheckReportingRow {
+  return {
+    id: 0,
+    restaurantId: fact.restaurantId,
+    sessionId: null,
+    outcome: "paid",
+    grandTotal: fact.amount,
+    taxAmount: fact.taxAmount,
+    settledAt: `${fact.businessDay} 12:00:00`,
+    voidedAt: null,
+    currencySnapshot: fact.currencySnapshot,
+    taxPolicySnapshot: fact.taxPolicySnapshot,
+  };
+}
+
+/**
+ * Trend rows from the published Union: keep overlapping SR rows (CF won,
+ * money already proven compatible) so refunds/gross do not disappear, and
+ * append Collection Fact-only contributions the SR list does not contain.
+ */
+export function publishedTrendRowsFromUnion(input: {
+  rows: readonly CheckReportingRow[];
+  refundRows: readonly CheckReportingRow[];
+  facts: readonly RevenueUnionCollectionFact[];
+  union: RevenueUnionResult;
+}): {
+  grossRows: CheckReportingRow[];
+  refundRows: CheckReportingRow[];
+} {
+  const grossRows = filterReportingRowsByUnion({
+    rows: input.rows,
+    union: input.union,
+    retainProductionOverlapLegacy: true,
+  });
+  const overlapFactIds = new Set(
+    input.union.conflicts
+      .filter((conflict) => conflict.code === "PRODUCTION_OVERLAP")
+      .map((conflict) => conflict.contributionId.split("|")[1])
+      .filter((id): id is string => Boolean(id))
+  );
+  const publishedFactIds = new Set(
+    input.union.contributions
+      .filter((row) => row.authority === "COLLECTION_FACT")
+      .map((row) => row.contributionId)
+  );
+  for (const fact of input.facts) {
+    const id = collectionContributionId(fact);
+    if (!publishedFactIds.has(id) || overlapFactIds.has(id)) continue;
+    grossRows.push(collectionFactToTrendRow(fact));
+  }
+  return {
+    grossRows,
+    refundRows: filterReportingRowsByUnion({
+      rows: input.refundRows,
+      union: input.union,
+      retainProductionOverlapLegacy: true,
+    }),
+  };
 }
 
 /** Dual-run field names only — no money values in the returned list. */

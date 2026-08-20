@@ -35,6 +35,8 @@ export type SettlementRecordReportingFact = CheckReportingRow &
     recordKind: string;
     businessDay: string;
     paymentSnapshot: readonly SettlementPaymentSnapshotLine[];
+    /** Frozen Check order membership at SR create. Not live Order state. */
+    orderRefs: readonly { orderId: number }[];
     publicationSource: "settlement_record";
   }>;
 
@@ -59,6 +61,18 @@ function asSnapshot<T>(value: unknown, fallback: T): T {
     }
   }
   return value as T;
+}
+
+function asOrderRefs(value: unknown): { orderId: number }[] {
+  if (!Array.isArray(value)) return [];
+  const out: { orderId: number }[] = [];
+  for (const item of value) {
+    const orderId = Number((item as { orderId?: unknown })?.orderId);
+    if (Number.isInteger(orderId) && orderId > 0) {
+      out.push({ orderId });
+    }
+  }
+  return out;
 }
 
 function asPaymentSnapshot(value: unknown): SettlementPaymentSnapshotLine[] {
@@ -109,6 +123,7 @@ function mapSettlementRecordRow(
     recordKind: kind,
     businessDay: row.businessDay,
     paymentSnapshot: asPaymentSnapshot(row.paymentSnapshotJson),
+    orderRefs: asOrderRefs(row.orderRefsJson),
     publicationSource: "settlement_record",
   };
 }

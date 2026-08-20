@@ -60,3 +60,63 @@ export function checkOverlapKey(input: {
 }): string {
   return `checkref:${input.restaurantId}:${input.checkId}`;
 }
+
+function sameRestaurantOrderMention(
+  legacy: Pick<
+    RevenueUnionLegacyFact,
+    "restaurantId" | "orderIds"
+  >,
+  fact: Pick<RevenueUnionCollectionFact, "restaurantId" | "orderId">
+): boolean {
+  if (legacy.restaurantId !== fact.restaurantId) return false;
+  if (!Number.isInteger(fact.orderId) || fact.orderId <= 0) return false;
+  return legacy.orderIds.includes(fact.orderId);
+}
+
+/**
+ * Canonical economic overlap: the Settlement Record is exclusively the same
+ * sale as the Collection Fact (restaurantId + singleton orderId).
+ * orderingChannel is required when the legacy snapshot has one; it is not
+ * inferred from checkId, amount, terminal, or business day.
+ * Empty legacy orderIds cannot prove overlap.
+ * Multi-order Checks cannot prove the Check Gross is that one sale.
+ */
+export function provenEconomicSaleOverlap(
+  legacy: Pick<
+    RevenueUnionLegacyFact,
+    "restaurantId" | "orderingChannel" | "orderIds"
+  >,
+  fact: Pick<
+    RevenueUnionCollectionFact,
+    "restaurantId" | "orderingChannel" | "orderId"
+  >
+): boolean {
+  if (!sameRestaurantOrderMention(legacy, fact)) return false;
+  if (legacy.orderIds.length !== 1 || legacy.orderIds[0] !== fact.orderId) {
+    return false;
+  }
+  const channel = (legacy.orderingChannel ?? "").trim();
+  if (channel && channel !== fact.orderingChannel) return false;
+  return true;
+}
+
+/**
+ * Same restaurant and order mention as a Collection Fact, but the Union cannot
+ * prove the Settlement Record Gross is that exclusive sale (multi-order Check
+ * or orderingChannel mismatch). Must not publish both and must not CF-win.
+ */
+export function unsafeEconomicIdentityCollision(
+  legacy: Pick<
+    RevenueUnionLegacyFact,
+    "restaurantId" | "orderingChannel" | "orderIds"
+  >,
+  fact: Pick<
+    RevenueUnionCollectionFact,
+    "restaurantId" | "orderingChannel" | "orderId"
+  >
+): boolean {
+  return (
+    sameRestaurantOrderMention(legacy, fact) &&
+    !provenEconomicSaleOverlap(legacy, fact)
+  );
+}

@@ -1,12 +1,16 @@
 /**
  * REVENUE-UNION-ADOPTION-1 / REVENUE-UNION-PUBLISHED-ADOPTION-1
+ * REVENUE-UNION-PRODUCTION-COLLECTION-AUTHORITY-1
  * One authority per transaction (I-REV-U-01).
- * BOTH and UNRESOLVED are never published. Duplicate identities collapse.
+ * Isolated dual-run BOTH and UNRESOLVED are never published.
+ * Proven published production overlap: Collection Fact wins; legacy Gross excluded.
  * Isolated purposes never enter published eligibility.
+ * checkId is not economic identity.
  */
 
 import type { CollectionFactPurpose } from "../../operational-session/payment/collection-fact/collectionFactContract";
 import { COLLECTION_FACT_ISOLATED_PURPOSES } from "../../operational-session/payment/collection-fact/collectionFactContract";
+import { parseReportingAmount } from "../reportingMoney";
 import type {
   CollectionFactEligibility,
   ResolvedRevenueContribution,
@@ -18,11 +22,12 @@ import { PUBLISHED_COLLECTION_FACT_PURPOSES } from "./revenueUnionContract";
 import { classifyEconomicTransaction } from "./revenueUnionClassifier";
 import { isValidCollectionFactAuthority } from "./revenueUnionFactValidation";
 import {
-  checkOverlapKey,
   collectionContributionId,
   collectionSaleKey,
   legacyContributionId,
   legacySaleKeys,
+  provenEconomicSaleOverlap,
+  unsafeEconomicIdentityCollision,
 } from "./revenueUnionIdentity";
 
 const ISOLATED_PURPOSES = new Set<string>(COLLECTION_FACT_ISOLATED_PURPOSES);
@@ -44,12 +49,24 @@ export type ResolvedRevenueUnionSets = Readonly<{
   conflicts: readonly RevenueUnionConflict[];
   excludedLegacyIds: ReadonlySet<string>;
   excludedFactIds: ReadonlySet<string>;
+  productionOverlapExcludedLegacyIds: ReadonlySet<string>;
   eligibilityRejectedFactCount: number;
   unresolvedCount: number;
+  productionOverlapCount: number;
 }>;
 
 function paidLegacy(fact: RevenueUnionLegacyFact): boolean {
   return fact.outcome === "paid";
+}
+
+function moneyCompatible(
+  legacy: RevenueUnionLegacyFact,
+  fact: RevenueUnionCollectionFact
+): boolean {
+  return (
+    parseReportingAmount(legacy.grandTotal) === parseReportingAmount(fact.amount) &&
+    legacy.currencyCode === fact.currencyCode
+  );
 }
 
 export function resolveRevenueUnionSets(input: {
@@ -60,6 +77,7 @@ export function resolveRevenueUnionSets(input: {
   const conflicts: RevenueUnionConflict[] = [];
   const excludedLegacyIds = new Set<string>();
   const excludedFactIds = new Set<string>();
+  const productionOverlapExcludedLegacyIds = new Set<string>();
 
   const legacyById = new Map<string, RevenueUnionLegacyFact>();
   for (const row of input.legacy) {
@@ -110,35 +128,108 @@ export function resolveRevenueUnionSets(input: {
     factsById.set(id, row);
   }
 
-  const factsBySale = new Map<string, string>();
-  const factsByCheck = new Map<string, string>();
+  const factsBySaleIds = new Map<string, string[]>();
   for (const [id, fact] of factsById) {
-    factsBySale.set(collectionSaleKey(fact), id);
-    if (fact.checkId != null) {
-      factsByCheck.set(
-        checkOverlapKey({ restaurantId: fact.restaurantId, checkId: fact.checkId }),
-        id
-      );
-    }
+    const saleKey = collectionSaleKey(fact);
+    const ids = factsBySaleIds.get(saleKey) ?? [];
+    ids.push(id);
+    factsBySaleIds.set(saleKey, ids);
+  }
+  for (const [saleKey, ids] of factsBySaleIds) {
+    if (ids.length < 2) continue;
+    conflicts.push({
+      code: "DUPLICATE_FACT",
+      contributionId: saleKey,
+      message: "Duplicate Collection Fact economic identity collapsed",
+    });
+    for (const id of ids) excludedFactIds.add(id);
   }
 
   for (const [legacyId, legacy] of legacyById) {
-    const checkKey = checkOverlapKey({
-      restaurantId: legacy.restaurantId,
-      checkId: legacy.checkId,
-    });
-    const factFromCheck = factsByCheck.get(checkKey);
-    const overlappingSale = legacySaleKeys(legacy).find((key) =>
-      factsBySale.has(key)
+    let duplicateCollision = false;
+    for (const id of excludedFactIds) {
+      const excludedFact = factsById.get(id);
+      if (!excludedFact) continue;
+      if (
+        provenEconomicSaleOverlap(legacy, excludedFact) ||
+        unsafeEconomicIdentityCollision(legacy, excludedFact)
+      ) {
+        duplicateCollision = true;
+        conflicts.push({
+          code: "UNRESOLVED",
+          contributionId: `${legacyId}|${id}`,
+          message:
+            "Duplicate Production Collection Facts collide with a legacy sale — not published",
+        });
+        excludedLegacyIds.add(legacyId);
+        break;
+      }
+    }
+    if (duplicateCollision) continue;
+
+    let unsafeFactId: string | undefined;
+    for (const [id, fact] of factsById) {
+      if (excludedFactIds.has(id)) continue;
+      if (unsafeEconomicIdentityCollision(legacy, fact)) {
+        unsafeFactId = id;
+        break;
+      }
+    }
+    if (unsafeFactId) {
+      conflicts.push({
+        code: "UNRESOLVED",
+        contributionId: `${legacyId}|${unsafeFactId}`,
+        message:
+          "Order mention without exclusive economic-sale proof — not published",
+      });
+      excludedLegacyIds.add(legacyId);
+      excludedFactIds.add(unsafeFactId);
+      continue;
+    }
+
+    let factId: string | undefined;
+    for (const [id, fact] of factsById) {
+      if (excludedFactIds.has(id)) continue;
+      if (provenEconomicSaleOverlap(legacy, fact)) {
+        factId = id;
+        break;
+      }
+    }
+    const fact = factId ? factsById.get(factId) : undefined;
+    const saleOverlapProven = Boolean(fact);
+    const productionPublishedEligible = Boolean(
+      fact &&
+        input.eligibility === "published" &&
+        PUBLISHED_PURPOSES.has(fact.purpose)
     );
-    const factFromSale = overlappingSale
-      ? factsBySale.get(overlappingSale)
-      : undefined;
-    const factId = factFromCheck ?? factFromSale;
     const authority = classifyEconomicTransaction({
       paidLegacyPresent: paidLegacy(legacy),
-      eligibleFactPresent: Boolean(factId),
+      eligibleFactPresent: Boolean(fact),
+      saleOverlapProven,
+      productionPublishedEligible,
     });
+    if (authority === "PRODUCTION_OVERLAP" && fact && factId) {
+      if (!moneyCompatible(legacy, fact)) {
+        conflicts.push({
+          code: "UNRESOLVED",
+          contributionId: `${legacyId}|${factId}`,
+          message:
+            "Proven economic overlap with disagreeing amount/currency — not merged",
+        });
+        excludedLegacyIds.add(legacyId);
+        excludedFactIds.add(factId);
+        continue;
+      }
+      conflicts.push({
+        code: "PRODUCTION_OVERLAP",
+        contributionId: `${legacyId}|${factId}`,
+        message:
+          "Production Collection Fact wins proven economic overlap; legacy Gross excluded",
+      });
+      excludedLegacyIds.add(legacyId);
+      productionOverlapExcludedLegacyIds.add(legacyId);
+      continue;
+    }
     if (factId && authority === "BOTH") {
       conflicts.push({
         code: "BOTH",
@@ -157,8 +248,8 @@ export function resolveRevenueUnionSets(input: {
     if (excludedLegacyIds.has(id)) continue;
     contributions.push({
       authority: "LEGACY_CHECK",
-      contributionId: id,
       saleKey: legacySaleKeys(legacy)[0] ?? null,
+      contributionId: id,
       restaurantId: legacy.restaurantId,
       amount: legacy.grandTotal,
       taxAmount: legacy.outcome === "paid" ? legacy.taxAmount : "0.00",
@@ -197,13 +288,18 @@ export function resolveRevenueUnionSets(input: {
   }
 
   const unresolvedCount = conflicts.filter((c) => c.code === "UNRESOLVED").length;
+  const productionOverlapCount = conflicts.filter(
+    (c) => c.code === "PRODUCTION_OVERLAP"
+  ).length;
 
   return {
     contributions,
     conflicts,
     excludedLegacyIds,
     excludedFactIds,
+    productionOverlapExcludedLegacyIds,
     eligibilityRejectedFactCount,
     unresolvedCount,
+    productionOverlapCount,
   };
 }

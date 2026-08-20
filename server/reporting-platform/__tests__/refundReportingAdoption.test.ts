@@ -59,6 +59,7 @@ function srFact(
     recordKind: partial.recordKind ?? "settlement",
     businessDay: "2026-07-16",
     paymentSnapshot: partial.paymentSnapshot ?? [],
+    orderRefs: partial.orderRefs ?? [],
     publicationSource: "settlement_record",
     ...partial,
   };

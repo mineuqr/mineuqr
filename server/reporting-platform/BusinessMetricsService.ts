@@ -5,7 +5,7 @@
  *
  * Business KPIs — published Revenue resolves through Revenue Union.
  * Legacy authority remains Settlement Record gen=1 (or Check emergency source).
- * Collection Fact contribution is published-eligibility gated (allowlist empty).
+ * Collection Fact contribution is published-eligibility gated (production only).
  * Never reads live Business Settings for tax/currency.
  */
 
@@ -41,10 +41,13 @@ import {
 } from "./revenue-union/RevenueUnionService";
 import {
   businessMetricsSummaryFromUnion,
-  filterReportingRowsByUnion,
+  publishedTrendRowsFromUnion,
   unionPublicationMismatchFields,
 } from "./revenue-union/businessMetricsFromUnion";
-import type { RevenueUnionCollectionFact } from "@shared/reporting-platform/revenue-union";
+import type {
+  RevenueUnionCollectionFact,
+  RevenueUnionResult,
+} from "@shared/reporting-platform/revenue-union";
 
 export class ReportingValidationError extends Error {
   constructor(message: string) {
@@ -88,42 +91,87 @@ function toUnionRefundRows(rows: readonly CheckReportingRow[]) {
   );
 }
 
+function unionObservabilityCounts(union: RevenueUnionResult) {
+  const unresolvedMessages = union.conflicts
+    .filter((conflict) => conflict.code === "UNRESOLVED")
+    .map((conflict) => conflict.message);
+  return {
+    bothCount: union.conflicts.filter((conflict) => conflict.code === "BOTH")
+      .length,
+    productionOverlapResolvedCount: union.productionOverlapCount,
+    unresolvedCount: union.unresolvedCount,
+    unresolvedProductionOverlapCount: unresolvedMessages.filter((message) =>
+      /economic overlap|exclusive economic-sale|Duplicate Production Collection Facts collide/i.test(
+        message
+      )
+    ).length,
+    duplicateProductionCollectionFactCount: union.conflicts.filter(
+      (conflict) => conflict.code === "DUPLICATE_FACT"
+    ).length,
+    invalidProductionCollectionFactCount: unresolvedMessages.filter((message) =>
+      /failed authority validation/i.test(message)
+    ).length,
+    legacyExcludedByProductionOverlapCount:
+      union.productionOverlapExcludedLegacyIds.length,
+    eligibilityRejectedFactCount: union.eligibilityRejectedFactCount,
+    collectionFactContributionCount: union.totals.collectionFactCount,
+  };
+}
+
 function logUnionPublicationObservability(input: {
   restaurantId: number;
   from?: string;
   to?: string;
   bothCount: number;
+  productionOverlapResolvedCount: number;
   unresolvedCount: number;
-  duplicateCount: number;
+  unresolvedProductionOverlapCount: number;
+  duplicateProductionCollectionFactCount: number;
+  invalidProductionCollectionFactCount: number;
+  legacyExcludedByProductionOverlapCount: number;
   eligibilityRejectedFactCount: number;
   collectionFactContributionCount: number;
   mismatchFields: readonly string[];
 }): void {
   const hasSignal =
     input.bothCount > 0 ||
+    input.productionOverlapResolvedCount > 0 ||
     input.unresolvedCount > 0 ||
-    input.duplicateCount > 0 ||
+    input.unresolvedProductionOverlapCount > 0 ||
+    input.duplicateProductionCollectionFactCount > 0 ||
+    input.invalidProductionCollectionFactCount > 0 ||
+    input.legacyExcludedByProductionOverlapCount > 0 ||
     input.eligibilityRejectedFactCount > 0 ||
     input.collectionFactContributionCount > 0 ||
     input.mismatchFields.length > 0;
   if (!hasSignal) return;
+  const severity: "warn" | "info" =
+    input.bothCount > 0 ||
+    input.unresolvedCount > 0 ||
+    input.unresolvedProductionOverlapCount > 0 ||
+    input.duplicateProductionCollectionFactCount > 0 ||
+    input.invalidProductionCollectionFactCount > 0 ||
+    input.mismatchFields.length > 0
+      ? "warn"
+      : "info";
   opsLog({
     type: "reporting_revenue_union_publication",
     category: "SYSTEM",
-    severity:
-      input.bothCount > 0 ||
-      input.unresolvedCount > 0 ||
-      input.mismatchFields.length > 0
-        ? "warn"
-        : "info",
+    severity,
     ts: new Date().toISOString(),
     restaurantId: input.restaurantId,
     metadata: {
       from: input.from ?? null,
       to: input.to ?? null,
       bothCount: input.bothCount,
+      productionOverlapResolved: input.productionOverlapResolvedCount,
+      unresolvedProductionOverlap: input.unresolvedProductionOverlapCount,
+      duplicateProductionCollectionFact:
+        input.duplicateProductionCollectionFactCount,
+      invalidProductionCollectionFact: input.invalidProductionCollectionFactCount,
+      legacyExcludedBecauseProductionCollectionFactWon:
+        input.legacyExcludedByProductionOverlapCount,
       unresolvedCount: input.unresolvedCount,
-      duplicateCount: input.duplicateCount,
       eligibilityRejectedFactCount: input.eligibilityRejectedFactCount,
       collectionFactContributionCount: input.collectionFactContributionCount,
       mismatchFieldCount: input.mismatchFields.length,
@@ -247,13 +295,7 @@ export async function getBusinessMetricsSummary(
     restaurantId: input.restaurantId,
     from: input.from,
     to: input.to,
-    bothCount: union.conflicts.filter((c) => c.code === "BOTH").length,
-    unresolvedCount: union.unresolvedCount,
-    duplicateCount: union.conflicts.filter(
-      (c) => c.code === "DUPLICATE_LEGACY" || c.code === "DUPLICATE_FACT"
-    ).length,
-    eligibilityRejectedFactCount: union.eligibilityRejectedFactCount,
-    collectionFactContributionCount: union.totals.collectionFactCount,
+    ...unionObservabilityCounts(union),
     mismatchFields: unionPublicationMismatchFields(legacyPublished, published),
   });
   return published;
@@ -286,33 +328,28 @@ export async function getBusinessMetricsTrend(
     loadRestaurantWorkingHoursForReporting(input.restaurantId),
   ]);
   const union = computePublishedUnion(rows, refundRows, facts);
-  const publishedRows = filterReportingRowsByUnion({ rows, union });
-  const publishedRefunds = filterReportingRowsByUnion({
-    rows: refundRows,
+  const publishedTrend = publishedTrendRowsFromUnion({
+    rows,
+    refundRows,
+    facts,
     union,
   });
   logUnionPublicationObservability({
     restaurantId: input.restaurantId,
     from: input.from,
     to: input.to,
-    bothCount: union.conflicts.filter((c) => c.code === "BOTH").length,
-    unresolvedCount: union.unresolvedCount,
-    duplicateCount: union.conflicts.filter(
-      (c) => c.code === "DUPLICATE_LEGACY" || c.code === "DUPLICATE_FACT"
-    ).length,
-    eligibilityRejectedFactCount: union.eligibilityRejectedFactCount,
-    collectionFactContributionCount: union.totals.collectionFactCount,
+    ...unionObservabilityCounts(union),
     mismatchFields: [],
   });
   return buildBusinessMetricsTrend(
     input.restaurantId,
-    publishedRows,
+    publishedTrend.grossRows,
     input.grouping,
     input.from,
     input.to,
     new Date(),
     workingHours,
-    publishedRefunds
+    publishedTrend.refundRows
   );
 }
 

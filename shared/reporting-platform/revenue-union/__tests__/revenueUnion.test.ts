@@ -361,13 +361,14 @@ describe("REVENUE-UNION-PUBLISHED-ADOPTION-1", () => {
     expect(union.contributions[0]?.authority).toBe("COLLECTION_FACT");
   });
 
-  it("publishes neither side when a paid Check and production Fact share identity", () => {
+  it("publishes the production Collection Fact when it overlaps a paid Settlement Record sale", () => {
     const union = computeRevenueUnion({
       legacy: [
         legacy({
           checkId: 10,
           outcome: "paid",
           grandTotal: "80.00",
+          taxAmount: "10.43",
           orderIds: [44],
         }),
       ],
@@ -375,6 +376,7 @@ describe("REVENUE-UNION-PUBLISHED-ADOPTION-1", () => {
         fact({
           paymentIntentId: "int-prod",
           amount: "80.00",
+          taxAmount: "10.43",
           orderId: 44,
           checkId: 10,
           purpose: "production",
@@ -382,9 +384,15 @@ describe("REVENUE-UNION-PUBLISHED-ADOPTION-1", () => {
       ],
       eligibility: "published",
     });
-    expect(union.conflicts.some((c) => c.code === "BOTH")).toBe(true);
-    expect(union.totals.grossRevenue).toBe("0.00");
-    expect(union.totals.paidContributionCount).toBe(0);
+    expect(union.conflicts.some((c) => c.code === "PRODUCTION_OVERLAP")).toBe(
+      true
+    );
+    expect(union.conflicts.some((c) => c.code === "BOTH")).toBe(false);
+    expect(union.totals.grossRevenue).toBe("80.00");
+    expect(union.totals.collectionFactGross).toBe("80.00");
+    expect(union.totals.legacyGross).toBe("0.00");
+    expect(union.totals.paidContributionCount).toBe(1);
+    expect(union.contributions[0]?.authority).toBe("COLLECTION_FACT");
   });
 
   it("classifies BOTH as unpublished and UNRESOLVED as unpublished", () => {
@@ -408,6 +416,14 @@ describe("REVENUE-UNION-PUBLISHED-ADOPTION-1", () => {
     ).toBe("BOTH");
     expect(
       classifyEconomicTransaction({
+        paidLegacyPresent: true,
+        eligibleFactPresent: true,
+        saleOverlapProven: true,
+        productionPublishedEligible: true,
+      })
+    ).toBe("PRODUCTION_OVERLAP");
+    expect(
+      classifyEconomicTransaction({
         paidLegacyPresent: false,
         eligibleFactPresent: false,
       })
@@ -420,6 +436,8 @@ describe("REVENUE-UNION-PUBLISHED-ADOPTION-1", () => {
       })
     ).toBe("UNRESOLVED");
     expect(isPublishableAuthorityClass("BOTH")).toBe(false);
+    expect(isPublishableAuthorityClass("PRODUCTION_OVERLAP")).toBe(false);
+    expect(isPublishableAuthorityClass("DUPLICATE")).toBe(false);
     expect(isPublishableAuthorityClass("UNRESOLVED")).toBe(false);
     expect(isPublishableAuthorityClass("LEGACY_CHECK")).toBe(true);
   });

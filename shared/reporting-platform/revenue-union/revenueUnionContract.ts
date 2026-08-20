@@ -17,11 +17,17 @@ export const REVENUE_UNION_PUBLISHED_PROGRAM_ID =
 export const REVENUE_AUTHORITIES = ["LEGACY_CHECK", "COLLECTION_FACT"] as const;
 export type RevenueAuthority = (typeof REVENUE_AUTHORITIES)[number];
 
-/** Transaction classifier output. BOTH and UNRESOLVED are never published. */
+/**
+ * Transaction classifier output.
+ * BOTH (isolated dual-run) and UNRESOLVED are never published.
+ * PRODUCTION_OVERLAP publishes the Collection Fact only.
+ */
 export const REVENUE_AUTHORITY_CLASSES = [
   "LEGACY_CHECK",
   "COLLECTION_FACT",
+  "PRODUCTION_OVERLAP",
   "UNRESOLVED",
+  "DUPLICATE",
   "BOTH",
 ] as const;
 export type RevenueAuthorityClass = (typeof REVENUE_AUTHORITY_CLASSES)[number];
@@ -109,6 +115,7 @@ export type ResolvedRevenueContribution = Readonly<{
 export type RevenueUnionConflict = Readonly<{
   code:
     | "BOTH"
+    | "PRODUCTION_OVERLAP"
     | "DUPLICATE_LEGACY"
     | "DUPLICATE_FACT"
     | "CURRENCY"
@@ -142,6 +149,8 @@ export type RevenueUnionResult = Readonly<{
   conflicts: readonly RevenueUnionConflict[];
   excludedLegacyIds: readonly string[];
   excludedFactIds: readonly string[];
+  productionOverlapExcludedLegacyIds: readonly string[];
   eligibilityRejectedFactCount: number;
   unresolvedCount: number;
+  productionOverlapCount: number;
 }>;

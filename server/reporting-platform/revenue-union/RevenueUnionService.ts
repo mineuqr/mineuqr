@@ -4,6 +4,7 @@
  *
  * Does not write Collection Facts.
  * Does not change PAID, Cashier, or Settlement.
+ * Production Collection Fact overlap is resolved in the Union engine only.
  */
 
 import type { CheckReportingRow } from "../checkReportingRepository";
@@ -55,11 +56,12 @@ export function toRevenueUnionLegacyFromSettlement(
   row: SettlementRecordReportingFact,
   extras: { orderingChannel?: string | null; orderIds?: readonly number[] } = {}
 ): RevenueUnionLegacyFact {
+  const fromRecord = row.orderRefs.map((ref) => ref.orderId);
   return toRevenueUnionLegacyFact(row, {
     settlementRecordId: row.settlementRecordId,
     businessDay: row.businessDay,
     orderingChannel: extras.orderingChannel ?? null,
-    orderIds: extras.orderIds ?? [],
+    orderIds: extras.orderIds ?? fromRecord,
   });
 }
 
@@ -97,7 +99,7 @@ export function computeShadowRevenueUnion(input: {
 
 /**
  * Production-safe dual-run: load SR (legacy publication) + Collection Facts,
- * compute Union with eligibility=published (facts do not publish) and isolated (shadow).
+ * compute Union with eligibility=published and isolated (shadow).
  * Zero Collection Fact rows → both equal legacy.
  */
 export async function comparePublishedLegacyToShadowUnion(input: {

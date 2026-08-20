@@ -42,6 +42,7 @@ function srFact(
     recordKind: "settlement",
     businessDay: "2026-07-16",
     paymentSnapshot: [],
+    orderRefs: [],
     publicationSource: "settlement_record",
     ...partial,
   };
@@ -261,6 +262,49 @@ describe("BusinessMetricsService — Revenue Union published pipeline", () => {
     expect(summary.revenue).toBe("80.00");
     expect(summary.taxCollected).toBe("10.43");
     expect(summary.paidCheckCount).toBe(1);
+  });
+
+  it("publishes Collection Fact Gross and excludes overlapping Settlement Record Gross", async () => {
+    vi.mocked(srAdapter.listSettlementRecordsForReporting).mockResolvedValue([
+      srFact({
+        id: 10,
+        outcome: "paid",
+        grandTotal: "80.00",
+        taxAmount: "10.43",
+        orderRefs: [{ orderId: 88 }],
+      }),
+    ]);
+    vi.mocked(cfAdapter.listCollectionFactsForRevenueUnion).mockResolvedValue([
+      {
+        collectionFactId: "pcf-overlap",
+        restaurantId: 1,
+        orderId: 88,
+        paymentIntentId: "int-overlap",
+        orderingChannel: "cashier_pos",
+        purpose: "production",
+        amount: "80.00",
+        taxAmount: "10.43",
+        discountAmount: "0.00",
+        currencyCode: "SAR",
+        currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
+        taxPolicySnapshot: {
+          version: 1,
+          enabled: true,
+          mode: "exclusive",
+          components: [{ id: "vat", name: "VAT", ratePercent: "15.00" }],
+        },
+        tenders: [{ paymentMethod: "cash", amount: "80.00" }],
+        checkId: 10,
+        businessDay: "2026-07-16",
+        committedAt: "2026-07-16T12:00:00.000Z",
+      },
+    ]);
+    const summary = await getBusinessMetricsSummary({ restaurantId: 1 });
+    expect(summary.revenue).toBe("80.00");
+    expect(summary.taxCollected).toBe("10.43");
+    expect(summary.paidCheckCount).toBe(1);
+    expect(summary.averageCheck).toBe("80.00");
+    expect(summary.netRevenue).toBe("80.00");
   });
 
   it("skips Collection Fact reads on legacy publication rollback", async () => {

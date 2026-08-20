@@ -46,6 +46,7 @@ export function computeRevenueUnion(input: {
 }): RevenueUnionResult {
   const resolved = resolveRevenueUnionSets(input);
   const excludedLegacy = resolved.excludedLegacyIds;
+  const overlapExcludedLegacy = resolved.productionOverlapExcludedLegacyIds;
 
   let legacyGross = 0;
   let collectionFactGross = 0;
@@ -79,7 +80,7 @@ export function computeRevenueUnion(input: {
   let refundPublicationCount = 0;
   for (const refund of input.refunds ?? []) {
     const id = `check:${refund.restaurantId}:${refund.checkId}`;
-    if (excludedLegacy.has(id)) continue;
+    if (excludedLegacy.has(id) && !overlapExcludedLegacy.has(id)) continue;
     refundPublishedTotal += parseReportingAmount(refund.grandTotal);
     refundPublicationCount += 1;
   }
@@ -109,7 +110,11 @@ export function computeRevenueUnion(input: {
     conflicts: resolved.conflicts,
     excludedLegacyIds: [...resolved.excludedLegacyIds],
     excludedFactIds: [...resolved.excludedFactIds],
+    productionOverlapExcludedLegacyIds: [
+      ...resolved.productionOverlapExcludedLegacyIds,
+    ],
     eligibilityRejectedFactCount: resolved.eligibilityRejectedFactCount,
     unresolvedCount: resolved.unresolvedCount,
+    productionOverlapCount: resolved.productionOverlapCount,
   };
 }
