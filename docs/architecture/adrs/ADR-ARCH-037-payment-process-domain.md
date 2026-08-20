@@ -14,6 +14,7 @@
 | **Does not modify** | I-FIN-01…12 as monetary-aggregate law · I-OS-* · SR-INV-* · RF-BUDGET / refundableBalance law · Charge composition tables · CRMP custody (028/030/033) · Commercial ADRs 034–036 |
 | **Related ADRs** | ADR-ARCH-001 · 002 · 006 · 007 · 014 · 020 · 021 · 022 · 023 · 024 · 025 · 026 · 028 · 030 · 032 · 033 · **038** |
 | **Refined by** | [ADR-ARCH-038](./ADR-ARCH-038-cashier-direct-financial-commit.md) — Cashier Confirm MUST NOT require a pre-existing OPEN Check (`cashier_pos` only) |
+| **Partially superseded by** | [ADR-ARCH-039](./ADR-ARCH-039-payment-collection-financial-authority.md) — Payment remains the **process**. On certified adopted channels, the Collection Fact is the collection **aggregate** (one SSOT per transaction). The “Check is the sole monetary aggregate” clause yields **only after adoption certification**. No runtime change from 039. |
 | **Related programs** | PAYMENT-DOMAIN-ARCHITECTURE-1 · PAYMENT-LATENCY-FORENSICS-1 · BILL-SIMPLIFICATION-1 · BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 · PAYMENT-COLLECTION-ARCHITECTURE-1 |
 | **Implementation status** | **Governance only.** This ADR authorizes no schema, no `payments` table, no PaymentEngine, no CheckService rewrite, and no runtime change. |
 | **Numbering note** | Next FSP governance ADR after ADR-ARCH-036. **Must not reuse ADR-ARCH-023 or ADR-ARCH-034** (034 is Commercial Catalog Authority). Successor sequencing: [ADR-ARCH-038](./ADR-ARCH-038-cashier-direct-financial-commit.md). Next free constitutional number after 038 is **039**. |
