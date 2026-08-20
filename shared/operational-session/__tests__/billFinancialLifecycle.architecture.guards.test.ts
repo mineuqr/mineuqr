@@ -80,9 +80,10 @@ describe("BILL-FINANCIAL-LIFECYCLE-HARDENING-1 architecture guards", () => {
     expect(composition).not.toContain("PaymentAggregate");
   });
 
-  it("does not add migration 0096", () => {
+  it("does not add a payments table via this Bill lifecycle program", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0095_check_charges");
-    expect(journal).not.toContain("0096_");
+    expect(journal).toContain("0096_payment_collection_facts");
+    expect(journal).not.toContain("0096_payments");
   });
 });

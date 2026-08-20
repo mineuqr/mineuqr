@@ -673,6 +673,13 @@
       "when": 1784900000000,
       "tag": "0095_check_charges",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "5",
+      "when": 1785000000000,
+      "tag": "0096_payment_collection_facts",
+      "breakpoints": true
     }
   ]
 }

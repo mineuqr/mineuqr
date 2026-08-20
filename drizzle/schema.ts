@@ -1043,6 +1043,75 @@ export const settlementRecords = mysqlTable(
 export type InsertSettlementRecord = typeof settlementRecords.$inferInsert;
 export type SelectSettlementRecord = typeof settlementRecords.$inferSelect;
 
+// ─── Payment Collection Facts (PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 / ADR-ARCH-039) ──
+/**
+ * Immutable Collection Fact. Insert-only. Dormant — not Cashier/Revenue/Settlement/PAID.
+ * purpose excludes production collections. checkId is an operational reference only.
+ */
+export const paymentCollectionFacts = mysqlTable(
+	"payment_collection_facts",
+	{
+		id: int().autoincrement().primaryKey(),
+		collectionFactId: varchar({ length: 128 }).notNull(),
+		restaurantId: int().notNull(),
+		orderId: int().notNull(),
+		paymentIntentId: varchar({ length: 128 }).notNull(),
+		orderingChannel: varchar({ length: 32 }).notNull(),
+		kind: mysqlEnum(["collection"]).default("collection").notNull(),
+		purpose: mysqlEnum(["synthetic", "shadow", "test", "validation"]).notNull(),
+		schemaVersion: int().default(1).notNull(),
+		subtotal: decimal({ precision: 10, scale: 2 }).notNull(),
+		discountAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		taxAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		amount: decimal({ precision: 10, scale: 2 }).notNull(),
+		currencyCode: varchar({ length: 8 }).notNull(),
+		currencySnapshotJson: json().notNull(),
+		taxPolicySnapshotJson: json().notNull(),
+		taxBreakdownJson: json().notNull(),
+		compositionJson: json().notNull(),
+		tendersJson: json().notNull(),
+		checkId: int(),
+		actorType: varchar({ length: 64 }),
+		actorId: varchar({ length: 128 }),
+		terminalId: varchar({ length: 128 }),
+		businessDay: varchar({ length: 10 }).notNull(),
+		idempotencyKey: varchar({ length: 128 }).notNull(),
+		fingerprint: varchar({ length: 64 }).notNull(),
+		committedAt: timestamp({ mode: "string" }).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		uniqueIndex("payment_collection_facts_fact_id_unique").on(
+			table.collectionFactId
+		),
+		uniqueIndex("payment_collection_facts_idempotency_unique").on(
+			table.restaurantId,
+			table.idempotencyKey
+		),
+		uniqueIndex("payment_collection_facts_intent_unique").on(
+			table.restaurantId,
+			table.paymentIntentId
+		),
+		index("payment_collection_facts_restaurant_id").on(table.restaurantId),
+		index("payment_collection_facts_restaurant_order").on(
+			table.restaurantId,
+			table.orderId
+		),
+		index("payment_collection_facts_restaurant_purpose").on(
+			table.restaurantId,
+			table.purpose
+		),
+		index("payment_collection_facts_business_day").on(table.businessDay),
+		index("payment_collection_facts_channel").on(
+			table.restaurantId,
+			table.orderingChannel
+		),
+	]
+);
+
+export type InsertPaymentCollectionFact = typeof paymentCollectionFacts.$inferInsert;
+export type SelectPaymentCollectionFact = typeof paymentCollectionFacts.$inferSelect;
+
 // ─── Refund Document Numbers (REFUND-DOCUMENT-NUMBERING-ADOPTION-1) ──
 /** Restaurant-scoped RF- sequence allocator. Identity plane only — not money. */
 export const refundDocumentSequences = mysqlTable(

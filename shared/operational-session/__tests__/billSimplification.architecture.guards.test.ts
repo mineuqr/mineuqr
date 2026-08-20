@@ -31,7 +31,8 @@ describe("BILL-SIMPLIFICATION-1 architecture guards", () => {
   it("Bill does not own a second Payment store or Payment engine", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0095_check_charges");
-    expect(journal).not.toContain("0096_");
+    expect(journal).toContain("0096_payment_collection_facts");
+    expect(journal).not.toContain("0096_payments");
 
     const schema = read("drizzle/schema.ts");
     expect(schema).toContain("checkSettlementTransactions");
@@ -107,9 +108,10 @@ describe("BILL-SIMPLIFICATION-1 architecture guards", () => {
     expect(sr).toContain("createSettlementRecordForCheckFinalize");
   });
 
-  it("does not add migration 0096 or a payments table file", () => {
+  it("does not add a payments table file", () => {
     const drizzleFiles = readdirSync(join(repoRoot, "drizzle"));
-    expect(drizzleFiles.some((name) => name.startsWith("0096"))).toBe(false);
+    expect(drizzleFiles).toContain("0096_payment_collection_facts.sql");
+    expect(drizzleFiles.some((name) => name.startsWith("0096_payments"))).toBe(false);
     expect(existsSync(join(repoRoot, "drizzle/0096_payments.sql"))).toBe(false);
   });
 

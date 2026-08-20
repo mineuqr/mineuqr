@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0095 contiguously", () => {
+  it("journal contains canonical migrations 0000–0096 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -55,13 +55,14 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[92]?.tag).toBe("0092_pos_permission_grants");
     expect(journal.entries[93]?.tag).toBe("0093_pos_sale_idempotency");
     expect(journal.entries[94]?.tag).toBe("0094_commercial_limit_occupancy_locks");
-    expect(journal.entries[95]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[95]?.tag).toBe("0095_check_charges");
+    expect(journal.entries[96]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0095_check_charges");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(96);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0096_payment_collection_facts");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(97);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -109,6 +110,7 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(verify).toContain("check_order_settlements");
     expect(verify).toContain("check_split_payments");
     expect(verify).toContain("check_charges");
+    expect(verify).toContain("payment_collection_facts");
   });
 
   it("vercel build runs governance guard before compile", () => {
@@ -202,6 +204,28 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/DROP\s+/i);
     expect(hashMigrationSql("0095_check_charges")).toBe(
       "02f6ad22808cf79e6a54ae2d174d0bce310760f4b7de425c69e3739f12d08cca"
+    );
+  });
+
+  it("0096 is additive payment_collection_facts and is not a payments table or Check rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0096_payment_collection_facts.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE `payment_collection_facts`");
+    expect(sql).toContain("`purpose` enum('synthetic','shadow','test','validation') NOT NULL");
+    expect(sql).toContain("payment_collection_facts_idempotency_unique");
+    expect(sql).toContain("payment_collection_facts_intent_unique");
+    expect(sql).not.toMatch(/CREATE TABLE `payments`/);
+    expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+    expect(sql).not.toMatch(/ALTER TABLE `settlement_records`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/^\s*UPDATE\b/im);
+    expect(sql).not.toMatch(/^\s*DELETE\b/im);
+    expect(sql).not.toMatch(/DROP\s+/i);
+    expect(sql).not.toMatch(/FOREIGN KEY/i);
+    expect(hashMigrationSql("0096_payment_collection_facts")).toBe(
+      "ae387c23fc92e9ac9769552f125fec5780d58eff3af59c3baa6306c235a0cb1f"
     );
   });
 

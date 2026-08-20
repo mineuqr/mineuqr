@@ -60,6 +60,7 @@ describe("PAYMENT-CONFIRM-CRITICAL-PATH-TRIM-1 architecture", () => {
     expect(panel).not.toContain("computeCheckMoney");
     expect(schema).not.toMatch(/export const payments\b/);
     expect(journal).toContain("0095_check_charges");
-    expect(journal).not.toContain("0096_");
+    expect(journal).toContain("0096_payment_collection_facts");
+    expect(journal).not.toContain("0096_payments");
   });
 });

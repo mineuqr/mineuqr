@@ -12,13 +12,15 @@ function read(rel: string): string {
 }
 
 describe("PAYMENT-COLLECTION-ARCHITECTURE-1 architecture guards", () => {
-  it("reuses check_settlement_transactions as the collection fact store", () => {
+  it("legacy Check collection remains ST; dormant Collection Fact is separate (ADR-039, not adopted)", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0070_check_settlement_transactions");
     expect(journal).toContain("0095_check_charges");
-    expect(journal).not.toContain("0096_");
+    expect(journal).toContain("0096_payment_collection_facts");
+    expect(journal).not.toContain("0096_payments");
     const schema = read("drizzle/schema.ts");
     expect(schema).toContain("checkSettlementTransactions");
+    expect(schema).toContain("paymentCollectionFacts");
     expect(schema).not.toMatch(/mysqlTable\(\s*"payments"/);
   });
 
@@ -48,6 +50,8 @@ describe("PAYMENT-COLLECTION-ARCHITECTURE-1 architecture guards", () => {
     expect(agg).toContain('outcome === "paid"');
     expect(agg).toContain("grandTotal");
     expect(agg).not.toContain("check_settlement_transactions");
+    expect(agg).not.toContain("payment_collection_facts");
+    expect(agg).not.toContain("paymentCollectionFacts");
     const analytics = read(
       "server/reporting-platform/PaymentMethodAnalyticsService.ts"
     );

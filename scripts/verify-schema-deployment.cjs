@@ -197,6 +197,55 @@ const REQUIRED = {
     ["check_charges", "check_charges_restaurant_check"],
     ["check_charges", "check_charges_origin_order"],
   ],
+  /** PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 / ADR-ARCH-039 — dormant Collection Fact. */
+  collectionFactTables: ["payment_collection_facts"],
+  collectionFactColumns: [
+    ["payment_collection_facts", "id"],
+    ["payment_collection_facts", "collectionFactId"],
+    ["payment_collection_facts", "restaurantId"],
+    ["payment_collection_facts", "orderId"],
+    ["payment_collection_facts", "paymentIntentId"],
+    ["payment_collection_facts", "orderingChannel"],
+    ["payment_collection_facts", "kind"],
+    ["payment_collection_facts", "purpose"],
+    ["payment_collection_facts", "schemaVersion"],
+    ["payment_collection_facts", "subtotal"],
+    ["payment_collection_facts", "discountAmount"],
+    ["payment_collection_facts", "taxAmount"],
+    ["payment_collection_facts", "amount"],
+    ["payment_collection_facts", "currencyCode"],
+    ["payment_collection_facts", "currencySnapshotJson"],
+    ["payment_collection_facts", "taxPolicySnapshotJson"],
+    ["payment_collection_facts", "taxBreakdownJson"],
+    ["payment_collection_facts", "compositionJson"],
+    ["payment_collection_facts", "tendersJson"],
+    ["payment_collection_facts", "checkId"],
+    ["payment_collection_facts", "actorType"],
+    ["payment_collection_facts", "actorId"],
+    ["payment_collection_facts", "terminalId"],
+    ["payment_collection_facts", "businessDay"],
+    ["payment_collection_facts", "idempotencyKey"],
+    ["payment_collection_facts", "fingerprint"],
+    ["payment_collection_facts", "committedAt"],
+    ["payment_collection_facts", "createdAt"],
+  ],
+  collectionFactIndexes: [
+    ["payment_collection_facts", "payment_collection_facts_fact_id_unique"],
+    ["payment_collection_facts", "payment_collection_facts_idempotency_unique"],
+    ["payment_collection_facts", "payment_collection_facts_intent_unique"],
+    ["payment_collection_facts", "payment_collection_facts_restaurant_id"],
+    ["payment_collection_facts", "payment_collection_facts_restaurant_order"],
+    ["payment_collection_facts", "payment_collection_facts_restaurant_purpose"],
+    ["payment_collection_facts", "payment_collection_facts_business_day"],
+    ["payment_collection_facts", "payment_collection_facts_channel"],
+  ],
+  collectionFactEnumMembers: [
+    ["payment_collection_facts", "purpose", "synthetic"],
+    ["payment_collection_facts", "purpose", "shadow"],
+    ["payment_collection_facts", "purpose", "test"],
+    ["payment_collection_facts", "purpose", "validation"],
+    ["payment_collection_facts", "kind", "collection"],
+  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -384,10 +433,30 @@ async function main() {
         missing.push(`index:${table}.${indexName}`);
       }
     }
+    for (const table of REQUIRED.collectionFactTables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.collectionFactColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+    for (const [table, indexName] of REQUIRED.collectionFactIndexes) {
+      if (!(await indexExists(conn, table, indexName))) {
+        missing.push(`index:${table}.${indexName}`);
+      }
+    }
+    for (const [table, column, member] of REQUIRED.collectionFactEnumMembers) {
+      if (!(await enumMemberExists(conn, table, column, member))) {
+        missing.push(`enum:${table}.${column}.${member}`);
+      }
+    }
 
     if (missing.length === 0) {
       console.log(
-        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements, check-charges)."
+        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements, check-charges, payment-collection-facts)."
       );
       return;
     }

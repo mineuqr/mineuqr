@@ -78,7 +78,8 @@ describe("CASHIER-PAYMENT-READINESS-INSTRUMENTATION-1 architecture", () => {
     expect(schema).not.toMatch(/export const payments\b/);
     expect(schema).not.toMatch(/cashier_payment_readiness/);
     expect(journal).toContain("0095_check_charges");
-    expect(journal).not.toContain("0096_");
+    expect(journal).toContain("0096_payment_collection_facts");
+    expect(journal).not.toContain("0096_payments");
   });
 
   it("does not add Check-read HTTP marks or tender-selection timers", () => {

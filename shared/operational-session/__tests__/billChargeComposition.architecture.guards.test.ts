@@ -75,14 +75,15 @@ describe("BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 architecture guards", () => {
     expect(refresh).not.toContain("getOrdersByIds");
   });
 
-  it("does not add a Charge correction table or migration 0096", () => {
+  it("does not add a Charge correction table or payments table", () => {
     const schema = read("drizzle/schema.ts");
     expect(schema).toContain("checkCharges");
     expect(schema).not.toContain("charge_corrections");
     expect(schema).not.toContain("check_charge_corrections");
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0095_check_charges");
-    expect(journal).not.toContain("0096_");
+    expect(journal).toContain("0096_payment_collection_facts");
+    expect(journal).not.toContain("0096_payments");
   });
 
   it("membership table remains until Charge composition is adopted", () => {

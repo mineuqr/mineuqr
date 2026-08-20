@@ -120,9 +120,11 @@ describe("PAYMENT-CONFIRM-COMPATIBILITY-CLEANUP-1 architecture", () => {
     const schema = read(SCHEMA);
     const payment = read(PAYMENT);
     expect(journal).toContain("0095_check_charges");
-    expect(journal).not.toContain("0096_");
+    expect(journal).toContain("0096_payment_collection_facts");
+    expect(journal).not.toContain("0096_payments");
     const drizzleFiles = readdirSync(join(repoRoot, "drizzle"));
-    expect(drizzleFiles.some((name) => name.startsWith("0096"))).toBe(false);
+    expect(drizzleFiles).toContain("0096_payment_collection_facts.sql");
+    expect(drizzleFiles.some((name) => name.startsWith("0096_payments"))).toBe(false);
     expect(existsSync(join(repoRoot, "drizzle/0096_payments.sql"))).toBe(false);
     expect(schema).not.toMatch(/mysqlTable\(\s*"payments"/);
     expect(payment).not.toContain("withCheckOwnedTransaction");

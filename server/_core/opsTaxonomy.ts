@@ -232,6 +232,17 @@ export const OPS_EVENT = {
   pos_settlement_initiate: "pos_settlement_initiate",
   cashier_payment_flow: "cashier_payment_flow",
   payment_confirm: "payment_confirm",
+  // PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 — dormant Collection Fact writer
+  payment_collection_fact_commit_attempt: "payment_collection_fact_commit_attempt",
+  payment_collection_fact_committed: "payment_collection_fact_committed",
+  payment_collection_fact_replayed: "payment_collection_fact_replayed",
+  payment_collection_fact_duplicate_prevented:
+    "payment_collection_fact_duplicate_prevented",
+  payment_collection_fact_validation_failed:
+    "payment_collection_fact_validation_failed",
+  payment_collection_fact_authorization_failed:
+    "payment_collection_fact_authorization_failed",
+  payment_collection_fact_storage_failed: "payment_collection_fact_storage_failed",
   // PAYMENT-READINESS-CHECK-ENSURE-STAGE-INSTRUMENTATION-1
   check_ensure_for_order: "check_ensure_for_order",
 } as const;

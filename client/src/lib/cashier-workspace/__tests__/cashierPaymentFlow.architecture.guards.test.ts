@@ -108,12 +108,14 @@ describe("CASHIER-PAYMENT-FLOW-IMPLEMENTATION-1 architecture", () => {
     expect(visibility).toContain("ORDERING_CHANNEL_CASHIER_POS");
   });
 
-  it("does not add 0096, a second settlement store, or a Refund redesign", () => {
+  it("does not add a payments table, a second settlement store, or a Refund redesign", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0095_check_charges");
-    expect(journal).not.toContain("0096_");
+    expect(journal).toContain("0096_payment_collection_facts");
+    expect(journal).not.toContain("0096_payments");
     const drizzleFiles = readdirSync(join(repoRoot, "drizzle"));
-    expect(drizzleFiles.some((name) => name.startsWith("0096"))).toBe(false);
+    expect(drizzleFiles).toContain("0096_payment_collection_facts.sql");
+    expect(drizzleFiles.some((name) => name.startsWith("0096_payments"))).toBe(false);
     expect(existsSync(join(repoRoot, "drizzle/0096_payments.sql"))).toBe(false);
     const panel = read(PANEL);
     expect(panel).not.toContain("trpc.refund");
