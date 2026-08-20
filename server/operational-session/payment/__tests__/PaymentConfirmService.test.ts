@@ -155,6 +155,7 @@ describe("confirmPayment", () => {
       settlementContext: undefined,
       settlementContextHints: undefined,
       awaitAttribution: false,
+      deferOperationalSettlementAfterCollectionFact: true,
       productionCollectionCommit: expect.any(Function),
     });
     expect(mocks.settleCheckPaidByIdDetailed).not.toHaveBeenCalled();
@@ -239,6 +240,74 @@ describe("confirmPayment", () => {
         metadata: expect.objectContaining({
           collectionFactCommit: true,
           collectionFactOutcome: "created",
+          outcome: "paid",
+        }),
+      })
+    );
+  });
+
+  it("logs PAID after Collection Fact even when Check is still OPEN", async () => {
+    const store = new InMemoryCollectionFactStore();
+    mocks.settleCashierPosOrderPaidByIdDetailed.mockImplementation(
+      async (input: {
+        productionCollectionCommit?: (freeze: typeof CONFIRM_FREEZE) => Promise<void>;
+      }) => {
+        await input.productionCollectionCommit?.(CONFIRM_FREEZE);
+        return {
+          ...FINANCIAL,
+          check: { ...FINANCIAL.check, outcome: "open" },
+          settlementRecord: { record: null, outcome: "skipped" },
+        };
+      }
+    );
+    await confirmPayment({
+      restaurantId: 1,
+      orderId: 44,
+      paymentIntentId: "cpi_confirm-1",
+      idempotencyKey: "cashier-settle-aaaaaaa",
+      terminalId: "11111111-1111-4111-8111-111111111111",
+      actorType: "staff_user",
+      actorUserId: 7,
+      collectionFactStore: store,
+    });
+    expect(store.snapshot()).toHaveLength(1);
+    expect(mocks.opsLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          collectionFactOutcome: "created",
+          outcome: "paid",
+        }),
+      })
+    );
+  });
+
+  it("replays the same Collection Fact on retry", async () => {
+    const store = new InMemoryCollectionFactStore();
+    mocks.settleCashierPosOrderPaidByIdDetailed.mockImplementation(
+      async (input: {
+        productionCollectionCommit?: (freeze: typeof CONFIRM_FREEZE) => Promise<void>;
+      }) => {
+        await input.productionCollectionCommit?.(CONFIRM_FREEZE);
+        return FINANCIAL;
+      }
+    );
+    const command = {
+      restaurantId: 1,
+      orderId: 44,
+      paymentIntentId: "cpi_confirm-1",
+      idempotencyKey: "cashier-settle-aaaaaaa",
+      terminalId: "11111111-1111-4111-8111-111111111111",
+      actorType: "staff_user" as const,
+      actorUserId: 7,
+      collectionFactStore: store,
+    };
+    await confirmPayment(command);
+    await confirmPayment(command);
+    expect(store.snapshot()).toHaveLength(1);
+    expect(mocks.opsLog).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          collectionFactOutcome: "replayed",
           outcome: "paid",
         }),
       })

@@ -79,9 +79,9 @@ function asCollectionTenders(
 /**
  * Confirm a paid collection.
  * checkId path: existing OPEN Check (Session / kiosk / leftover OPEN).
- * orderId path: cashier_pos materialize+finalize in one financial TX,
- * with Production Collection Fact commit from the Check money freeze.
- * Does not compute grandTotal / amountDue / remaining. Check finalize does.
+ * orderId path: cashier_pos materializes the operational Check, freezes money,
+ * commits Production Collection Fact (COMMITTED / PAID), then returns HTTP.
+ * Check PAID / ST / OS / SR continue downstream and must not block HTTP success.
  */
 export async function confirmPayment(
   command: PaymentConfirmCommand
@@ -108,6 +108,7 @@ export async function confirmPayment(
           settlementContext: command.settlementContext,
           settlementContextHints: command.settlementContextHints,
           awaitAttribution: command.awaitAttribution,
+          deferOperationalSettlementAfterCollectionFact: true,
           productionCollectionCommit: async (freeze) => {
             const committed = command.collectionFactStore
               ? await commitCashierProductionCollectionFact(
@@ -157,7 +158,8 @@ export async function confirmPayment(
       program: PAYMENT_CONFIRM_PROGRAM_ID,
       checkId: command.checkId ?? result.check.id,
       orderId: command.orderId ?? null,
-      outcome: result.check.outcome,
+      outcome:
+        collectionFactOutcome != null ? "paid" : result.check.outcome,
       durationMs: Date.now() - startedAt,
       awaitAttribution: command.awaitAttribution !== false,
       collectionFactCommit: command.orderId != null,

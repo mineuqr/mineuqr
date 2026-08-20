@@ -181,6 +181,9 @@ export const OPS_EVENT = {
   // CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 — detached post-commit Attribution
   check_settlement_attribution_deferred_failed:
     "check_settlement_attribution_deferred_failed",
+  // CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1
+  check_operational_settlement_deferred_failed:
+    "check_operational_settlement_deferred_failed",
   check_terminal_transition_rejected: "check_terminal_transition_rejected",
   check_charge_on_terminal_rejected: "check_charge_on_terminal_rejected",
   check_collection_rejected: "check_collection_rejected",

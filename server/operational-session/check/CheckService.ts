@@ -721,6 +721,13 @@ async function finalizeOpenCheckById(
     productionCollectionCommit?: (
       freeze: CashierAuthoritativePaidFreeze
     ) => Promise<void>;
+    /**
+     * CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1
+     * Cashier HTTP returns after Collection Fact. Check PAID / ST / OS / SR
+     * are operational/historical and must not block financial success.
+     * Requires productionCollectionCommit. Session/kiosk omit this flag.
+     */
+    deferOperationalSettlementAfterCollectionFact?: boolean;
     economicOrderId?: number;
     economicOrderingChannel?: string;
   },
@@ -976,6 +983,48 @@ async function finalizeOpenCheckById(
           originOrderId: charge.originOrderId,
         })),
       });
+    }
+
+    if (input.deferOperationalSettlementAfterCollectionFact) {
+      if (!input.productionCollectionCommit) {
+        throw new DiningSessionValidationError(
+          "Cashier operational defer requires Collection Fact commit"
+        );
+      }
+      await updateCheckMoney(
+        {
+          checkId: check.id,
+          restaurantId: input.restaurantId,
+          subtotal: money.subtotal,
+          taxAmount: money.taxAmount,
+          taxBreakdown: money.taxBreakdown,
+          grandTotal: money.grandTotal,
+          billDiscountAmount: check.billDiscountAmount,
+        },
+        tx
+      );
+      const deferredRow = await findCheckById(check.id, tx);
+      if (!deferredRow) {
+        throw new DiningSessionUnavailableError(
+          "Check not found after Collection Fact"
+        );
+      }
+      return {
+        check: mapRowToOperationalCheck(deferredRow),
+        orderSettlement: {
+          settlements: [],
+          events: [],
+          outcomes: [],
+        },
+        orderSettlementEvents: [],
+        settlementRecord: {
+          record: null,
+          events: [],
+          outcome: "skipped" as const,
+        },
+        settlementRecordEvents: [],
+        settlementContext,
+      };
     }
 
     const ownedRows = await finalizeCheckOutcome(
@@ -1600,10 +1649,42 @@ function adoptAttributionAfterOwnedCommit(input: {
 }
 
 /**
- * ADR-ARCH-038 — cashier_pos Confirm materializes Check inside the same
- * Check-owned financial transaction that freezes PAID + ST + OS + SR.
- * Not a public Confirm API. Application Confirm enters confirmPayment.
+ * CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1
+ * Downstream of Cashier HTTP: Check PAID + ST + OS + SR after Collection Fact.
+ * Does not commit Collection Fact. Already-paid Checks are idempotent.
  */
+export async function completeCashierOperationalSettlementAfterCollectionFact(input: {
+  restaurantId: number;
+  checkId: number;
+  settlements?: readonly StaffSettlementLineInput[];
+  settlementContext?: SettlementContext;
+  settlementContextHints?: SettlementContextHints;
+}): Promise<void> {
+  try {
+    await finalizeOpenCheckById({
+      restaurantId: input.restaurantId,
+      checkId: input.checkId,
+      outcome: "paid",
+      settlements: input.settlements,
+      settlementContext: input.settlementContext,
+      settlementContextHints: input.settlementContextHints,
+      awaitAttribution: false,
+    });
+  } catch (err) {
+    if (err instanceof CheckTransitionError) {
+      const row = await findCheckById(input.checkId);
+      if (
+        row &&
+        row.restaurantId === input.restaurantId &&
+        (row.outcome === "paid" || row.outcome === "complimentary")
+      ) {
+        return;
+      }
+    }
+    throw err;
+  }
+}
+
 export async function settleCashierPosOrderPaidByIdDetailed(input: {
   restaurantId: number;
   orderId: number;
@@ -1612,6 +1693,7 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
   settlementContext?: SettlementContext;
   settlementContextHints?: SettlementContextHints;
   awaitAttribution?: boolean;
+  deferOperationalSettlementAfterCollectionFact?: boolean;
   productionCollectionCommit?: (
     freeze: CashierAuthoritativePaidFreeze
   ) => Promise<void>;
@@ -1661,6 +1743,8 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
           settlementContext: input.settlementContext,
           settlementContextHints: input.settlementContextHints,
           awaitAttribution: input.awaitAttribution,
+          deferOperationalSettlementAfterCollectionFact:
+            input.deferOperationalSettlementAfterCollectionFact === true,
           productionCollectionCommit: input.productionCollectionCommit,
           economicOrderId: input.orderId,
           economicOrderingChannel: ORDERING_CHANNEL_CASHIER_POS,
@@ -1679,19 +1763,46 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
     stages,
   });
 
+  const result = {
+    ...financial,
+    finalizeStageMs: {
+      ...financial.finalizeStageMs,
+      financialTransactionPreparationMs: txStages.current.preparationMs,
+      financialTransactionWriteMs: txStages.current.writeMs,
+      financialTransactionTxWallMs: txStages.current.txWallMs,
+      financialTransactionCommittedAt: new Date().toISOString(),
+    },
+  };
+
+  if (input.deferOperationalSettlementAfterCollectionFact === true) {
+    void completeCashierOperationalSettlementAfterCollectionFact({
+      restaurantId: input.restaurantId,
+      checkId: financial.check.id,
+      settlements: input.settlements,
+      settlementContext: input.settlementContext,
+      settlementContextHints: input.settlementContextHints,
+    }).catch((err: unknown) => {
+      opsLog({
+        type: OPS_EVENT.check_operational_settlement_deferred_failed,
+        category: "ORDER",
+        severity: "warn",
+        ts: new Date().toISOString(),
+        restaurantId: input.restaurantId,
+        action: "completeCashierOperationalSettlementAfterCollectionFact",
+        metadata: {
+          checkId: financial.check.id,
+          orderId: input.orderId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      });
+    });
+    return result;
+  }
+
   return adoptAttributionAfterOwnedCommit({
     restaurantId: input.restaurantId,
     checkId: financial.check.id,
-    result: {
-      ...financial,
-      finalizeStageMs: {
-        ...financial.finalizeStageMs,
-        financialTransactionPreparationMs: txStages.current.preparationMs,
-        financialTransactionWriteMs: txStages.current.writeMs,
-        financialTransactionTxWallMs: txStages.current.txWallMs,
-        financialTransactionCommittedAt: new Date().toISOString(),
-      },
-    },
+    result,
   });
 }
 

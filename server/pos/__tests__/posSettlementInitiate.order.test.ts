@@ -162,6 +162,8 @@ function harness(options?: {
   check?: ReturnType<typeof openCheck> | null;
   settleDelayMs?: number;
   settleOnce?: boolean;
+  settleCheckOutcome?: "paid" | "open";
+  settleSettlementRecordId?: string | null;
   finalizeStageMs?: {
     checkReloadMs: number;
     orderDiscoveryMs: number;
@@ -220,12 +222,15 @@ function harness(options?: {
       id: liveCheck?.id ?? CHECK_A,
       restaurantId: input.restaurantId,
       sessionId: liveCheck?.sessionId ?? null,
-      outcome: "paid",
+      outcome: options?.settleCheckOutcome ?? "paid",
       grandTotal: liveCheck?.grandTotal ?? GRAND_TOTAL,
     };
     return {
       check: liveCheck,
-      settlementRecordId: "sr-pos-1",
+      settlementRecordId:
+        options?.settleSettlementRecordId === undefined
+          ? "sr-pos-1"
+          : options.settleSettlementRecordId,
       ...(options?.finalizeStageMs
         ? { finalizeStageMs: options.finalizeStageMs }
         : {}),
@@ -444,6 +449,22 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     ).rejects.toBeInstanceOf(TRPCError);
 
     expect(foreignOrder.settle).not.toHaveBeenCalled();
+  });
+
+  it("returns HTTP paid after Collection Fact when Check is still OPEN", async () => {
+    const { store, grants, service, settle } = harness({
+      membership: null,
+      check: null,
+      settleCheckOutcome: "open",
+      settleSettlementRecordId: null,
+    });
+    await seedTerminal(store);
+    await grantSettle(grants);
+    const result = await service.initiate({ user: user(STAFF_A), command });
+    expect(result.outcome).toBe("paid");
+    expect(result.checkId).toBe(CHECK_A);
+    expect(result.settlementRecordId).toBeNull();
+    expect(settle).toHaveBeenCalledTimes(1);
   });
 
   it("initiates Confirm without a pre-existing Check", async () => {

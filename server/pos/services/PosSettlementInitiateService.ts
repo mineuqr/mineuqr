@@ -708,7 +708,12 @@ export class PosSettlementInitiateService {
           "Check does not belong to this restaurant"
         );
       }
-      if (settled.check.outcome !== "paid") {
+      // Financial PAID is Collection Fact commit/replay. Check may still be
+      // OPEN while Check PAID / ST / OS / SR run after HTTP.
+      if (
+        settled.check.outcome !== "paid" &&
+        settled.check.outcome !== "open"
+      ) {
         throw new PosSettlementInitiateError(
           "check_not_eligible",
           "Check is not eligible for settlement initiation"
