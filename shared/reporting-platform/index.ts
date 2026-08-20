@@ -138,3 +138,15 @@ export {
   type ChartSeriesPointDto,
   type ChartSeriesDto,
 } from "./timeSeries";
+
+export {
+  REVENUE_UNION_PROGRAM_ID,
+  computeRevenueUnion,
+  compareLegacyToUnion,
+  compareFactToContribution,
+  periodKeyFromFrozenBusinessDay,
+  resolveRevenueUnionSets,
+  type RevenueAuthority,
+  type RevenueUnionResult,
+  type CollectionFactEligibility,
+} from "./revenue-union";
