@@ -1,25 +1,27 @@
-# DOWNSTREAM-RECOVERY-PLAN
+# DOWNSTREAM-DELIVERY-PLAN
+
+## Current approved contract
+
+**Cashier success = Production Collection Fact created or replayed.** هذا يعني **PAID** ثم HTTP success. ولا يعني نجاح Cashier أن Check أصبح `PAID` أو أن ST أو OS أو SR اكتملت أو أن الإيصال أو التقرير أصبحا جاهزين.
 
 ## Mechanism
 
-Smallest existing pattern: `void … catch` (same as Cashier Attribution). No new queue.
+يستخدم المسار المنفذ `dispatchBestEffortDownstreamDelivery` بعد عودة مسار Cashier المالي. تستدعي الدالة `completeCashierOperationalSettlementAfterCollectionFact` لمعالجة Check وST/OS/SR عند الإمكان، وتسجل فشل المعالجة الخلفية. لا تعيد المحاولة، ولا تستطلع الحالة، ولا تملك cron أو worker أو queue أو endpoint، ولا تكتب Collection Fact ولا تغير PAID إلى فشل.
 
-| Field | Value |
+| المجال | العقد المنفذ |
 |---|---|
-| Owner | Check (`completeCashierOperationalSettlementAfterCollectionFact`) |
-| Trigger | After freeze TX commit on Cashier defer path |
-| Idempotency | Check still OPEN → full PAID+ST+OS/SR. Already PAID → `CheckTransitionError` swallowed. SR insert already idempotent (SR-INV-05). CF not invoked. |
-| Retry | Confirm retry that re-enters `confirmPayment` (lost HTTP **before** POS idempotency put): CF replay, defer again, schedule downstream again. Direct `completeCashierOperationalSettlementAfterCollectionFact`. POS idempotency **replay** (same key after HTTP success) does **not** re-enter Confirm; if the process died after HTTP and before ST/OS/SR, Check stays OPEN and a later healer/retry that reaches Check finalize is required. CF remains committed. |
-| Observability | `check_operational_settlement_deferred_failed` |
-| Print | HTTP `settlementRecordId` may be null; UI already rediscovers via `settlementRecord.getByCheck` |
-| Refund | Requires SR/Check PAID; may lag until downstream succeeds. Not undefined. |
+| الحد المالي | `commitCashierProductionCollectionFact` create/replay |
+| HTTP | نجاح بعد Collection Fact فقط |
+| التسليم الخلفي | محاولة best-effort غير حاجبة |
+| فشل Check/ST/OS/SR | ملاحظة تشغيلية؛ لا يغير الدفع |
+| نتيجة HTTP مجهولة للمتصفح | إعادة نفس أمر Cashier بنفس `paymentIntentId` و`idempotencyKey` |
+| التكرار | uniqueness/fingerprint في Collection Fact؛ لا حقيقة ثانية |
+| Vercel | لا Cron ولا `CRON_SECRET` لصحة Cashier |
 
-## Duplicate prevention
+## Explicit exclusions
 
-- CF: unique `paymentIntentId` / idempotency (writer).
-- Check PAID: 0-row UPDATE / transition error.
-- SR: existing business-key idempotency.
+لا يستخدم Cashier lookup لـ Check أو `financiallyPaid` أو Settlement Record لكي يقرر الدفع بعد انقطاع شبكة. كما لا توجد Cashier-specific recovery state أو worker أو HTTP sweep. بقيت ST وOS وSR مكونات منصة تشغيلية مشروعة للتدفقات غير الخاصة بـ Cashier.
 
 ## Ownership
 
-Cashier Confirm does not own downstream persistence. Check finalize remains the writer. Collection Fact remains insert-only.
+Cashier Confirm لا يملك persistence التشغيلي اللاحق. Collection Fact تظل insert-only ومالية authoritative؛ وCheck/service owners يحتفظون بكتابة الإسقاطات التشغيلية دون أن يصبحوا سلطة دفع ثانية.

@@ -36,7 +36,8 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1 architecture", () =
     expect(confirm).not.toContain("insertSettlementTransactions");
     expect(confirm).not.toContain("createSettlementRecordForCheckFinalize");
     expect(confirm).not.toContain("applyFullSettlementToCheckOrders");
-    expect(cashier).toContain("continueAfterCashierHttp");
+    expect(cashier).toContain("dispatchBestEffortDownstreamDelivery");
+    expect(cashier).not.toContain("cashier-downstream-recovery");
     expect(cashier).toContain("completeCashierOperationalSettlementAfterCollectionFact");
     expect(cashier).not.toContain(
       "await completeCashierOperationalSettlementAfterCollectionFact"

@@ -24,7 +24,7 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
   it("instruments existing finalize stages without moving financial work", () => {
     const check = read("server/operational-session/check/CheckService.ts");
     const finalize = sliceFinalizeOpenCheckById(check);
-    const reloadAt = finalize.indexOf("await getCheckById(");
+    const reloadAt = finalize.indexOf("await findCheckById(");
     const discoveryAt = finalize.indexOf(
       "await ensureOpenCheckChargesSubtotal("
     );
@@ -52,7 +52,9 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     expect(moneySlice).toContain("applyFullSettlementToCheckOrders");
     expect(moneySlice).toContain("createSettlementRecordForCheckFinalize");
     expect(moneySlice).toContain("loadChargesSubtotal(");
-    expect(moneySlice).not.toContain("getCheckById(");
+    // A final read of the Check row is part of the same operational transaction;
+    // it is not a second payment verification gate.
+    expect(moneySlice).toContain("const row = await findCheckById(check.id, tx);");
     expect(moneySlice).not.toContain("ensureOpenCheckChargesSubtotal");
     expect(moneySlice).not.toContain("resolveSettlementContextForSettle");
     expect(moneySlice).not.toContain("adoptSettlementAttributionAfterFinalize");

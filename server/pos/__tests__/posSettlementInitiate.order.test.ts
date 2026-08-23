@@ -19,12 +19,8 @@ import type { SelectUser } from "../../../drizzle/schema";
 import type { PosPermission } from "@shared/pos";
 import type { SettlementContext } from "@shared/crmp";
 import { PosRegisterShiftContextService } from "../services/PosRegisterShiftContextService";
-import { scheduleCashierDownstreamSettlementRecovery } from "../../operational-session/payment/cashier-downstream-recovery";
 import { findProductionCollectionFactByOrderId } from "../../operational-session/payment/collection-fact/collectionFactRepository";
 
-vi.mock("../../operational-session/payment/cashier-downstream-recovery", () => ({
-  scheduleCashierDownstreamSettlementRecovery: vi.fn(),
-}));
 vi.mock("../../operational-session/payment/collection-fact/collectionFactRepository", () => ({
   findProductionCollectionFactByOrderId: vi.fn(async () => null),
 }));
@@ -495,21 +491,20 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     );
   });
 
-  it("replays a paid Check as the same financial outcome", async () => {
+  it("does not treat a paid Check without Collection Fact as Cashier payment authority", async () => {
     const { store, grants, service, settle } = harness({
       check: openCheck({ outcome: "paid" }),
       membership: { checkId: CHECK_A, checkOutcome: "paid" },
     });
     await seedTerminal(store);
     await grantSettle(grants);
-    const result = await service.initiate({ user: user(STAFF_A), command });
-    expect(result.outcome).toBe("paid");
-    expect(result.checkId).toBe(CHECK_A);
-    expect(result.replayed).toBe(true);
+    await expect(service.initiate({ user: user(STAFF_A), command })).rejects.toMatchObject({
+      code: "check_already_terminal",
+    });
     expect(settle).not.toHaveBeenCalled();
   });
 
-  it("schedules downstream recovery on POS idempotency replay without waiting", async () => {
+  it("replays POS idempotency without triggering downstream recovery", async () => {
     const { store, grants, service, settle } = harness({
       membership: null,
       check: null,
@@ -517,17 +512,9 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     await seedTerminal(store);
     await grantSettle(grants);
     await service.initiate({ user: user(STAFF_A), command });
-    vi.mocked(scheduleCashierDownstreamSettlementRecovery).mockClear();
     const result = await service.initiate({ user: user(STAFF_A), command });
     expect(result.replayed).toBe(true);
     expect(settle).toHaveBeenCalledTimes(1);
-    expect(scheduleCashierDownstreamSettlementRecovery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        restaurantId: RESTAURANT_A,
-        checkId: CHECK_A,
-        orderId: ORDER_A,
-      })
-    );
   });
 
   it("rejects complimentary and voided Checks", async () => {
@@ -617,13 +604,6 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(result.outcome).toBe("paid");
     expect(result.checkId).toBe(CHECK_A);
     expect(settle).not.toHaveBeenCalled();
-    expect(scheduleCashierDownstreamSettlementRecovery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        restaurantId: RESTAURANT_A,
-        checkId: CHECK_A,
-        orderId: ORDER_A,
-      })
-    );
   });
 
   it("forwards existing Check settlement lines for a split payment mix", async () => {
@@ -873,16 +853,18 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).toHaveBeenCalledTimes(1);
   });
 
-  it("treats a lost Check CAS race as a safe already-paid result", async () => {
-    const { store, grants, service, settle, getCheck } = harness();
+  it("replays a committed Collection Fact after a lost Check CAS race", async () => {
+    const { store, grants, service, settle } = harness();
     await seedTerminal(store);
     await grantSettle(grants);
-    getCheck.mockImplementation(async () =>
-      openCheck({
-        outcome: "paid",
-        grandTotal: GRAND_TOTAL,
-      })
-    );
+    vi.mocked(findProductionCollectionFactByOrderId)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        collectionFactId: "pcf_raced",
+        checkId: CHECK_A,
+        amount: GRAND_TOTAL,
+        paymentIntentId: command.paymentIntentId,
+      } as never);
     settle.mockRejectedValue(
       new CheckTransitionError("Cannot finalize check from outcome paid")
     );

@@ -26,8 +26,6 @@ const ADOPTION =
   "server/operational-session/check/checkSettlementAttributionAdoption.ts";
 const SESSION = "server/diningSession/sessionService.ts";
 const PANEL = "client/src/components/cashier-workspace/CashierWorkspacePanel.tsx";
-const RECOVERY =
-  "client/src/lib/cashier-workspace/cashierSettlementRecovery.ts";
 const SCHEMA = "drizzle/schema.ts";
 const JOURNAL = "drizzle/meta/_journal.json";
 
@@ -115,10 +113,9 @@ describe("CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 architecture", () => {
     expect(finalize).toContain("ownedRows === 0");
   });
 
-  it("does not add a schema migration or a second settle during recovery", () => {
+  it("does not add a schema migration or unknown-result state verification", () => {
     const journal = read(JOURNAL);
     const panel = read(PANEL);
-    const recovery = read(RECOVERY);
     expect(journal).not.toContain("cashier_settlement_http_at_commit");
     expect(journal).not.toContain("payment_aggregate");
     const completeFn = panel.slice(
@@ -128,9 +125,9 @@ describe("CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 architecture", () => {
     expect((completeFn.match(/settleMutation\.mutateAsync/g) ?? []).length).toBe(
       1
     );
-    expect(recovery).not.toContain("settleMutation");
-    expect(recovery).not.toContain("pos.settlement.initiate");
-    expect(recovery).not.toContain("settleCheckPaidByIdDetailed");
+    expect(completeFn).not.toContain("getByOrder.fetch");
+    expect(completeFn).not.toContain("settlementRecord.getByCheck.fetch");
+    expect(completeFn).not.toContain("recoverCashier");
   });
 
   it("does not move financial authority to the Cashier client", () => {

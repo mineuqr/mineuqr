@@ -25,7 +25,6 @@ import {
 } from "../../operational-session/check/CheckService";
 import { CheckMembershipError } from "../../operational-session/check/checkMembershipService";
 import { confirmPayment } from "../../operational-session/payment/PaymentConfirmService";
-import { scheduleCashierDownstreamSettlementRecovery } from "../../operational-session/payment/cashier-downstream-recovery";
 import { findBlockingMembershipForOrder } from "../../operational-session/check/checkOrderMembershipRepository";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
 import type { PosSettlementInitiateIdempotencyStore } from "../infrastructure/PosSettlementInitiateIdempotencyStore";
@@ -545,11 +544,6 @@ export class PosSettlementInitiateService {
             "Idempotency key was already used for a different settlement"
           );
         }
-        scheduleCashierDownstreamSettlementRecovery({
-          restaurantId: context.restaurantId,
-          checkId: existing.checkId,
-          orderId: existing.orderId,
-        });
         return resultFrom({
           checkId: existing.checkId,
           orderId: existing.orderId,
@@ -588,43 +582,36 @@ export class PosSettlementInitiateService {
       ensureCheckMs = 0;
       checkLoadMs = 0;
 
-      if (membership?.checkOutcome === "paid") {
-        const checkStarted = clock.mark();
-        const paid = await this.checkLookup({
-          restaurantId: context.restaurantId,
-          checkId: membership.checkId,
-        });
-        checkLoadMs = clock.since(checkStarted);
-        checkLoadedAt = new Date().toISOString();
-        if (!paid || paid.restaurantId !== context.restaurantId) {
-          throw new PosSettlementInitiateError(
-            "check_not_found",
-            "Check not found"
-          );
-        }
-        await this.idempotency.put({
+      const existingFact = await this.productionCollectionFactByOrderLookup({
+        restaurantId: context.restaurantId,
+        orderId: order.id,
+      });
+      if (existingFact?.checkId != null) {
+        // Collection Fact is the authoritative replay source. Check/ST/OS/SR
+        // are downstream operational state and cannot gate Cashier success.
+        void this.idempotency.put({
           restaurantId: context.restaurantId,
           terminalId: context.terminalId,
           userId: context.userId,
           idempotencyKey: input.command.idempotencyKey,
           fingerprint,
           orderId: order.id,
-          checkId: paid.id,
+          checkId: existingFact.checkId,
           outcome: "paid",
-          grandTotal: paid.grandTotal,
+          grandTotal: existingFact.amount,
           settlementRecordId: null,
-          sessionId: paid.sessionId,
+          sessionId: null,
           registerId: operational.registerId,
           financialShiftId: operational.financialShiftId,
           createdAt: new Date().toISOString(),
-        });
+        }).catch(() => undefined);
         return resultFrom({
-          checkId: paid.id,
+          checkId: existingFact.checkId,
           orderId: order.id,
           restaurantId: context.restaurantId,
-          grandTotal: paid.grandTotal,
+          grandTotal: existingFact.amount,
           settlementRecordId: null,
-          sessionId: paid.sessionId,
+          sessionId: null,
           terminalId: context.terminalId,
           cashierUserId: context.userId,
           registerId: operational.registerId,
@@ -649,60 +636,6 @@ export class PosSettlementInitiateService {
           "check_not_eligible",
           "Check is not eligible for settlement initiation"
         );
-      }
-
-      const existingFact = await this.productionCollectionFactByOrderLookup({
-        restaurantId: context.restaurantId,
-        orderId: order.id,
-      });
-      if (existingFact?.checkId != null) {
-        const checkStarted = clock.mark();
-        const already = await this.checkLookup({
-          restaurantId: context.restaurantId,
-          checkId: existingFact.checkId,
-        });
-        checkLoadMs = clock.since(checkStarted);
-        checkLoadedAt = new Date().toISOString();
-        if (!already || already.restaurantId !== context.restaurantId) {
-          throw new PosSettlementInitiateError(
-            "check_not_found",
-            "Check not found"
-          );
-        }
-        scheduleCashierDownstreamSettlementRecovery({
-          restaurantId: context.restaurantId,
-          checkId: already.id,
-          orderId: order.id,
-        });
-        await this.idempotency.put({
-          restaurantId: context.restaurantId,
-          terminalId: context.terminalId,
-          userId: context.userId,
-          idempotencyKey: input.command.idempotencyKey,
-          fingerprint,
-          orderId: order.id,
-          checkId: already.id,
-          outcome: "paid",
-          grandTotal: already.grandTotal,
-          settlementRecordId: null,
-          sessionId: already.sessionId,
-          registerId: operational.registerId,
-          financialShiftId: operational.financialShiftId,
-          createdAt: new Date().toISOString(),
-        });
-        return resultFrom({
-          checkId: already.id,
-          orderId: order.id,
-          restaurantId: context.restaurantId,
-          grandTotal: already.grandTotal,
-          settlementRecordId: null,
-          sessionId: already.sessionId,
-          terminalId: context.terminalId,
-          cashierUserId: context.userId,
-          registerId: operational.registerId,
-          financialShiftId: operational.financialShiftId,
-          replayed: true,
-        });
       }
 
       const settlements = resolveCommandSettlements(input.command);
@@ -735,49 +668,78 @@ export class PosSettlementInitiateService {
             err.message
           );
         }
+        // Once a Collection Fact exists, any later operational failure is
+        // downstream. Return the authoritative financial replay, not an error.
+        const committedFactAfterFailure =
+          await this.productionCollectionFactByOrderLookup({
+            restaurantId: context.restaurantId,
+            orderId: order.id,
+          });
+        if (committedFactAfterFailure?.checkId != null) {
+          void this.idempotency.put({
+            restaurantId: context.restaurantId,
+            terminalId: context.terminalId,
+            userId: context.userId,
+            idempotencyKey: input.command.idempotencyKey,
+            fingerprint,
+            orderId: order.id,
+            checkId: committedFactAfterFailure.checkId,
+            outcome: "paid",
+            grandTotal: committedFactAfterFailure.amount,
+            settlementRecordId: null,
+            sessionId: null,
+            registerId: operational.registerId,
+            financialShiftId: operational.financialShiftId,
+            createdAt: new Date().toISOString(),
+          }).catch(() => undefined);
+          return resultFrom({
+            checkId: committedFactAfterFailure.checkId,
+            orderId: order.id,
+            restaurantId: context.restaurantId,
+            grandTotal: committedFactAfterFailure.amount,
+            settlementRecordId: null,
+            sessionId: null,
+            terminalId: context.terminalId,
+            cashierUserId: context.userId,
+            registerId: operational.registerId,
+            financialShiftId: operational.financialShiftId,
+            replayed: true,
+          });
+        }
         if (
           err instanceof CheckTransitionError ||
           err instanceof CheckMembershipError
         ) {
-          const racedMembership = await this.membershipLookup(
-            context.restaurantId,
-            order.id
-          );
-          const raced =
-            racedMembership != null
-              ? await this.checkLookup({
-                  restaurantId: context.restaurantId,
-                  checkId: racedMembership.checkId,
-                })
-              : null;
-          if (
-            raced &&
-            raced.restaurantId === context.restaurantId &&
-            raced.outcome === "paid"
-          ) {
-            await this.idempotency.put({
+          const committedFact = await this.productionCollectionFactByOrderLookup({
+            restaurantId: context.restaurantId,
+            orderId: order.id,
+          });
+          if (committedFact?.checkId != null) {
+            // A concurrent command may lose the Check transition after the
+            // financial fact committed. Replaying that fact is still PAID.
+            void this.idempotency.put({
               restaurantId: context.restaurantId,
               terminalId: context.terminalId,
               userId: context.userId,
               idempotencyKey: input.command.idempotencyKey,
               fingerprint,
               orderId: order.id,
-              checkId: raced.id,
+              checkId: committedFact.checkId,
               outcome: "paid",
-              grandTotal: raced.grandTotal,
+              grandTotal: committedFact.amount,
               settlementRecordId: null,
-              sessionId: raced.sessionId,
+              sessionId: null,
               registerId: operational.registerId,
               financialShiftId: operational.financialShiftId,
               createdAt: new Date().toISOString(),
-            });
+            }).catch(() => undefined);
             return resultFrom({
-              checkId: raced.id,
+              checkId: committedFact.checkId,
               orderId: order.id,
               restaurantId: context.restaurantId,
-              grandTotal: raced.grandTotal,
+              grandTotal: committedFact.amount,
               settlementRecordId: null,
-              sessionId: raced.sessionId,
+              sessionId: null,
               terminalId: context.terminalId,
               cashierUserId: context.userId,
               registerId: operational.registerId,
@@ -812,7 +774,9 @@ export class PosSettlementInitiateService {
       }
 
       const responseStarted = clock.mark();
-      await this.idempotency.put({
+      // This auxiliary response cache must not turn an already committed
+      // Collection Fact into a failed Cashier payment.
+      void this.idempotency.put({
         restaurantId: context.restaurantId,
         terminalId: context.terminalId,
         userId: context.userId,
@@ -827,7 +791,7 @@ export class PosSettlementInitiateService {
         registerId: operational.registerId,
         financialShiftId: operational.financialShiftId,
         createdAt: new Date().toISOString(),
-      });
+      }).catch(() => undefined);
       responseConstructionMs = clock.since(responseStarted);
 
       const timing = clock.finish();

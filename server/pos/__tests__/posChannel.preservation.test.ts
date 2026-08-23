@@ -35,8 +35,11 @@ describe("POS channel preservation", () => {
     );
     expect(settlePaid).not.toMatch(/orderingChannel\s*:/);
     expect(settlePaid).not.toMatch(/UPDATE.*orderingChannel/i);
-    expect(checkSettle).not.toMatch(/orderingChannel\s*=/);
-    expect(checkSettle).not.toContain("cashier_pos");
+        expect(checkSettle).not.toMatch(/orderingChannel\s*=/);
+    // Check may explicitly scope the Cashier path, but it must never rewrite
+    // an Order's channel identity.
+    expect(checkSettle).toContain("ORDERING_CHANNEL_CASHIER_POS");
+
   });
 
   it("does not expose a POS settlement or direct-sale API in Phase 1", () => {

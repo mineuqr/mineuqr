@@ -1,6 +1,8 @@
 # CASHIER-DOWNSTREAM-SETTLEMENT-RECOVERY-1
 
-**PASS — IMPLEMENTED / VALIDATED / NOT DEPLOYED**
+**SUPERSEDED — Phase 2 Cashier Critical Path Simplification**
+
+> هذا البرنامج محفوظ كسجل تاريخي فقط. القرار المعتمد لاحقاً يعرّف نجاح Cashier بأنه إنشاء أو إعادة تشغيل Production Collection Fact، ثم HTTP success. أزيلت منه منظومة Cashier-specific recovery وworker وendpoint وCron؛ أما ST/OS/SR فتبقى معالجة تشغيلية خلفية لا تعيد تعريف PAID. راجع [SUPERSEDED.md](./SUPERSEDED.md).
 
 Durable recovery for Cashier ST / OS / SR after Collection Fact commit and HTTP success. No 0098. No new financial authority.
 

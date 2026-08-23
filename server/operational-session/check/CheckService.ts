@@ -141,8 +141,7 @@ import {
 import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextResolver";
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
-import { ensureRemainingCashierDownstreamSettlement } from "../payment/cashier-downstream-recovery/cashierDownstreamSettlementRecovery";
-import { continueAfterCashierHttp } from "../payment/cashier-downstream-recovery/continueAfterCashierHttp";
+import { dispatchBestEffortDownstreamDelivery } from "../payment/dispatchBestEffortDownstreamDelivery";
 import {
   createEmptyChargeInsertTiming,
   createEmptyEnsureCheckForOrderStageMs,
@@ -939,6 +938,28 @@ async function finalizeOpenCheckById(
       throw err;
     }
 
+    if (input.deferOperationalSettlementAfterCollectionFact) {
+      if (!input.productionCollectionCommit) {
+        throw new DiningSessionValidationError(
+          "Cashier operational defer requires Collection Fact commit"
+        );
+      }
+      // This is the final operational snapshot preparation. It occurs before
+      // the financial fact so a post-commit Check write can never reject PAID.
+      await updateCheckMoney(
+        {
+          checkId: check.id,
+          restaurantId: input.restaurantId,
+          subtotal: money.subtotal,
+          taxAmount: money.taxAmount,
+          taxBreakdown: money.taxBreakdown,
+          grandTotal: money.grandTotal,
+          billDiscountAmount: check.billDiscountAmount,
+        },
+        tx
+      );
+    }
+
     if (input.productionCollectionCommit) {
       if (input.outcome !== "paid" || !settlementLines) {
         throw new DiningSessionValidationError(
@@ -988,31 +1009,15 @@ async function finalizeOpenCheckById(
     }
 
     if (input.deferOperationalSettlementAfterCollectionFact) {
-      if (!input.productionCollectionCommit) {
-        throw new DiningSessionValidationError(
-          "Cashier operational defer requires Collection Fact commit"
-        );
-      }
-      await updateCheckMoney(
-        {
-          checkId: check.id,
-          restaurantId: input.restaurantId,
+      return {
+        check: {
+          ...check,
           subtotal: money.subtotal,
           taxAmount: money.taxAmount,
           taxBreakdown: money.taxBreakdown,
           grandTotal: money.grandTotal,
           billDiscountAmount: check.billDiscountAmount,
         },
-        tx
-      );
-      const deferredRow = await findCheckById(check.id, tx);
-      if (!deferredRow) {
-        throw new DiningSessionUnavailableError(
-          "Check not found after Collection Fact"
-        );
-      }
-      return {
-        check: mapRowToOperationalCheck(deferredRow),
         orderSettlement: {
           settlements: [],
           events: [],
@@ -1651,11 +1656,9 @@ function adoptAttributionAfterOwnedCommit(input: {
 }
 
 /**
- * CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1
- * CASHIER-DOWNSTREAM-SETTLEMENT-RECOVERY-1
- * Downstream of Cashier HTTP: Check PAID + ST + OS + SR after Collection Fact.
- * Does not commit Collection Fact. OPEN Checks use the certified finalize TX.
- * PAID Checks fill only missing ST / OS / SR. Already-complete work is skipped.
+ * CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-2
+ * Best-effort operational delivery after Collection Fact has committed.
+ * It never writes a Collection Fact and never participates in Cashier PAID/HTTP success.
  */
 export async function completeCashierOperationalSettlementAfterCollectionFact(input: {
   restaurantId: number;
@@ -1668,25 +1671,7 @@ export async function completeCashierOperationalSettlementAfterCollectionFact(in
   if (!row || row.restaurantId !== input.restaurantId) {
     throw new DiningSessionUnavailableError("Check not found");
   }
-  if (row.outcome === "voided") {
-    opsLog({
-      type: OPS_EVENT.cashier_downstream_settlement_recovery_attention,
-      category: "ORDER",
-      severity: "error",
-      ts: new Date().toISOString(),
-      restaurantId: input.restaurantId,
-      action: "completeCashierOperationalSettlementAfterCollectionFact",
-      metadata: {
-        checkId: input.checkId,
-        checkOutcome: row.outcome,
-      },
-    });
-    return;
-  }
-  if (row.outcome === "paid" || row.outcome === "complimentary") {
-    if (row.outcome === "paid") {
-      await ensureRemainingCashierDownstreamSettlement(input);
-    }
+  if (row.outcome === "voided" || row.outcome === "paid" || row.outcome === "complimentary") {
     return;
   }
   try {
@@ -1705,15 +1690,7 @@ export async function completeCashierOperationalSettlementAfterCollectionFact(in
       if (
         current &&
         current.restaurantId === input.restaurantId &&
-        current.outcome === "paid"
-      ) {
-        await ensureRemainingCashierDownstreamSettlement(input);
-        return;
-      }
-      if (
-        current &&
-        current.restaurantId === input.restaurantId &&
-        current.outcome === "complimentary"
+        (current.outcome === "paid" || current.outcome === "complimentary")
       ) {
         return;
       }
@@ -1812,29 +1789,31 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
   };
 
   if (input.deferOperationalSettlementAfterCollectionFact === true) {
-    continueAfterCashierHttp(
-      completeCashierOperationalSettlementAfterCollectionFact({
-        restaurantId: input.restaurantId,
-        checkId: financial.check.id,
-        settlements: input.settlements,
-        settlementContext: input.settlementContext,
-        settlementContextHints: input.settlementContextHints,
-      }).catch((err: unknown) => {
+    dispatchBestEffortDownstreamDelivery({
+      delivery: () =>
+        completeCashierOperationalSettlementAfterCollectionFact({
+          restaurantId: input.restaurantId,
+          checkId: financial.check.id,
+          settlements: input.settlements,
+          settlementContext: input.settlementContext,
+          settlementContextHints: input.settlementContextHints,
+        }),
+      onFailure: (err: unknown) => {
         opsLog({
           type: OPS_EVENT.check_operational_settlement_deferred_failed,
           category: "ORDER",
           severity: "warn",
           ts: new Date().toISOString(),
           restaurantId: input.restaurantId,
-          action: "completeCashierOperationalSettlementAfterCollectionFact",
+          action: "cashierDownstreamDelivery",
           metadata: {
             checkId: financial.check.id,
             orderId: input.orderId,
             error: err instanceof Error ? err.message : String(err),
           },
         });
-      })
-    );
+      },
+    });
     return result;
   }
 

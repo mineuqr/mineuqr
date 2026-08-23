@@ -45,14 +45,14 @@ describe("CASHIER-PAYMENT-READINESS-INSTRUMENTATION-1 architecture", () => {
       panel.indexOf("onClick={() => void completePayment()}")
     );
     expect(confirmDisabled).toContain("paymentReadiness.confirmDisabled");
-    expect(confirmDisabled).toContain('paymentRecoveryUi !== "idle"');
+    expect(confirmDisabled).not.toContain("paymentRecoveryUi");
     expect(confirmDisabled).toContain("tenderMode == null");
     const readyMark = panel.slice(
       panel.indexOf("!paymentReadiness.confirmDisabled &&"),
       panel.indexOf("listDenied")
     );
     expect(readyMark).toContain("!paymentReadiness.confirmDisabled");
-    expect(readyMark).toContain('paymentRecoveryUi === "idle"');
+    expect(readyMark).not.toContain("paymentRecoveryUi");
     expect(readyMark).toContain("tenderMode != null");
     expect(readyMark).toContain('CASHIER_PAYMENT_READY');
     expect(readyMark).not.toContain("mutateAsync");

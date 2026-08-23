@@ -13,11 +13,6 @@
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/uploads/:path*", "destination": "/api" },
     { "source": "/:path*", "destination": "/index.html" }
-  ],
-  "crons": [
-    {
-      "path": "/api/internal/cashier-downstream-recovery/sweep",
-      "schedule": "* * * * *"
-    }
-  ]
+    ]
+
 }

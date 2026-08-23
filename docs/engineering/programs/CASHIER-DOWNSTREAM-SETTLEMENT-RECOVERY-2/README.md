@@ -1,6 +1,8 @@
 # CASHIER-DOWNSTREAM-SETTLEMENT-RECOVERY-2
 
-**IMPLEMENTED · VALIDATED · NOT YET PRODUCTION ACTIVATED**
+**SUPERSEDED — Phase 2 Cashier Critical Path Simplification**
+
+> هذا البرنامج محفوظ كسجل تاريخي فقط. لم تعد Cashier تعتمد على Vercel Cron أو `CRON_SECRET` أو recovery endpoint أو worker لتقرير PAID. حقيقة Collection Fact المنشأة/المعاد تشغيلها هي الالتزام المالي الوحيد، ويتبعها تسليم تشغيلي best-effort لا يملك سلطة مالية. راجع [SUPERSEDED.md](./SUPERSEDED.md).
 
 NO SCHEMA CHANGE. NO MIGRATION 0098. NO SECOND FINANCIAL AUTHORITY. NO PRODUCTION DATA WRITES. NO DEPLOYMENT. NO PRODUCTION CERTIFICATION.
 

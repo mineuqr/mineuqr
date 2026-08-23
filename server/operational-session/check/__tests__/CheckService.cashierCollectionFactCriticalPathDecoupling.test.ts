@@ -113,9 +113,12 @@ vi.mock("../checkSettlementRecordIntegration", () => ({
     mocks.createSettlementRecordForCheckFinalize(...a),
 }));
 
-vi.mock("../payment/cashier-downstream-recovery/continueAfterCashierHttp", () => ({
-  continueAfterCashierHttp: (work: Promise<unknown>) => {
-    void work;
+vi.mock("../../payment/dispatchBestEffortDownstreamDelivery", () => ({
+  dispatchBestEffortDownstreamDelivery: (input: {
+    delivery: () => Promise<void>;
+    onFailure: (error: unknown) => void;
+  }) => {
+    void input.delivery().catch(input.onFailure);
   },
 }));
 
