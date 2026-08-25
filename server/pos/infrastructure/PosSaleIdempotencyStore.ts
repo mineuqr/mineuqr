@@ -1,3 +1,9 @@
+/**
+ * 0098 leftover NOT NULL column. Not a Check identity and not a fake Check.
+ * Sale replay is keyed by orderId. Do not treat 0 as operational_checks.id.
+ */
+export const POS_SALE_IDEMPOTENCY_UNASSIGNED_CHECK_ID = 0;
+
 export type PosSaleIdempotencyRecord = {
   restaurantId: number;
   terminalId: string;

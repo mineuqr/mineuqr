@@ -16,7 +16,6 @@ import { PosEntitlementService } from "../services/PosEntitlementService";
 import { PosSaleService } from "../services/PosSaleService";
 import type { IdentityPlaceOrderService } from "../../order/application/IdentityPlaceOrderService";
 import { noteOrderLifecyclePhase } from "../../order/observability/orderLifecycleLatency";
-import { stubCheckSnapshots, stubOpenCheckEnrollment } from "./cashierOpenCheckTestDouble";
 
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
@@ -238,9 +237,7 @@ function harness(options?: {
     access,
     place,
     idempotency,
-    undefined,
-    async () => stubCheckSnapshots(),
-    async () => stubOpenCheckEnrollment()
+    undefined
   );
   return { store, grants, place, sale, idempotency };
 }

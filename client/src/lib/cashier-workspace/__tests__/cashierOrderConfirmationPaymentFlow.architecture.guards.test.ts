@@ -51,7 +51,7 @@ describe("CASHIER-ORDER-CONFIRMATION-PAYMENT-FLOW-1", () => {
     expect(sale).not.toContain("settleCheckPaid");
   });
 
-  it("shows Check.grandTotal as amount due and does not invent tax or card brands", () => {
+  it("shows preview grand total as amount due and does not invent tax or card brands", () => {
     const panel = read(PANEL);
     expect(panel).toContain("trpc.pos.read.check.getByOrder");
     expect(panel).toContain("previewGrandTotal");

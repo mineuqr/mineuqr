@@ -96,7 +96,6 @@ type DirectSale = {
   orderNumber: string;
   displayReference: string;
   totalAmount: string;
-  checkId: number;
 };
 
 type DirectSalePhase = "ticket" | "payment" | "paid";
@@ -205,9 +204,7 @@ export function CashierWorkspacePanel({
     setPrintOpen(false);
     const snapshot = readCashierDirectSale(restaurantId);
     if (snapshot) {
-      const checkId = snapshot.checkId;
-      const canResumePayment =
-        Number.isInteger(checkId) && (checkId as number) > 0;
+      const canResumePayment = Number.isInteger(snapshot.orderId) && snapshot.orderId > 0;
       setDirectSale(
         canResumePayment
           ? {
@@ -215,7 +212,6 @@ export function CashierWorkspacePanel({
               orderNumber: snapshot.orderNumber,
               displayReference: snapshot.displayReference,
               totalAmount: snapshot.totalAmount,
-              checkId: checkId as number,
             }
           : null
       );
@@ -224,16 +220,7 @@ export function CashierWorkspacePanel({
       setPaymentMethod(snapshot.paymentMethod);
       setCashReceived(snapshot.cashReceived);
       setCardTender(snapshot.cardTender ?? "");
-      setOpenCheck(
-        snapshot.checkId != null
-          ? {
-              checkId: snapshot.checkId,
-              orderId: snapshot.orderId,
-              outcome: "open",
-              replayed: true,
-            }
-          : null
-      );
+      setOpenCheck(null);
       setPaidCheckout(
         snapshot.paid
           ? {
@@ -461,7 +448,7 @@ export function CashierWorkspacePanel({
       totalAmount: sale.totalAmount,
       checkId:
         next?.checkId === undefined
-          ? (paidCheckout?.checkId ?? openCheck?.checkId ?? null)
+          ? (paidCheckout?.checkId ?? null)
           : next.checkId,
       phase,
       paymentMethod: next?.method === undefined ? paymentMethod : next.method,
@@ -508,12 +495,11 @@ export function CashierWorkspacePanel({
     ) {
       return;
     }
-    // Presentation-only: close the payment sheet. Do not cancel the Order,
-    // void the Check, void a Settlement, or issue a refund.
+    // Presentation-only: close the payment sheet. Keep the Sale/Order invoice.
     endCashierPaymentFlow("cancelled");
     setSalePhase("ticket");
     setPrintOpen(false);
-    clearCashierDirectSale(restaurantId);
+    persistDirectSaleSnapshot({ phase: "payment" });
   }
 
   function resumePaymentSheet() {
@@ -523,7 +509,8 @@ export function CashierWorkspacePanel({
   }
 
   async function placeSale() {
-    // Persist Order + OPEN Check first. Payment overlay is not money received.
+    // Persist Order as the invoice first. Payment overlay is not money received.
+    // OPEN Check is not created here.
     if (!terminalId || ticket.length === 0) return;
     if (saleInFlightRef.current || saleMutation.isPending) return;
     endCashierPaymentFlow("abandoned");
@@ -574,8 +561,8 @@ export function CashierWorkspacePanel({
         idempotencyKey: saleKeyRef.current,
       });
       saleKeyRef.current = null;
-      if (result.outcome !== "open" || !Number.isInteger(result.checkId) || result.checkId <= 0) {
-        throw new Error("Sale Check was not recorded");
+      if (!Number.isInteger(result.orderId) || result.orderId <= 0) {
+        throw new Error("Sale was not recorded");
       }
       cashierPaymentFlowTiming.mark(
         cashierFlowIdRef.current,
@@ -585,32 +572,22 @@ export function CashierWorkspacePanel({
         cashierFlowIdRef.current,
         result.orderId
       );
-      cashierPaymentFlowTiming.attachCheckId(
-        cashierFlowIdRef.current,
-        result.checkId
-      );
       const sale: DirectSale = {
         orderId: result.orderId,
         orderNumber: result.orderNumber,
         displayReference: result.displayReference,
         totalAmount: result.totalAmount,
-        checkId: result.checkId,
       };
       settleKeyRef.current = newCashierIdempotencyKey("settle");
       paymentIntentRef.current = newCashierPaymentIntentId();
       setTicket([]);
       setSelectedOrderId(result.orderId);
-      setOpenCheck({
-        checkId: result.checkId,
-        orderId: result.orderId,
-        outcome: "open",
-        replayed: result.replayed,
-      });
+      setOpenCheck(null);
       setDirectSale(sale);
       persistDirectSaleSnapshot({
         sale,
         phase: "payment",
-        checkId: result.checkId,
+        checkId: null,
         paid: null,
         method: null,
         received: "",
@@ -794,8 +771,8 @@ export function CashierWorkspacePanel({
   const saleReady =
     salePhase === "payment" &&
     selectedOrderId != null &&
-    directSale?.checkId != null &&
-    directSale.checkId > 0 &&
+    directSale?.orderId != null &&
+    directSale.orderId > 0 &&
     !saleMutation.isPending &&
     !paidCheckout;
   const previewGrandTotal =

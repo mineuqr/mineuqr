@@ -52,7 +52,7 @@ describe("CASHIER-PAYMENT-FLOW-IMPLEMENTATION-1 architecture", () => {
     expect(panel).not.toContain('t("initiateSettlement")');
   });
 
-  it("shows server Check figures on payment and does not invent ticket tax authority", () => {
+  it("shows invoice preview figures on payment and does not invent ticket tax authority", () => {
     const panel = read(PANEL);
     const dto = read(DTO);
     const checkRead = read(CHECK_READ);
@@ -77,7 +77,7 @@ describe("CASHIER-PAYMENT-FLOW-IMPLEMENTATION-1 architecture", () => {
     expect(checkRead).not.toContain("getOrdersByIds");
   });
 
-  it("persists cashier_pos Order for Charge enrollment but lists it operationally only after Paid", () => {
+  it("persists cashier_pos Order as the invoice and lists it operationally only after Paid", () => {
     const panel = read(PANEL);
     const sale = read(SALE);
     const settle = read(SETTLE);

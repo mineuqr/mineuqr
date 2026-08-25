@@ -33,7 +33,7 @@ describe("CASHIER-PAYMENT-FLOW-UX-CORRECTION-1 architecture", () => {
     expect(panel).not.toContain('t("taxAtPayment")');
   });
 
-  it("opens the Payment overlay after sale.create persists the OPEN Check", () => {
+  it("opens the Payment overlay after sale.create persists the Order invoice", () => {
     const panel = read(PANEL);
     const placeSaleFn = panel.slice(
       panel.indexOf("async function placeSale"),

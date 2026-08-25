@@ -1,5 +1,6 @@
 /**
- * CASHIER-REBUILD-1 Stage 1 — architecture guards.
+ * CASHIER-REBUILD-1 — cashier pre-CONFIRM architecture guards.
+ * Sale/Order is the invoice. OPEN Check is not created on pos.sale.create.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -11,16 +12,9 @@ function read(rel: string): string {
   return readFileSync(join(repoRoot, rel), "utf8");
 }
 
-describe("CASHIER-REBUILD-1 Stage 1 architecture", () => {
-  it("writes OPEN Check on the Order persist transaction client", () => {
+describe("CASHIER-REBUILD-1 cashier pre-CONFIRM architecture", () => {
+  it("persists Order on sale.create and does not enroll an OPEN Check", () => {
     const sale = read("server/pos/services/PosSaleService.ts");
-    const check = read("server/operational-session/check/CheckService.ts");
-    const membership = read(
-      "server/operational-session/check/checkMembershipService.ts"
-    );
-    const charges = read(
-      "server/operational-session/check/checkChargeComposition.ts"
-    );
     const os = read(
       "server/operational-session/check/checkOrderSettlementIntegration.ts"
     );
@@ -28,28 +22,19 @@ describe("CASHIER-REBUILD-1 Stage 1 architecture", () => {
       sale.indexOf("afterPersistInTransaction: async"),
       sale.indexOf("enrollCheck: false")
     );
-    expect(sale).toContain("createAndEnrollCashierPosOpenCheckInTransaction");
-    expect(sale).toContain("captureSnapshotsFromBusinessSettings");
-    expect(sale).toContain("outcome: \"open\"");
-    expect(sale).toContain("checkId");
     expect(sale).toContain("enrollCheck: false");
-    expect(hook).toContain("this.enrollOpenCheck");
-    expect(hook).toContain("persistSaleMappingInTransaction");
-    expect(hook.indexOf("this.enrollOpenCheck")).toBeLessThan(
-      hook.indexOf("persistSaleMappingInTransaction")
-    );
     expect(sale).toContain("putInTransaction");
-    expect(check).toContain("export async function createAndEnrollCashierPosOpenCheckInTransaction");
-    expect(check).toContain("client: tx");
-    expect(membership).toContain("getOrderById(input.orderId, client)");
-    expect(charges).toContain("getOrderById(input.orderId, client)");
-    expect(charges).toContain("getOrderItemsByOrderId(order.id, client)");
-    expect(os).toContain("getOrderById(input.orderId, client)");
+    expect(sale).toContain("POS_SALE_IDEMPOTENCY_UNASSIGNED_CHECK_ID");
+    expect(sale).not.toContain("createAndEnrollCashierPosOpenCheckInTransaction");
+    expect(sale).not.toContain("createOpenCheck");
+    expect(sale).not.toContain("enrollOpenCheck");
+    expect(sale).not.toContain("recalculateOrderSettlementsForCheck");
+    expect(hook).toContain("persistSaleMappingInTransaction");
+    expect(hook).not.toContain("enrollOpenCheck");
     expect(os).toContain("getOrderById(row.orderId, client)");
-    expect(os).not.toMatch(/getOrderById\(row\.orderId\)\s*;/);
   });
 
-  it("does not create a Check on the payment path in this stage", () => {
+  it("does not create Collection Fact or Confirm on the sale path", () => {
     const sale = read("server/pos/services/PosSaleService.ts");
     const settle = read("server/pos/services/PosSettlementInitiateService.ts");
     const confirm = read(
@@ -58,17 +43,17 @@ describe("CASHIER-REBUILD-1 Stage 1 architecture", () => {
     const panel = read(
       "client/src/components/cashier-workspace/CashierWorkspacePanel.tsx"
     );
-    expect(settle).not.toContain("createAndEnrollCashierPosOpenCheckInTransaction");
-    expect(confirm).not.toContain("createAndEnrollCashierPosOpenCheckInTransaction");
-    expect(panel).not.toContain("createAndEnrollCashierPosOpenCheckInTransaction");
+    expect(settle).toContain("confirmPayment");
+    expect(confirm).toContain("commitCashierProductionCollectionFact");
     expect(panel).toContain("trpc.pos.settlement.initiate");
+    expect(panel).not.toContain("createAndEnrollCashierPosOpenCheckInTransaction");
     expect(sale).not.toContain("confirmPayment");
     expect(sale).not.toContain("pos.settlement.initiate");
     expect(sale).not.toContain("replaceItems");
     expect(sale).not.toContain("commitCollectionFact");
   });
 
-  it("opens Payment only after sale.create returns an OPEN checkId", () => {
+  it("opens Payment UI after sale.create returns an orderId, not a checkId", () => {
     const panel = read(
       "client/src/components/cashier-workspace/CashierWorkspacePanel.tsx"
     );
@@ -79,11 +64,14 @@ describe("CASHIER-REBUILD-1 Stage 1 architecture", () => {
     expect(placeSaleFn.indexOf("saleMutation.mutateAsync")).toBeLessThan(
       placeSaleFn.indexOf('setSalePhase("payment")')
     );
-    expect(placeSaleFn).toContain("result.checkId");
-    expect(placeSaleFn).toContain('result.outcome !== "open"');
+    expect(placeSaleFn).toContain("result.orderId");
+    expect(placeSaleFn).not.toContain("result.checkId");
+    expect(placeSaleFn).not.toContain('result.outcome !== "open"');
+    expect(panel).toContain("directSale?.orderId");
+    expect(panel).not.toContain("directSale?.checkId");
   });
 
-  it("stores check identity on sale idempotency for replay", () => {
+  it("leaves 0098 columns in place without treating leftover checkId as a Check", () => {
     const schema = read("drizzle/schema.ts");
     const sql = read("drizzle/0098_pos_sale_idempotency_open_check.sql");
     const journal = read("drizzle/meta/_journal.json");
@@ -91,6 +79,7 @@ describe("CASHIER-REBUILD-1 Stage 1 architecture", () => {
     expect(journal).toContain("0098_pos_sale_idempotency_open_check");
     expect(sql).toContain("ADD COLUMN `checkId`");
     expect(schema).toContain("checkId: int().notNull()");
+    expect(store).toContain("POS_SALE_IDEMPOTENCY_UNASSIGNED_CHECK_ID");
     expect(store).toContain("checkId: number");
     expect(store).toContain("lines:");
   });

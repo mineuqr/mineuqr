@@ -1,16 +1,16 @@
 /**
- * CASHIER-REBUILD-1 Stage 1 — pos.sale.create writes Order + OPEN Check together.
+ * CASHIER-REBUILD-1 — pos.sale.create writes Order only. No OPEN Check.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InMemoryPosPermissionGrantStore } from "../infrastructure/InMemoryPosPermissionGrantStore";
 import { InMemoryPosSaleIdempotencyStore } from "../infrastructure/InMemoryPosSaleIdempotencyStore";
 import { InMemoryPosTerminalStore } from "../infrastructure/InMemoryPosTerminalStore";
+import { POS_SALE_IDEMPOTENCY_UNASSIGNED_CHECK_ID } from "../infrastructure/PosSaleIdempotencyStore";
 import { PosAccessService } from "../services/PosAccessService";
 import { PosEntitlementService } from "../services/PosEntitlementService";
 import { PosSaleService } from "../services/PosSaleService";
 import type { IdentityPlaceOrderService } from "../../order/application/IdentityPlaceOrderService";
 import type { SelectUser } from "../../../drizzle/schema";
-import { stubCheckSnapshots, stubOpenCheckEnrollment } from "./cashierOpenCheckTestDouble";
 
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
@@ -123,7 +123,7 @@ function fakePlaceOrder() {
   };
 }
 
-describe("CASHIER-REBUILD-1 Stage 1 — sale OPEN Check", () => {
+describe("CASHIER-REBUILD-1 — sale create without OPEN Check", () => {
   beforeEach(() => {
     vi.mocked(getRestaurantById).mockResolvedValue({
       id: RESTAURANT_A,
@@ -163,21 +163,8 @@ describe("CASHIER-REBUILD-1 Stage 1 — sale OPEN Check", () => {
       permission: "SALE_CREATE",
     });
     const place = fakePlaceOrder();
-    const enrollTx: unknown[] = [];
-    const enrollOpenCheck = vi.fn(async (_input, tx) => {
-      enrollTx.push(tx);
-      return stubOpenCheckEnrollment(777);
-    });
-    const sale = new PosSaleService(
-      grants,
-      access,
-      place,
-      idempotency,
-      undefined,
-      async () => stubCheckSnapshots(),
-      enrollOpenCheck
-    );
-    return { sale, place, enrollOpenCheck, enrollTx, idempotency };
+    const sale = new PosSaleService(grants, access, place, idempotency);
+    return { sale, place, idempotency };
   }
 
   const command = {
@@ -187,44 +174,44 @@ describe("CASHIER-REBUILD-1 Stage 1 — sale OPEN Check", () => {
     idempotencyKey: "sale-open-check-01",
   };
 
-  it("creates an OPEN Check, returns checkId, money, and lines", async () => {
-    const { sale, enrollOpenCheck } = await ready();
+  it("creates an Order invoice and does not enroll a Check", async () => {
+    const { sale, place } = await ready();
     const result = await sale.create({ user: user(STAFF_A), command });
-    expect(result.outcome).toBe("open");
-    expect(result.checkId).toBe(777);
     expect(result.orderId).toBeGreaterThan(0);
+    expect(result).not.toHaveProperty("checkId");
+    expect(result).not.toHaveProperty("outcome");
     expect(result.money).toEqual({
       subtotal: "12.50",
       taxAmount: "0.00",
       grandTotal: "12.50",
       billDiscountAmount: "0.00",
     });
-    expect(result.lines[0]?.netAmount).toBe("12.50");
-    expect(enrollOpenCheck).toHaveBeenCalledTimes(1);
-    expect(enrollOpenCheck.mock.calls[0][0]).toMatchObject({
-      restaurantId: RESTAURANT_A,
-      orderId: result.orderId,
-    });
-  });
-
-  it("enrolls the Check on the same transaction client as Order persist", async () => {
-    const { sale, enrollTx, place } = await ready();
-    await sale.create({ user: user(STAFF_A), command });
-    expect(enrollTx).toEqual([{ kind: "order-tx" }]);
+    expect(result.lines[0]?.quantity).toBe(2);
     expect(place.execute.mock.calls[0][1]).toMatchObject({
       enrollCheck: false,
       afterPersistInTransaction: expect.any(Function),
     });
   });
 
-  it("replays the same orderId and checkId for the same sale key", async () => {
-    const { sale, enrollOpenCheck } = await ready();
+  it("writes sale idempotency on the Order transaction without a Check id", async () => {
+    const { sale, idempotency } = await ready();
+    const result = await sale.create({ user: user(STAFF_A), command });
+    const stored = await idempotency.get({
+      restaurantId: RESTAURANT_A,
+      terminalId: TERMINAL_A,
+      userId: STAFF_A,
+      idempotencyKey: command.idempotencyKey,
+    });
+    expect(stored?.orderId).toBe(result.orderId);
+    expect(stored?.checkId).toBe(POS_SALE_IDEMPOTENCY_UNASSIGNED_CHECK_ID);
+  });
+
+  it("replays the same orderId for the same sale key", async () => {
+    const { sale, place } = await ready();
     const first = await sale.create({ user: user(STAFF_A), command });
     const second = await sale.create({ user: user(STAFF_A), command });
     expect(second.replayed).toBe(true);
     expect(second.orderId).toBe(first.orderId);
-    expect(second.checkId).toBe(first.checkId);
-    expect(second.outcome).toBe("open");
-    expect(enrollOpenCheck).toHaveBeenCalledTimes(1);
+    expect(place.execute).toHaveBeenCalledTimes(1);
   });
 });

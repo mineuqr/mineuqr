@@ -1808,6 +1808,7 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
   const financial = await withCheckOwnedTransaction(
     undefined,
     async (tx) => {
+      // Confirm-time materialization for cashier_pos. Not a pre-Payment OPEN Check.
       const check = await materializeOrLoadCashierPosOpenCheck(
         {
           restaurantId: input.restaurantId,

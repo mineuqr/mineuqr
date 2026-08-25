@@ -18,13 +18,9 @@ import {
   timeOrderLifecyclePhase,
 } from "../../order/observability/orderLifecycleLatency";
 import type { SaveOrderResult } from "../../order/repositories/OrderRepository";
-import {
-  captureSnapshotsFromBusinessSettings,
-  createAndEnrollCashierPosOpenCheckInTransaction,
-  type CashierPosSaleOpenCheck,
-} from "../../operational-session/check";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
 import type { PosSaleIdempotencyRecord, PosSaleIdempotencyStore } from "../infrastructure/PosSaleIdempotencyStore";
+import { POS_SALE_IDEMPOTENCY_UNASSIGNED_CHECK_ID } from "../infrastructure/PosSaleIdempotencyStore";
 import {
   PosSaleIdempotencyConflictError,
   PosSaleIdempotencyUniqueCollisionError,
@@ -84,8 +80,6 @@ export type PosSaleResult = {
   terminalId: string;
   cashierUserId: number;
   replayed: boolean;
-  checkId: number;
-  outcome: "open";
   money: PosSaleMoney;
   lines: readonly PosSaleCheckLine[];
 };
@@ -198,8 +192,6 @@ function replaySaleResult(
     terminalId: context.terminalId,
     cashierUserId: context.userId,
     replayed: true,
-    checkId: existing.checkId,
-    outcome: "open",
     money: {
       subtotal: existing.subtotal,
       taxAmount: existing.taxAmount,
@@ -210,21 +202,55 @@ function replaySaleResult(
   };
 }
 
-function moneyAndLinesFromEnrollment(enrolled: CashierPosSaleOpenCheck): {
+type InvoiceLineSource = {
+  id?: number;
+  nameAr?: string;
+  quantity: number;
+  unitPrice?: string;
+  lineTotal?: () => number;
+};
+
+function invoiceLinesFromOrder(order: SaveOrderResult["order"]): readonly InvoiceLineSource[] {
+  const record = order as {
+    lines?: readonly InvoiceLineSource[];
+    toProps?: () => { lines: readonly InvoiceLineSource[] };
+  };
+  if (Array.isArray(record.lines) && record.lines.length > 0) {
+    return record.lines;
+  }
+  if (typeof record.toProps === "function") {
+    return record.toProps().lines;
+  }
+  return [];
+}
+
+function invoiceFromOrder(order: SaveOrderResult["order"]): {
   money: PosSaleMoney;
   lines: readonly PosSaleCheckLine[];
 } {
-  if (enrolled.check.outcome !== "open") {
-    throw new PosSaleError("check_not_open", "Sale Check must remain OPEN");
-  }
+  const sources = invoiceLinesFromOrder(order);
+  const lines = sources.map((line) => {
+    let netAmount = order.totalAmount;
+    if (typeof line.lineTotal === "function") {
+      netAmount = line.lineTotal().toFixed(2);
+    } else if (line.unitPrice != null && line.unitPrice !== "") {
+      netAmount = (Number.parseFloat(line.unitPrice) * line.quantity).toFixed(2);
+    }
+    return {
+      description: line.nameAr?.trim() ? line.nameAr : "item",
+      quantity: line.quantity,
+      netAmount,
+      originOrderItemId: line.id ?? null,
+    };
+  });
   return {
     money: {
-      subtotal: enrolled.check.subtotal,
-      taxAmount: enrolled.check.taxAmount,
-      grandTotal: enrolled.check.grandTotal,
-      billDiscountAmount: enrolled.check.billDiscountAmount,
+      subtotal: order.totalAmount,
+      taxAmount: "0.00",
+      grandTotal: order.totalAmount,
+      billDiscountAmount: "0.00",
     },
-    lines: enrolled.lines,
+    lines,
   };
 }
 
@@ -268,21 +294,7 @@ export class PosSaleService {
     private readonly access: PosAccessService,
     private readonly placeOrder: IdentityPlaceOrderService,
     private readonly idempotency: PosSaleIdempotencyStore,
-    private readonly sessionLookup: PosSaleSessionLookup = findSessionById,
-    private readonly loadCheckSnapshots: (
-      restaurantId: number
-    ) => ReturnType<typeof captureSnapshotsFromBusinessSettings> = captureSnapshotsFromBusinessSettings,
-    private readonly enrollOpenCheck: (
-      input: {
-        restaurantId: number;
-        orderId: number;
-        billDiscountAmount?: string;
-        snapshots: Awaited<ReturnType<typeof captureSnapshotsFromBusinessSettings>>;
-      },
-      tx: Parameters<
-        typeof createAndEnrollCashierPosOpenCheckInTransaction
-      >[1]
-    ) => ReturnType<typeof createAndEnrollCashierPosOpenCheckInTransaction> = createAndEnrollCashierPosOpenCheckInTransaction
+    private readonly sessionLookup: PosSaleSessionLookup = findSessionById
   ) {}
 
   async create(input: {
@@ -362,8 +374,6 @@ export class PosSaleService {
         return replaySaleResult(existing, context);
       }
 
-      const snapshots = await this.loadCheckSnapshots(context.restaurantId);
-      let enrolledOpenCheck: CashierPosSaleOpenCheck | null = null;
       const placed = await (async () => {
         try {
           // ORDER-LIFECYCLE-LATENCY-REMEDIATION-1 — POS sale HTTP must not
@@ -400,16 +410,6 @@ export class PosSaleService {
                         "Order was not persisted"
                       );
                     }
-                    enrolledOpenCheck = await this.enrollOpenCheck(
-                      {
-                        restaurantId: context.restaurantId,
-                        orderId,
-                        snapshots,
-                      },
-                      tx as Parameters<
-                        typeof createAndEnrollCashierPosOpenCheckInTransaction
-                      >[1]
-                    );
                     await timeOrderLifecyclePhase("idempotency_put_ms", () =>
                       this.persistSaleMappingInTransaction(tx, result, {
                         restaurantId: context.restaurantId,
@@ -417,12 +417,11 @@ export class PosSaleService {
                         userId: context.userId,
                         idempotencyKey: input.command.idempotencyKey,
                         fingerprint,
-                        enrolled: enrolledOpenCheck,
                       })
                     );
                   },
                   // Post-commit ensureCheckForOrder stays off the cashier HTTP
-                  // path. OPEN Check is written on this same Order transaction.
+                  // path. OPEN Check is not part of sale.create.
                   enrollCheck: false,
                 }
               ),
@@ -454,10 +453,7 @@ export class PosSaleService {
       if (orderId == null) {
         throw new PosSaleError("order_create_failed", "Sale was not recorded");
       }
-      if (enrolledOpenCheck == null) {
-        throw new PosSaleError("check_create_failed", "Sale Check was not recorded");
-      }
-      const { money, lines } = moneyAndLinesFromEnrollment(enrolledOpenCheck);
+      const { money, lines } = invoiceFromOrder(placed.order);
 
       opsLog({
         type: "pos_sale_created",
@@ -469,7 +465,6 @@ export class PosSaleService {
         action: "pos.sale.create",
         metadata: {
           orderId,
-          checkId: enrolledOpenCheck.check.id,
           terminalId: context.terminalId,
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
           sessionPersistence: placed.sessionPersistence,
@@ -490,8 +485,6 @@ export class PosSaleService {
         terminalId: context.terminalId,
         cashierUserId: context.userId,
         replayed: false,
-        checkId: enrolledOpenCheck.check.id,
-        outcome: "open" as const,
         money,
         lines,
       };
@@ -508,14 +501,13 @@ export class PosSaleService {
       userId: number;
       idempotencyKey: string;
       fingerprint: string;
-      enrolled: CashierPosSaleOpenCheck;
     }
   ): Promise<void> {
     const orderId = result.order.id;
     if (orderId == null) {
       throw new PosSaleError("order_create_failed", "Order was not persisted");
     }
-    const { money, lines } = moneyAndLinesFromEnrollment(input.enrolled);
+    const { money, lines } = invoiceFromOrder(result.order);
     const displayReference = resolveOrderDisplayIdentity({
       orderNumber: result.order.orderNumber,
       businessDay: result.businessIdentity?.businessDay ?? null,
@@ -535,8 +527,8 @@ export class PosSaleService {
       trackingToken: result.order.trackingToken,
       displayReference,
       totalAmount: result.order.totalAmount,
-      itemCount: result.order.lines.reduce((sum, line) => sum + line.quantity, 0),
-      checkId: input.enrolled.check.id,
+      itemCount: lines.reduce((sum, line) => sum + line.quantity, 0),
+      checkId: POS_SALE_IDEMPOTENCY_UNASSIGNED_CHECK_ID,
       subtotal: money.subtotal,
       taxAmount: money.taxAmount,
       grandTotal: money.grandTotal,
