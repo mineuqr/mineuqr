@@ -45,6 +45,8 @@ describe("CASHIER-REBUILD-1 Stage 1 architecture", () => {
     expect(charges).toContain("getOrderById(input.orderId, client)");
     expect(charges).toContain("getOrderItemsByOrderId(order.id, client)");
     expect(os).toContain("getOrderById(input.orderId, client)");
+    expect(os).toContain("getOrderById(row.orderId, client)");
+    expect(os).not.toMatch(/getOrderById\(row\.orderId\)\s*;/);
   });
 
   it("does not create a Check on the payment path in this stage", () => {

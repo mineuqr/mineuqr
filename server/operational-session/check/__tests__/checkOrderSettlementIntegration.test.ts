@@ -242,4 +242,31 @@ describe("ORDER-SETTLEMENT-INTEGRATION-1 orchestration", () => {
     expect(result.settlements[0]?.orderTotalSnapshot).toBe("25.00");
     expect(result.settlements[0]?.outstandingAmount).toBe("25.00");
   });
+
+  it("forwards the transaction client to getOrderById during recalculate", async () => {
+    const tx = { kind: "order-tx" };
+    mocks.listOrderSettlementsForCheck.mockResolvedValue([pendingSettlement()]);
+    mocks.getOrderById.mockImplementation(async (id: unknown, client?: unknown) => {
+      if (client !== tx) {
+        return null;
+      }
+      return {
+        id,
+        restaurantId: 1,
+        totalAmount: "25.00",
+      };
+    });
+
+    const result = await recalculateOrderSettlementsForCheck(
+      { restaurantId: 1, checkId: 100 },
+      tx as never
+    );
+
+    expect(mocks.getOrderById).toHaveBeenCalledWith(55, tx);
+    expect(mocks.listOrderSettlementsForCheck).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 100 },
+      tx
+    );
+    expect(result.outcomes).toEqual(["applied"]);
+  });
 });

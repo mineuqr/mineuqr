@@ -174,7 +174,7 @@ export async function recalculateOrderSettlementsForCheck(
       settlements.push(row);
       continue;
     }
-    const order = await getOrderById(row.orderId);
+    const order = await getOrderById(row.orderId, client);
     if (!order || order.restaurantId !== input.restaurantId) {
       throw new Error(
         `Order ${row.orderId} missing during Order Settlement recalculate`
