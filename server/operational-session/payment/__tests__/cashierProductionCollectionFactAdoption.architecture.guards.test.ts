@@ -29,6 +29,7 @@ describe("PRODUCTION-COLLECTION-FACT-CASHIER-ADOPTION-1 architecture", () => {
     const check = read("server/operational-session/check/CheckService.ts");
     const paymentIndex = read("server/operational-session/payment/index.ts");
     expect(confirm).toContain("commitCashierProductionCollectionFact");
+    expect(confirm).toContain("commitCashierProductionCollectionFactInTransaction");
     expect(confirm).toContain("paymentIntentId");
     expect(confirm).toContain("idempotencyKey");
     expect(confirm).toContain("terminalId");

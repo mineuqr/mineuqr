@@ -83,4 +83,39 @@ describe("CASHIER-REBUILD-1 cashier pre-CONFIRM architecture", () => {
     expect(store).toContain("checkId: number");
     expect(store).toContain("lines:");
   });
+
+  it("Confirm financial commit freezes Order and does not materialize Check first", () => {
+    const confirm = read(
+      "server/operational-session/payment/PaymentConfirmService.ts"
+    );
+    const check = read("server/operational-session/check/CheckService.ts");
+    const freeze = read(
+      "server/operational-session/payment/cashierPosOrderFreeze.ts"
+    );
+    const adapter = read(
+      "server/operational-session/payment/collection-fact/commitCashierProductionCollectionFact.ts"
+    );
+    const settle = read("server/pos/services/PosSettlementInitiateService.ts");
+    const start = check.indexOf(
+      "export async function settleCashierPosOrderPaidByIdDetailed"
+    );
+    const end = check.indexOf(
+      "export async function settleCheckComplimentaryById",
+      start
+    );
+    const cashier = check.slice(start, end);
+    expect(freeze).toContain("getOrderItemsByOrderId");
+    expect(freeze).toContain("computeCheckMoney");
+    expect(freeze).toContain("checkId: null");
+    expect(freeze).not.toContain("insertOperationalCheck");
+    expect(cashier).toContain("freezeCashierPosPayableFromOrder");
+    expect(cashier).toContain("productionCollectionCommit");
+    expect(cashier).not.toContain("materializeOrLoadCashierPosOpenCheck");
+    expect(cashier).not.toContain("enrollOrderInCheck");
+    expect(cashier).not.toContain("recalculateOrderSettlementsForCheck");
+    expect(confirm).toContain("commitCashierProductionCollectionFactInTransaction");
+    expect(adapter).toContain("createDrizzleCollectionFactStore(tx)");
+    expect(settle).not.toContain("check_already_terminal");
+    expect(settle).toContain("posCheckIdFromFact");
+  });
 });

@@ -143,6 +143,10 @@ import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import { dispatchBestEffortDownstreamDelivery } from "../payment/dispatchBestEffortDownstreamDelivery";
 import {
+  CASHIER_CONFIRM_UNASSIGNED_CHECK_ID,
+  freezeCashierPosPayableFromOrder,
+} from "../payment/cashierPosOrderFreeze";
+import {
   createEmptyChargeInsertTiming,
   createEmptyEnsureCheckForOrderStageMs,
   ensureCheckForOrderStageMetadata,
@@ -174,7 +178,7 @@ export class CheckTransitionError extends Error {
  */
 export type CashierAuthoritativePaidFreeze = Readonly<{
   restaurantId: number;
-  checkId: number;
+  checkId: number | null;
   orderId: number;
   orderingChannel: string;
   subtotal: string;
@@ -1727,10 +1731,55 @@ function adoptAttributionAfterOwnedCommit(input: {
 }
 
 /**
- * CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-2
- * Best-effort operational delivery after Collection Fact has committed.
- * It never writes a Collection Fact and never participates in Cashier PAID/HTTP success.
+ * CASHIER-CONFIRM-FINANCIAL-COMMIT-DECOUPLING-1
+ * Best-effort Check / ST / OS / SR after Collection Fact + PAID.
+ * Never writes a Collection Fact. Never participates in Cashier HTTP success.
  */
+export async function deliverCashierPosOperationalSettlementAfterPaid(input: {
+  restaurantId: number;
+  orderId: number;
+  billDiscountAmount?: string;
+  settlements?: readonly StaffSettlementLineInput[];
+  settlementContext?: SettlementContext;
+  settlementContextHints?: SettlementContextHints;
+}): Promise<void> {
+  const order = await getOrderById(input.orderId);
+  if (!order || order.restaurantId !== input.restaurantId) {
+    throw new DiningSessionUnavailableError("Order not found");
+  }
+  const billDiscountAmount = input.billDiscountAmount ?? "0.00";
+  const snapshots = await captureSnapshotsFromBusinessSettings(
+    input.restaurantId
+  );
+  const stages = createEmptyEnsureCheckForOrderStageMs();
+  const check = await withCheckOwnedTransaction(undefined, async (tx) =>
+    materializeOrLoadCashierPosOpenCheck(
+      {
+        restaurantId: input.restaurantId,
+        orderId: input.orderId,
+        billDiscountAmount,
+        currencySnapshot: snapshots.currencySnapshot,
+        taxPolicySnapshot: snapshots.taxPolicySnapshot,
+      },
+      tx,
+      stages
+    )
+  );
+  emitEnsureCheckForOrderStages({
+    restaurantId: input.restaurantId,
+    orderId: input.orderId,
+    checkId: check.id,
+    stages,
+  });
+  await completeCashierOperationalSettlementAfterCollectionFact({
+    restaurantId: input.restaurantId,
+    checkId: check.id,
+    settlements: input.settlements,
+    settlementContext: input.settlementContext,
+    settlementContextHints: input.settlementContextHints,
+  });
+}
+
 export async function completeCashierOperationalSettlementAfterCollectionFact(input: {
   restaurantId: number;
   checkId: number;
@@ -1795,105 +1844,123 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
   if (order.status === "cancelled") {
     throw new DiningSessionValidationError("Order is not eligible");
   }
+  if (!input.productionCollectionCommit) {
+    throw new DiningSessionValidationError(
+      "Cashier Confirm requires Collection Fact commit"
+    );
+  }
 
   const billDiscountAmount = input.billDiscountAmount ?? "0.00";
   const snapshots = await captureSnapshotsFromBusinessSettings(
     input.restaurantId
   );
-  const stages = createEmptyEnsureCheckForOrderStageMs();
-  const txStages: { current: CheckOwnedTransactionStageMs } = {
-    current: { preparationMs: 0, writeMs: 0, txWallMs: null },
-  };
-
-  const financial = await withCheckOwnedTransaction(
-    undefined,
-    async (tx) => {
-      // Confirm-time materialization for cashier_pos. Not a pre-Payment OPEN Check.
-      const check = await materializeOrLoadCashierPosOpenCheck(
-        {
-          restaurantId: input.restaurantId,
-          orderId: input.orderId,
-          billDiscountAmount,
-          currencySnapshot: snapshots.currencySnapshot,
-          taxPolicySnapshot: snapshots.taxPolicySnapshot,
-        },
-        tx,
-        stages
-      );
-      return finalizeOpenCheckById(
-        {
-          restaurantId: input.restaurantId,
-          checkId: check.id,
-          outcome: "paid",
-          settlements: input.settlements,
-          settlementContext: input.settlementContext,
-          settlementContextHints: input.settlementContextHints,
-          awaitAttribution: input.awaitAttribution,
-          deferOperationalSettlementAfterCollectionFact:
-            input.deferOperationalSettlementAfterCollectionFact === true,
-          productionCollectionCommit: input.productionCollectionCommit,
-          economicOrderId: input.orderId,
-          economicOrderingChannel: ORDERING_CHANNEL_CASHIER_POS,
-        },
-        tx
-      );
-    },
-    txStages
-  );
-
-  applyOwnedTransactionStages(stages, txStages);
-  emitEnsureCheckForOrderStages({
+  const freezeStartedAt = Date.now();
+  const freeze = await freezeCashierPosPayableFromOrder({
     restaurantId: input.restaurantId,
-    orderId: input.orderId,
-    checkId: financial.check.id,
-    stages,
+    order,
+    billDiscountAmount,
+    snapshots,
+    settlements: input.settlements,
   });
+  const validationMs = elapsedSinceMs(freezeStartedAt);
+  const now = formatDiningSessionTimestamp();
+  const settlementContext =
+    input.settlementContext ??
+    unavailableSettlementContext(input.restaurantId, now, [
+      "no_operational_hints",
+    ]);
 
-  const result = {
-    ...financial,
+  const financialTransactionStartedAt = new Date().toISOString();
+  const moneyTxStartedAt = Date.now();
+  await input.productionCollectionCommit(freeze);
+  const moneyTxMs = elapsedSinceMs(moneyTxStartedAt);
+  const financialTransactionCommittedAt = new Date().toISOString();
+
+  const result: CheckFinancialMutationResult = {
+    check: {
+      id: CASHIER_CONFIRM_UNASSIGNED_CHECK_ID,
+      restaurantId: input.restaurantId,
+      sessionId: null,
+      outcome: "open",
+      currencySnapshot: freeze.currencySnapshot,
+      taxPolicySnapshot: freeze.taxPolicySnapshot,
+      serviceChargeSnapshot: null,
+      billDiscountAmount: freeze.discountAmount,
+      subtotal: freeze.subtotal,
+      taxAmount: freeze.taxAmount,
+      taxBreakdown: freeze.taxBreakdown,
+      grandTotal: freeze.grandTotal,
+      snapshotsFrozenAt: now,
+      totalsFrozenAt: now,
+      settledAt: null,
+      voidedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    },
+    orderSettlement: {
+      settlements: [],
+      events: [],
+      outcomes: [],
+    },
+    orderSettlementEvents: [],
+    settlementRecord: {
+      record: null,
+      events: [],
+      outcome: "skipped",
+    },
+    settlementRecordEvents: [],
+    settlementContext,
+    settlementAttribution: skippedAttribution({
+      gaps: ["deferred_post_commit"],
+      reason: "Attribution continues independently after financial commit",
+      settlementRecordId: null,
+    }),
+    settlementAttributionEvents: [],
     finalizeStageMs: {
-      ...financial.finalizeStageMs,
-      financialTransactionPreparationMs: txStages.current.preparationMs,
-      financialTransactionWriteMs: txStages.current.writeMs,
-      financialTransactionTxWallMs: txStages.current.txWallMs,
-      financialTransactionCommittedAt: new Date().toISOString(),
+      checkReloadMs: 0,
+      orderDiscoveryMs: 0,
+      contextResolveMs: 0,
+      validationMs,
+      financialTransactionPreparationMs: 0,
+      financialTransactionWriteMs: moneyTxMs,
+      financialTransactionTxWallMs: moneyTxMs,
+      moneyTxMs,
+      postCommitProcessingMs: 0,
+      attributionMs: 0,
+      financialTransactionStartedAt,
+      financialTransactionCommittedAt,
+      attributionCompletedAt: null,
+      settlementContextReused: input.settlementContext != null,
     },
   };
 
-  if (input.deferOperationalSettlementAfterCollectionFact === true) {
-    dispatchBestEffortDownstreamDelivery({
-      delivery: () =>
-        completeCashierOperationalSettlementAfterCollectionFact({
-          restaurantId: input.restaurantId,
-          checkId: financial.check.id,
-          settlements: input.settlements,
-          settlementContext: input.settlementContext,
-          settlementContextHints: input.settlementContextHints,
-        }),
-      onFailure: (err: unknown) => {
-        opsLog({
-          type: OPS_EVENT.check_operational_settlement_deferred_failed,
-          category: "ORDER",
-          severity: "warn",
-          ts: new Date().toISOString(),
-          restaurantId: input.restaurantId,
-          action: "cashierDownstreamDelivery",
-          metadata: {
-            checkId: financial.check.id,
-            orderId: input.orderId,
-            error: err instanceof Error ? err.message : String(err),
-          },
-        });
-      },
-    });
-    return result;
-  }
-
-  return adoptAttributionAfterOwnedCommit({
-    restaurantId: input.restaurantId,
-    checkId: financial.check.id,
-    result,
+  dispatchBestEffortDownstreamDelivery({
+    delivery: () =>
+      deliverCashierPosOperationalSettlementAfterPaid({
+        restaurantId: input.restaurantId,
+        orderId: input.orderId,
+        billDiscountAmount,
+        settlements: input.settlements,
+        settlementContext: input.settlementContext,
+        settlementContextHints: input.settlementContextHints,
+      }),
+    onFailure: (err: unknown) => {
+      opsLog({
+        type: OPS_EVENT.check_operational_settlement_deferred_failed,
+        category: "ORDER",
+        severity: "warn",
+        ts: new Date().toISOString(),
+        restaurantId: input.restaurantId,
+        action: "cashierDownstreamDelivery",
+        metadata: {
+          checkId: CASHIER_CONFIRM_UNASSIGNED_CHECK_ID,
+          orderId: input.orderId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      });
+    },
   });
+  return result;
 }
 
 export async function settleCheckComplimentaryById(input: {

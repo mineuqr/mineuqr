@@ -4,13 +4,12 @@
  * Settlement Platform. POS does not own Check, Settlement, Register, or totals.
  *
  * PAYMENT-CONFIRM-SERVICE-1 — cashier Confirm Payment transport. Process
- * ownership is confirmPayment. Check remains the monetary aggregate.
+ * ownership is confirmPayment. Collection Fact is Cashier financial authority.
  */
 
 import { createHash } from "node:crypto";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 import {
-  CHECK_TERMINAL_OUTCOMES,
   type SelectablePaymentMethod,
   type StaffSettlementLineInput,
 } from "@shared/operational-session";
@@ -382,6 +381,10 @@ function unaccountedHttpMs(input: {
   return input.durationMs - sum;
 }
 
+function posCheckIdFromFact(checkId: number | null | undefined): number {
+  return checkId != null && checkId > 0 ? checkId : 0;
+}
+
 function resultFrom(fields: {
   checkId: number;
   orderId: number;
@@ -419,7 +422,7 @@ export class PosSettlementInitiateService {
     private readonly idempotency: PosSettlementInitiateIdempotencyStore,
     private readonly registerShift: PosRegisterShiftContextService = new PosRegisterShiftContextService(),
     private readonly orderLookup: PosSettlementInitiateOrderLookup = getOrderById,
-    private readonly membershipLookup: PosSettlementMembershipLookup = defaultMembershipLookup,
+    _membershipLookup: PosSettlementMembershipLookup = defaultMembershipLookup,
     private readonly checkLookup: PosSettlementCheckLookup = defaultCheckLookup,
     private readonly settlePaid: PosSettlementSettlePaid = defaultSettlePaid,
     private readonly productionCollectionFactByOrderLookup: PosProductionCollectionFactLookup = defaultProductionCollectionFactByOrder
@@ -560,25 +563,21 @@ export class PosSettlementInitiateService {
       }
 
       const contextStarted = clock.mark();
-      const [foundMembership, crmp] = await Promise.all([
-        this.membershipLookup(context.restaurantId, order.id),
-        this.registerShift
-          .requireResolvedContextForSettlement({
-            restaurantId: context.restaurantId,
-            terminalId: context.terminalId,
-            operatorUserId: context.userId,
-          })
-          .catch((err) => {
-            if (err instanceof PosRegisterShiftContextError) {
-              throw new PosSettlementInitiateError(err.code, err.message);
-            }
-            throw err;
-          }),
-      ]);
+      const crmp = await this.registerShift
+        .requireResolvedContextForSettlement({
+          restaurantId: context.restaurantId,
+          terminalId: context.terminalId,
+          operatorUserId: context.userId,
+        })
+        .catch((err) => {
+          if (err instanceof PosRegisterShiftContextError) {
+            throw new PosSettlementInitiateError(err.code, err.message);
+          }
+          throw err;
+        });
       const operational = crmp.operational;
       settlementContextMs = clock.since(contextStarted);
       settlementContextCompletedAt = new Date().toISOString();
-      const membership = foundMembership;
       ensureCheckMs = 0;
       checkLoadMs = 0;
 
@@ -586,7 +585,7 @@ export class PosSettlementInitiateService {
         restaurantId: context.restaurantId,
         orderId: order.id,
       });
-      if (existingFact?.checkId != null) {
+      if (existingFact) {
         // Collection Fact is the authoritative replay source. Check/ST/OS/SR
         // are downstream operational state and cannot gate Cashier success.
         void this.idempotency.put({
@@ -596,7 +595,7 @@ export class PosSettlementInitiateService {
           idempotencyKey: input.command.idempotencyKey,
           fingerprint,
           orderId: order.id,
-          checkId: existingFact.checkId,
+          checkId: posCheckIdFromFact(existingFact.checkId),
           outcome: "paid",
           grandTotal: existingFact.amount,
           settlementRecordId: null,
@@ -606,7 +605,7 @@ export class PosSettlementInitiateService {
           createdAt: new Date().toISOString(),
         }).catch(() => undefined);
         return resultFrom({
-          checkId: existingFact.checkId,
+          checkId: posCheckIdFromFact(existingFact.checkId),
           orderId: order.id,
           restaurantId: context.restaurantId,
           grandTotal: existingFact.amount,
@@ -618,24 +617,6 @@ export class PosSettlementInitiateService {
           financialShiftId: operational.financialShiftId,
           replayed: true,
         });
-      }
-
-      if (
-        membership &&
-        (CHECK_TERMINAL_OUTCOMES as readonly string[]).includes(
-          membership.checkOutcome
-        )
-      ) {
-        throw new PosSettlementInitiateError(
-          "check_already_terminal",
-          "Check is already terminal"
-        );
-      }
-      if (membership && membership.checkOutcome !== "open") {
-        throw new PosSettlementInitiateError(
-          "check_not_eligible",
-          "Check is not eligible for settlement initiation"
-        );
       }
 
       const settlements = resolveCommandSettlements(input.command);
@@ -675,17 +656,14 @@ export class PosSettlementInitiateService {
             restaurantId: context.restaurantId,
             orderId: order.id,
           });
-        if (committedFactAfterFailure?.checkId != null) {
+        if (committedFactAfterFailure) {
           void this.idempotency.put({
             restaurantId: context.restaurantId,
             terminalId: context.terminalId,
             userId: context.userId,
             idempotencyKey: input.command.idempotencyKey,
             fingerprint,
-            orderId: order.id,
-            checkId: committedFactAfterFailure.checkId,
-            outcome: "paid",
-            grandTotal: committedFactAfterFailure.amount,
+            checkId: posCheckIdFromFact(committedFactAfterFailure.checkId),
             settlementRecordId: null,
             sessionId: null,
             registerId: operational.registerId,
@@ -693,7 +671,7 @@ export class PosSettlementInitiateService {
             createdAt: new Date().toISOString(),
           }).catch(() => undefined);
           return resultFrom({
-            checkId: committedFactAfterFailure.checkId,
+            checkId: posCheckIdFromFact(committedFactAfterFailure.checkId),
             orderId: order.id,
             restaurantId: context.restaurantId,
             grandTotal: committedFactAfterFailure.amount,
@@ -714,8 +692,8 @@ export class PosSettlementInitiateService {
             restaurantId: context.restaurantId,
             orderId: order.id,
           });
-          if (committedFact?.checkId != null) {
-            // A concurrent command may lose the Check transition after the
+          if (committedFact) {
+            // A concurrent command may lose operational Check work after the
             // financial fact committed. Replaying that fact is still PAID.
             void this.idempotency.put({
               restaurantId: context.restaurantId,
@@ -724,7 +702,7 @@ export class PosSettlementInitiateService {
               idempotencyKey: input.command.idempotencyKey,
               fingerprint,
               orderId: order.id,
-              checkId: committedFact.checkId,
+              checkId: posCheckIdFromFact(committedFact.checkId),
               outcome: "paid",
               grandTotal: committedFact.amount,
               settlementRecordId: null,
@@ -734,7 +712,7 @@ export class PosSettlementInitiateService {
               createdAt: new Date().toISOString(),
             }).catch(() => undefined);
             return resultFrom({
-              checkId: committedFact.checkId,
+              checkId: posCheckIdFromFact(committedFact.checkId),
               orderId: order.id,
               restaurantId: context.restaurantId,
               grandTotal: committedFact.amount,
@@ -759,17 +737,6 @@ export class PosSettlementInitiateService {
         throw new PosSettlementInitiateError(
           "check_wrong_restaurant",
           "Check does not belong to this restaurant"
-        );
-      }
-      // Financial PAID is Collection Fact commit/replay. Check may still be
-      // OPEN while Check PAID / ST / OS / SR run after HTTP.
-      if (
-        settled.check.outcome !== "paid" &&
-        settled.check.outcome !== "open"
-      ) {
-        throw new PosSettlementInitiateError(
-          "check_not_eligible",
-          "Check is not eligible for settlement initiation"
         );
       }
 

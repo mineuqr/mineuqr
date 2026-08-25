@@ -19,13 +19,16 @@ import type {
   TaxPolicySnapshot,
 } from "@shared/operational-session";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
+import { getDb } from "../../../db";
+import { DiningSessionUnavailableError } from "../../../diningSession/sessionTypes";
 import { commitCollectionFact } from "./CollectionFactService";
 import { createDrizzleCollectionFactStore } from "./collectionFactRepository";
 import type { CollectionFactStore } from "./collectionFactStore";
 
 export type CashierPaidMoneyFreeze = Readonly<{
   restaurantId: number;
-  checkId: number;
+  /** Optional operational bill reference. Not financial identity. */
+  checkId: number | null;
   orderId: number;
   orderingChannel: string;
   subtotal: string;
@@ -106,4 +109,23 @@ export async function commitCashierProductionCollectionFact(
     );
   }
   return result;
+}
+
+/**
+ * One financial transaction: Collection Fact insert (or idempotent replay) is PAID.
+ * Check is not a participant.
+ */
+export async function commitCashierProductionCollectionFactInTransaction(
+  input: CashierProductionCollectionCommitInput
+): Promise<CommitCollectionFactResult> {
+  const db = await getDb();
+  if (!db) {
+    throw new DiningSessionUnavailableError();
+  }
+  return db.transaction(async (tx) =>
+    commitCashierProductionCollectionFact(
+      input,
+      createDrizzleCollectionFactStore(tx)
+    )
+  );
 }

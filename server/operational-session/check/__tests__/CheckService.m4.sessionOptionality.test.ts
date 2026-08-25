@@ -37,10 +37,15 @@ vi.mock("../../../_core/opsLog", () => ({
   opsLog: vi.fn(),
 }));
 
+vi.mock("../../payment/dispatchBestEffortDownstreamDelivery", () => ({
+  dispatchBestEffortDownstreamDelivery: () => undefined,
+}));
+
 vi.mock("../../../db", () => ({
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
   getOrderById: (...a: unknown[]) => mocks.getOrderById(...a),
+  getOrderItemsByOrderId: vi.fn(async () => []),
   getDb: (...a: unknown[]) => mocks.getDb(...a),
 }));
 
@@ -466,84 +471,55 @@ describe("ADR-ARCH-038 cashier_pos direct financial commit", () => {
     expect(mocks.insertOperationalCheck).not.toHaveBeenCalled();
   });
 
-  it("materializes Check inside the financial transaction and settles PAID", async () => {
+  it("does not materialize a Check to commit cashier_pos Collection Fact", async () => {
     mocks.getOrderById.mockResolvedValue({
       id: 55,
       restaurantId: 1,
       orderingChannel: "cashier_pos",
       status: "preparing",
+      totalAmount: "10.00",
     });
-    mocks.findBlockingMembershipForOrder.mockResolvedValue(null);
-    let frozen = false;
-    mocks.finalizeCheckOutcome.mockImplementation(async () => {
-      frozen = true;
-      return 1;
-    });
-    mocks.findCheckById.mockImplementation(async () => ({
-      ...sessionlessOpenCheck,
-      outcome: frozen ? ("paid" as const) : ("open" as const),
-      subtotal: "10.00",
-      grandTotal: "10.00",
-      totalsFrozenAt: frozen ? "2026-07-22 11:00:00" : null,
-      settledAt: frozen ? "2026-07-22 11:00:00" : null,
-    }));
-
+    let committed = false;
     const result = await settleCashierPosOrderPaidByIdDetailed({
       restaurantId: 1,
       orderId: 55,
       billDiscountAmount: "1.00",
       awaitAttribution: false,
+      productionCollectionCommit: async (freeze) => {
+        committed = true;
+        expect(freeze.checkId).toBeNull();
+        expect(freeze.orderId).toBe(55);
+        expect(freeze.grandTotal).toBeTruthy();
+      },
     });
 
-    expect(mocks.insertOperationalCheck).toHaveBeenCalledWith(
-      expect.objectContaining({ restaurantId: 1, sessionId: null }),
-      fakeTx
-    );
-    expect(mocks.enrollOrderInCheck).toHaveBeenCalledWith(
-      expect.objectContaining({ orderId: 55, checkId: 200 }),
-      fakeTx,
-      expect.anything()
-    );
-    expect(mocks.finalizeCheckOutcome).toHaveBeenCalledWith(
-      expect.objectContaining({ checkId: 200, outcome: "paid" }),
-      fakeTx
-    );
-    expect(mocks.insertSettlementTransactions).toHaveBeenCalledWith(
-      expect.objectContaining({ checkId: 200 }),
-      fakeTx
-    );
-    expect(mocks.applyFullSettlementToCheckOrders).toHaveBeenCalledWith(
-      { restaurantId: 1, checkId: 200 },
-      fakeTx
-    );
-    expect(mocks.createSettlementRecordForCheckFinalize).toHaveBeenCalledWith(
-      expect.objectContaining({ restaurantId: 1 }),
-      fakeTx
-    );
-    expect(result.check.outcome).toBe("paid");
+    expect(committed).toBe(true);
+    expect(mocks.insertOperationalCheck).not.toHaveBeenCalled();
+    expect(mocks.finalizeCheckOutcome).not.toHaveBeenCalled();
+    expect(result.settlementRecord.outcome).toBe("skipped");
+    expect(result.check.id).toBe(0);
   });
 
-  it("does not leave a committed OPEN Check when finalize fails", async () => {
+  it("does not materialize a Check when Collection Fact commit fails", async () => {
     mocks.getOrderById.mockResolvedValue({
       id: 55,
       restaurantId: 1,
       orderingChannel: "cashier_pos",
       status: "preparing",
+      totalAmount: "10.00",
     });
-    mocks.findBlockingMembershipForOrder.mockResolvedValue(null);
-    mocks.finalizeCheckOutcome.mockRejectedValue(new Error("finalize failed"));
 
     await expect(
       settleCashierPosOrderPaidByIdDetailed({
         restaurantId: 1,
         orderId: 55,
         awaitAttribution: false,
+        productionCollectionCommit: async () => {
+          throw new Error("cf storage");
+        },
       })
-    ).rejects.toThrow("finalize failed");
-    expect(mocks.insertOperationalCheck).toHaveBeenCalledWith(
-      expect.anything(),
-      fakeTx
-    );
+    ).rejects.toThrow("cf storage");
+    expect(mocks.insertOperationalCheck).not.toHaveBeenCalled();
     expect(mocks.createSettlementRecordForCheckFinalize).not.toHaveBeenCalled();
   });
 });

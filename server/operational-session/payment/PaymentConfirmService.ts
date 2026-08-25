@@ -1,8 +1,10 @@
 /**
  * PAYMENT-CONFIRM-SERVICE-1 / PAYMENT-CONFIRM-REMAINING-CALLERS-1 / ADR-ARCH-037
  * PRODUCTION-COLLECTION-FACT-CASHIER-ADOPTION-1
- * Payment process entry for Confirm Payment. Delegates to the certified
- * Check settlement capability. Not an aggregate. Not a second money SSOT.
+ * Payment process entry for Confirm Payment. Delegates cashier_pos orderId
+ * Confirm to Collection Fact + PAID, then optional downstream Check work.
+ * checkId Confirm still delegates to certified Check settlement.
+ * Not an aggregate. Not a second money SSOT.
  *
  * Callers: Cashier POS, Session markPaid, SettleOrderPaid, Counter Pickup.
  * I-PAY-01 process owner · I-PAY-02 Check remains the aggregate · I-PAY-14
@@ -25,7 +27,10 @@ import {
   settleCheckPaidByIdDetailed,
   type CheckFinancialMutationResult,
 } from "../check/CheckService";
-import { commitCashierProductionCollectionFact } from "./collection-fact/commitCashierProductionCollectionFact";
+import {
+  commitCashierProductionCollectionFact,
+  commitCashierProductionCollectionFactInTransaction,
+} from "./collection-fact/commitCashierProductionCollectionFact";
 import type { CollectionFactStore } from "./collection-fact/collectionFactStore";
 
 export const PAYMENT_CONFIRM_PROGRAM_ID = "PAYMENT-CONFIRM-SERVICE-1" as const;
@@ -110,32 +115,25 @@ export async function confirmPayment(
           awaitAttribution: command.awaitAttribution,
           deferOperationalSettlementAfterCollectionFact: true,
           productionCollectionCommit: async (freeze) => {
+            const payload = {
+              paymentIntentId: command.paymentIntentId as string,
+              idempotencyKey: command.idempotencyKey as string,
+              terminalId: command.terminalId as string,
+              actorType: command.actorType as string,
+              actorUserId: command.actorUserId as number,
+              freeze: {
+                ...freeze,
+                tenders: asCollectionTenders(freeze.tenders),
+              },
+            };
             const committed = command.collectionFactStore
               ? await commitCashierProductionCollectionFact(
-                  {
-                    paymentIntentId: command.paymentIntentId as string,
-                    idempotencyKey: command.idempotencyKey as string,
-                    terminalId: command.terminalId as string,
-                    actorType: command.actorType as string,
-                    actorUserId: command.actorUserId as number,
-                    freeze: {
-                      ...freeze,
-                      tenders: asCollectionTenders(freeze.tenders),
-                    },
-                  },
+                  payload,
                   command.collectionFactStore
                 )
-              : await commitCashierProductionCollectionFact({
-                  paymentIntentId: command.paymentIntentId as string,
-                  idempotencyKey: command.idempotencyKey as string,
-                  terminalId: command.terminalId as string,
-                  actorType: command.actorType as string,
-                  actorUserId: command.actorUserId as number,
-                  freeze: {
-                    ...freeze,
-                    tenders: asCollectionTenders(freeze.tenders),
-                  },
-                });
+              : await commitCashierProductionCollectionFactInTransaction(
+                  payload
+                );
             collectionFactOutcome = committed.outcome;
           },
         })

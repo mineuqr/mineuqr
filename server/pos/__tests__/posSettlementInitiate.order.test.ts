@@ -217,16 +217,11 @@ function harness(options?: {
     if (options?.settleDelayMs) {
       await new Promise((resolve) => setTimeout(resolve, options.settleDelayMs));
     }
-    if (liveCheck && liveCheck.outcome !== "open") {
-      throw new CheckTransitionError(
-        `Cannot finalize check from outcome ${liveCheck.outcome}`
-      );
-    }
     liveCheck = {
-      id: liveCheck?.id ?? CHECK_A,
+      id: liveCheck?.id ?? 0,
       restaurantId: input.restaurantId,
       sessionId: liveCheck?.sessionId ?? null,
-      outcome: options?.settleCheckOutcome ?? "paid",
+      outcome: options?.settleCheckOutcome ?? "open",
       grandTotal: liveCheck?.grandTotal ?? GRAND_TOTAL,
     };
     return {
@@ -467,7 +462,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     await grantSettle(grants);
     const result = await service.initiate({ user: user(STAFF_A), command });
     expect(result.outcome).toBe("paid");
-    expect(result.checkId).toBe(CHECK_A);
+    expect(result.checkId).toBe(0);
     expect(result.settlementRecordId).toBeNull();
     expect(settle).toHaveBeenCalledTimes(1);
   });
@@ -481,7 +476,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     await grantSettle(grants);
     const result = await service.initiate({ user: user(STAFF_A), command });
     expect(result.outcome).toBe("paid");
-    expect(result.checkId).toBe(CHECK_A);
+    expect(result.checkId).toBe(0);
     expect(settle).toHaveBeenCalledTimes(1);
     expect(settle).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -498,10 +493,9 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     });
     await seedTerminal(store);
     await grantSettle(grants);
-    await expect(service.initiate({ user: user(STAFF_A), command })).rejects.toMatchObject({
-      code: "check_already_terminal",
-    });
-    expect(settle).not.toHaveBeenCalled();
+    const result = await service.initiate({ user: user(STAFF_A), command });
+    expect(result.outcome).toBe("paid");
+    expect(settle).toHaveBeenCalledTimes(1);
   });
 
   it("replays POS idempotency without triggering downstream recovery", async () => {
@@ -517,7 +511,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects complimentary and voided Checks", async () => {
+  it("does not block Cashier Confirm on a complimentary or voided Check when no Collection Fact exists", async () => {
     for (const outcome of ["complimentary", "voided"] as const) {
       const { store, grants, service, settle } = harness({
         check: openCheck({ outcome }),
@@ -525,24 +519,22 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
       });
       await seedTerminal(store);
       await grantSettle(grants);
-      await expect(
-        service.initiate({ user: user(STAFF_A), command })
-      ).rejects.toMatchObject({ code: "check_already_terminal" });
-      expect(settle).not.toHaveBeenCalled();
+      const result = await service.initiate({ user: user(STAFF_A), command });
+      expect(result.outcome).toBe("paid");
+      expect(settle).toHaveBeenCalledTimes(1);
     }
   });
 
-  it("rejects an invalid Check lifecycle", async () => {
+  it("does not block Cashier Confirm on a non-open Check lifecycle when no Collection Fact exists", async () => {
     const { store, grants, service, settle } = harness({
       check: openCheck({ outcome: "unknown" }),
       membership: { checkId: CHECK_A, checkOutcome: "unknown" },
     });
     await seedTerminal(store);
     await grantSettle(grants);
-    await expect(
-      service.initiate({ user: user(STAFF_A), command })
-    ).rejects.toMatchObject({ code: "check_not_eligible" });
-    expect(settle).not.toHaveBeenCalled();
+    const result = await service.initiate({ user: user(STAFF_A), command });
+    expect(result.outcome).toBe("paid");
+    expect(settle).toHaveBeenCalledTimes(1);
   });
 
   it("ignores client cashier, totals, channel, and restaurant identity extras", async () => {
@@ -603,6 +595,30 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(result.replayed).toBe(true);
     expect(result.outcome).toBe("paid");
     expect(result.checkId).toBe(CHECK_A);
+    expect(settle).not.toHaveBeenCalled();
+  });
+
+  it("replays an existing production Collection Fact that has no Check reference", async () => {
+    vi.mocked(findProductionCollectionFactByOrderId).mockResolvedValue({
+      collectionFactId: "pcf_existing_order_only",
+      checkId: null,
+      amount: GRAND_TOTAL,
+      paymentIntentId: "cpi_prior",
+    } as never);
+    const { store, grants, service, settle } = harness();
+    await seedTerminal(store);
+    await grantSettle(grants);
+    const result = await service.initiate({
+      user: user(STAFF_A),
+      command: {
+        ...command,
+        idempotencyKey: "settle-key-new-null-check",
+        paymentIntentId: "cpi_new-intent-null-check",
+      },
+    });
+    expect(result.replayed).toBe(true);
+    expect(result.outcome).toBe("paid");
+    expect(result.checkId).toBe(0);
     expect(settle).not.toHaveBeenCalled();
   });
 
@@ -710,7 +726,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).toHaveBeenCalledTimes(1);
   });
 
-  it("overlaps register-shift resolution with Check membership lookup", async () => {
+  it("resolves register-shift context without a Check membership lookup on Confirm", async () => {
     const store = new InMemoryPosTerminalStore();
     const grants = new InMemoryPosPermissionGrantStore();
     const idempotency = new InMemoryPosSettlementInitiateIdempotencyStore();
@@ -719,18 +735,10 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
       grants,
       new PosEntitlementService(store)
     );
-    let membershipStarted = 0;
-    let shiftStarted = 0;
     const findMembership = vi.fn(async () => {
-      membershipStarted = Date.now();
-      await new Promise((resolve) => setTimeout(resolve, 40));
       return { checkId: CHECK_A, checkOutcome: "open" };
     });
-    const resolveContext = vi.fn(async () => {
-      shiftStarted = Date.now();
-      await new Promise((resolve) => setTimeout(resolve, 40));
-      return resolvedContext();
-    });
+    const resolveContext = vi.fn(async () => resolvedContext());
     const registerShift = new PosRegisterShiftContextService(
       resolveContext,
       async () => null
@@ -757,9 +765,8 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     await seedTerminal(store);
     await grantSettle(grants);
     await service.initiate({ user: user(STAFF_A), command });
-    expect(findMembership).toHaveBeenCalledTimes(1);
+    expect(findMembership).not.toHaveBeenCalled();
     expect(resolveContext).toHaveBeenCalledTimes(1);
-    expect(Math.abs(membershipStarted - shiftStarted)).toBeLessThan(20);
   });
 
   it("forwards a selectable payment method to Check as a single tender without client amounts", async () => {

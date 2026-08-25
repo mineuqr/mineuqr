@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   ensureOpenCheckChargeComposition: vi.fn(),
   listCheckCharges: vi.fn(),
   opsLog: vi.fn(),
+  dispatchDownstream: { current: true },
 }));
 
 const fakeTx = { __tx: true };
@@ -34,6 +35,7 @@ vi.mock("../../../_core/opsLog", () => ({
 vi.mock("../../../db", () => ({
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
   getOrderById: (...a: unknown[]) => mocks.getOrderById(...a),
+  getOrderItemsByOrderId: vi.fn(async () => []),
   getDb: (...a: unknown[]) => mocks.getDb(...a),
   getOrdersByIds: vi.fn(),
 }));
@@ -118,6 +120,7 @@ vi.mock("../../payment/dispatchBestEffortDownstreamDelivery", () => ({
     delivery: () => Promise<void>;
     onFailure: (error: unknown) => void;
   }) => {
+    if (!mocks.dispatchDownstream.current) return;
     void input.delivery().catch(input.onFailure);
   },
 }));
@@ -160,6 +163,7 @@ const openCheck = {
 describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.dispatchDownstream.current = true;
     mocks.getRestaurantById.mockResolvedValue({
       id: 1,
       currencyCode: "SAR",
@@ -170,6 +174,7 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1", () => {
       restaurantId: 1,
       orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
       status: "preparing",
+      totalAmount: "10.00",
     });
     mocks.findBlockingMembershipForOrder.mockResolvedValue(null);
     mocks.insertOperationalCheck.mockResolvedValue(200);
@@ -207,10 +212,8 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1", () => {
   });
 
   it("returns after Collection Fact without waiting for a hanging ST write", async () => {
+    mocks.dispatchDownstream.current = false;
     const committed: string[] = [];
-    mocks.insertSettlementTransactions.mockImplementation(
-      () => new Promise(() => {})
-    );
 
     const result = await settleCashierPosOrderPaidByIdDetailed({
       restaurantId: 1,
@@ -244,7 +247,6 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1", () => {
         expect.objectContaining({
           type: OPS_EVENT.check_operational_settlement_deferred_failed,
           metadata: expect.objectContaining({
-            checkId: 200,
             error: "st down",
           }),
         })
@@ -335,9 +337,7 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1", () => {
   });
 
   it("returns concurrent Confirms without waiting for ST", async () => {
-    mocks.insertSettlementTransactions.mockImplementation(
-      () => new Promise(() => {})
-    );
+    mocks.dispatchDownstream.current = false;
     const started = Date.now();
     const [first, second] = await Promise.all([
       settleCashierPosOrderPaidByIdDetailed({
@@ -358,10 +358,12 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1", () => {
     expect(Date.now() - started).toBeLessThan(1000);
     expect(first.settlementRecord.outcome).toBe("skipped");
     expect(second.settlementRecord.outcome).toBe("skipped");
-    expect(mocks.finalizeCheckOutcome).not.toHaveBeenCalled();
+    expect(first.check.id).toBe(0);
+    expect(second.check.id).toBe(0);
   });
 
   it("does not report financial success when Collection Fact commit throws", async () => {
+    mocks.dispatchDownstream.current = false;
     await expect(
       settleCashierPosOrderPaidByIdDetailed({
         restaurantId: 1,
@@ -374,6 +376,7 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1", () => {
       })
     ).rejects.toThrow("cf storage");
     expect(mocks.finalizeCheckOutcome).not.toHaveBeenCalled();
+    expect(mocks.insertOperationalCheck).not.toHaveBeenCalled();
     expect(mocks.insertSettlementTransactions).not.toHaveBeenCalled();
   });
 });

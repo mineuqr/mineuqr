@@ -36,9 +36,10 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-2", () => {
     const cashier = sliceCashierSettle(check);
     expect(confirm).toContain("deferOperationalSettlementAfterCollectionFact: true");
     expect(cashier).toContain("dispatchBestEffortDownstreamDelivery");
-    expect(cashier).toContain("completeCashierOperationalSettlementAfterCollectionFact");
+    expect(cashier).toContain("deliverCashierPosOperationalSettlementAfterPaid");
     expect(cashier).not.toContain("await completeCashierOperationalSettlementAfterCollectionFact");
     expect(cashier).not.toContain("ensureRemainingCashierDownstreamSettlement");
+    expect(cashier).not.toContain("materializeOrLoadCashierPosOpenCheck");
   });
 
   it("uses the HTTP mutation response as the only Cashier success signal", () => {

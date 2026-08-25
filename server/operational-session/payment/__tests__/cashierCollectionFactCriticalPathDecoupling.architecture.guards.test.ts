@@ -38,10 +38,13 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1 architecture", () =
     expect(confirm).not.toContain("applyFullSettlementToCheckOrders");
     expect(cashier).toContain("dispatchBestEffortDownstreamDelivery");
     expect(cashier).not.toContain("cashier-downstream-recovery");
-    expect(cashier).toContain("completeCashierOperationalSettlementAfterCollectionFact");
+    expect(cashier).toContain("freezeCashierPosPayableFromOrder");
+    expect(cashier).toContain("deliverCashierPosOperationalSettlementAfterPaid");
+    expect(cashier).not.toContain("materializeOrLoadCashierPosOpenCheck");
     expect(cashier).not.toContain(
       "await completeCashierOperationalSettlementAfterCollectionFact"
     );
+    expect(confirm).toContain("commitCashierProductionCollectionFactInTransaction");
     expect(check).toMatch(
       /if \(input\.deferOperationalSettlementAfterCollectionFact\)[\s\S]*?finalizeCheckOutcome/
     );
@@ -82,8 +85,9 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1 architecture", () =
   it("does not treat Check PAID as the Cashier HTTP success gate after Collection Fact", () => {
     const pos = read("server/pos/services/PosSettlementInitiateService.ts");
     expect(pos).toContain('outcome: "paid"');
-    expect(pos).toContain('settled.check.outcome !== "paid"');
-    expect(pos).toContain('settled.check.outcome !== "open"');
+    expect(pos).toContain("existingFact");
+    expect(pos).not.toContain("check_already_terminal");
+    expect(pos).toContain("posCheckIdFromFact");
   });
 
   it("keeps Collection Fact as the sole Cashier financial commit and insert-only", () => {
