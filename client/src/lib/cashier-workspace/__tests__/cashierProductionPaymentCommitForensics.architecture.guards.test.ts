@@ -3,7 +3,7 @@
  * Guards the approved Cashier contract: Collection Fact create/replay is PAID;
  * all Check/ST/OS/SR work is downstream and recovery infrastructure is absent.
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -75,11 +75,23 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-2", () => {
     expect(existsSync(join(repoRoot, "client/src/lib/cashier-workspace/cashierSettlementRecovery.ts"))).toBe(false);
   });
 
-  it("does not introduce a payments table, migration, or second financial authority", () => {
+  it("does not introduce a payments table or second financial authority; 0098 is the certified POS sale endpoint", () => {
     const journal = read("drizzle/meta/_journal.json");
     const schema = read("drizzle/schema.ts");
-    expect(journal).not.toContain("0098");
+    expect(journal).toContain("0098_pos_sale_idempotency_open_check");
+    expect(journal).not.toContain("0098_payments");
     expect(schema).not.toMatch(/mysqlTable\(\s*"payments"/);
     expect(schema).toContain("export const paymentCollectionFacts");
+    const sql = readdirSync(join(repoRoot, "drizzle")).filter((name) =>
+      name.endsWith(".sql")
+    );
+    expect(sql.filter((name) => name.startsWith("0098"))).toEqual([
+      "0098_pos_sale_idempotency_open_check.sql",
+    ]);
+    expect(existsSync(join(repoRoot, "drizzle/0098.sql"))).toBe(false);
+    const sql0098 = read("drizzle/0098_pos_sale_idempotency_open_check.sql");
+    expect(sql0098).toContain("ALTER TABLE `pos_sale_idempotency`");
+    expect(sql0098).not.toMatch(/payment_collection_facts/);
+    expect(sql0098).not.toMatch(/CREATE TABLE `payments`/);
   });
 });

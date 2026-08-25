@@ -62,7 +62,7 @@ describe("PRODUCTION-COLLECTION-FACT-CASHIER-ADOPTION-1 architecture", () => {
     ).toContain("cpi_");
   });
 
-  it("does not add a payments table, Payment aggregate, offline queue, or 0098", () => {
+  it("does not add a payments table, Payment aggregate, or offline queue; 0098 is the certified POS sale endpoint", () => {
     const schema = read("drizzle/schema.ts");
     const journal = read("drizzle/meta/_journal.json");
     const confirm = read(
@@ -73,12 +73,19 @@ describe("PRODUCTION-COLLECTION-FACT-CASHIER-ADOPTION-1 architecture", () => {
     );
     expect(schema).not.toMatch(/mysqlTable\(\s*"payments"/);
     expect(journal).toContain("0097_payment_collection_facts_production_purpose");
-    expect(journal).not.toContain("0098");
+    expect(journal).toContain("0098_pos_sale_idempotency_open_check");
+    expect(journal).not.toContain("0098_payments");
     const sql = readdirSync(join(repoRoot, "drizzle")).filter((name) =>
       name.endsWith(".sql")
     );
-    expect(sql.some((name) => name.startsWith("0098"))).toBe(false);
+    expect(sql.filter((name) => name.startsWith("0098"))).toEqual([
+      "0098_pos_sale_idempotency_open_check.sql",
+    ]);
     expect(existsSync(join(repoRoot, "drizzle/0098.sql"))).toBe(false);
+    const sql0098 = read("drizzle/0098_pos_sale_idempotency_open_check.sql");
+    expect(sql0098).toContain("ALTER TABLE `pos_sale_idempotency`");
+    expect(sql0098).not.toMatch(/payment_collection_facts/);
+    expect(sql0098).not.toMatch(/CREATE TABLE `payments`/);
     expect(confirm).not.toContain("PaymentAggregate");
     expect(confirm).not.toContain("offline financial");
     expect(panel).not.toContain("kind: \"refund\"");

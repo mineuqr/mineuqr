@@ -79,12 +79,19 @@ describe("PRODUCTION-COLLECTION-FACT-COMMIT-CONTRACT-1 architecture", () => {
     );
     expect(journal).toContain("0096_payment_collection_facts");
     expect(journal).toContain("0097_payment_collection_facts_production_purpose");
-    expect(journal).not.toContain("0098");
+    expect(journal).toContain("0098_pos_sale_idempotency_open_check");
+    expect(journal).not.toContain("0098_payments");
     const drizzleFiles = readdirSync(join(repoRoot, "drizzle")).filter((name) =>
       name.endsWith(".sql")
     );
-    expect(drizzleFiles.some((name) => name.startsWith("0098"))).toBe(false);
+    expect(drizzleFiles.filter((name) => name.startsWith("0098"))).toEqual([
+      "0098_pos_sale_idempotency_open_check.sql",
+    ]);
     expect(existsSync(join(repoRoot, "drizzle/0098.sql"))).toBe(false);
+    const sql0098 = read("drizzle/0098_pos_sale_idempotency_open_check.sql");
+    expect(sql0098).toContain("ALTER TABLE `pos_sale_idempotency`");
+    expect(sql0098).not.toMatch(/payment_collection_facts/);
+    expect(sql0098).not.toMatch(/CREATE TABLE `payments`/);
   });
 
   it("W does not change Check, PAID runtime, or ST/OS/SR writers", () => {

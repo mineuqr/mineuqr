@@ -1,6 +1,6 @@
 /**
  * PRODUCTION-COLLECTION-FACT-COMMIT-EXECUTION-HARDENING-1 — architecture guards.
- * Execution hardening must not adopt Cashier/Confirm/PAID/Settlement or add 0098.
+ * Execution hardening must not adopt Cashier/Confirm/PAID/Settlement or a payments-table migration.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -73,7 +73,7 @@ describe("PRODUCTION-COLLECTION-FACT-COMMIT-EXECUTION-HARDENING-1 architecture",
     expect(read(WRITER)).not.toContain("createSettlementRecordForCheckFinalize");
   });
 
-  it("29 no 0098, no Collection Fact UPDATE/DELETE SQL, reporting adapter is read-only", () => {
+  it("29 certified 0098 is POS sale idempotency, no Collection Fact UPDATE/DELETE SQL, reporting adapter is read-only", () => {
     const repo = read(REPO);
     const adapter = read(ADAPTER);
     const journal = read(JOURNAL);
@@ -88,12 +88,19 @@ describe("PRODUCTION-COLLECTION-FACT-COMMIT-EXECUTION-HARDENING-1 architecture",
     expect(adapter).not.toContain(".insert(");
     expect(adapter).not.toContain(".update(");
     expect(adapter).not.toContain(".delete(");
-    expect(journal).not.toContain("0098");
+    expect(journal).toContain("0098_pos_sale_idempotency_open_check");
+    expect(journal).not.toContain("0098_payments");
     const sql = readdirSync(join(repoRoot, "drizzle")).filter((name) =>
       name.endsWith(".sql")
     );
-    expect(sql.some((name) => name.startsWith("0098"))).toBe(false);
+    expect(sql.filter((name) => name.startsWith("0098"))).toEqual([
+      "0098_pos_sale_idempotency_open_check.sql",
+    ]);
     expect(existsSync(join(repoRoot, "drizzle/0098.sql"))).toBe(false);
+    const sql0098 = read("drizzle/0098_pos_sale_idempotency_open_check.sql");
+    expect(sql0098).toContain("ALTER TABLE `pos_sale_idempotency`");
+    expect(sql0098).not.toMatch(/payment_collection_facts/);
+    expect(sql0098).not.toMatch(/CREATE TABLE `payments`/);
     expect(existsSync(join(repoRoot, IMMUTABILITY))).toBe(true);
   });
 });

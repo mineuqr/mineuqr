@@ -44,17 +44,24 @@ describe("REVENUE-UNION-PRODUCTION-COLLECTION-AUTHORITY-1 architecture", () => {
     expect(writer).toContain("Cashier Confirm is the first certified");
   });
 
-  it("does not add a payments table, Payment aggregate, or 0098", () => {
+  it("does not add a payments table or Payment aggregate; 0098 is the certified POS sale endpoint", () => {
     const schema = read("drizzle/schema.ts");
     const journal = read("drizzle/meta/_journal.json");
     expect(schema).not.toMatch(/mysqlTable\(\s*"payments"/);
     expect(journal).toContain("0097_payment_collection_facts_production_purpose");
-    expect(journal).not.toContain("0098");
+    expect(journal).toContain("0098_pos_sale_idempotency_open_check");
+    expect(journal).not.toContain("0098_payments");
     const sql = readdirSync(join(repoRoot, "drizzle")).filter((name) =>
       name.endsWith(".sql")
     );
-    expect(sql.some((name) => name.startsWith("0098"))).toBe(false);
+    expect(sql.filter((name) => name.startsWith("0098"))).toEqual([
+      "0098_pos_sale_idempotency_open_check.sql",
+    ]);
     expect(existsSync(join(repoRoot, "drizzle/0098.sql"))).toBe(false);
+    const sql0098 = read("drizzle/0098_pos_sale_idempotency_open_check.sql");
+    expect(sql0098).toContain("ALTER TABLE `pos_sale_idempotency`");
+    expect(sql0098).not.toMatch(/payment_collection_facts/);
+    expect(sql0098).not.toMatch(/CREATE TABLE `payments`/);
   });
 
   it("keeps Union as the published metrics path and does not write Collection Facts", () => {

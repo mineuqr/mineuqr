@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0097 contiguously", () => {
+  it("journal contains canonical migrations 0000–0098 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -57,15 +57,18 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[94]?.tag).toBe("0094_commercial_limit_occupancy_locks");
     expect(journal.entries[95]?.tag).toBe("0095_check_charges");
     expect(journal.entries[96]?.tag).toBe("0096_payment_collection_facts");
-    expect(journal.entries[97]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[97]?.tag).toBe(
+      "0097_payment_collection_facts_production_purpose"
+    );
+    expect(journal.entries[98]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
     expect(CANONICAL_MIGRATION_TAIL_TAG).toBe(
-      "0097_payment_collection_facts_production_purpose"
+      "0098_pos_sale_idempotency_open_check"
     );
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(98);
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(99);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -251,6 +254,28 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/FOREIGN KEY/i);
     expect(hashMigrationSql("0097_payment_collection_facts_production_purpose")).toBe(
       "8c92973d8d62797db46067b61e485d2036d6fae0e7e6c952a7e9ffcdf636fc45"
+    );
+  });
+
+  it("0098 is additive POS sale OPEN Check columns and is not an Order/Check/financial rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0098_pos_sale_idempotency_open_check.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("ALTER TABLE `pos_sale_idempotency`");
+    expect(sql).toContain("ADD COLUMN `checkId` int NOT NULL");
+    expect(sql).toContain("ADD COLUMN `linesJson` json NOT NULL");
+    expect(sql).not.toMatch(/CREATE TABLE `payments`/);
+    expect(sql).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+    expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/^\s*UPDATE\b/im);
+    expect(sql).not.toMatch(/^\s*DELETE\b/im);
+    expect(sql).not.toMatch(/DROP\s+/i);
+    expect(sql).not.toMatch(/TRUNCATE\s+/i);
+    expect(hashMigrationSql("0098_pos_sale_idempotency_open_check")).toBe(
+      "021e88b6bab788b5043ab98425870d0c662bd3ac33cb3d76b1de58983c34469e"
     );
   });
 
