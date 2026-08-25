@@ -62,6 +62,19 @@ function saleRow(
     displayReference: "P #101",
     totalAmount: "12.50",
     itemCount: 1,
+    checkId: 900,
+    subtotal: "12.50",
+    taxAmount: "0.00",
+    grandTotal: "12.50",
+    billDiscountAmount: "0.00",
+    lines: [
+      {
+        description: "Item",
+        quantity: 1,
+        netAmount: "12.50",
+        originOrderItemId: 1,
+      },
+    ],
     createdAt: MYSQL_NOW,
     ...overrides,
   };

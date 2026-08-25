@@ -11,7 +11,7 @@ import { PosAccessService } from "../services/PosAccessService";
 import { PosEntitlementService } from "../services/PosEntitlementService";
 import { PosSaleError, PosSaleService } from "../services/PosSaleService";
 import type { IdentityPlaceOrderService } from "../../order/application/IdentityPlaceOrderService";
-import type { SelectUser } from "../../../drizzle/schema";
+import { stubCheckSnapshots, stubOpenCheckEnrollment } from "./cashierOpenCheckTestDouble";
 
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
@@ -192,10 +192,20 @@ function harness(options?: {
   const access = new PosAccessService(store, grants, new PosEntitlementService(store));
   const place = options?.place ?? fakePlaceOrder();
   const sessions = options?.sessions ?? [];
-  const sale = new PosSaleService(grants, access, place, idempotency, async (sessionId) => {
-    return sessions.find((row) => row.id === sessionId) ?? null;
-  });
-  return { store, grants, access, place, sale, idempotency };
+  const enrollOpenCheck = vi.fn(async () => stubOpenCheckEnrollment());
+  const loadCheckSnapshots = vi.fn(async () => stubCheckSnapshots());
+  const sale = new PosSaleService(
+    grants,
+    access,
+    place,
+    idempotency,
+    async (sessionId) => {
+      return sessions.find((row) => row.id === sessionId) ?? null;
+    },
+    loadCheckSnapshots,
+    enrollOpenCheck
+  );
+  return { store, grants, access, place, sale, idempotency, enrollOpenCheck };
 }
 
 const validItems = [{ menuItemId: 41, quantity: 2, notes: "no onion", modifiers: ["large"] }];
@@ -229,6 +239,10 @@ describe("POS Sale → canonical Order", () => {
     expect(result.cashierUserId).toBe(STAFF_A);
     expect(result.replayed).toBe(false);
     expect(result.orderId).toBeGreaterThan(0);
+    expect(result.checkId).toBe(900);
+    expect(result.outcome).toBe("open");
+    expect(result.money.grandTotal).toBe("12.50");
+    expect(result.lines).toHaveLength(1);
     expect(place.execute).toHaveBeenCalledTimes(1);
     expect(place.execute).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -561,6 +575,7 @@ describe("POS Sale → canonical Order", () => {
     const first = await sale.create({ user: user(STAFF_A), command });
     const second = await sale.create({ user: user(STAFF_A), command });
     expect(second.orderId).toBe(first.orderId);
+    expect(second.checkId).toBe(first.checkId);
     expect(second.replayed).toBe(true);
     expect(second.orderingChannel).toBe(ORDERING_CHANNEL_CASHIER_POS);
     expect(second.terminalId).toBe(TERMINAL_A);

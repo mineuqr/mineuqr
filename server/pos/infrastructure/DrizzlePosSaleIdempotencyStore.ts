@@ -40,6 +40,12 @@ function mapRecord(
     displayReference: row.displayReference,
     totalAmount: row.totalAmount,
     itemCount: row.itemCount,
+    checkId: row.checkId,
+    subtotal: row.subtotal,
+    taxAmount: row.taxAmount,
+    grandTotal: row.grandTotal,
+    billDiscountAmount: row.billDiscountAmount,
+    lines: Array.isArray(row.linesJson) ? row.linesJson : [],
     createdAt: fromMysqlTimestampString(row.createdAt),
   };
 }
@@ -88,6 +94,12 @@ export class DrizzlePosSaleIdempotencyStore implements PosSaleIdempotencyStore {
         displayReference: record.displayReference,
         totalAmount: record.totalAmount,
         itemCount: record.itemCount,
+        checkId: record.checkId,
+        subtotal: record.subtotal,
+        taxAmount: record.taxAmount,
+        grandTotal: record.grandTotal,
+        billDiscountAmount: record.billDiscountAmount,
+        linesJson: record.lines,
         createdAt: toMysqlTimestampString(record.createdAt),
       });
     } catch (error) {
@@ -117,6 +129,12 @@ export class DrizzlePosSaleIdempotencyStore implements PosSaleIdempotencyStore {
         displayReference: record.displayReference,
         totalAmount: record.totalAmount,
         itemCount: record.itemCount,
+        checkId: record.checkId,
+        subtotal: record.subtotal,
+        taxAmount: record.taxAmount,
+        grandTotal: record.grandTotal,
+        billDiscountAmount: record.billDiscountAmount,
+        linesJson: record.lines,
         createdAt: toMysqlTimestampString(record.createdAt),
       });
     } catch (error) {

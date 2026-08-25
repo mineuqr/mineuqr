@@ -68,8 +68,8 @@ export class IdentityPlaceOrderService {
     persist?: Pick<SaveOrderOptions, "afterPersistInTransaction"> & {
       /**
        * Default true (CHECK-GENERALIZATION-M5). POS sale HTTP sets false so
-       * Check enrollment is not awaited on the cashier response; Cashier
-       * orchestrates pos.check.intake. Kiosk/waiter keep the default.
+       * post-commit ensureCheckForOrder is skipped; cashier OPEN Check is
+       * written inside the Order persist transaction instead.
        */
       enrollCheck?: boolean;
     }
@@ -129,7 +129,8 @@ export class IdentityPlaceOrderService {
 
     // CHECK-GENERALIZATION-M5 — sessionless / ephemeral channels enroll into Check + Membership.
     // Table Session path keeps Session Check create + dual-write (avoid duplicate sessionless Check).
-    // POS cashier skips the HTTP await (enrollCheck: false); intake remains Check SSOT.
+    // POS cashier enrolls OPEN Check inside the Order persist transaction (Stage 1).
+    // enrollCheck: false only skips this post-commit ensureCheckForOrder call.
     if (
       enrollCheck &&
       (sessionResult.persistence === "ephemeral" ||

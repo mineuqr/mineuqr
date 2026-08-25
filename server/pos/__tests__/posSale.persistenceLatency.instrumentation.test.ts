@@ -16,7 +16,7 @@ import { PosEntitlementService } from "../services/PosEntitlementService";
 import { PosSaleService } from "../services/PosSaleService";
 import type { IdentityPlaceOrderService } from "../../order/application/IdentityPlaceOrderService";
 import { noteOrderLifecyclePhase } from "../../order/observability/orderLifecycleLatency";
-import type { SelectUser } from "../../../drizzle/schema";
+import { stubCheckSnapshots, stubOpenCheckEnrollment } from "./cashierOpenCheckTestDouble";
 
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
@@ -233,7 +233,15 @@ function harness(options?: {
     new PosEntitlementService(store)
   );
   const place = options?.place ?? fakePlaceOrder();
-  const sale = new PosSaleService(grants, access, place, idempotency);
+  const sale = new PosSaleService(
+    grants,
+    access,
+    place,
+    idempotency,
+    undefined,
+    async () => stubCheckSnapshots(),
+    async () => stubOpenCheckEnrollment()
+  );
   return { store, grants, place, sale, idempotency };
 }
 

@@ -10,7 +10,7 @@ import { PosEntitlementService } from "../services/PosEntitlementService";
 import { PosSaleService } from "../services/PosSaleService";
 import type { IdentityPlaceOrderService } from "../../order/application/IdentityPlaceOrderService";
 import type { SaveOrderResult } from "../../order/repositories/OrderRepository";
-import type { SelectUser } from "../../../drizzle/schema";
+import { stubCheckSnapshots, stubOpenCheckEnrollment } from "./cashierOpenCheckTestDouble";
 
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
@@ -169,7 +169,15 @@ describe("POS sale transactional safety", () => {
       grants,
       new PosEntitlementService(store)
     );
-    const sale = new PosSaleService(grants, access, place, idempotency);
+    const sale = new PosSaleService(
+      grants,
+      access,
+      place,
+      idempotency,
+      undefined,
+      async () => stubCheckSnapshots(),
+      async () => stubOpenCheckEnrollment()
+    );
     return { sale, idempotency };
   }
 
@@ -186,6 +194,8 @@ describe("POS sale transactional safety", () => {
     const result = await sale.create({ user: user(STAFF_A), command });
     expect(result.replayed).toBe(false);
     expect(committed).toEqual([result.orderId]);
+    expect(result.checkId).toBe(900);
+    expect(result.outcome).toBe("open");
     expect(await idempotency.get({
       restaurantId: RESTAURANT_A,
       terminalId: TERMINAL_A,
@@ -201,6 +211,7 @@ describe("POS sale transactional safety", () => {
     const second = await sale.create({ user: user(STAFF_A), command });
     expect(second.replayed).toBe(true);
     expect(second.orderId).toBe(first.orderId);
+    expect(second.checkId).toBe(first.checkId);
     expect(committed).toEqual([first.orderId]);
   });
 
@@ -254,6 +265,62 @@ describe("POS sale transactional safety", () => {
     await expect(
       sale.create({ user: user(STAFF_A), command })
     ).rejects.toThrow("order_write_failed");
+    expect(
+      await idempotency.get({
+        restaurantId: RESTAURANT_A,
+        terminalId: TERMINAL_A,
+        userId: STAFF_A,
+        idempotencyKey: "idem-key-01",
+      })
+    ).toBeNull();
+  });
+
+  it("rolls back the companion Order when OPEN Check enrollment fails", async () => {
+    const { place, committed } = transactionalPlaceOrder();
+    const store = new InMemoryPosTerminalStore();
+    const grants = new InMemoryPosPermissionGrantStore();
+    await store.insert({
+      id: TERMINAL_A,
+      restaurantId: RESTAURANT_A,
+      code: "POS-001",
+      lifecycle: "active",
+      replacedByTerminalId: null,
+      optionalDeviceId: null,
+      version: 1,
+      createdAt: "2026-08-16T00:00:00.000Z",
+      updatedAt: "2026-08-16T00:00:00.000Z",
+    });
+    await grants.upsert({
+      userId: STAFF_A,
+      restaurantId: RESTAURANT_A,
+      permission: "POS_ACCESS",
+    });
+    await grants.upsert({
+      userId: STAFF_A,
+      restaurantId: RESTAURANT_A,
+      permission: "SALE_CREATE",
+    });
+    const access = new PosAccessService(
+      store,
+      grants,
+      new PosEntitlementService(store)
+    );
+    const idempotency = new InMemoryPosSaleIdempotencyStore();
+    const sale = new PosSaleService(
+      grants,
+      access,
+      place,
+      idempotency,
+      undefined,
+      async () => stubCheckSnapshots(),
+      async () => {
+        throw new Error("check_write_failed");
+      }
+    );
+    await expect(
+      sale.create({ user: user(STAFF_A), command })
+    ).rejects.toThrow("check_write_failed");
+    expect(committed).toEqual([]);
     expect(
       await idempotency.get({
         restaurantId: RESTAURANT_A,

@@ -478,7 +478,7 @@ function emitEnsureCheckForOrderStages(input: {
   });
 }
 
-async function captureSnapshotsFromBusinessSettings(restaurantId: number) {
+export async function captureSnapshotsFromBusinessSettings(restaurantId: number) {
   const restaurant = await getRestaurantById(restaurantId);
   if (!restaurant) {
     throw new DiningSessionValidationError("Restaurant not found");
@@ -1522,6 +1522,77 @@ export async function settleCheckPaidById(input: {
     settlementContextHints: input.settlementContextHints,
   });
   return result.check;
+}
+
+export type CashierPosSaleCheckLine = Readonly<{
+  description: string;
+  quantity: number;
+  netAmount: string;
+  originOrderItemId: number | null;
+}>;
+
+export type CashierPosSaleOpenCheck = Readonly<{
+  check: OperationalCheck;
+  lines: readonly CashierPosSaleCheckLine[];
+}>;
+
+/**
+ * CASHIER-REBUILD-1 Stage 1 — OPEN Check on the Order persist transaction.
+ * Requires the caller's transaction client. Does not open getDb().
+ * Not a payment API. Payment must never call this.
+ */
+export async function createAndEnrollCashierPosOpenCheckInTransaction(
+  input: {
+    restaurantId: number;
+    orderId: number;
+    billDiscountAmount?: string;
+    snapshots: {
+      currencySnapshot: OperationalCheck["currencySnapshot"];
+      taxPolicySnapshot: OperationalCheck["taxPolicySnapshot"];
+    };
+  },
+  tx: SessionDbClient
+): Promise<CashierPosSaleOpenCheck> {
+  if (tx == null) {
+    throw new DiningSessionUnavailableError(
+      "Cashier OPEN Check enrollment requires the Order transaction client"
+    );
+  }
+  const stages = createEmptyEnsureCheckForOrderStageMs();
+  stages.checkCreated = true;
+  const created = await createOpenCheck({
+    restaurantId: input.restaurantId,
+    sessionId: null,
+    billDiscountAmount: input.billDiscountAmount ?? "0.00",
+    client: tx,
+    snapshots: input.snapshots,
+    stageMs: stages,
+  });
+  const check = await enrollRefreshAndReloadCheck(
+    {
+      restaurantId: input.restaurantId,
+      checkId: created.id,
+      orderId: input.orderId,
+      billDiscountAmount: created.billDiscountAmount,
+      taxPolicySnapshot: created.taxPolicySnapshot,
+      fallback: created,
+    },
+    tx,
+    stages
+  );
+  const charges = await listCheckCharges(
+    { restaurantId: input.restaurantId, checkId: check.id },
+    tx
+  );
+  return {
+    check,
+    lines: charges.map((charge) => ({
+      description: charge.description,
+      quantity: charge.quantity,
+      netAmount: charge.netAmount,
+      originOrderItemId: charge.originOrderItemId,
+    })),
+  };
 }
 
 /** Same as settleCheckPaidById, exposing collected Order Settlement events.

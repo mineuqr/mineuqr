@@ -56,7 +56,7 @@ export async function enrollOrderInCheck(
     }
   }
 
-  const order = await getOrderById(input.orderId);
+  const order = await getOrderById(input.orderId, client);
   if (!order || order.restaurantId !== input.restaurantId) {
     throw new CheckMembershipError("Order not found for enrollment");
   }

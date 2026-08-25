@@ -10,6 +10,17 @@ export type PosSaleIdempotencyRecord = {
   displayReference: string;
   totalAmount: string;
   itemCount: number;
+  checkId: number;
+  subtotal: string;
+  taxAmount: string;
+  grandTotal: string;
+  billDiscountAmount: string;
+  lines: readonly {
+    description: string;
+    quantity: number;
+    netAmount: string;
+    originOrderItemId: number | null;
+  }[];
   createdAt: string;
 };
 

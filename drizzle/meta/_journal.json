@@ -687,6 +687,13 @@
       "when": 1785100000000,
       "tag": "0097_payment_collection_facts_production_purpose",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "5",
+      "when": 1785200000000,
+      "tag": "0098_pos_sale_idempotency_open_check",
+      "breakpoints": true
     }
   ]
 }

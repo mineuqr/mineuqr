@@ -33,15 +33,15 @@ describe("CASHIER-PAYMENT-FLOW-UX-CORRECTION-1 architecture", () => {
     expect(panel).not.toContain('t("taxAtPayment")');
   });
 
-  it("opens the Payment overlay before waiting for sale.create", () => {
+  it("opens the Payment overlay after sale.create persists the OPEN Check", () => {
     const panel = read(PANEL);
     const placeSaleFn = panel.slice(
       panel.indexOf("async function placeSale"),
       panel.indexOf("async function completePayment")
     );
     expect(panel).toContain('salePhase === "payment"');
-    expect(placeSaleFn.indexOf('setSalePhase("payment")')).toBeLessThan(
-      placeSaleFn.indexOf("saleMutation.mutateAsync")
+    expect(placeSaleFn.indexOf("saleMutation.mutateAsync")).toBeLessThan(
+      placeSaleFn.indexOf('setSalePhase("payment")')
     );
     expect(placeSaleFn).not.toContain("settleMutation");
     expect(panel).toContain("t(\"verifyingAmount\")");

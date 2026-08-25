@@ -1135,8 +1135,13 @@ export async function getOrdersWithItemsByRestaurant(
   );
 }
 
-export async function getOrderById(id: number) {
-  const db = await getDb();
+type OrderQueryClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+export async function getOrderById(
+  id: number,
+  client?: Pick<OrderQueryClient, "select">
+) {
+  const db = client ?? (await getDb());
   if (!db) return null;
   const [order] = await db.select().from(orders).where(eq(orders.id, id));
   return order || null;
@@ -1222,8 +1227,11 @@ export async function markOrderReadyAtIfFirstTransition(
     .where(and(eq(orders.id, orderId), isNull(orders.readyAt)));
 }
 
-export async function getOrderItemsByOrderId(orderId: number) {
-  const db = await getDb();
+export async function getOrderItemsByOrderId(
+  orderId: number,
+  client?: Pick<OrderQueryClient, "select">
+) {
+  const db = client ?? (await getDb());
   if (!db) return [];
   return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
 }

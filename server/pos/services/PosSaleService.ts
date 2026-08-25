@@ -18,8 +18,13 @@ import {
   timeOrderLifecyclePhase,
 } from "../../order/observability/orderLifecycleLatency";
 import type { SaveOrderResult } from "../../order/repositories/OrderRepository";
+import {
+  captureSnapshotsFromBusinessSettings,
+  createAndEnrollCashierPosOpenCheckInTransaction,
+  type CashierPosSaleOpenCheck,
+} from "../../operational-session/check";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
-import type { PosSaleIdempotencyStore } from "../infrastructure/PosSaleIdempotencyStore";
+import type { PosSaleIdempotencyRecord, PosSaleIdempotencyStore } from "../infrastructure/PosSaleIdempotencyStore";
 import {
   PosSaleIdempotencyConflictError,
   PosSaleIdempotencyUniqueCollisionError,
@@ -53,6 +58,20 @@ export type PosSaleCommand = {
   idempotencyKey: string;
 };
 
+export type PosSaleCheckLine = {
+  description: string;
+  quantity: number;
+  netAmount: string;
+  originOrderItemId: number | null;
+};
+
+export type PosSaleMoney = {
+  subtotal: string;
+  taxAmount: string;
+  grandTotal: string;
+  billDiscountAmount: string;
+};
+
 export type PosSaleResult = {
   orderId: number;
   orderNumber: string;
@@ -65,6 +84,10 @@ export type PosSaleResult = {
   terminalId: string;
   cashierUserId: number;
   replayed: boolean;
+  checkId: number;
+  outcome: "open";
+  money: PosSaleMoney;
+  lines: readonly PosSaleCheckLine[];
 };
 
 export type PosSaleSessionLookup = (
@@ -159,6 +182,52 @@ function fingerprintOf(command: {
     .digest("hex");
 }
 
+function replaySaleResult(
+  existing: PosSaleIdempotencyRecord,
+  context: { terminalId: string; userId: number }
+): PosSaleResult {
+  return {
+    orderId: existing.orderId,
+    orderNumber: existing.orderNumber,
+    trackingToken: existing.trackingToken,
+    displayReference: existing.displayReference,
+    totalAmount: existing.totalAmount,
+    itemCount: existing.itemCount,
+    createdAt: existing.createdAt,
+    orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+    terminalId: context.terminalId,
+    cashierUserId: context.userId,
+    replayed: true,
+    checkId: existing.checkId,
+    outcome: "open",
+    money: {
+      subtotal: existing.subtotal,
+      taxAmount: existing.taxAmount,
+      grandTotal: existing.grandTotal,
+      billDiscountAmount: existing.billDiscountAmount,
+    },
+    lines: existing.lines,
+  };
+}
+
+function moneyAndLinesFromEnrollment(enrolled: CashierPosSaleOpenCheck): {
+  money: PosSaleMoney;
+  lines: readonly PosSaleCheckLine[];
+} {
+  if (enrolled.check.outcome !== "open") {
+    throw new PosSaleError("check_not_open", "Sale Check must remain OPEN");
+  }
+  return {
+    money: {
+      subtotal: enrolled.check.subtotal,
+      taxAmount: enrolled.check.taxAmount,
+      grandTotal: enrolled.check.grandTotal,
+      billDiscountAmount: enrolled.check.billDiscountAmount,
+    },
+    lines: enrolled.lines,
+  };
+}
+
 function assertIdempotencyKey(key: string): void {
   if (!key.trim() || key.length < 8 || key.length > 128) {
     throw new PosSaleError("invalid_idempotency_key", "Idempotency key is required");
@@ -199,7 +268,21 @@ export class PosSaleService {
     private readonly access: PosAccessService,
     private readonly placeOrder: IdentityPlaceOrderService,
     private readonly idempotency: PosSaleIdempotencyStore,
-    private readonly sessionLookup: PosSaleSessionLookup = findSessionById
+    private readonly sessionLookup: PosSaleSessionLookup = findSessionById,
+    private readonly loadCheckSnapshots: (
+      restaurantId: number
+    ) => ReturnType<typeof captureSnapshotsFromBusinessSettings> = captureSnapshotsFromBusinessSettings,
+    private readonly enrollOpenCheck: (
+      input: {
+        restaurantId: number;
+        orderId: number;
+        billDiscountAmount?: string;
+        snapshots: Awaited<ReturnType<typeof captureSnapshotsFromBusinessSettings>>;
+      },
+      tx: Parameters<
+        typeof createAndEnrollCashierPosOpenCheckInTransaction
+      >[1]
+    ) => ReturnType<typeof createAndEnrollCashierPosOpenCheckInTransaction> = createAndEnrollCashierPosOpenCheckInTransaction
   ) {}
 
   async create(input: {
@@ -276,21 +359,11 @@ export class PosSaleService {
             "Idempotency key was already used for a different sale"
           );
         }
-        return {
-          orderId: existing.orderId,
-          orderNumber: existing.orderNumber,
-          trackingToken: existing.trackingToken,
-          displayReference: existing.displayReference,
-          totalAmount: existing.totalAmount,
-          itemCount: existing.itemCount,
-          createdAt: existing.createdAt,
-          orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
-          terminalId: context.terminalId,
-          cashierUserId: context.userId,
-          replayed: true,
-        };
+        return replaySaleResult(existing, context);
       }
 
+      const snapshots = await this.loadCheckSnapshots(context.restaurantId);
+      let enrolledOpenCheck: CashierPosSaleOpenCheck | null = null;
       const placed = await (async () => {
         try {
           // ORDER-LIFECYCLE-LATENCY-REMEDIATION-1 — POS sale HTTP must not
@@ -320,8 +393,23 @@ export class PosSaleService {
                 },
                 {
                   afterPersistInTransaction: async (tx, result) => {
-                    // POS-SALE-PERSISTENCE-INTERNAL-INSTRUMENTATION-1
-                    // Sibling of persist_ms / outbox_ms; not nested in persist_ms.
+                    const orderId = result.order.id;
+                    if (orderId == null) {
+                      throw new PosSaleError(
+                        "order_create_failed",
+                        "Order was not persisted"
+                      );
+                    }
+                    enrolledOpenCheck = await this.enrollOpenCheck(
+                      {
+                        restaurantId: context.restaurantId,
+                        orderId,
+                        snapshots,
+                      },
+                      tx as Parameters<
+                        typeof createAndEnrollCashierPosOpenCheckInTransaction
+                      >[1]
+                    );
                     await timeOrderLifecyclePhase("idempotency_put_ms", () =>
                       this.persistSaleMappingInTransaction(tx, result, {
                         restaurantId: context.restaurantId,
@@ -329,12 +417,12 @@ export class PosSaleService {
                         userId: context.userId,
                         idempotencyKey: input.command.idempotencyKey,
                         fingerprint,
+                        enrolled: enrolledOpenCheck,
                       })
                     );
                   },
-                  // Check enrollment is not required for sale success (errors
-                  // are already swallowed). Awaiting it blocks the cashier
-                  // HTTP response; Cashier orchestrates pos.check.intake.
+                  // Post-commit ensureCheckForOrder stays off the cashier HTTP
+                  // path. OPEN Check is written on this same Order transaction.
                   enrollCheck: false,
                 }
               ),
@@ -347,19 +435,7 @@ export class PosSaleService {
           ) {
             const winner = await this.idempotency.get(idempotencyKey);
             if (winner && winner.fingerprint === fingerprint) {
-              return {
-                orderId: winner.orderId,
-                orderNumber: winner.orderNumber,
-                trackingToken: winner.trackingToken,
-                displayReference: winner.displayReference,
-                totalAmount: winner.totalAmount,
-                itemCount: winner.itemCount,
-                createdAt: winner.createdAt,
-                orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
-                terminalId: context.terminalId,
-                cashierUserId: context.userId,
-                replayed: true,
-              };
+              return replaySaleResult(winner, context);
             }
             throw new PosSaleError(
               "idempotency_conflict",
@@ -378,10 +454,11 @@ export class PosSaleService {
       if (orderId == null) {
         throw new PosSaleError("order_create_failed", "Sale was not recorded");
       }
+      if (enrolledOpenCheck == null) {
+        throw new PosSaleError("check_create_failed", "Sale Check was not recorded");
+      }
+      const { money, lines } = moneyAndLinesFromEnrollment(enrolledOpenCheck);
 
-      // CASHIER-CHECKOUT-PRINT-FLOW-1 — mapping is already written in the
-      // Order save transaction. A post-commit idempotency.get is another
-      // round trip on the cashier HTTP path and is not required for safety.
       opsLog({
         type: "pos_sale_created",
         category: "ORDER",
@@ -392,6 +469,7 @@ export class PosSaleService {
         action: "pos.sale.create",
         metadata: {
           orderId,
+          checkId: enrolledOpenCheck.check.id,
           terminalId: context.terminalId,
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
           sessionPersistence: placed.sessionPersistence,
@@ -412,6 +490,10 @@ export class PosSaleService {
         terminalId: context.terminalId,
         cashierUserId: context.userId,
         replayed: false,
+        checkId: enrolledOpenCheck.check.id,
+        outcome: "open" as const,
+        money,
+        lines,
       };
     })
     );
@@ -426,12 +508,14 @@ export class PosSaleService {
       userId: number;
       idempotencyKey: string;
       fingerprint: string;
+      enrolled: CashierPosSaleOpenCheck;
     }
   ): Promise<void> {
     const orderId = result.order.id;
     if (orderId == null) {
       throw new PosSaleError("order_create_failed", "Order was not persisted");
     }
+    const { money, lines } = moneyAndLinesFromEnrollment(input.enrolled);
     const displayReference = resolveOrderDisplayIdentity({
       orderNumber: result.order.orderNumber,
       businessDay: result.businessIdentity?.businessDay ?? null,
@@ -452,6 +536,12 @@ export class PosSaleService {
       displayReference,
       totalAmount: result.order.totalAmount,
       itemCount: result.order.lines.reduce((sum, line) => sum + line.quantity, 0),
+      checkId: input.enrolled.check.id,
+      subtotal: money.subtotal,
+      taxAmount: money.taxAmount,
+      grandTotal: money.grandTotal,
+      billDiscountAmount: money.billDiscountAmount,
+      lines,
       createdAt: result.order.createdAt,
     });
   }

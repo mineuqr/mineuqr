@@ -182,7 +182,7 @@ async function reconcileOpenOrderChargesOnce(
     return { checkId, applied: false, blocked: "terminal" };
   }
 
-  const order = await getOrderById(input.orderId);
+  const order = await getOrderById(input.orderId, client);
   if (!order) {
     throw new ChargeCompositionError("Order not found for Charge snapshot");
   }
@@ -196,7 +196,7 @@ async function reconcileOpenOrderChargesOnce(
     { restaurantId: input.restaurantId, checkId },
     client
   );
-  const intended = await intendedLinesForOrder(order);
+  const intended = await intendedLinesForOrder(order, client);
   const plan = planOpenChargeCorrections({
     orderId: input.orderId,
     charges,
@@ -257,16 +257,19 @@ async function reconcileOpenOrderChargesOnce(
   return { checkId, applied: true };
 }
 
-async function intendedLinesForOrder(order: {
-  id: number;
-  status: string;
-  orderNumber?: string | null;
-  totalAmount?: string | number | null;
-}): Promise<IntendedChargeLine[]> {
+async function intendedLinesForOrder(
+  order: {
+    id: number;
+    status: string;
+    orderNumber?: string | null;
+    totalAmount?: string | number | null;
+  },
+  client?: SessionDbClient
+): Promise<IntendedChargeLine[]> {
   if (order.status === "cancelled") {
     return [];
   }
-  const items = (await getOrderItemsByOrderId(order.id)) ?? [];
+  const items = (await getOrderItemsByOrderId(order.id, client)) ?? [];
   if (items.length === 0) {
     const unitPrice = String(order.totalAmount ?? "0.00");
     if (parseChargeMoney(unitPrice) === 0) return [];

@@ -96,6 +96,7 @@ type DirectSale = {
   orderNumber: string;
   displayReference: string;
   totalAmount: string;
+  checkId: number;
 };
 
 type DirectSalePhase = "ticket" | "payment" | "paid";
@@ -204,14 +205,22 @@ export function CashierWorkspacePanel({
     setPrintOpen(false);
     const snapshot = readCashierDirectSale(restaurantId);
     if (snapshot) {
-      setDirectSale({
-        orderId: snapshot.orderId,
-        orderNumber: snapshot.orderNumber,
-        displayReference: snapshot.displayReference,
-        totalAmount: snapshot.totalAmount,
-      });
-      setSelectedOrderId(snapshot.orderId);
-      setSalePhase(snapshot.phase);
+      const checkId = snapshot.checkId;
+      const canResumePayment =
+        Number.isInteger(checkId) && (checkId as number) > 0;
+      setDirectSale(
+        canResumePayment
+          ? {
+              orderId: snapshot.orderId,
+              orderNumber: snapshot.orderNumber,
+              displayReference: snapshot.displayReference,
+              totalAmount: snapshot.totalAmount,
+              checkId: checkId as number,
+            }
+          : null
+      );
+      setSelectedOrderId(canResumePayment ? snapshot.orderId : null);
+      setSalePhase(canResumePayment ? snapshot.phase : "ticket");
       setPaymentMethod(snapshot.paymentMethod);
       setCashReceived(snapshot.cashReceived);
       setCardTender(snapshot.cardTender ?? "");
@@ -514,8 +523,7 @@ export function CashierWorkspacePanel({
   }
 
   async function placeSale() {
-    // Open Payment immediately. sale.create runs behind the sheet.
-    // Confirm is enabled from sale + tender + preview money — not Check readiness.
+    // Persist Order + OPEN Check first. Payment overlay is not money received.
     if (!terminalId || ticket.length === 0) return;
     if (saleInFlightRef.current || saleMutation.isPending) return;
     endCashierPaymentFlow("abandoned");
@@ -551,16 +559,11 @@ export function CashierWorkspacePanel({
         }),
       })
     );
-    setSalePhase("payment");
     cashierPaymentFlowTiming.mark(
       cashierFlowIdRef.current,
-      "CASHIER_PAYMENT_WORKFLOW_START"
+      "CASHIER_SALE_REQUEST_START"
     );
     try {
-      cashierPaymentFlowTiming.mark(
-        cashierFlowIdRef.current,
-        "CASHIER_SALE_REQUEST_START"
-      );
       const result = await saleMutation.mutateAsync({
         restaurantId,
         terminalId,
@@ -571,6 +574,9 @@ export function CashierWorkspacePanel({
         idempotencyKey: saleKeyRef.current,
       });
       saleKeyRef.current = null;
+      if (result.outcome !== "open" || !Number.isInteger(result.checkId) || result.checkId <= 0) {
+        throw new Error("Sale Check was not recorded");
+      }
       cashierPaymentFlowTiming.mark(
         cashierFlowIdRef.current,
         "CASHIER_SALE_RESPONSE"
@@ -579,27 +585,42 @@ export function CashierWorkspacePanel({
         cashierFlowIdRef.current,
         result.orderId
       );
+      cashierPaymentFlowTiming.attachCheckId(
+        cashierFlowIdRef.current,
+        result.checkId
+      );
       const sale: DirectSale = {
         orderId: result.orderId,
         orderNumber: result.orderNumber,
         displayReference: result.displayReference,
         totalAmount: result.totalAmount,
+        checkId: result.checkId,
       };
       settleKeyRef.current = newCashierIdempotencyKey("settle");
       paymentIntentRef.current = newCashierPaymentIntentId();
       setTicket([]);
       setSelectedOrderId(result.orderId);
-      setOpenCheck(null);
+      setOpenCheck({
+        checkId: result.checkId,
+        orderId: result.orderId,
+        outcome: "open",
+        replayed: result.replayed,
+      });
       setDirectSale(sale);
       persistDirectSaleSnapshot({
         sale,
         phase: "payment",
-        checkId: null,
+        checkId: result.checkId,
         paid: null,
         method: null,
         received: "",
         card: "",
       });
+      setSalePhase("payment");
+      cashierPaymentFlowTiming.mark(
+        cashierFlowIdRef.current,
+        "CASHIER_PAYMENT_WORKFLOW_START"
+      );
     } catch (error) {
       endCashierPaymentFlow("failed");
       setSalePhase("ticket");
@@ -773,6 +794,8 @@ export function CashierWorkspacePanel({
   const saleReady =
     salePhase === "payment" &&
     selectedOrderId != null &&
+    directSale?.checkId != null &&
+    directSale.checkId > 0 &&
     !saleMutation.isPending &&
     !paidCheckout;
   const previewGrandTotal =

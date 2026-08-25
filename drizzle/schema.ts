@@ -1991,6 +1991,19 @@ export const posSaleIdempotency = mysqlTable(
 		displayReference: varchar({ length: 64 }).notNull(),
 		totalAmount: varchar({ length: 16 }).notNull(),
 		itemCount: int().notNull(),
+		checkId: int().notNull(),
+		subtotal: varchar({ length: 16 }).notNull(),
+		taxAmount: varchar({ length: 16 }).notNull(),
+		grandTotal: varchar({ length: 16 }).notNull(),
+		billDiscountAmount: varchar({ length: 16 }).notNull(),
+		linesJson: json().$type<
+			ReadonlyArray<{
+				description: string;
+				quantity: number;
+				netAmount: string;
+				originOrderItemId: number | null;
+			}>
+		>().notNull(),
 		createdAt: timestamp({ mode: "string" }).notNull(),
 	},
 	(table) => [
