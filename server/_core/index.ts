@@ -38,6 +38,12 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
 
+    void import("../order/postConfirmOperationalRecovery")
+      .then(({ startPostConfirmOperationalRecoveryLoop }) => {
+        startPostConfirmOperationalRecoveryLoop();
+      })
+      .catch(() => undefined);
+
     void import("../services/commercial-catalog")
       .then(({ ensureCatalogReady }) => ensureCatalogReady())
       .then((r) => {

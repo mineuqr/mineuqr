@@ -35,19 +35,29 @@ function makeRecord(
   };
 }
 
+function mockOutbox(overrides: Partial<OutboxRepository> = {}): OutboxRepository {
+  return {
+    appendInTransaction: vi.fn(),
+    fetchPendingBatch: vi.fn(async () => []),
+    markPublished: vi.fn(async () => true),
+    markPublishFailed: vi.fn(),
+    countPending: vi.fn(async () => 0),
+    requeueFailedBatch: vi.fn(async () => 0),
+    ...overrides,
+  };
+}
+
 describe("OrderEventRelay", () => {
   it("publishes pending records in occurred-at / sequence order", async () => {
     const published: string[] = [];
-    const outbox: OutboxRepository = {
-      appendInTransaction: vi.fn(),
+    const outbox = mockOutbox({
       fetchPendingBatch: vi.fn(async () => [
         makeRecord({ id: "a", eventId: "e1", sequenceNumber: 1 }),
         makeRecord({ id: "b", eventId: "e2", sequenceNumber: 2 }),
       ]),
       markPublished: vi.fn(async () => true),
-      markPublishFailed: vi.fn(),
       countPending: vi.fn(async () => 2),
-    };
+    });
     const publisher: EventPublisher = {
       publish: vi.fn(async (env) => {
         published.push(env.eventId);
@@ -62,15 +72,13 @@ describe("OrderEventRelay", () => {
   });
 
   it("skips duplicate publication when markPublished loses race", async () => {
-    const outbox: OutboxRepository = {
-      appendInTransaction: vi.fn(),
+    const outbox = mockOutbox({
       fetchPendingBatch: vi.fn(async () => [
         makeRecord({ id: "a", eventId: "e1" }),
       ]),
       markPublished: vi.fn(async () => false),
-      markPublishFailed: vi.fn(),
       countPending: vi.fn(async () => 1),
-    };
+    });
     const publisher: EventPublisher = {
       publish: vi.fn(async () => undefined),
     };
@@ -83,15 +91,13 @@ describe("OrderEventRelay", () => {
   });
 
   it("schedules retry with exponential backoff on publish failure", async () => {
-    const outbox: OutboxRepository = {
-      appendInTransaction: vi.fn(),
+    const outbox = mockOutbox({
       fetchPendingBatch: vi.fn(async () => [
         makeRecord({ id: "a", eventId: "e1", publishAttempts: 1 }),
       ]),
       markPublished: vi.fn(),
-      markPublishFailed: vi.fn(),
       countPending: vi.fn(async () => 1),
-    };
+    });
     const publisher: EventPublisher = {
       publish: vi.fn(async () => {
         throw new Error("broker down");
@@ -110,15 +116,13 @@ describe("OrderEventRelay", () => {
   });
 
   it("marks dead-letter after max publish attempts", async () => {
-    const outbox: OutboxRepository = {
-      appendInTransaction: vi.fn(),
+    const outbox = mockOutbox({
       fetchPendingBatch: vi.fn(async () => [
         makeRecord({ id: "a", eventId: "e1", publishAttempts: 4 }),
       ]),
       markPublished: vi.fn(),
-      markPublishFailed: vi.fn(),
       countPending: vi.fn(async () => 1),
-    };
+    });
     const publisher: EventPublisher = {
       publish: vi.fn(async () => {
         throw new Error("still failing");
@@ -133,6 +137,35 @@ describe("OrderEventRelay", () => {
       "still failing",
       null,
       true
+    );
+  });
+
+  it("isolates publish failure so a later pending event still publishes", async () => {
+    const published: string[] = [];
+    const outbox = mockOutbox({
+      fetchPendingBatch: vi.fn(async () => [
+        makeRecord({ id: "a", eventId: "e1", sequenceNumber: 1 }),
+        makeRecord({ id: "b", eventId: "e2", sequenceNumber: 2 }),
+      ]),
+      countPending: vi.fn(async () => 2),
+    });
+    const publisher: EventPublisher = {
+      publish: vi.fn(async (env) => {
+        if (env.eventId === "e1") throw new Error("first invoice failed");
+        published.push(env.eventId);
+      }),
+    };
+
+    const relay = new OrderEventRelay(outbox, publisher, new NoOpEventInfrastructureMetrics());
+    const result = await relay.processBatch(10);
+
+    expect(result).toEqual({ processed: 2, published: 1, failed: 1, skipped: 0 });
+    expect(published).toEqual(["e2"]);
+    expect(outbox.markPublishFailed).toHaveBeenCalledWith(
+      "a",
+      "first invoice failed",
+      expect.any(String),
+      false
     );
   });
 });

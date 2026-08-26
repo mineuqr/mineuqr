@@ -1,7 +1,8 @@
 /**
  * Starts non-financial downstream work after a payment fact has committed.
- * This is deliberately best-effort: it does not retry, poll, schedule work,
- * or influence the paid result returned to Cashier.
+ * Does not influence the paid result returned to Cashier.
+ * Retry/recovery of undelivered Check work is owned by
+ * recoverCashierPosDownstreamSettlements, not this helper.
  */
 export function dispatchBestEffortDownstreamDelivery(input: {
   delivery: () => Promise<void>;

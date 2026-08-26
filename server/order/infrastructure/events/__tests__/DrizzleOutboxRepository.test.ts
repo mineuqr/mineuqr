@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import { getDb } from "../../../../db";
 import { DrizzleOutboxRepository } from "../outbox/DrizzleOutboxRepository";
 import { domainEventsToOutboxInputs } from "../outbox/domainEventsToOutbox";
 import type { OrderCreatedEvent } from "../../../domain/events/OrderDomainEvents";
+
+vi.mock("../../../../db", () => ({
+  getDb: vi.fn(),
+}));
 
 describe("DrizzleOutboxRepository.appendInTransaction", () => {
   it("assigns monotonic sequence numbers per aggregate in one batch", async () => {
@@ -41,5 +46,36 @@ describe("DrizzleOutboxRepository.appendInTransaction", () => {
 
     expect(inserted.map((r) => r.sequenceNumber)).toEqual([3]);
     expect(inserted[0]!.eventType).toBe("OrderCreated");
+  });
+});
+
+describe("DrizzleOutboxRepository.requeueFailedBatch", () => {
+  it("moves failed rows back to pending without inventing a status", async () => {
+    const where = vi.fn(async () => undefined);
+    const set = vi.fn(() => ({ where }));
+    vi.mocked(getDb).mockResolvedValue({
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            orderBy: vi.fn(() => ({
+              limit: vi.fn(async () => [{ id: "failed-1" }]),
+            })),
+          })),
+        })),
+      })),
+      update: vi.fn(() => ({ set })),
+    } as never);
+
+    const repo = new DrizzleOutboxRepository();
+    const moved = await repo.requeueFailedBatch(25);
+
+    expect(moved).toBe(1);
+    expect(set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "pending",
+        publishAttempts: 0,
+        nextRetryAt: null,
+      })
+    );
   });
 });

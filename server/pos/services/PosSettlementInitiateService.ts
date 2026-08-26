@@ -32,6 +32,7 @@ import {
 import { CheckMembershipError } from "../../operational-session/check/checkMembershipService";
 import { findBlockingMembershipForOrder } from "../../operational-session/check/checkOrderMembershipRepository";
 import { confirmPayment } from "../../operational-session/payment/PaymentConfirmService";
+import { scheduleCashierPosOperationalSettlementAfterPaid } from "../../operational-session/payment/recoverCashierPosDownstreamSettlement";
 import { buildCashierPaidReceiptProjection } from "../../operational-session/payment/cashierPaidReceiptProjection";
 import type { CashierPaidReceiptProjection } from "../../operational-session/payment/cashierPaidReceiptProjection";
 import { mapOrderItemsToReceiptInvoiceLines } from "../../operational-session/payment/cashierPosOrderFreeze";
@@ -562,6 +563,29 @@ function resultFrom(fields: {
   };
 }
 
+function scheduleReplayDownstream(input: {
+  restaurantId: number;
+  orderId: number;
+  command: PosSettlementInitiateCommand;
+  settlementContext: SettlementContext;
+  registerId: string;
+  operatorUserId: number;
+  deviceId?: string | null;
+}): void {
+  scheduleCashierPosOperationalSettlementAfterPaid({
+    restaurantId: input.restaurantId,
+    orderId: input.orderId,
+    billDiscountAmount: input.command.billDiscountAmount,
+    settlements: resolveCommandSettlements(input.command),
+    settlementContext: input.settlementContext,
+    settlementContextHints: {
+      registerId: input.registerId,
+      operatorUserId: input.operatorUserId,
+      deviceId: input.deviceId,
+    },
+  });
+}
+
 export class PosSettlementInitiateService {
   constructor(
     private readonly grants: PosPermissionGrantStore,
@@ -783,6 +807,15 @@ export class PosSettlementInitiateService {
             cashierDisplayName: input.user.name,
             terminalId: context.terminalId,
           });
+          scheduleReplayDownstream({
+            restaurantId: context.restaurantId,
+            orderId: persistedOrder.id,
+            command: input.command,
+            settlementContext: crmp.settlementContext,
+            registerId: operational.registerId,
+            operatorUserId: context.userId,
+            deviceId: operational.deviceId,
+          });
           void this.idempotency
             .put({
               restaurantId: context.restaurantId,
@@ -907,6 +940,15 @@ export class PosSettlementInitiateService {
           cashierDisplayName: input.user.name,
           terminalId: context.terminalId,
         });
+        scheduleReplayDownstream({
+          restaurantId: context.restaurantId,
+          orderId: order.id,
+          command: input.command,
+          settlementContext: crmp.settlementContext,
+          registerId: operational.registerId,
+          operatorUserId: context.userId,
+          deviceId: operational.deviceId,
+        });
         void this.idempotency.put({
           restaurantId: context.restaurantId,
           terminalId: context.terminalId,
@@ -986,6 +1028,15 @@ export class PosSettlementInitiateService {
             cashierDisplayName: input.user.name,
             terminalId: context.terminalId,
           });
+          scheduleReplayDownstream({
+            restaurantId: context.restaurantId,
+            orderId: order.id,
+            command: input.command,
+            settlementContext: crmp.settlementContext,
+            registerId: operational.registerId,
+            operatorUserId: context.userId,
+            deviceId: operational.deviceId,
+          });
           void this.idempotency.put({
             restaurantId: context.restaurantId,
             terminalId: context.terminalId,
@@ -1035,6 +1086,15 @@ export class PosSettlementInitiateService {
               cashierUserId: context.userId,
               cashierDisplayName: input.user.name,
               terminalId: context.terminalId,
+            });
+            scheduleReplayDownstream({
+              restaurantId: context.restaurantId,
+              orderId: order.id,
+              command: input.command,
+              settlementContext: crmp.settlementContext,
+              registerId: operational.registerId,
+              operatorUserId: context.userId,
+              deviceId: operational.deviceId,
             });
             void this.idempotency.put({
               restaurantId: context.restaurantId,

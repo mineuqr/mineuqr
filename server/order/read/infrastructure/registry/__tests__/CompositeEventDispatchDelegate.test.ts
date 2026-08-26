@@ -123,4 +123,42 @@ describe("CompositeEventDispatchDelegate", () => {
     expect(result.eventId).toBe("evt-composite-1");
     expect(result.results).toHaveLength(1);
   });
+
+  it("fails dispatch when a projection consumer fails so outbox stays pending", async () => {
+    const integrationRegistry = new OrderEventConsumerRegistry(
+      new InMemoryConsumerIdempotencyStore(),
+      new NoOpEventConsumerMetrics()
+    );
+    integrationRegistry.register({
+      consumer: makeIntegrationConsumer("OrderKitchenConsumer", vi.fn()),
+      enabled: true,
+      registrationOrder: 10,
+      executionPolicy: "parallel",
+    });
+
+    const projectionRegistry = new OrderProjectionConsumerRegistry(
+      new InMemoryProjectionConsumerIdempotencyStore(),
+      new NoOpProjectionConsumerMetrics()
+    );
+    projectionRegistry.register({
+      consumer: makeProjectionConsumer(
+        "ActiveOrdersProjectionConsumer",
+        vi.fn(async () => {
+          throw new Error("read model write failed");
+        })
+      ),
+      enabled: true,
+      registrationOrder: 10,
+      executionPolicy: "parallel",
+    });
+
+    const composite = new CompositeEventDispatchDelegate(
+      integrationRegistry,
+      projectionRegistry
+    );
+
+    await expect(composite.dispatch(envelope())).rejects.toThrow(
+      "Order read projection failed: ActiveOrdersProjectionConsumer"
+    );
+  });
 });

@@ -412,7 +412,7 @@ export const posRouter = router({
       .input(settlementInitiateInput)
       .mutation(async ({ input, ctx }) => {
         try {
-          return await getPosSettlementInitiateService().initiate({
+          const result = await getPosSettlementInitiateService().initiate({
             user: ctx.user,
             command: {
               restaurantId: input.restaurantId,
@@ -426,6 +426,11 @@ export const posRouter = router({
               billDiscountAmount: input.billDiscountAmount,
             },
           });
+          const { schedulePostConfirmOperationalRecovery } = await import(
+            "../../order/postConfirmOperationalRecovery"
+          );
+          schedulePostConfirmOperationalRecovery();
+          return result;
         } catch (err) {
           mapPosError(err);
         }

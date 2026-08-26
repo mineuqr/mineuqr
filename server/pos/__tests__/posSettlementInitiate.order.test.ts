@@ -20,9 +20,13 @@ import type { PosPermission } from "@shared/pos";
 import type { SettlementContext } from "@shared/crmp";
 import { PosRegisterShiftContextService } from "../services/PosRegisterShiftContextService";
 import { findProductionCollectionFactByOrderId } from "../../operational-session/payment/collection-fact/collectionFactRepository";
+import { scheduleCashierPosOperationalSettlementAfterPaid } from "../../operational-session/payment/recoverCashierPosDownstreamSettlement";
 
 vi.mock("../../operational-session/payment/collection-fact/collectionFactRepository", () => ({
   findProductionCollectionFactByOrderId: vi.fn(async () => null),
+}));
+vi.mock("../../operational-session/payment/recoverCashierPosDownstreamSettlement", () => ({
+  scheduleCashierPosOperationalSettlementAfterPaid: vi.fn(),
 }));
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
@@ -305,6 +309,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     });
     mockLimit(2);
     vi.mocked(findProductionCollectionFactByOrderId).mockResolvedValue(null);
+    vi.mocked(scheduleCashierPosOperationalSettlementAfterPaid).mockClear();
   });
 
   it("lets an authorized cashier initiate settlement on the existing open Check", async () => {
@@ -534,6 +539,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     const result = await service.initiate({ user: user(STAFF_A), command });
     expect(result.replayed).toBe(true);
     expect(settle).toHaveBeenCalledTimes(1);
+    expect(scheduleCashierPosOperationalSettlementAfterPaid).not.toHaveBeenCalled();
   });
 
   it("does not block Cashier Confirm on a complimentary or voided Check when no Collection Fact exists", async () => {
@@ -631,6 +637,12 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(result.paidReceipt?.tenders).toEqual([
       { paymentMethod: "cash", amount: GRAND_TOTAL },
     ]);
+    expect(scheduleCashierPosOperationalSettlementAfterPaid).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: RESTAURANT_A,
+        orderId: ORDER_A,
+      })
+    );
   });
 
   it("replays an existing production Collection Fact that has no Check reference", async () => {
@@ -661,6 +673,12 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(result.outcome).toBe("paid");
     expect(result.checkId).toBe(0);
     expect(settle).not.toHaveBeenCalled();
+    expect(scheduleCashierPosOperationalSettlementAfterPaid).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: RESTAURANT_A,
+        orderId: ORDER_A,
+      })
+    );
   });
 
   it("forwards existing Check settlement lines for a split payment mix", async () => {

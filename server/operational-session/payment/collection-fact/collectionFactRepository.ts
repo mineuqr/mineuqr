@@ -3,8 +3,10 @@
  * Drizzle Collection Fact repository. Insert + retrieve only. No money UPDATE.
  */
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, notExists, sql } from "drizzle-orm";
 import {
+  checkOrderMembership,
+  operationalChecks,
   paymentCollectionFacts,
   type SelectPaymentCollectionFact,
 } from "../../../../drizzle/schema";
@@ -214,6 +216,53 @@ export async function findProductionCollectionFactByOrderId(
     .orderBy(asc(paymentCollectionFacts.committedAt))
     .limit(1);
   return row ? mapRowToCollectionFact(row) : null;
+}
+
+/** Production Cashier CFs whose Order has no paid/complimentary Check yet. */
+export async function listCashierPosProductionFactsAwaitingDownstreamSettlement(
+  limit: number
+): Promise<Array<{ restaurantId: number; orderId: number }>> {
+  const db = await getDb();
+  if (!db) return [];
+  const take = Math.min(Math.max(limit, 0), 50);
+  if (take === 0) return [];
+  const completeMembership = db
+    .select({ present: sql`1` })
+    .from(checkOrderMembership)
+    .innerJoin(
+      operationalChecks,
+      and(
+        eq(checkOrderMembership.checkId, operationalChecks.id),
+        eq(operationalChecks.restaurantId, checkOrderMembership.restaurantId)
+      )
+    )
+    .where(
+      and(
+        eq(checkOrderMembership.orderId, paymentCollectionFacts.orderId),
+        eq(checkOrderMembership.restaurantId, paymentCollectionFacts.restaurantId),
+        eq(checkOrderMembership.active, 1),
+        inArray(operationalChecks.outcome, ["paid", "complimentary"])
+      )
+    );
+  const rows = await db
+    .select({
+      restaurantId: paymentCollectionFacts.restaurantId,
+      orderId: paymentCollectionFacts.orderId,
+    })
+    .from(paymentCollectionFacts)
+    .where(
+      and(
+        eq(paymentCollectionFacts.purpose, COLLECTION_FACT_PRODUCTION_PURPOSE),
+        eq(
+          paymentCollectionFacts.orderingChannel,
+          ORDERING_CHANNEL_CASHIER_POS
+        ),
+        notExists(completeMembership)
+      )
+    )
+    .orderBy(asc(paymentCollectionFacts.committedAt))
+    .limit(take);
+  return rows;
 }
 
 export async function findCollectionFactByFactId(

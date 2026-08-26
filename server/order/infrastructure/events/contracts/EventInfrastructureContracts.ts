@@ -27,6 +27,12 @@ export interface OutboxRepository {
 
   /** Count pending for queue depth metrics. */
   countPending(): Promise<number>;
+
+  /**
+   * Re-queue dead-lettered rows as pending so durable recovery can retry.
+   * Does not invent statuses. Returns how many rows moved failed → pending.
+   */
+  requeueFailedBatch(limit: number): Promise<number>;
 }
 
 export interface EventStore {

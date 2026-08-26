@@ -16,6 +16,15 @@ export type CompositeDispatchResult = RegistryDispatchResult & {
   projection: ProjectionRegistryDispatchResult;
 };
 
+function assertProjectionDispatchSucceeded(
+  result: ProjectionRegistryDispatchResult
+): void {
+  const failed = result.results.filter((row) => !row.success);
+  if (failed.length === 0) return;
+  const names = failed.map((row) => row.consumerName).join(",");
+  throw new Error(`Order read projection failed: ${names}`);
+}
+
 /**
  * Chains integration + projection dispatch without coupling consumer implementations.
  * Wired via eventInfrastructureComposition when projections are enabled (Phase 3B).
@@ -34,7 +43,7 @@ export class CompositeEventDispatchDelegate implements ConsumerRegistryDispatchD
     const projectionStarted = Date.now();
     const projectionResult = await this.projectionRegistry.dispatchProjections(envelope);
     const projectionMs = Date.now() - projectionStarted;
-    void projectionResult;
+    assertProjectionDispatchSucceeded(projectionResult);
 
     if (getOrderLifecycleLatencyContext()) {
       noteOrderLifecyclePhase("integration_dispatch_ms", integrationMs);
@@ -49,6 +58,7 @@ export class CompositeEventDispatchDelegate implements ConsumerRegistryDispatchD
   async dispatchWithDetails(envelope: EventEnvelope): Promise<CompositeDispatchResult> {
     const integration = await this.integrationRegistry.dispatch(envelope);
     const projection = await this.projectionRegistry.dispatchProjections(envelope);
+    assertProjectionDispatchSucceeded(projection);
     return { ...integration, projection };
   }
 }
