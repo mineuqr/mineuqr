@@ -224,6 +224,9 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
     expect(persist).not.toContain("onDuplicateKeyUpdate");
     expect(repo).toContain("commitOpenShift");
     expect(repo).toContain("GREATEST(lastNumber");
+    const allocate = repo.slice(persistEnd);
+    expect(allocate).not.toContain("|| 1");
+    expect(allocate).not.toContain("onDuplicateKeyUpdate");
     expect(domain).toContain("commitOpenShift");
     expect(domain).toContain("closeDuty");
   });

@@ -10,6 +10,11 @@ import {
 import { createDrizzleCrmpUnitOfWork } from "../DrizzleCrmpRepository";
 import { isMysqlDuplicateKeyError } from "../crmpMysqlErrors";
 
+/** Live drizzle/mysql2 execute() shape for SELECT LAST_INSERT_ID() AS n. */
+function drizzleLastInsertIdTuple(n: number) {
+  return [[{ n }], [{ name: "n" }]];
+}
+
 function thenableSelect(rows: unknown[]) {
   const chain = {
     from: () => chain,
@@ -45,7 +50,7 @@ describe("createDrizzleCrmpUnitOfWork commitOpenShift", () => {
     const inserted: unknown[] = [];
     const allocated = 2;
     const tx = {
-      execute: vi.fn(async () => [{ n: allocated }]),
+      execute: vi.fn(async () => drizzleLastInsertIdTuple(allocated)),
       select: vi.fn((shape: Record<string, unknown>) => {
         if (shape && "n" in shape) return thenableSelect([{ n: 1 }]);
         return thenableSelect([
@@ -135,9 +140,58 @@ describe("createDrizzleCrmpUnitOfWork commitOpenShift", () => {
     expect(children?.[0]?.financialShiftId).toBe("fsh_new");
   });
 
+  it("does not invent shiftNumber 1 when LAST_INSERT_ID() is unreadable", async () => {
+    const tx = {
+      execute: vi.fn(async () => [[], []]),
+      select: vi.fn((shape: Record<string, unknown>) => {
+        if (shape && "n" in shape) return thenableSelect([{ n: 1 }]);
+        return thenableSelect([]);
+      }),
+      insert: vi.fn(),
+      delete: vi.fn(),
+      update: vi.fn(),
+    };
+    const db = {
+      transaction: async (fn: (txClient: typeof tx) => Promise<unknown>) =>
+        fn(tx),
+    };
+    const uow = createDrizzleCrmpUnitOfWork(async () => db as never);
+    await expect(
+      uow.commitOpenShift({
+        restaurantId: 1,
+        registerId: "reg_1",
+        createShift: (shiftNumber) => ({
+          financialShiftId: "fsh_new",
+          shiftNumber,
+          restaurantId: 1,
+          registerId: "reg_1",
+          operatorUserId: 10,
+          status: "open",
+          openingFloatAmount: "0.00",
+          currencyCode: "SAR",
+          drawer: {
+            drawerId: "drw_1",
+            currencyCode: "SAR",
+            movements: [],
+            counts: [],
+          },
+          handover: null,
+          attributions: [],
+          version: 1,
+          openedAt: "t0",
+          closedAt: null,
+          closeReason: null,
+          archivedAt: null,
+          updatedAt: "t0",
+        }),
+      })
+    ).rejects.toThrow(/Failed to allocate shiftNumber/);
+    expect(tx.insert).not.toHaveBeenCalled();
+  });
+
   it("maps unique shift-number collision to CONFLICT and does not update the existing row", async () => {
     const tx = {
-      execute: vi.fn(async () => [{ n: 1 }]),
+      execute: vi.fn(async () => drizzleLastInsertIdTuple(1)),
       select: vi.fn((shape: Record<string, unknown>) => {
         if (shape && "n" in shape) return thenableSelect([{ n: 1 }]);
         return thenableSelect([]);
@@ -191,7 +245,7 @@ describe("createDrizzleCrmpUnitOfWork commitOpenShift", () => {
   it("rolls back when child persist fails after header insert begins", async () => {
     let rolledBack = false;
     const tx = {
-      execute: vi.fn(async () => [{ n: 2 }]),
+      execute: vi.fn(async () => drizzleLastInsertIdTuple(2)),
       select: vi.fn((shape: Record<string, unknown>) => {
         if (shape && "n" in shape) return thenableSelect([{ n: 1 }]);
         return thenableSelect([
