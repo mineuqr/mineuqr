@@ -57,11 +57,12 @@ describe("CASHIER-CHECKOUT-LATENCY-AND-SPLIT-TENDER-1 architecture guards", () =
       panel.indexOf("function returnToDashboard")
     );
     expect(completeFn.indexOf("settleMutation.mutateAsync")).toBeLessThan(
-      completeFn.indexOf("setPaidCheckout")
+      completeFn.indexOf("setPaidReceipt")
     );
-    expect(completeFn.indexOf("setPaidCheckout")).toBeLessThan(
-      completeFn.indexOf('setSalePhase("paid")')
+    expect(completeFn.indexOf("setPaidReceipt")).toBeLessThan(
+      completeFn.indexOf("setPrintOpen(true)")
     );
+    expect(completeFn).not.toContain('setSalePhase("paid")');
     expect(completeFn).not.toContain("await orchestrateIntake");
   });
 

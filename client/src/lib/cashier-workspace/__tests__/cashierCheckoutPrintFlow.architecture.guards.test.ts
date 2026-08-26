@@ -14,7 +14,12 @@ function read(rel: string): string {
 const PANEL = "client/src/components/cashier-workspace/CashierWorkspacePanel.tsx";
 const COPY = "client/src/lib/cashier-workspace/cashierCopy.ts";
 const SALE = "server/pos/services/PosSaleService.ts";
-const RECEIPT = "client/src/components/settlement-record/SettlementReceiptDialog.tsx";
+const RECEIPT =
+  "client/src/components/cashier-workspace/CashierPaidReceiptDialog.tsx";
+const SESSION_RECEIPT =
+  "client/src/components/settlement-record/SettlementReceiptDialog.tsx";
+const HISTORY =
+  "client/src/components/settlement-record/SettlementHistoryPanel.tsx";
 
 describe("CASHIER-CHECKOUT-PRINT-FLOW-1 architecture guards", () => {
   it("cancels payment presentation without financial mutations", () => {
@@ -54,24 +59,47 @@ describe("CASHIER-CHECKOUT-PRINT-FLOW-1 architecture guards", () => {
     expect(completeFn).not.toContain('idempotencyKey: newCashierIdempotencyKey("settle")');
     expect(completeFn).toContain("settleMutation.mutateAsync");
     expect(completeFn.indexOf("settleMutation.mutateAsync")).toBeLessThan(
-      completeFn.indexOf("setPaidCheckout")
+      completeFn.indexOf("setPaidReceipt")
     );
     expect(completeFn).not.toContain("window.print()");
   });
 
-  it("prints from Settlement Record after Paid and hides Cashier chrome", () => {
+  it("prints the preserved paid invoice after HTTP success without Settlement Record", () => {
     const panel = read(PANEL);
     const receipt = read(RECEIPT);
-    expect(panel).toContain("SettlementReceiptDialog");
+    const completeFn = panel.slice(
+      panel.indexOf("async function completePayment"),
+      panel.indexOf("function returnToDashboard")
+    );
+    const startNewSaleFn = panel.slice(
+      panel.indexOf("function startNewSale"),
+      panel.indexOf("function cancelPaymentSheet")
+    );
+    expect(panel).toContain("CashierPaidReceiptDialog");
+    expect(panel).not.toContain("SettlementReceiptDialog");
     expect(panel).toContain("print:hidden");
     expect(panel.indexOf("print:hidden")).toBeLessThan(
-      panel.indexOf("<SettlementReceiptDialog")
+      panel.indexOf("<CashierPaidReceiptDialog")
     );
+    expect(completeFn).toContain("buildCashierPaidReceiptSnapshot");
+    expect(completeFn).toContain("startNewSale()");
+    expect(completeFn).toContain("setPaidReceipt(receipt)");
+    expect(completeFn).toContain("setPrintOpen(true)");
+    expect(completeFn.indexOf("startNewSale()")).toBeLessThan(
+      completeFn.indexOf("setPrintOpen(true)")
+    );
+    expect(completeFn).not.toContain("if (paid.settlementRecordId)");
+    expect(completeFn).not.toContain("settlementRecord.getReceipt");
+    expect(startNewSaleFn).not.toContain("setPrintOpen(false)");
+    expect(startNewSaleFn).not.toContain("setPaidReceipt");
     expect(panel).not.toContain("تأكيد الدفع والطباعة");
     expect(panel).not.toContain("pos_revenue");
     expect(panel).not.toContain("pos_sales");
-    expect(receipt).toContain("useSettlementRecordReceipt");
+    expect(receipt).not.toContain("useSettlementRecordReceipt");
+    expect(receipt).not.toContain("settlementRecord.getReceipt");
     expect(receipt).toContain("window.print()");
+    expect(read(HISTORY)).toContain("SettlementReceiptDialog");
+    expect(read(SESSION_RECEIPT)).toContain("useSettlementRecordReceipt");
     expect(read("client/src/lib/settlement-record-presentation/useSettlementRecordQueries.ts")).toContain(
       "trpc.settlementRecord.getReceipt"
     );

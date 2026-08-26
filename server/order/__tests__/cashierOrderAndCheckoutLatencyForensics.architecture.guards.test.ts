@@ -50,7 +50,7 @@ describe("CASHIER-ORDER-AND-CHECKOUT-LATENCY-FORENSICS-1 architecture guards", (
       panel.indexOf("function returnToDashboard")
     );
     expect(completeFn.indexOf("settleMutation.mutateAsync")).toBeLessThan(
-      completeFn.indexOf("setPaidCheckout")
+      completeFn.indexOf("setPaidReceipt")
     );
     expect(completeFn).not.toContain("await orchestrateIntake");
   });

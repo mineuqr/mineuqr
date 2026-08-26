@@ -55,7 +55,7 @@ describe("CASHIER-POS-CHECK-READ-CONTRACT-1 architecture", () => {
     expect(completeFn).not.toContain("directSale?.totalAmount");
     expect(completeFn).not.toContain("outstandingAmount");
     expect(completeFn.indexOf("settleMutation.mutateAsync")).toBeLessThan(
-      completeFn.indexOf("setPaidCheckout")
+      completeFn.indexOf("setPaidReceipt")
     );
     expect(sale).toContain("awaitRelay: false");
     expect(sale).toContain("enrollCheck: false");

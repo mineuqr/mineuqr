@@ -90,7 +90,7 @@ describe("CASHIER-UX-FULLSCREEN-AND-THEME-1 architecture guards", () => {
     expect(panel).toContain("trpc.pos.sale.create");
     expect(panel).toContain("trpc.pos.settlement.initiate");
     expect(panel).toContain("trpc.pos.settlement.initiate");
-    expect(panel).toContain("SettlementReceiptDialog");
+    expect(panel).toContain("CashierPaidReceiptDialog");
     expect(panel).toContain("cancelPaymentSheet");
     expect(panel).not.toContain("pos_revenue");
     expect(panel).not.toMatch(/SUM\s*\(\s*grandTotal/);

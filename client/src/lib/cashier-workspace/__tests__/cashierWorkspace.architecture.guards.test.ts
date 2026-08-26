@@ -67,7 +67,7 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
     expect(panel).toContain("tenderCash");
     expect(panel).toContain('section: "register"');
     expect(panel).toContain("syncDashboardUrl");
-    expect(panel).toContain("SettlementReceiptDialog");
+    expect(panel).toContain("CashierPaidReceiptDialog");
     expect(panel).toContain("cancelPaymentSheet");
     expect(panel).toContain("resumePaymentSheet");
     expect(panel).toContain("settleKeyRef");
