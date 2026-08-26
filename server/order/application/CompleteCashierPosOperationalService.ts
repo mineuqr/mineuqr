@@ -3,11 +3,11 @@
  * Walks cashier_pos Orders to served using existing lifecycle transitions.
  * Does not invent statuses. Settlement guard runs before any walk step.
  */
-import { assertOrderCompletable } from "../../operational-session/check/lifecycleSettlementGuardService";
 import { InvalidTransitionError } from "../domain/errors/OrderDomainErrors";
 import type { OrderActor } from "../domain/value-objects/OrderActor";
 import type { OrderStatus } from "../domain/value-objects/OrderStatus";
 import type { AdvanceOrderStatusService } from "./AdvanceOrderStatusService";
+import { assertCashierPosOrderCompletable } from "./cashierPosOperationalCompletionGuard";
 import {
   isCashierPosOrderingChannel,
   nextCashierPosServeStep,
@@ -53,10 +53,9 @@ export class CompleteCashierPosOperationalService {
       throw new InvalidTransitionError(previousStatus, "served");
     }
 
-    await assertOrderCompletable({
+    await assertCashierPosOrderCompletable({
       restaurantId: input.restaurantId,
       orderId: input.orderId,
-      sessionId: input.sessionId,
     });
 
     const targetStatuses: OrderStatus[] = [];
@@ -77,6 +76,7 @@ export class CompleteCashierPosOperationalService {
       orderId: input.orderId,
       targetStatuses,
       actor: input.actor,
+      settlementAlreadyAsserted: true,
     });
 
     return { previousStatus, newStatus: walked.newStatus };

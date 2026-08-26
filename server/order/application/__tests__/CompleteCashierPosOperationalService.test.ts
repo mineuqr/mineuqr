@@ -4,12 +4,12 @@ import { CompleteCashierPosOperationalService } from "../CompleteCashierPosOpera
 import type { AdvanceOrderStatusService } from "../AdvanceOrderStatusService";
 
 const guardMocks = vi.hoisted(() => ({
-  assertOrderCompletable: vi.fn(),
+  assertCashierPosOrderCompletable: vi.fn(),
 }));
 
-vi.mock("../../../operational-session/check/lifecycleSettlementGuardService", () => ({
-  assertOrderCompletable: (...a: unknown[]) =>
-    guardMocks.assertOrderCompletable(...a),
+vi.mock("../cashierPosOperationalCompletionGuard", () => ({
+  assertCashierPosOrderCompletable: (...a: unknown[]) =>
+    guardMocks.assertCashierPosOrderCompletable(...a),
 }));
 
 const actor = {
@@ -26,7 +26,7 @@ describe("CompleteCashierPosOperationalService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    guardMocks.assertOrderCompletable.mockResolvedValue(undefined);
+    guardMocks.assertCashierPosOrderCompletable.mockResolvedValue(undefined);
     advance = {
       execute: vi.fn(async ({ targetStatus }) => ({
         events: [],
@@ -57,7 +57,7 @@ describe("CompleteCashierPosOperationalService", () => {
   });
 
   it("checks settlement before walking so unpaid POS is not left mid-lifecycle", async () => {
-    guardMocks.assertOrderCompletable.mockRejectedValue(
+    guardMocks.assertCashierPosOrderCompletable.mockRejectedValue(
       new LifecycleSettlementGuardError(
         "ORDER_REQUIRES_SETTLEMENT",
         "Cannot complete order before settlement."
@@ -91,6 +91,7 @@ describe("CompleteCashierPosOperationalService", () => {
       orderId: 8,
       targetStatuses: ["preparing", "ready", "served"],
       actor,
+      settlementAlreadyAsserted: true,
     });
     expect(result).toEqual({ previousStatus: "pending", newStatus: "served" });
   });

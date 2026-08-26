@@ -37,7 +37,8 @@ describe("CASHIER-ORDER-AND-CHECKOUT-LATENCY-FORENSICS-1 architecture guards", (
     const advance = read("server/order/application/AdvanceOrderStatusService.ts");
     expect(complete).toContain("executeSequential");
     expect(complete).toContain("nextCashierPosServeStep");
-    expect(complete).toContain("assertOrderCompletable");
+    expect(complete).toContain("assertCashierPosOrderCompletable");
+    expect(complete).toContain("settlementAlreadyAsserted: true");
     expect(advance).toContain("async executeSequential");
   });
 

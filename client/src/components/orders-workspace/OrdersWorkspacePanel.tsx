@@ -28,6 +28,7 @@ import {
   useSavedFilters,
 } from "@/lib/operational-workspace/useSavedFilters";
 import { useGracePeriod } from "@/lib/operational-workspace/useGracePeriod";
+import { retainCashierPosOperationalGraceItem } from "@/lib/operational-workspace/cashierPosGraceRetain";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 import {
   isSessionlessSelfOrderingOrder,
@@ -176,10 +177,14 @@ export function OrdersWorkspacePanel({
     },
   });
 
-  const orderActions = useOrderStatusActions(restaurantId, () => {
-    // Pending cleared here; list refresh is optimistic + non-blocking invalidate.
-    setPendingActionOrderId(null);
-  });
+  const orderActions = useOrderStatusActions(
+    restaurantId,
+    () => {
+      // Pending cleared here; list refresh is optimistic + non-blocking invalidate.
+      setPendingActionOrderId(null);
+    },
+    { language }
+  );
   const orderActionsRef = useRef(orderActions);
   orderActionsRef.current = orderActions;
 
@@ -191,7 +196,11 @@ export function OrdersWorkspacePanel({
     return rows;
   }, [listQuery.data, active?.status]);
 
-  const { displayItems, isFading } = useGracePeriod(items, (o) => String(o.orderId));
+  const { displayItems, isFading } = useGracePeriod(
+    items,
+    (o) => String(o.orderId),
+    { retainRemoved: retainCashierPosOperationalGraceItem }
+  );
 
   const settlementGateFor = useCallback(
     (order: {
@@ -285,6 +294,8 @@ export function OrdersWorkspacePanel({
 
   const handleAction = useCallback(
     async (orderId: number, actionId: OperationalActionId) => {
+      if (orderActionsRef.current.isPending) return;
+
       const order =
         displayItems.find((o) => o.orderId === orderId) ??
         (selectedOrderId === orderId ? detailQuery.data?.order : undefined);
@@ -330,7 +341,13 @@ export function OrdersWorkspacePanel({
       }
 
       setPendingActionOrderId(orderId);
-      await orderActionsRef.current.executeAction(orderId, actionId);
+      try {
+        await orderActionsRef.current.executeAction(orderId, actionId);
+      } catch {
+        // Error toast is owned by useOrderStatusActions; restore retry.
+      } finally {
+        setPendingActionOrderId(null);
+      }
     },
     [
       displayItems,

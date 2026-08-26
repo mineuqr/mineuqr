@@ -39,7 +39,7 @@ describe("ORDERS-POS-KITCHEN-LIFECYCLE-1 architecture guards", () => {
     );
     const routers = read("server/routers.ts");
     const policy = read("server/order/domain/policies/OrderLifecyclePolicy.ts");
-    expect(complete).toContain("assertOrderCompletable");
+    expect(complete).toContain("assertCashierPosOrderCompletable");
     expect(complete).toContain("nextCashierPosServeStep");
     expect(routers).toContain("completeCashierPosOperationalService");
     expect(policy).toContain('pending: ["preparing", "cancelled"]');

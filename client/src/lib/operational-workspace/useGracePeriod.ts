@@ -19,11 +19,26 @@ function graceMapsEqual<T>(a: Map<string, GraceEntry<T>>, b: Map<string, GraceEn
   return true;
 }
 
-export function useGracePeriod<T>(items: T[], keyFn: (item: T) => string) {
+export type GracePeriodOptions<T> = {
+  /**
+   * ORDERS-SERVE-ACTION-UX-AND-STATE-FIX-1
+   * When false, a removed item is not re-inserted as a live-looking snapshot.
+   * Default retains the existing 45s grace for non-terminal cases.
+   */
+  retainRemoved?: (item: T) => boolean;
+};
+
+export function useGracePeriod<T>(
+  items: T[],
+  keyFn: (item: T) => string,
+  options?: GracePeriodOptions<T>
+) {
   const [grace, setGrace] = useState<Map<string, GraceEntry<T>>>(new Map());
   const prevItemsRef = useRef<T[]>([]);
   const keyFnRef = useRef(keyFn);
   keyFnRef.current = keyFn;
+  const retainRemovedRef = useRef(options?.retainRemoved);
+  retainRemovedRef.current = options?.retainRemoved;
 
   useEffect(() => {
     const resolveKey = (item: T) => keyFnRef.current(item);
@@ -48,6 +63,9 @@ export function useGracePeriod<T>(items: T[], keyFn: (item: T) => string) {
       for (const item of prevItems) {
         const key = resolveKey(item);
         if (!currentKeys.has(key)) {
+          if (retainRemovedRef.current?.(item) === false) {
+            continue;
+          }
           ensureNext().set(key, { item, removedAt: now });
         }
       }

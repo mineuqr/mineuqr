@@ -16,12 +16,17 @@ describe("CASHIER-ORDER-AND-CHECKOUT-LATENCY-FORENSICS-1 client guards", () => {
     const actions = read(
       "client/src/lib/operational-workspace/useOrderStatusActions.ts"
     );
+    const cache = read(
+      "client/src/lib/operational-workspace/orderStatusActionCache.ts"
+    );
     const panel = read(
       "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx"
     );
-    expect(actions).toContain("{ restaurantId, limit: 100 }");
-    expect(actions).toContain("status: undefined");
-    expect(actions).toContain('status: "pending"');
+    expect(cache).toContain("{ restaurantId, limit: 100 }");
+    expect(cache).toContain("status: undefined");
+    expect(cache).toContain('status: "pending"');
+    expect(actions).toContain("listActiveInputsFor");
+    expect(actions).toContain("patchListActive");
     expect(panel).toContain("trpc.order.read.listActive.useQuery");
     expect(panel).toContain("limit: 100");
   });

@@ -29,8 +29,8 @@ describe("operationalActions", () => {
     expect(served.some((a) => a.id === "restore-order")).toBe(false);
   });
 
-  it("cashier_pos operational list offers تم التقديم and never Cancel", () => {
-    for (const status of ["pending", "preparing", "ready", "served"] as const) {
+  it("cashier_pos operational list offers تم التقديم until served, never Cancel", () => {
+    for (const status of ["pending", "preparing", "ready"] as const) {
       const actions = getOrdersWorkspaceActions(status, {
         sessionless: true,
         unpaidSessionless: true,
@@ -39,6 +39,13 @@ describe("operationalActions", () => {
       expect(actions.map((a) => a.id), status).toEqual(["serve-order"]);
       expect(actions[0]?.labelAr).toBe("تم التقديم");
     }
+    expect(
+      getOrdersWorkspaceActions("served", {
+        sessionless: true,
+        unpaidSessionless: false,
+        orderingChannel: "cashier_pos",
+      })
+    ).toEqual([]);
     expect(
       getOrdersWorkspaceActions("cancelled", {
         sessionless: true,

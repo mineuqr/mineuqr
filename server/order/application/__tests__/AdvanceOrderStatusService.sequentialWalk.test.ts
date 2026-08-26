@@ -95,4 +95,19 @@ describe("AdvanceOrderStatusService.executeSequential", () => {
     expect(repo.save).not.toHaveBeenCalled();
     expect(result.newStatus).toBe("served");
   });
+
+  it("skips Check-only settlement when cashier POS already asserted", async () => {
+    const order = makeWalkOrder("ready");
+    vi.mocked(repo.findById).mockResolvedValue(order as never);
+
+    await svc.executeSequential({
+      orderId: 8,
+      targetStatuses: ["served"],
+      actor: { type: "staff", userId: 1 } as never,
+      settlementAlreadyAsserted: true,
+    });
+
+    expect(guardMocks.assertOrderCompletable).not.toHaveBeenCalled();
+    expect(repo.save).toHaveBeenCalledTimes(1);
+  });
 });

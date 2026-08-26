@@ -1,7 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 import type { OperationalActionId } from "./operationalActions";
-import type { RouterOutputs } from "@/lib/trpc";
 import {
   beginOrderLifecycleClientTrace,
   endOrderLifecycleClientTrace,
@@ -16,8 +15,13 @@ import {
   clearOrderStatusWriteConfirmation,
   confirmOrderStatusWrite,
 } from "@shared/read-freshness";
-
-type ListActiveData = RouterOutputs["order"]["read"]["listActive"];
+import { toast } from "sonner";
+import { formatOrderStatusActionError } from "./orderStatusActionError";
+import {
+  listActiveInputsFor,
+  patchListActive,
+  patchOrderDetail,
+} from "./orderStatusActionCache";
 
 const ACTION_MAP: Partial<
   Record<OperationalActionId, { targetStatus: OrderLifecycleStatus }>
@@ -31,62 +35,49 @@ const ACTION_MAP: Partial<
   // settle-self-ordering — money path; not order.updateStatus
 };
 
-function listActiveInputsFor(restaurantId: number) {
-  return [
-    { restaurantId, limit: 100 },
-    { restaurantId, status: undefined, limit: 100 },
-    { restaurantId, status: "pending" as const, limit: 100 },
-    { restaurantId, status: "preparing" as const, limit: 100 },
-    { restaurantId, status: "ready" as const, limit: 100 },
-  ];
-}
-
-function patchListActive(
-  data: ListActiveData | undefined,
-  orderId: number,
-  status: OrderLifecycleStatus
-): ListActiveData | undefined {
-  if (!data?.items) return data;
-  const terminal = status === "served" || status === "cancelled";
-  return {
-    ...data,
-    items: terminal
-      ? data.items.filter((item) => item.orderId !== orderId)
-      : data.items.map((item) =>
-          item.orderId === orderId ? { ...item, status } : item
-        ),
-  };
-}
-
 /**
  * ORDER-LIFECYCLE-LATENCY-REMEDIATION-1
  * Optimistic listActive patch + non-blocking invalidate; deferred server relay.
  *
  * ORDER-STATE-PROPAGATION-REMEDIATION-1
  * Confirm write watermark so structuralSharing rejects stale projection refetches.
+ *
+ * ORDERS-SERVE-ACTION-UX-AND-STATE-FIX-1
+ * Reconcile getDetail and surface updateStatus failures.
  */
-export function useOrderStatusActions(restaurantId: number, onSuccess?: () => void) {
+export function useOrderStatusActions(
+  restaurantId: number,
+  onSuccess?: () => void,
+  options?: { language?: string }
+) {
   const utils = trpc.useUtils();
+  const language = options?.language ?? "en";
 
   const mutation = trpc.order.updateStatus.useMutation({
     onMutate: async ({ id, status }) => {
       const inputs = listActiveInputsFor(restaurantId);
-      await Promise.all(
-        inputs.map((input) => utils.order.read.listActive.cancel(input))
-      );
+      const detailInput = { restaurantId, orderId: id };
+      await Promise.all([
+        ...inputs.map((input) => utils.order.read.listActive.cancel(input)),
+        utils.order.read.getDetail.cancel(detailInput),
+      ]);
       const snapshots = inputs.map((input) => ({
         input,
         data: utils.order.read.listActive.getData(input),
       }));
+      const detailSnapshot = utils.order.read.getDetail.getData(detailInput);
       confirmOrderStatusWrite(id, status);
       for (const { input } of snapshots) {
         utils.order.read.listActive.setData(input, (old) =>
           patchListActive(old, id, status)
         );
       }
-      return { snapshots, orderId: id };
+      utils.order.read.getDetail.setData(detailInput, (old) =>
+        patchOrderDetail(old, status)
+      );
+      return { snapshots, detailInput, detailSnapshot, orderId: id };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (err, _vars, ctx) => {
       const active = getActiveOrderLifecycleClientTrace();
       markOrderLifecycleClient(active, "mutation_error");
       if (ctx?.orderId != null) {
@@ -97,6 +88,10 @@ export function useOrderStatusActions(restaurantId: number, onSuccess?: () => vo
           utils.order.read.listActive.setData(input, data);
         }
       }
+      if (ctx?.detailInput) {
+        utils.order.read.getDetail.setData(ctx.detailInput, ctx.detailSnapshot);
+      }
+      toast.error(formatOrderStatusActionError(err, language));
       endOrderLifecycleClientTrace(active, "error");
     },
     onSuccess: (result, vars) => {
@@ -120,6 +115,10 @@ export function useOrderStatusActions(restaurantId: number, onSuccess?: () => vo
       const invStarted = orderLifecycleNowMs();
       void Promise.all([
         utils.order.read.listActive.invalidate({ restaurantId }),
+        utils.order.read.getDetail.invalidate({
+          restaurantId,
+          orderId: vars.id,
+        }),
         utils.kitchen.read.getQueue.invalidate({ restaurantId, status: "all" }),
       ]).finally(() => {
         noteOrderLifecycleClientPhase(

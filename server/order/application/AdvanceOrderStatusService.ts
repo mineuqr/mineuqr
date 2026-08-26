@@ -105,6 +105,13 @@ export class AdvanceOrderStatusService {
     orderId: number;
     targetStatuses: readonly OrderStatus[];
     actor: OrderActor;
+    /**
+     * ORDERS-SERVE-ACTION-UX-AND-STATE-FIX-1
+     * Cashier POS complete already asserted listActive-aligned settlement.
+     * Skip the Check-only sessionless guard so a production Collection Fact
+     * is not rejected mid-walk.
+     */
+    settlementAlreadyAsserted?: boolean;
   }): Promise<AdvanceOrderStatusResult> {
     const order = await this.repository.findById(command.orderId);
     if (!order) {
@@ -127,7 +134,7 @@ export class AdvanceOrderStatusService {
       if (order.status === targetStatus) {
         continue;
       }
-      if (targetStatus === "served") {
+      if (targetStatus === "served" && !command.settlementAlreadyAsserted) {
         await assertOrderCompletable({
           restaurantId: order.restaurantId,
           orderId: command.orderId,

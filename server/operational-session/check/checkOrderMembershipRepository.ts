@@ -25,6 +25,37 @@ async function resolveDb(client?: SessionDbClient): Promise<SessionDbClient> {
 
 export type MembershipRow = SelectCheckOrderMembership;
 
+/** Active membership on a paid or complimentary Check (operational complete). */
+export async function findFinanciallyCompleteMembershipForOrder(
+  restaurantId: number,
+  orderId: number,
+  client?: SessionDbClient
+): Promise<{ membership: MembershipRow; checkOutcome: string } | null> {
+  const db = await resolveDb(client);
+  const rows = await db
+    .select({
+      membership: checkOrderMembership,
+      checkOutcome: operationalChecks.outcome,
+    })
+    .from(checkOrderMembership)
+    .innerJoin(
+      operationalChecks,
+      eq(checkOrderMembership.checkId, operationalChecks.id)
+    )
+    .where(
+      and(
+        eq(checkOrderMembership.restaurantId, restaurantId),
+        eq(checkOrderMembership.orderId, orderId),
+        eq(checkOrderMembership.active, 1),
+        inArray(operationalChecks.outcome, ["paid", "complimentary"])
+      )
+    )
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return { membership: row.membership, checkOutcome: row.checkOutcome };
+}
+
 /** Active membership on a non-void Check (blocks second enrollment). */
 export async function findBlockingMembershipForOrder(
   restaurantId: number,

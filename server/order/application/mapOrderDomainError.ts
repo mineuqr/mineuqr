@@ -12,7 +12,11 @@ import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
 
 export function mapOrderDomainErrorToTrpc(error: unknown): never {
   if (error instanceof LifecycleSettlementGuardError) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: error.message,
+      cause: error,
+    });
   }
   if (error instanceof PlaceOrderNotesValidationError) {
     throw new TRPCError({ code: "BAD_REQUEST", message: error.message });

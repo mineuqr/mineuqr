@@ -72,8 +72,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
       unpaidSessionless: false,
       orderingChannel: "cashier_pos",
     });
-    expect(paidServed.map((a) => a.id)).toEqual(["serve-order"]);
-    expect(paidServed[0]?.labelAr).toBe("تم التقديم");
+    expect(paidServed.map((a) => a.id)).toEqual([]);
   });
 
   it("keeps Waiter / Table QR sessioned cancel unchanged", () => {

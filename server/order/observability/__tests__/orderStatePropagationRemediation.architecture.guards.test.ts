@@ -36,8 +36,9 @@ describe("ORDER-STATE-PROPAGATION-REMEDIATION-1", () => {
     const actions = read(
       "client/src/lib/operational-workspace/useOrderStatusActions.ts"
     );
-    expect(actions).toContain("confirmOrderStatusWrite");
-    expect(actions).toContain("clearOrderStatusWriteConfirmation");
+    expect(actions).toContain("utils.order.read.getDetail.invalidate");
+    expect(actions).toContain("formatOrderStatusActionError");
+    expect(actions).toContain("toast.error");
   });
 
   it("BroadcastChannel ignores same-tab publisher", () => {
