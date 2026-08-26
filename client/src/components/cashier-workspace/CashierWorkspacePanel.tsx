@@ -1,7 +1,8 @@
 /**
  * POS-CASHIER-WORKSPACE-IMPLEMENTATION-1
  * Restaurant Dashboard cashier workspace. Presentation + existing POS tRPC only.
- * Does not own Order, Check, Settlement, Register, or Reporting.
+ * CASHIER-SALE-INVOICE-UX-REALIGNMENT-1 — left workspace is SALE/INVOICE.
+ * Prepared invoice is sale.create money/lines. Payment reviews that invoice.
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -38,6 +39,7 @@ import {
 } from "@/lib/cashier-workspace/cashierDirectSaleStorage";
 import {
   buildCashierPaidReceiptSnapshot,
+  formatCashierReceiptDateTime,
   type CashierPaidReceiptSnapshot,
 } from "@/lib/cashier-workspace/cashierPaidReceipt";
 import {
@@ -50,9 +52,15 @@ import {
   cashierDisplayTaxPolicy,
   displayCashierTicketMoney,
 } from "@/lib/cashier-workspace/cashierTicketMoney";
+import {
+  buildDraftCashierInvoiceView,
+  buildPreparedCashierInvoiceView,
+  mapSaleCreateLinesToInvoiceLines,
+  type CashierInvoiceLineView,
+  type CashierSaleCreateMoney,
+} from "@/lib/cashier-workspace/cashierInvoiceView";
 import type { CashierTenderMode } from "@/lib/cashier-workspace/cashierTenderMode";
 import {
-  displayMoneyTimesQuantity,
   displayTicketTotal,
   isPositiveDisplayMoney,
 } from "@/lib/cashier-workspace/cashierTicketTotals";
@@ -67,6 +75,7 @@ import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import type { CheckMoneyResult } from "@shared/operational-session";
 import type { SelectablePaymentMethod } from "@shared/operational-session";
+import { projectCashierSaleInvoiceMoney } from "@shared/operational-session";
 import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -100,6 +109,9 @@ type DirectSale = {
   orderNumber: string;
   displayReference: string;
   totalAmount: string;
+  createdAt: string;
+  money: CashierSaleCreateMoney;
+  lines: readonly CashierInvoiceLineView[];
 };
 
 type DirectSalePhase = "ticket" | "payment" | "paid";
@@ -219,6 +231,14 @@ export function CashierWorkspacePanel({
               orderNumber: snapshot.orderNumber,
               displayReference: snapshot.displayReference,
               totalAmount: snapshot.totalAmount,
+              createdAt: snapshot.invoice?.createdAt ?? "",
+              money: snapshot.invoice?.money ?? {
+                subtotal: snapshot.totalAmount,
+                taxAmount: "0.00",
+                grandTotal: snapshot.totalAmount,
+                billDiscountAmount: "0.00",
+              },
+              lines: snapshot.invoice?.lines ?? [],
             }
           : null
       );
@@ -319,8 +339,8 @@ export function CashierWorkspacePanel({
       enabled:
         scoped &&
         allowed &&
-        selectedOrderId != null &&
-        (salePhase !== "ticket" || ordersOpen),
+        ordersOpen &&
+        selectedOrderId != null,
     }
   );
   const checkQuery = trpc.pos.read.check.getByOrder.useQuery(
@@ -333,8 +353,8 @@ export function CashierWorkspacePanel({
       enabled:
         scoped &&
         allowed &&
-        selectedOrderId != null &&
-        salePhase !== "ticket",
+        ordersOpen &&
+        selectedOrderId != null,
     }
   );
 
@@ -396,6 +416,7 @@ export function CashierWorkspacePanel({
     price: string;
   }) {
     setTicket((current) => {
+      if (directSale) return current;
       const existing = current.find((line) => line.menuItemId === item.menuItemId);
       if (!existing) return [...current, { ...item, quantity: 1 }];
       return current.map((line) =>
@@ -407,6 +428,7 @@ export function CashierWorkspacePanel({
   }
 
   function changeQty(menuItemId: number, delta: number) {
+    if (directSale) return;
     setTicket((current) =>
       current
         .map((line) =>
@@ -448,7 +470,7 @@ export function CashierWorkspacePanel({
       return;
     }
     writeCashierDirectSale(restaurantId, {
-      v: 1,
+      v: 2,
       orderId: sale.orderId,
       orderNumber: sale.orderNumber,
       displayReference: sale.displayReference,
@@ -461,6 +483,11 @@ export function CashierWorkspacePanel({
       paymentMethod: next?.method === undefined ? paymentMethod : next.method,
       cashReceived: next?.received ?? cashReceived,
       cardTender: next?.card ?? cardTender,
+      invoice: {
+        createdAt: sale.createdAt,
+        money: sale.money,
+        lines: sale.lines,
+      },
       paid: next?.paid === undefined ? paidCheckout : next.paid,
     });
   }
@@ -583,6 +610,9 @@ export function CashierWorkspacePanel({
         orderNumber: result.orderNumber,
         displayReference: result.displayReference,
         totalAmount: result.totalAmount,
+        createdAt: result.createdAt,
+        money: result.money,
+        lines: mapSaleCreateLinesToInvoiceLines(result.lines, ticket),
       };
       settleKeyRef.current = newCashierIdempotencyKey("settle");
       paymentIntentRef.current = newCashierPaymentIntentId();
@@ -764,8 +794,40 @@ export function CashierWorkspacePanel({
     billDiscountAmount: appliedDiscount,
     taxPolicySnapshot,
   });
-  const settlementRow = (settlementQuery.data ?? [])[0];
-  const orderCheck = checkQuery.data ?? null;
+  const cashierDisplayName = user?.name?.trim() ?? "";
+  const invoiceView = directSale
+    ? buildPreparedCashierInvoiceView({
+        orderId: directSale.orderId,
+        orderNumber: directSale.orderNumber,
+        displayReference: directSale.displayReference,
+        createdAt: directSale.createdAt,
+        money: directSale.money,
+        lines: directSale.lines,
+        cashierDisplayName,
+        terminalId,
+      })
+    : buildDraftCashierInvoiceView({
+        ticket,
+        previewMoney: (() => {
+          if (!ticketTotal) return null;
+          const projected = projectCashierSaleInvoiceMoney({
+            chargesSubtotal: ticketTotal,
+            billDiscountAmount: appliedDiscount,
+            taxPolicySnapshot,
+          });
+          return {
+            subtotal: projected.subtotal,
+            discountAmount: projected.billDiscountAmount,
+            taxAmount: projected.taxAmount,
+            grandTotal: projected.grandTotal,
+          };
+        })(),
+        cashierDisplayName,
+        terminalId,
+      });
+  const invoiceWhen = invoiceView.createdAt
+    ? formatCashierReceiptDateTime(invoiceView.createdAt, language)
+    : null;
   const effectiveCashTender =
     tenderMode === "network" || tenderMode == null ? "" : cashReceived;
   const effectiveCardTender =
@@ -778,6 +840,7 @@ export function CashierWorkspacePanel({
     !saleMutation.isPending &&
     !paidCheckout;
   const previewGrandTotal =
+    invoiceView.money?.grandTotal ??
     paymentDisplayMoney?.grandTotal ??
     ticketMoney?.grandTotal ??
     null;
@@ -789,12 +852,12 @@ export function CashierWorkspacePanel({
     paymentSubmitting: settleMutation.isPending || paymentBusy,
   });
   const amountDue = paymentReadiness.amountDue;
-  const sheetMoney = paidCheckout
+  const sheetMoney = invoiceView.money
     ? {
-        subtotal: orderCheck?.subtotal ?? paymentDisplayMoney?.subtotal ?? "",
-        discount: orderCheck?.billDiscountAmount ?? appliedDiscount,
-        taxAmount: orderCheck?.taxAmount ?? paymentDisplayMoney?.taxAmount ?? "",
-        grandTotal: paidCheckout.grandTotal,
+        subtotal: invoiceView.money.subtotal,
+        discount: invoiceView.money.discountAmount,
+        taxAmount: invoiceView.money.taxAmount,
+        grandTotal: invoiceView.money.grandTotal,
       }
     : paymentDisplayMoney
       ? {
@@ -1105,6 +1168,7 @@ export function CashierWorkspacePanel({
                             price: item.price,
                           })
                         }
+                        disabled={Boolean(directSale)}
                       >
                         {imageSrc ? (
                           <img src={imageSrc} alt="" className={cashierPos.productImage} />
@@ -1125,74 +1189,125 @@ export function CashierWorkspacePanel({
 
           <aside className={cashierPos.aside}>
             <div className={cashierPos.ticket}>
-              <h2 className="mb-2 text-sm font-semibold text-[#111827]">{t("ticket")}</h2>
-              {ticket.length === 0 ? (
+              <h2 className="mb-2 text-sm font-semibold text-[#111827]">
+                {t("saleInvoice")}
+              </h2>
+              <div className="mb-3 space-y-0.5 text-xs text-[#6b7280]">
+                <p>
+                  {t("receiptInvoiceNumber")}:{" "}
+                  {invoiceView.displayReference ?? t("invoiceNew")}
+                </p>
+                <p>
+                  {t("receiptDate")}: {invoiceWhen?.date || "—"}
+                </p>
+                <p>
+                  {t("receiptTime")}: {invoiceWhen?.time || "—"}
+                </p>
+                {invoiceView.cashierDisplayName ? (
+                  <p>
+                    {t("receiptCashier")}: {invoiceView.cashierDisplayName}
+                  </p>
+                ) : null}
+                {selectedTerminalCode ? (
+                  <p>
+                    {t("terminal")}: {selectedTerminalCode}
+                  </p>
+                ) : null}
+              </div>
+              {invoiceView.lines.length === 0 ? (
                 <p className="text-sm text-[#6b7280]">{t("ticketEmpty")}</p>
               ) : (
                 <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto">
-                  {ticket.map((line) => (
-                    <li key={line.menuItemId} className={cashierPos.ticketLine}>
+                  <li className="flex justify-between gap-2 px-1 text-xs text-[#6b7280]">
+                    <span>{t("receiptItems")}</span>
+                    <span>
+                      {t("receiptQty")} · {t("receiptUnitPrice")} ·{" "}
+                      {t("invoiceLineTotal")}
+                    </span>
+                  </li>
+                  {invoiceView.lines.map((line) => {
+                    const menuItemId = line.menuItemId;
+                    return (
+                    <li key={line.key} className={cashierPos.ticketLine}>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-[#111827]">
-                          {language === "ar" ? line.nameAr : line.nameEn ?? line.nameAr}
+                          {language === "ar" ? line.nameAr : line.nameEn}
                         </p>
                         <p className="text-xs text-[#6b7280]">
-                          {line.price} × {line.quantity}
+                          {line.unitPrice} × {line.quantity}
                         </p>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          className="size-11"
-                          aria-label={
-                            line.quantity === 1 ? t("removeLine") : t("qty")
-                          }
-                          onClick={() => changeQty(line.menuItemId, -1)}
-                        >
-                          {line.quantity === 1 ? <Trash2 /> : <Minus />}
-                        </Button>
+                      {invoiceView.editable && menuItemId != null ? (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="size-11"
+                            aria-label={
+                              line.quantity === 1 ? t("removeLine") : t("qty")
+                            }
+                            onClick={() => changeQty(menuItemId, -1)}
+                          >
+                            {line.quantity === 1 ? <Trash2 /> : <Minus />}
+                          </Button>
+                          <span className="w-8 text-center text-sm font-semibold text-[#111827]">
+                            {line.quantity}
+                          </span>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="size-11"
+                            aria-label={t("qty")}
+                            onClick={() => changeQty(menuItemId, 1)}
+                          >
+                            <Plus />
+                          </Button>
+                        </div>
+                      ) : (
                         <span className="w-8 text-center text-sm font-semibold text-[#111827]">
                           {line.quantity}
                         </span>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          className="size-11"
-                          aria-label={t("qty")}
-                          onClick={() => changeQty(line.menuItemId, 1)}
-                        >
-                          <Plus />
-                        </Button>
-                      </div>
+                      )}
                       <p className="w-16 text-end text-sm font-semibold tabular-nums text-[#111827]">
-                        {displayMoneyTimesQuantity(line.price, line.quantity)}
+                        {line.lineTotal}
                       </p>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
               <div className={cashierPos.totalBox}>
                 <p className="flex justify-between text-sm text-[#6b7280]">
                   <span>{t("ticketSubtotal")}</span>
                   <span className="tabular-nums">
-                    {money(ticketMoney?.subtotal ?? ticketTotal ?? "0.00")}
+                    {money(
+                      invoiceView.money?.subtotal ??
+                        ticketMoney?.subtotal ??
+                        ticketTotal ??
+                        "0.00"
+                    )}
                   </span>
                 </p>
                 <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
                   <span>{t("ticketDiscount")}</span>
                   <span className="tabular-nums">
-                    {isPositiveDisplayMoney(appliedDiscount)
-                      ? `-${money(appliedDiscount)}`
+                    {isPositiveDisplayMoney(
+                      sheetMoney?.discount ?? appliedDiscount
+                    )
+                      ? `-${money(sheetMoney?.discount ?? appliedDiscount)}`
                       : money("0.00")}
                   </span>
                 </p>
                 <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
                   <span>{t("paymentTax")}</span>
                   <span className="tabular-nums">
-                    {money(ticketMoney?.taxAmount ?? "0.00")}
+                    {money(
+                      sheetMoney?.taxAmount ??
+                        ticketMoney?.taxAmount ??
+                        "0.00"
+                    )}
                   </span>
                 </p>
                 <p className="mt-2 flex items-end justify-between">
@@ -1200,10 +1315,15 @@ export function CashierWorkspacePanel({
                     {t("ticketTotal")}
                   </span>
                   <span className={cashierPos.totalValue}>
-                    {money(ticketMoney?.grandTotal ?? ticketTotal ?? "0.00")}
+                    {money(
+                      sheetMoney?.grandTotal ??
+                        ticketMoney?.grandTotal ??
+                        ticketTotal ??
+                        "0.00"
+                    )}
                   </span>
                 </p>
-                {discountOpen ? (
+                {discountOpen && invoiceView.editable ? (
                   <div className="mt-3 flex gap-2">
                     <input
                       className={cashierPos.moneyInput}
@@ -1247,7 +1367,7 @@ export function CashierWorkspacePanel({
                       {t("clearDiscount")}
                     </Button>
                   </div>
-                ) : (
+                ) : invoiceView.editable ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -1262,13 +1382,25 @@ export function CashierWorkspacePanel({
                   >
                     {t("applyDiscount")}
                   </Button>
-                )}
+                ) : null}
               </div>
               <Button
                 type="button"
                 className={cn(cashierPos.primaryAction, "mt-3")}
-                disabled={ticket.length === 0 || saleMutation.isPending || !terminalId}
-                onClick={() => void placeSale()}
+                disabled={
+                  saleMutation.isPending ||
+                  !terminalId ||
+                  (directSale
+                    ? Boolean(paidCheckout)
+                    : ticket.length === 0)
+                }
+                onClick={() => {
+                  if (directSale && !paidCheckout) {
+                    resumePaymentSheet();
+                    return;
+                  }
+                  void placeSale();
+                }}
               >
                 <ShoppingCart />
                 {t("placeSale")}
@@ -1355,7 +1487,9 @@ export function CashierWorkspacePanel({
           <div className={cashierPos.sheet} dir={dir}>
                 <h2 className="text-lg font-semibold">{t("completePaymentTitle")}</h2>
                 {directSale ? (
-                  <p className="mt-1 text-sm text-[#6b7280]">{directSale.displayReference}</p>
+                  <p className="mt-1 text-sm text-[#6b7280]">
+                    {t("receiptInvoiceNumber")}: {directSale.displayReference}
+                  </p>
                 ) : null}
                 {sheetMoney ? (
                   <div className="mt-4 space-y-1">
@@ -1387,14 +1521,6 @@ export function CashierWorkspacePanel({
                       ? money(sheetMoney.grandTotal)
                       : money("0.00")}
                 </p>
-                {settlementRow &&
-                settlementRow.settledAmount &&
-                settlementRow.settledAmount !== "0.00" ? (
-                  <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
-                    <span>{t("collectedAmount")}</span>
-                    <span className="tabular-nums">{money(settlementRow.settledAmount)}</span>
-                  </p>
-                ) : null}
                 {saleMutation.isPending ? (
                   <p className="mt-1 text-xs text-[#6b7280]">{t("verifyingAmount")}</p>
                 ) : null}

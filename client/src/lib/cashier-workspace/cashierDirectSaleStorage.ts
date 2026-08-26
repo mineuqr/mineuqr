@@ -1,14 +1,25 @@
 /**
- * Preserve direct-sale checkout across Register Ops navigation.
+ * Preserve prepared SALE/INVOICE across Register Ops navigation.
  * Dashboard URL remains SSOT; this is presentation snapshot only.
+ * CASHIER-SALE-INVOICE-UX-REALIGNMENT-1 — retains sale.create money/lines.
  */
 
 import type { SelectablePaymentMethod } from "@shared/operational-session";
+import type {
+  CashierInvoiceLineView,
+  CashierSaleCreateMoney,
+} from "./cashierInvoiceView";
 
 export type CashierDirectSalePhase = "payment" | "paid";
 
+export type CashierDirectSaleInvoiceSnapshot = {
+  createdAt: string;
+  money: CashierSaleCreateMoney;
+  lines: readonly CashierInvoiceLineView[];
+};
+
 export type CashierDirectSaleSnapshot = {
-  v: 1;
+  v: 1 | 2;
   orderId: number;
   orderNumber: string;
   displayReference: string;
@@ -19,6 +30,8 @@ export type CashierDirectSaleSnapshot = {
   cashReceived: string;
   /** Presentation-only card amount. Omitted on older snapshots. */
   cardTender?: string;
+  /** Prepared invoice from sale.create. Omitted on v1 snapshots. */
+  invoice?: CashierDirectSaleInvoiceSnapshot;
   paid:
     | {
         checkId: number;
@@ -46,7 +59,9 @@ export function readCashierDirectSale(
     const raw = sessionStorage.getItem(storageKey(restaurantId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CashierDirectSaleSnapshot;
-    if (parsed?.v !== 1 || !Number.isInteger(parsed.orderId)) return null;
+    if ((parsed?.v !== 1 && parsed?.v !== 2) || !Number.isInteger(parsed.orderId)) {
+      return null;
+    }
     return parsed;
   } catch {
     return null;

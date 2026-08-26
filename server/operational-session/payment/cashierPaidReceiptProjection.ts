@@ -2,10 +2,17 @@
  * CASHIER-PAID-RECEIPT-DATA-COMPLETENESS-1
  * Display projection of an already committed Cashier payment.
  * Not a financial write. Not Collection Fact schema. Not Check.
+ *
+ * CASHIER-PAID-RECEIPT-SUBTOTAL-PRESENTATION-1
+ * Receipt Subtotal is the Cashier invoice pre-tax presentation
+ * (cashierInvoicePresentationSubtotal). Freeze/CF.subtotal stays taxable base.
  */
 
 import { resolveOrderDisplayIdentity } from "../../order/business-identity/application/OrderDisplayIdentityResolver";
-import type { SelectablePaymentMethod } from "@shared/operational-session";
+import {
+  cashierInvoicePresentationSubtotal,
+  type SelectablePaymentMethod,
+} from "@shared/operational-session";
 import type { CashierPaidMoneyFreeze } from "./collection-fact/commitCashierProductionCollectionFact";
 
 export type CashierPaidReceiptInvoiceLine = Readonly<{
@@ -42,7 +49,6 @@ export function buildCashierPaidReceiptProjection(input: {
   freeze: Pick<
     CashierPaidMoneyFreeze,
     | "orderId"
-    | "subtotal"
     | "discountAmount"
     | "taxAmount"
     | "grandTotal"
@@ -84,7 +90,10 @@ export function buildCashierPaidReceiptProjection(input: {
     terminalId: input.terminalId,
     currencySymbol: input.freeze.currencySnapshot.currencySymbol ?? "",
     lines: input.receiptInvoiceLines,
-    subtotal: input.freeze.subtotal,
+    subtotal: cashierInvoicePresentationSubtotal({
+      grandTotal: input.freeze.grandTotal,
+      taxAmount: input.freeze.taxAmount,
+    }),
     discountAmount: input.freeze.discountAmount,
     taxAmount: input.freeze.taxAmount,
     grandTotal: input.freeze.grandTotal,

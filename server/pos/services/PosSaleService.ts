@@ -19,6 +19,12 @@ import {
 } from "../../order/observability/orderLifecycleLatency";
 import type { SaveOrderResult } from "../../order/repositories/OrderRepository";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
+import {
+  businessTaxSettingsFromRestaurantRow,
+  captureTaxPolicySnapshot,
+  projectCashierSaleInvoiceMoney,
+  type TaxPolicySnapshot,
+} from "@shared/operational-session";
 import type { PosSaleIdempotencyRecord, PosSaleIdempotencyStore } from "../infrastructure/PosSaleIdempotencyStore";
 import { POS_SALE_IDEMPOTENCY_UNASSIGNED_CHECK_ID } from "../infrastructure/PosSaleIdempotencyStore";
 import {
@@ -224,7 +230,10 @@ function invoiceLinesFromOrder(order: SaveOrderResult["order"]): readonly Invoic
   return [];
 }
 
-function invoiceFromOrder(order: SaveOrderResult["order"]): {
+function invoiceFromOrder(
+  order: SaveOrderResult["order"],
+  taxPolicySnapshot: TaxPolicySnapshot
+): {
   money: PosSaleMoney;
   lines: readonly PosSaleCheckLine[];
 } {
@@ -243,12 +252,24 @@ function invoiceFromOrder(order: SaveOrderResult["order"]): {
       originOrderItemId: line.id ?? null,
     };
   });
+  const chargesSubtotal =
+    lines.length > 0
+      ? lines
+          .reduce((sum, line) => sum + Number.parseFloat(line.netAmount), 0)
+          .toFixed(2)
+      : order.totalAmount;
+  const projected = projectCashierSaleInvoiceMoney({
+    chargesSubtotal,
+    billDiscountAmount: "0.00",
+    taxPolicySnapshot,
+  });
+  // VAT/grandTotal come from computeCheckMoney inside the projector.
   return {
     money: {
-      subtotal: order.totalAmount,
-      taxAmount: "0.00",
-      grandTotal: order.totalAmount,
-      billDiscountAmount: "0.00",
+      subtotal: projected.subtotal,
+      taxAmount: projected.taxAmount,
+      grandTotal: projected.grandTotal,
+      billDiscountAmount: projected.billDiscountAmount,
     },
     lines,
   };
@@ -331,6 +352,15 @@ export class PosSaleService {
     ) {
       throw new PosSaleError("pos_permission_denied", "غير مصرح بالوصول");
     }
+    const taxPolicySnapshot = captureTaxPolicySnapshot(
+      businessTaxSettingsFromRestaurantRow({
+        currencyCode: scope.taxSettings.currencyCode,
+        currencySymbol: scope.taxSettings.currencySymbol,
+        taxEnabled: scope.taxSettings.taxEnabled,
+        taxMode: scope.taxSettings.taxMode,
+        taxPolicyJson: scope.taxSettings.taxPolicyJson,
+      })
+    );
 
     assertSaleItems(input.command.items);
 
@@ -417,6 +447,7 @@ export class PosSaleService {
                         userId: context.userId,
                         idempotencyKey: input.command.idempotencyKey,
                         fingerprint,
+                        taxPolicySnapshot,
                       })
                     );
                   },
@@ -453,7 +484,7 @@ export class PosSaleService {
       if (orderId == null) {
         throw new PosSaleError("order_create_failed", "Sale was not recorded");
       }
-      const { money, lines } = invoiceFromOrder(placed.order);
+      const { money, lines } = invoiceFromOrder(placed.order, taxPolicySnapshot);
 
       opsLog({
         type: "pos_sale_created",
@@ -501,13 +532,17 @@ export class PosSaleService {
       userId: number;
       idempotencyKey: string;
       fingerprint: string;
+      taxPolicySnapshot: TaxPolicySnapshot;
     }
   ): Promise<void> {
     const orderId = result.order.id;
     if (orderId == null) {
       throw new PosSaleError("order_create_failed", "Order was not persisted");
     }
-    const { money, lines } = invoiceFromOrder(result.order);
+    const { money, lines } = invoiceFromOrder(
+      result.order,
+      input.taxPolicySnapshot
+    );
     const displayReference = resolveOrderDisplayIdentity({
       orderNumber: result.order.orderNumber,
       businessDay: result.businessIdentity?.businessDay ?? null,

@@ -40,6 +40,12 @@ export {
 } from "./checkMoney";
 
 export {
+  cashierInvoicePresentationSubtotal,
+  projectCashierSaleInvoiceMoney,
+  type CashierSaleInvoiceMoneyProjection,
+} from "./cashierSaleInvoiceMoney";
+
+export {
   BILL_CHARGE_COMPOSITION_PROGRAM_ID,
   BILL_CHARGE_MONEY_FIELDS,
   ChargeCompositionError,

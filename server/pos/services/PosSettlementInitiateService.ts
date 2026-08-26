@@ -423,10 +423,11 @@ async function paidReceiptFromExistingFact(input: {
 }): Promise<CashierPaidReceiptProjection> {
   const items = (await getOrderItemsByOrderId(input.order.id)) ?? [];
   const persistedOrder = input.order;
+  // CF.subtotal stays on the lookup fact (taxable base). Receipt Subtotal
+  // is cashierInvoicePresentationSubtotal(grandTotal, taxAmount).
   return buildCashierPaidReceiptProjection({
     freeze: {
       orderId: persistedOrder.id,
-      subtotal: input.fact.subtotal,
       discountAmount: input.fact.discountAmount,
       taxAmount: input.fact.taxAmount,
       grandTotal: input.fact.amount,

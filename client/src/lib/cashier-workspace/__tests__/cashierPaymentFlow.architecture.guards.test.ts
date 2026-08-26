@@ -58,12 +58,13 @@ describe("CASHIER-PAYMENT-FLOW-IMPLEMENTATION-1 architecture", () => {
     const checkRead = read(CHECK_READ);
     const ticket = read(TICKET);
     const ready = read(READY);
-    expect(panel).toContain("orderCheck?.subtotal");
-    expect(panel).toContain("orderCheck?.taxAmount");
-    expect(panel).toContain("orderCheck?.billDiscountAmount");
     expect(panel).toContain("previewGrandTotal");
-    expect(panel).not.toContain("amountDueIsOrderFallback");
+    expect(panel).toContain("invoiceView.money");
+    expect(panel).not.toContain("orderCheck?.subtotal");
+    expect(panel).not.toContain("orderCheck?.taxAmount");
+    expect(panel).not.toContain("orderCheck?.billDiscountAmount");
     expect(panel).toContain("paymentReadiness.confirmDisabled");
+    expect(panel).not.toContain("amountDueIsOrderFallback");
     expect(panel).not.toContain('t("ticketTax")');
     expect(panel).not.toMatch(/0\.15|\* 15/);
     expect(ticket).toContain("Display-only ticket arithmetic");

@@ -17,7 +17,10 @@ describe("cashier presentation helpers", () => {
     expect(cashierUiLabel("placeSale", "en")).toBe("Payment");
     expect(cashierUiLabel("salePlaced", "en")).toBe("Ready to pay");
     expect(cashierUiLabel("confirmPayment", "ar")).toBe("تأكيد الدفع");
-    expect(cashierUiLabel("ticket", "en")).toBe("Current sale");
+    expect(cashierUiLabel("ticket", "en")).toBe("Sale / Invoice");
+    expect(cashierUiLabel("saleInvoice", "en")).toBe("Sale / Invoice");
+    expect(cashierUiLabel("saleInvoice", "ar")).toBe("فاتورة البيع");
+    expect(cashierUiLabel("invoiceNew", "en")).toBe("New invoice");
     expect(cashierUiLabel("preparingPayment", "en")).toBe("Preparing payment…");
     expect(cashierUiLabel("paidSuccess", "ar")).toBe("تم الدفع بنجاح");
     expect(cashierUiLabel("verifyingPayment", "en")).toBe("Verifying payment…");

@@ -15,10 +15,20 @@ const FORBIDDEN_MESSAGE = "غير مصرح بالوصول";
 
 type AuthContext = { user: SelectUser };
 
+export type RestaurantPosTaxSettings = {
+  taxEnabled?: boolean | null;
+  taxMode?: string | null;
+  taxPolicyJson?: string | null;
+  currencyCode: string | null;
+  currencySymbol: string | null;
+};
+
 export type RestaurantPosScope = {
   kind: PosRestaurantScopeKind;
   restaurantId: number;
   ownerUserId: number;
+  /** From the same getRestaurantById used for POS scope. Not a second read. */
+  taxSettings: RestaurantPosTaxSettings;
 };
 
 export async function resolveRestaurantPosScope(
@@ -29,14 +39,21 @@ export async function resolveRestaurantPosScope(
 ): Promise<RestaurantPosScope | null> {
   const restaurant = await getRestaurantById(restaurantId);
   if (!restaurant) return null;
+  const taxSettings: RestaurantPosTaxSettings = {
+    taxEnabled: (restaurant as { taxEnabled?: boolean | null }).taxEnabled,
+    taxMode: (restaurant as { taxMode?: string | null }).taxMode,
+    taxPolicyJson: (restaurant as { taxPolicyJson?: string | null }).taxPolicyJson,
+    currencyCode: restaurant.currencyCode ?? null,
+    currencySymbol: restaurant.currencySymbol ?? null,
+  };
   if (restaurant.userId === ctx.user.id) {
-    return { kind: "owner", restaurantId, ownerUserId: restaurant.userId };
+    return { kind: "owner", restaurantId, ownerUserId: restaurant.userId, taxSettings };
   }
   if (ctx.user.role === "admin") {
-    return { kind: "admin", restaurantId, ownerUserId: restaurant.userId };
+    return { kind: "admin", restaurantId, ownerUserId: restaurant.userId, taxSettings };
   }
   if (await grants.hasAnyGrant(restaurantId, ctx.user.id)) {
-    return { kind: "pos_grant", restaurantId, ownerUserId: restaurant.userId };
+    return { kind: "pos_grant", restaurantId, ownerUserId: restaurant.userId, taxSettings };
   }
   void action;
   return null;
