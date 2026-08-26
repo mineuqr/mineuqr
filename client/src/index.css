@@ -1115,3 +1115,26 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
     page-break-inside: avoid;
   }
 }
+
+/*
+ * CASHIER-PAID-RECEIPT-OVERFLOW-UX-1
+ * On-screen receipt body uses overflow-y-auto so Print/Close stay visible.
+ * Print must lift that clip so every invoice line and total is printed.
+ * Scoped to the paid-receipt dialog; does not change shift-closing isolation.
+ */
+@media print {
+  [data-slot="dialog-content"]:has(#cashier-paid-receipt-print) {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #cashier-paid-receipt-print {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}

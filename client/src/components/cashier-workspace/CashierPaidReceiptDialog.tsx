@@ -1,8 +1,11 @@
 /**
  * CASHIER-PAID-RECEIPT-DATA-COMPLETENESS-1
+ * CASHIER-PAID-RECEIPT-OVERFLOW-UX-1
  * Print the paid Cashier invoice from the Confirm HTTP projection.
  * Does not load Settlement Record. Does not require Check.
  * Closing print must not affect PAID.
+ * On-screen: only the receipt body scrolls; Print/Close stay in the viewport.
+ * Print: overflow constraints are lifted so the full snapshot prints.
  */
 
 import { Button } from "@/components/ui/button";
@@ -84,13 +87,19 @@ export function CashierPaidReceiptDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md print:max-w-none print:border-0 print:shadow-none">
-        <DialogHeader className="print:hidden">
+      <DialogContent
+        dir={language === "ar" ? "rtl" : "ltr"}
+        className="flex max-h-[90dvh] max-w-md flex-col overflow-hidden print:static print:top-auto print:left-auto print:h-auto print:max-h-none print:max-w-none print:translate-none print:overflow-visible print:border-0 print:shadow-none"
+      >
+        <DialogHeader className="shrink-0 print:hidden">
           <DialogTitle>{t("receiptTitle")}</DialogTitle>
         </DialogHeader>
 
         {receipt ? (
-          <div id="cashier-paid-receipt-print" className="space-y-3 text-sm">
+          <div
+            id="cashier-paid-receipt-print"
+            className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain text-sm print:h-auto print:max-h-none print:flex-none print:overflow-visible"
+          >
             {receipt.restaurantName ? (
               <p className="text-center text-base font-semibold">
                 {receipt.restaurantName}
@@ -199,7 +208,7 @@ export function CashierPaidReceiptDialog({
           </div>
         ) : null}
 
-        <div className="flex gap-2 print:hidden">
+        <div className="flex shrink-0 gap-2 print:hidden">
           <Button
             type="button"
             className="flex-1"
