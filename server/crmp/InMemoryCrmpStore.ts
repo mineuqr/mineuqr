@@ -65,6 +65,17 @@ export function createInMemoryCrmpStore(): CrmpUnitOfWork {
       if (shifts.has(shift.financialShiftId)) {
         throw new Error(`Shift already exists: ${shift.financialShiftId}`);
       }
+      for (const existing of shifts.values()) {
+        if (
+          existing.restaurantId === shift.restaurantId &&
+          existing.registerId === shift.registerId &&
+          existing.shiftNumber === shift.shiftNumber
+        ) {
+          throw new CrmpConflictError(
+            "Register already has a Financial Shift with this shift number"
+          );
+        }
+      }
       shifts.set(shift.financialShiftId, cloneShift(shift));
     },
     async save(shift, expectedVersion) {
@@ -172,6 +183,23 @@ export function createInMemoryCrmpStore(): CrmpUnitOfWork {
   return {
     registers: registerRepo,
     shifts: shiftRepo,
+    async commitOpenShift(input) {
+      const key = `${input.restaurantId}:${input.registerId}`;
+      const previous = shiftSequences.get(key) ?? 0;
+      try {
+        const shiftNumber = await shiftRepo.allocateNextShiftNumber(
+          input.restaurantId,
+          input.registerId
+        );
+        const shift = input.createShift(shiftNumber);
+        await shiftRepo.insert(shift);
+        return shift;
+      } catch (error) {
+        if (previous === 0) shiftSequences.delete(key);
+        else shiftSequences.set(key, previous);
+        throw error;
+      }
+    },
     async commitCloseCorridor(input) {
       await shiftRepo.save(input.shift, input.shiftExpectedVersion);
       if (input.register) {

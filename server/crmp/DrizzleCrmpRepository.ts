@@ -31,6 +31,7 @@ import type {
   CrmpUnitOfWork,
   FinancialShiftArchiveListQuery,
 } from "./CrmpRepository";
+import { isMysqlDuplicateKeyError } from "./crmpMysqlErrors";
 
 function mapRegister(
   row: typeof crmpRegisters.$inferSelect
@@ -55,11 +56,9 @@ function mapRegister(
 
 async function loadShiftGraph(
   restaurantId: number,
-  shiftRow: typeof crmpFinancialShifts.$inferSelect
+  shiftRow: typeof crmpFinancialShifts.$inferSelect,
+  db: CrmpPersistExecutor
 ): Promise<FinancialShift> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
   const [movements, counts, handovers, attributions] = await Promise.all([
     db
       .select()
@@ -154,7 +153,11 @@ async function loadShiftGraph(
 }
 
 type CrmpDb = NonNullable<Awaited<ReturnType<typeof getDb>>>;
-type CrmpPersistExecutor = Pick<CrmpDb, "insert" | "update" | "delete" | "select">;
+type CrmpPersistExecutor = Pick<
+  CrmpDb,
+  "insert" | "update" | "delete" | "select" | "execute"
+>;
+export type CrmpDbLoader = () => Promise<CrmpDb | null>;
 
 const SHIFT_HEADER_SET = (shift: FinancialShift) => ({
   status: shift.status,
@@ -266,9 +269,8 @@ async function persistShiftGraph(
       );
     }
   } else {
-    await db
-      .insert(crmpFinancialShifts)
-      .values({
+    try {
+      await db.insert(crmpFinancialShifts).values({
         financialShiftId: shift.financialShiftId,
         shiftNumber: shift.shiftNumber,
         restaurantId: shift.restaurantId,
@@ -284,10 +286,15 @@ async function persistShiftGraph(
         closeReason: shift.closeReason,
         archivedAt: shift.archivedAt,
         updatedAt: shift.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: SHIFT_HEADER_SET(shift),
       });
+    } catch (error) {
+      if (isMysqlDuplicateKeyError(error)) {
+        throw new CrmpConflictError(
+          "Register already has a Financial Shift with this shift number"
+        );
+      }
+      throw error;
+    }
   }
 
   // Replace children by delete+insert for this shift (append-only domain; full graph rewrite ok).
@@ -369,10 +376,71 @@ async function persistShiftGraph(
   }
 }
 
-export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
+async function allocateNextShiftNumberOn(
+  db: CrmpPersistExecutor,
+  restaurantId: number,
+  registerId: string
+): Promise<number> {
+  const maxRows = await db
+    .select({
+      n: sql<number>`coalesce(max(${crmpFinancialShifts.shiftNumber}), 0)`,
+    })
+    .from(crmpFinancialShifts)
+    .where(
+      and(
+        eq(crmpFinancialShifts.restaurantId, restaurantId),
+        eq(crmpFinancialShifts.registerId, registerId)
+      )
+    );
+  const floor = Number(maxRows[0]?.n ?? 0);
+  const safeFloor = Number.isFinite(floor) && floor > 0 ? Math.trunc(floor) : 0;
+  await db.execute(sql`
+    INSERT INTO crmp_register_shift_sequences (restaurantId, registerId, lastNumber)
+    VALUES (${restaurantId}, ${registerId}, LAST_INSERT_ID(${safeFloor} + 1))
+    ON DUPLICATE KEY UPDATE lastNumber = LAST_INSERT_ID(GREATEST(lastNumber, ${safeFloor}) + 1)
+  `);
+  const seqResult = await db.execute(sql`SELECT LAST_INSERT_ID() AS n`);
+  const n = Number(readMysqlLastInsertId(seqResult));
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error("Failed to allocate shiftNumber");
+  }
+  return n;
+}
+
+async function assertInsertedShiftIdentity(
+  db: CrmpPersistExecutor,
+  shift: FinancialShift
+): Promise<void> {
+  const rows = await db
+    .select({
+      financialShiftId: crmpFinancialShifts.financialShiftId,
+      shiftNumber: crmpFinancialShifts.shiftNumber,
+      status: crmpFinancialShifts.status,
+    })
+    .from(crmpFinancialShifts)
+    .where(
+      and(
+        eq(crmpFinancialShifts.restaurantId, shift.restaurantId),
+        eq(crmpFinancialShifts.financialShiftId, shift.financialShiftId)
+      )
+    )
+    .limit(1);
+  const row = rows[0];
+  if (
+    !row ||
+    row.financialShiftId !== shift.financialShiftId ||
+    row.shiftNumber !== shift.shiftNumber
+  ) {
+    throw new CrmpConflictError("Financial Shift create conflict");
+  }
+}
+
+export function createDrizzleCrmpUnitOfWork(
+  loadDb: CrmpDbLoader = getDb
+): CrmpUnitOfWork {
   const registers: CrmpRegisterRepository = {
     async insert(register) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       await db.insert(crmpRegisters).values({
         registerId: register.registerId,
@@ -392,12 +460,12 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
       });
     },
     async update(register, expectedVersion) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       await persistRegisterUpdate(register, db, expectedVersion);
     },
     async findById(restaurantId, registerId) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       const rows = await db
         .select()
@@ -412,7 +480,7 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
       return rows[0] ? mapRegister(rows[0]) : null;
     },
     async listByRestaurant(restaurantId) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       const rows = await db
         .select()
@@ -424,19 +492,21 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
 
   const shifts: CrmpFinancialShiftRepository = {
     async insert(shift) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
-      await persistShiftGraph(shift, db);
+      await db.transaction(async (tx) => {
+        await persistShiftGraph(shift, tx);
+      });
     },
     async save(shift, expectedVersion) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       await db.transaction(async (tx) => {
         await persistShiftGraph(shift, tx, expectedVersion);
       });
     },
     async findById(restaurantId, financialShiftId) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       const rows = await db
         .select()
@@ -449,10 +519,10 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
         )
         .limit(1);
       if (!rows[0]) return null;
-      return loadShiftGraph(restaurantId, rows[0]);
+      return loadShiftGraph(restaurantId, rows[0], db);
     },
     async findActiveByRegister(restaurantId, registerId) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       const rows = await db
         .select()
@@ -471,10 +541,10 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
         )
         .limit(1);
       if (!rows[0]) return null;
-      return loadShiftGraph(restaurantId, rows[0]);
+      return loadShiftGraph(restaurantId, rows[0], db);
     },
     async findActiveByOperator(restaurantId, operatorUserId) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       const rows = await db
         .select()
@@ -492,11 +562,11 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
           )
         );
       return Promise.all(
-        rows.map((row) => loadShiftGraph(restaurantId, row))
+        rows.map((row) => loadShiftGraph(restaurantId, row, db))
       );
     },
     async listByRegister(restaurantId, registerId) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       const rows = await db
         .select()
@@ -508,26 +578,18 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
           )
         );
       return Promise.all(
-        rows.map((row) => loadShiftGraph(restaurantId, row))
+        rows.map((row) => loadShiftGraph(restaurantId, row, db))
       );
     },
     async allocateNextShiftNumber(restaurantId, registerId) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
-      await db.execute(sql`
-        INSERT INTO crmp_register_shift_sequences (restaurantId, registerId, lastNumber)
-        VALUES (${restaurantId}, ${registerId}, LAST_INSERT_ID(1))
-        ON DUPLICATE KEY UPDATE lastNumber = LAST_INSERT_ID(lastNumber + 1)
-      `);
-      const seqResult = await db.execute(sql`SELECT LAST_INSERT_ID() AS n`);
-      const n = Number(readMysqlLastInsertId(seqResult) || 1);
-      if (!Number.isInteger(n) || n < 1) {
-        throw new Error("Failed to allocate shiftNumber");
-      }
-      return n;
+      return db.transaction(async (tx) =>
+        allocateNextShiftNumberOn(tx, restaurantId, registerId)
+      );
     },
     async listArchive(query: FinancialShiftArchiveListQuery) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       const statuses = query.status?.length
         ? query.status
@@ -580,7 +642,7 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
         .limit(query.limit)
         .offset(query.offset);
       const loaded = await Promise.all(
-        rows.map((row) => loadShiftGraph(query.restaurantId, row))
+        rows.map((row) => loadShiftGraph(query.restaurantId, row, db))
       );
       return { rows: loaded, total };
     },
@@ -588,7 +650,7 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
       restaurantId,
       settlementRecordId
     ) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       const rows = await db
         .select()
@@ -619,8 +681,23 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
   return {
     registers,
     shifts,
+    async commitOpenShift(input) {
+      const db = await loadDb();
+      if (!db) throw new Error("Database not available");
+      return db.transaction(async (tx) => {
+        const shiftNumber = await allocateNextShiftNumberOn(
+          tx,
+          input.restaurantId,
+          input.registerId
+        );
+        const shift = input.createShift(shiftNumber);
+        await persistShiftGraph(shift, tx);
+        await assertInsertedShiftIdentity(tx, shift);
+        return shift;
+      });
+    },
     async commitCloseCorridor(input) {
-      const db = await getDb();
+      const db = await loadDb();
       if (!db) throw new Error("Database not available");
       await db.transaction(async (tx) => {
         await persistShiftGraph(

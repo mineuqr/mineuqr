@@ -214,4 +214,17 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
     expect(cashier).not.toContain("trpc.crmp.financialShift.close");
     expect(cashier).not.toContain("closeWithFinalCount");
   });
+
+  it("financial shift create does not upsert headers and opens atomically", () => {
+    const repo = read("server/crmp/DrizzleCrmpRepository.ts");
+    const domain = read("server/crmp/FinancialShiftDomainService.ts");
+    const persistStart = repo.indexOf("async function persistShiftGraph");
+    const persistEnd = repo.indexOf("async function allocateNextShiftNumberOn");
+    const persist = repo.slice(persistStart, persistEnd);
+    expect(persist).not.toContain("onDuplicateKeyUpdate");
+    expect(repo).toContain("commitOpenShift");
+    expect(repo).toContain("GREATEST(lastNumber");
+    expect(domain).toContain("commitOpenShift");
+    expect(domain).toContain("closeDuty");
+  });
 });

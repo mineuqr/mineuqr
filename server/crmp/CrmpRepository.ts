@@ -76,9 +76,20 @@ export type CrmpCloseCorridorCommit = Readonly<{
   registerExpectedVersion?: number;
 }>;
 
+export type CrmpOpenShiftCommit = Readonly<{
+  restaurantId: number;
+  registerId: string;
+  createShift: (shiftNumber: number) => FinancialShift;
+}>;
+
 export type CrmpUnitOfWork = {
   registers: CrmpRegisterRepository;
   shifts: CrmpFinancialShiftRepository;
+  /**
+   * Allocate shiftNumber + persist new shift graph on one connection.
+   * Must not reopen an existing Financial Shift row.
+   */
+  commitOpenShift(input: CrmpOpenShiftCommit): Promise<FinancialShift>;
   /**
    * REGISTER-CLOSE-IDEMPOTENT-ATOMIC-CORRIDOR-1
    * Persist closed shift graph and optional duty close in one unit.

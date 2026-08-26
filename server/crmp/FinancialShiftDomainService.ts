@@ -84,25 +84,25 @@ export class FinancialShiftDomainService {
       input.restaurantId,
       input.registerId
     );
-    const shiftNumber = await this.uow.shifts.allocateNextShiftNumber(
-      input.restaurantId,
-      input.registerId
-    );
-    const shift = openFinancialShift({
-      financialShiftId,
-      drawerId: newCrmpId("drw"),
-      openingMovementId: newCrmpId("mov"),
-      register,
-      hasActiveShiftOnRegister: active != null,
+    const shift = await this.uow.commitOpenShift({
       restaurantId: input.restaurantId,
-      operatorUserId: input.operatorUserId,
-      openingFloatAmount: input.openingFloatAmount,
-      currencyCode: input.currencyCode,
-      openedAt: at,
-      shiftNumber,
-      existingById: null,
+      registerId: input.registerId,
+      createShift: (shiftNumber) =>
+        openFinancialShift({
+          financialShiftId,
+          drawerId: newCrmpId("drw"),
+          openingMovementId: newCrmpId("mov"),
+          register,
+          hasActiveShiftOnRegister: active != null,
+          restaurantId: input.restaurantId,
+          operatorUserId: input.operatorUserId,
+          openingFloatAmount: input.openingFloatAmount,
+          currencyCode: input.currencyCode,
+          openedAt: at,
+          shiftNumber,
+          existingById: null,
+        }),
     });
-    await this.uow.shifts.insert(shift);
     return {
       shift,
       events: [buildFinancialShiftOpenedEvent(shift, at)],

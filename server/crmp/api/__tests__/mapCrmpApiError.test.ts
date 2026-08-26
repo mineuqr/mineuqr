@@ -43,11 +43,13 @@ describe("mapCrmpApiError", () => {
     try {
       throwCrmpApiError(
         new CrmpConflictError(
-          "Final drawer count already recorded with a different amount"
+          "Register already has a Financial Shift with this shift number"
         )
       );
     } catch (e) {
-      expect((e as TRPCError).message).toMatch(/Final cash count/i);
+      expect((e as TRPCError).code).toBe("CONFLICT");
+      expect((e as TRPCError).message).toBe("Register operation conflict");
+      expect((e as TRPCError).message).not.toMatch(/not found|SELECT|ER_DUP/i);
     }
   });
 
