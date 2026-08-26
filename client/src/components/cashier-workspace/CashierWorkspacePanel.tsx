@@ -11,7 +11,7 @@ import {
   AppForbiddenState,
   AppLoadingState,
 } from "@/components/app-state";
-import { SettlementReceiptDialog } from "@/components/settlement-record/SettlementReceiptDialog";
+import { CashierPaidReceiptDialog } from "@/components/cashier-workspace/CashierPaidReceiptDialog";
 import { Button } from "@/components/ui/button";
 import { cashierPaymentFlowTiming } from "@/lib/cashier-workspace/cashierPaymentFlowTiming";
 import type { CashierPaymentFlowOutcome } from "@/lib/cashier-workspace/cashierPaymentFlowTiming";
@@ -36,6 +36,10 @@ import {
   readCashierDirectSale,
   writeCashierDirectSale,
 } from "@/lib/cashier-workspace/cashierDirectSaleStorage";
+import {
+  buildCashierPaidReceiptSnapshot,
+  type CashierPaidReceiptSnapshot,
+} from "@/lib/cashier-workspace/cashierPaidReceipt";
 import {
   isCashierTerminalId,
   readCashierTerminalId,
@@ -168,6 +172,8 @@ export function CashierWorkspacePanel({
     useState<CheckMoneyResult | null>(null);
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
+  const [paidReceipt, setPaidReceipt] =
+    useState<CashierPaidReceiptSnapshot | null>(null);
   const [paymentBusy, setPaymentBusy] = useState(false);
   const saleInFlightRef = useRef(false);
   const payInFlightRef = useRef(false);
@@ -202,6 +208,7 @@ export function CashierWorkspacePanel({
     setPaymentDisplayMoney(null);
     setOrdersOpen(false);
     setPrintOpen(false);
+    setPaidReceipt(null);
     const snapshot = readCashierDirectSale(restaurantId);
     if (snapshot) {
       const canResumePayment = Number.isInteger(snapshot.orderId) && snapshot.orderId > 0;
@@ -459,6 +466,7 @@ export function CashierWorkspacePanel({
   }
 
   function startNewSale() {
+    // Clear the current sale only. Paid receipt snapshot / print stay open.
     endCashierPaymentFlow("abandoned");
     saleInFlightRef.current = false;
     payInFlightRef.current = false;
@@ -481,7 +489,6 @@ export function CashierWorkspacePanel({
     setDiscountDraft("");
     setDiscountOpen(false);
     setPaymentDisplayMoney(null);
-    setPrintOpen(false);
     clearCashierDirectSale(restaurantId);
   }
 
@@ -498,7 +505,6 @@ export function CashierWorkspacePanel({
     // Presentation-only: close the payment sheet. Keep the Sale/Order invoice.
     endCashierPaymentFlow("cancelled");
     setSalePhase("ticket");
-    setPrintOpen(false);
     persistDirectSaleSnapshot({ phase: "payment" });
   }
 
@@ -664,17 +670,18 @@ export function CashierWorkspacePanel({
         cashierFlowIdRef.current,
         result.checkId
       );
-      const paid: PaidCheckoutResult = {
-        checkId: result.checkId,
+      const receipt = buildCashierPaidReceiptSnapshot({
         orderId: result.orderId,
         grandTotal: result.grandTotal,
-        settlementRecordId: result.settlementRecordId,
-        paymentMethod: plan.paymentMethod,
-        settlements: plan.settlements,
-      };
-      setPaidCheckout(paid);
+        orderNumber: directSale?.orderNumber,
+        displayReference: directSale?.displayReference,
+        restaurantName,
+        currencySymbol,
+        language,
+        ticketLines: ticket,
+        tenders: plan.settlements,
+      });
       setRegisterGap(null);
-      setSalePhase("paid");
       cashierPaymentFlowTiming.mark(
         cashierFlowIdRef.current,
         "CASHIER_PAYMENT_SUCCESS"
@@ -685,10 +692,8 @@ export function CashierWorkspacePanel({
       );
       invalidateOrderReads();
       startNewSale();
-      setPaidCheckout(paid);
-      if (paid.settlementRecordId) {
-        setPrintOpen(true);
-      }
+      setPaidReceipt(receipt);
+      setPrintOpen(true);
     } catch (error) {
       const gap = classifyCashierRegisterGap(error);
       if (gap) {
@@ -1555,12 +1560,10 @@ export function CashierWorkspacePanel({
       ) : null}
       </div>
 
-      <SettlementReceiptDialog
+      <CashierPaidReceiptDialog
         open={printOpen}
-        restaurantId={restaurantId}
-        settlementRecordId={paidCheckout?.settlementRecordId ?? null}
         language={language}
-        restaurantName={restaurantName ?? undefined}
+        receipt={paidReceipt}
         onOpenChange={setPrintOpen}
       />
     </section>
