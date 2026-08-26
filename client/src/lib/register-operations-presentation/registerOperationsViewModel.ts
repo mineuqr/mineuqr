@@ -10,10 +10,12 @@ import {
   registerOperationsUiLabel,
   type RegisterOperationsLang,
 } from "./registerOperationsCopy";
+import type { CurrentShiftPresentationKind } from "./registerOperationsWorkflow";
+import { formatOpsShiftNumber } from "./shiftClosingPresentation";
 
 export type DutyBadgeTone = "open" | "suspended" | "closed";
 export type AvailabilityBadgeTone = "ready" | "unavailable";
-export type ShiftBadgeTone = "active" | "none";
+export type ShiftBadgeTone = "active" | "none" | "pending" | "error";
 
 export type RegisterListRowVm = Readonly<{
   registerId: string;
@@ -58,21 +60,44 @@ export function availabilityFromCatalogStatus(
   };
 }
 
-/** Shift badge from backend financialShift null | object. */
-export function shiftBadgeFromRef(
-  hasShift: boolean,
-  language: RegisterOperationsLang
+/** Shift badge from presentation/query-state (not a boolean collapse). */
+export function presentCurrentShiftBadge(
+  kind: CurrentShiftPresentationKind,
+  language: RegisterOperationsLang,
+  shiftNumber?: number | null
 ): { tone: ShiftBadgeTone; label: string } {
-  if (hasShift) {
+  if (kind === "unknown") {
     return {
-      tone: "active",
-      label: registerOperationsUiLabel("shiftActive", language),
+      tone: "pending",
+      label: registerOperationsUiLabel("shiftDetermining", language),
     };
+  }
+  if (kind === "error") {
+    return {
+      tone: "error",
+      label: registerOperationsUiLabel("shiftUnavailable", language),
+    };
+  }
+  if (kind === "active") {
+    const formatted = formatOpsShiftNumber(shiftNumber);
+    const active = registerOperationsUiLabel("shiftActive", language);
+    if (formatted !== "—") {
+      return { tone: "active", label: `${active} — #${formatted}` };
+    }
+    return { tone: "active", label: active };
   }
   return {
     tone: "none",
     label: registerOperationsUiLabel("noShift", language),
   };
+}
+
+/** @deprecated Prefer presentCurrentShiftBadge — boolean presence only. */
+export function shiftBadgeFromRef(
+  hasShift: boolean,
+  language: RegisterOperationsLang
+): { tone: ShiftBadgeTone; label: string } {
+  return presentCurrentShiftBadge(hasShift ? "active" : "none", language);
 }
 
 export function toRegisterListRowVm(

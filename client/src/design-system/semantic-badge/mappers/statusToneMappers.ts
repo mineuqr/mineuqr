@@ -116,9 +116,12 @@ export function mapRegisterAvailabilityToBadgeTone(
 }
 
 export function mapRegisterShiftToBadgeTone(
-  tone: "active" | "none" | string
+  tone: "active" | "none" | "pending" | "error" | string
 ): SemanticBadgeTone {
-  return tone === "active" ? "accent" : "neutral";
+  if (tone === "active") return "accent";
+  if (tone === "pending") return "info";
+  if (tone === "error") return "danger";
+  return "neutral";
 }
 
 /**

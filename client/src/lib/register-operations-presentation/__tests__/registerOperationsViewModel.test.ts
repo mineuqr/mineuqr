@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   availabilityFromCatalogStatus,
   filterRegisterRows,
+  presentCurrentShiftBadge,
   shiftBadgeFromRef,
   toRegisterListRowVm,
 } from "../registerOperationsViewModel";
@@ -44,6 +45,25 @@ describe("registerOperationsViewModel (UX refinement)", () => {
   it("maps shift badge from backend null|presence", () => {
     expect(shiftBadgeFromRef(true, "en").tone).toBe("active");
     expect(shiftBadgeFromRef(false, "ar").label).toBe("لا توجد وردية");
+  });
+
+  it("does not label loading or error as no current shift", () => {
+    expect(presentCurrentShiftBadge("unknown", "ar").label).not.toBe(
+      "لا توجد وردية"
+    );
+    expect(presentCurrentShiftBadge("error", "ar").label).not.toBe(
+      "لا توجد وردية"
+    );
+    expect(presentCurrentShiftBadge("none", "ar").label).toBe("لا توجد وردية");
+  });
+
+  it("distinguishes Shift A from Shift B by shift number", () => {
+    const a = presentCurrentShiftBadge("active", "ar", 1);
+    const b = presentCurrentShiftBadge("active", "ar", 2);
+    expect(a.label).toContain("#000001");
+    expect(b.label).toContain("#000002");
+    expect(a.label).not.toBe(b.label);
+    expect(a.label).toContain("وردية نشطة");
   });
 
   it("builds searchable list rows without internal ids", () => {

@@ -9,6 +9,7 @@ import {
 } from "../openingFloatPresentation";
 import {
   closeRequiresCashCount,
+  classifyCurrentShiftQuery,
   needsOpeningFloatPrompt,
 } from "../registerOperationsWorkflow";
 
@@ -53,44 +54,108 @@ describe("parseMoneyAmountInput", () => {
   });
 });
 
+describe("classifyCurrentShiftQuery", () => {
+  const openB = {
+    financialShiftId: "B",
+    registerId: "reg_1",
+    restaurantId: 42,
+    status: "open",
+    version: 1,
+    openedAt: "2026-01-01T12:00:00.000Z",
+  };
+
+  it("does not treat undefined/loading as no current shift", () => {
+    expect(
+      classifyCurrentShiftQuery({
+        queryEnabled: true,
+        isPending: true,
+        isError: false,
+        data: undefined,
+      })
+    ).toBe("unknown");
+    expect(
+      classifyCurrentShiftQuery({
+        queryEnabled: false,
+        isPending: true,
+        isError: false,
+        data: undefined,
+      })
+    ).toBe("unknown");
+  });
+
+  it("does not treat error as no current shift", () => {
+    expect(
+      classifyCurrentShiftQuery({
+        queryEnabled: true,
+        isPending: false,
+        isError: true,
+        data: undefined,
+      })
+    ).toBe("error");
+  });
+
+  it("treats null as confirmed no current shift", () => {
+    expect(
+      classifyCurrentShiftQuery({
+        queryEnabled: true,
+        isPending: false,
+        isError: false,
+        data: null,
+      })
+    ).toBe("none");
+  });
+
+  it("treats an open shift as active", () => {
+    expect(
+      classifyCurrentShiftQuery({
+        queryEnabled: true,
+        isPending: false,
+        isError: false,
+        data: openB,
+      })
+    ).toBe("active");
+  });
+});
+
 describe("needsOpeningFloatPrompt", () => {
-  it("prompts only when duty open, loaded, and no shift", () => {
+  it("prompts only when duty open and current shift is confirmed none", () => {
     expect(
       needsOpeningFloatPrompt({
         dutyStatus: "open",
-        hasActiveFinancialShift: false,
-        currentLoaded: true,
+        currentShiftKind: "none",
       })
     ).toBe(true);
     expect(
       needsOpeningFloatPrompt({
         dutyStatus: "open",
-        hasActiveFinancialShift: true,
-        currentLoaded: true,
+        currentShiftKind: "active",
       })
     ).toBe(false);
     expect(
       needsOpeningFloatPrompt({
         dutyStatus: "closed",
-        hasActiveFinancialShift: false,
-        currentLoaded: true,
+        currentShiftKind: "none",
       })
     ).toBe(false);
     expect(
       needsOpeningFloatPrompt({
         dutyStatus: "open",
-        hasActiveFinancialShift: false,
-        currentLoaded: false,
+        currentShiftKind: "unknown",
+      })
+    ).toBe(false);
+    expect(
+      needsOpeningFloatPrompt({
+        dutyStatus: "open",
+        currentShiftKind: "error",
       })
     ).toBe(false);
   });
 
-  it("K. opening-float exits when Shift B exists", () => {
+  it("hides opening-float when Shift B is active", () => {
     expect(
       needsOpeningFloatPrompt({
         dutyStatus: "open",
-        hasActiveFinancialShift: true,
-        currentLoaded: true,
+        currentShiftKind: "active",
       })
     ).toBe(false);
   });

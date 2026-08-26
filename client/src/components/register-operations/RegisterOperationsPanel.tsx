@@ -46,6 +46,7 @@ import {
 } from "./RegisterStatusBadges";
 import {
   closeRequiresCashCount,
+  classifyCurrentShiftQuery,
   dutyStatusLabel,
   filterRegisterRows,
   formatRegisterMoneyDisplay,
@@ -53,6 +54,7 @@ import {
   isAuthoritativeCurrentShift,
   mapRegisterOperationsApiError,
   needsOpeningFloatPrompt,
+  presentCurrentShiftBadge,
   presentFriendlyDevice,
   presentFriendlyOperator,
   printShiftClosingReport,
@@ -64,7 +66,6 @@ import {
   resolvePrimaryDutyAction,
   resolveRegisterOpsLayoutMode,
   selectActiveRegisters,
-  shiftBadgeFromRef,
   toRegisterListRowVm,
   useFinancialShiftCurrent,
   useFinancialShiftMutations,
@@ -76,6 +77,7 @@ import {
   useRegisterOperationsMutations,
   type RegisterListRowVm,
   type RegisterOperationsLang,
+  type ShiftBadgeTone,
   type ShiftClosingReportVm,
 } from "@/lib/register-operations-presentation";
 import { spaNavigate } from "@/const";
@@ -254,7 +256,7 @@ function RegisterCard({
   row: RegisterListRowVm;
   selected: boolean;
   shiftLabel?: string;
-  shiftTone?: "active" | "none";
+  shiftTone?: ShiftBadgeTone;
   onSelect: () => void;
   language: RegisterOperationsLang;
 }) {
@@ -328,9 +330,15 @@ export function RegisterOperationsPanel({
     { restaurantId, registerId: selectedId ?? "" },
     { enabled: !!selectedId }
   );
+  const currentShiftKind = classifyCurrentShiftQuery({
+    queryEnabled: !!selectedId,
+    isPending: shiftQuery.isPending,
+    isError: shiftQuery.isError,
+    data: shiftQuery.data,
+  });
   const tenderQuery = useFinancialShiftTenderSummary(
     { restaurantId, registerId: selectedId ?? "" },
-    { enabled: !!selectedId && !!shiftQuery.data }
+    { enabled: !!selectedId && currentShiftKind === "active" }
   );
 
   const mutations = useRegisterOperationsMutations(restaurantId, language);
@@ -389,16 +397,21 @@ export function RegisterOperationsPanel({
   const view = currentQuery.data;
   const register = view?.register;
   const version = register?.version;
-  const activeShift = isAuthoritativeCurrentShift(shiftQuery.data)
-    ? shiftQuery.data
-    : null;
+  const activeShift =
+    currentShiftKind === "active" &&
+    isAuthoritativeCurrentShift(shiftQuery.data)
+      ? shiftQuery.data
+      : null;
   const hasActiveShift = activeShift != null;
-  const shiftInfo = shiftBadgeFromRef(hasActiveShift, language);
+  const shiftInfo = presentCurrentShiftBadge(
+    currentShiftKind,
+    language,
+    activeShift?.shiftNumber
+  );
 
   const showOpeningFloat = needsOpeningFloatPrompt({
     dutyStatus: register?.dutyStatus,
-    hasActiveFinancialShift: hasActiveShift,
-    currentLoaded: !!register && !currentQuery.isLoading && !shiftQuery.isLoading,
+    currentShiftKind,
   });
 
   const operatorVm = presentFriendlyOperator({
@@ -441,6 +454,14 @@ export function RegisterOperationsPanel({
     currentQuery.error != null
       ? registerOperationsErrorMessage(
           mapRegisterOperationsApiError(currentQuery.error),
+          language
+        )
+      : null;
+
+  const shiftError =
+    shiftQuery.error != null
+      ? registerOperationsErrorMessage(
+          mapRegisterOperationsApiError(shiftQuery.error),
           language
         )
       : null;
@@ -792,7 +813,11 @@ export function RegisterOperationsPanel({
                   const isSelected = selectedId === row.registerId;
                   const shift =
                     isSelected && (activeShift || view)
-                      ? shiftBadgeFromRef(hasActiveShift, language)
+                      ? presentCurrentShiftBadge(
+                          currentShiftKind,
+                          language,
+                          activeShift?.shiftNumber
+                        )
                       : undefined;
                   return (
                     <li key={row.registerId}>
@@ -912,6 +937,11 @@ export function RegisterOperationsPanel({
                   label={registerOperationsUiLabel("shiftStatus", language)}
                 >
                   <ShiftBadge tone={shiftInfo.tone} label={shiftInfo.label} />
+                  {currentShiftKind === "error" && shiftError ? (
+                    <p className="mt-2 text-sm text-rose-200" role="alert">
+                      {shiftError}
+                    </p>
+                  ) : null}
                 </StatusCard>
               </section>
 
@@ -930,7 +960,7 @@ export function RegisterOperationsPanel({
                   }
                   openedAt={activeShift.openedAt}
                   shiftStatusLabel={shiftInfo.label}
-                  shiftTone={shiftInfo.tone}
+                  shiftTone="active"
                 />
               )}
 

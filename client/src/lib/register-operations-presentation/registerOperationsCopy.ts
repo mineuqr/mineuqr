@@ -146,6 +146,8 @@ const COPY = {
   currentDevice: { ar: "الجهاز", en: "Device" },
   financialShift: { ar: "الوردية", en: "Shift" },
   shiftActive: { ar: "وردية نشطة", en: "Shift active" },
+  shiftDetermining: { ar: "جارٍ تحديد الوردية", en: "Determining current shift" },
+  shiftUnavailable: { ar: "تعذر تحديد الوردية", en: "Could not determine current shift" },
   noShift: { ar: "لا توجد وردية", en: "No shift" },
   availability: { ar: "التوفر", en: "Availability" },
   ready: { ar: "جاهز", en: "Ready" },

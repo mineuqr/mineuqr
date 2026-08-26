@@ -1,19 +1,44 @@
 /**
- * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 — presentation workflow decisions.
- * No Domain imports. Links Duty state to Shift prompts only.
+ * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
+ * REGISTER-OPERATIONS-PRESENTATION-REPAIR-1 —
+ * presentation workflow decisions. No Domain imports.
  */
+
+import {
+  isAuthoritativeCurrentShift,
+  type CurrentShiftSnapshot,
+} from "./financialShiftCurrentReconciliation";
 
 export type RegisterDutyStatus = "closed" | "open" | "suspended";
 
-/** Duty open and no active Financial Shift → collect opening float. */
+/** Presentation/query-state only — not a domain status. */
+export type CurrentShiftPresentationKind =
+  | "unknown"
+  | "error"
+  | "none"
+  | "active";
+
+export function classifyCurrentShiftQuery(input: {
+  queryEnabled: boolean;
+  isPending: boolean;
+  isError: boolean;
+  data: CurrentShiftSnapshot | null | undefined;
+}): CurrentShiftPresentationKind {
+  if (!input.queryEnabled) return "unknown";
+  if (input.isError) return "error";
+  if (input.data === undefined) return "unknown";
+  if (input.data === null) return "none";
+  if (isAuthoritativeCurrentShift(input.data)) return "active";
+  return "none";
+}
+
+/** Duty open and confirmed no current Financial Shift → collect opening float. */
 export function needsOpeningFloatPrompt(input: {
   dutyStatus: RegisterDutyStatus | null | undefined;
-  hasActiveFinancialShift: boolean;
-  currentLoaded: boolean;
+  currentShiftKind: CurrentShiftPresentationKind;
 }): boolean {
-  if (!input.currentLoaded) return false;
   if (input.dutyStatus !== "open") return false;
-  return !input.hasActiveFinancialShift;
+  return input.currentShiftKind === "none";
 }
 
 /** Close primary must run cash-count → Shift.close before Duty.close when Shift active. */

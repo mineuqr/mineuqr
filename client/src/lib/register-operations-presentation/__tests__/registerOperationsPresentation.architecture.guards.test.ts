@@ -97,6 +97,8 @@ describe("Register Operations presentation architecture guards", () => {
     expect(shiftM).toContain("reconcileIncomingCurrentShift");
     expect(queries).toContain("getCurrent.cancel");
     expect(panel).toContain("isAuthoritativeCurrentShift");
+    expect(panel).toContain("classifyCurrentShiftQuery");
+    expect(panel).toContain("presentCurrentShiftBadge");
     expect(panel).toContain("decideRegisterDutyCloseWithoutShift");
     expect(panel).toContain("staleTime: 0");
     expect(panel).not.toMatch(/hasActiveShift \|\| !!view\?\.financialShift/);

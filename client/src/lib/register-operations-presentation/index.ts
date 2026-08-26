@@ -19,6 +19,7 @@ export {
   availabilityFromCatalogStatus,
   dutyToneFromStatus,
   filterRegisterRows,
+  presentCurrentShiftBadge,
   shiftBadgeFromRef,
   toRegisterListRowVm,
   type AvailabilityBadgeTone,
@@ -75,6 +76,8 @@ export {
 export {
   closeRequiresCashCount,
   needsOpeningFloatPrompt,
+  classifyCurrentShiftQuery,
+  type CurrentShiftPresentationKind,
 } from "./registerOperationsWorkflow";
 export {
   decideRegisterDutyCloseWithoutShift,
