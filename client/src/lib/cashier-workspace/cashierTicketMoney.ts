@@ -52,6 +52,25 @@ export function clampCashierDiscountAmount(
   return fromCents(Math.min(discountCents, subtotalCents));
 }
 
+/**
+ * CASHIER-DISCOUNT-NORMALIZATION-FALSE-POSITIVE-FIX-1
+ * Overflow is numeric: discountCents > catalogSubtotalCents.
+ * NORMALIZATION ≠ OVERFLOW — "2" → "2.00" is not overflow.
+ * Cap is catalog/charges subtotal, not presentation Subtotal.
+ * Invalid/unparseable input is not overflow.
+ */
+export function cashierDiscountExceedsCatalogSubtotal(
+  discount: string,
+  catalogSubtotal: string | null
+): boolean {
+  const discountCents = parseCents(discount);
+  if (discountCents == null || discountCents < 0) return false;
+  if (catalogSubtotal == null) return false;
+  const subtotalCents = parseCents(catalogSubtotal);
+  if (subtotalCents == null) return false;
+  return discountCents > subtotalCents;
+}
+
 export function displayCashierTicketMoney(input: {
   catalogSubtotal: string | null;
   billDiscountAmount: string;

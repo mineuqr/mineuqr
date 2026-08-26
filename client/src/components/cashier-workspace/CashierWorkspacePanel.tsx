@@ -50,6 +50,7 @@ import {
 } from "@/lib/cashier-workspace/cashierTerminalStorage";
 import {
   clampCashierDiscountAmount,
+  cashierDiscountExceedsCatalogSubtotal,
   cashierDisplayTaxPolicy,
   displayCashierTicketMoney,
 } from "@/lib/cashier-workspace/cashierTicketMoney";
@@ -1341,9 +1342,10 @@ export function CashierWorkspacePanel({
                           ticketTotal
                         );
                         if (
-                          discountDraft.trim() &&
-                          next !== discountDraft.trim() &&
-                          ticketTotal != null
+                          cashierDiscountExceedsCatalogSubtotal(
+                            discountDraft,
+                            ticketTotal
+                          )
                         ) {
                           toast.error(t("discountExceeds"));
                         }
