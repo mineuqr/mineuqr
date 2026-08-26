@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildDraftCashierInvoiceView,
   buildPreparedCashierInvoiceView,
+  cashierCatalogTicketMatchesInvoiceLines,
+  catalogTicketFromInvoiceLines,
   mapSaleCreateLinesToInvoiceLines,
   unitPriceFromLineTotal,
 } from "../cashierInvoiceView";
@@ -80,5 +82,44 @@ describe("CashierInvoiceView", () => {
     expect(view.money?.grandTotal).toBe("27.60");
     expect(view.money?.taxAmount).toBe("3.60");
     expect(view.money?.subtotal).toBe("24.00");
+  });
+
+  it("round-trips prepared lines to an editable catalog ticket", () => {
+    const lines = mapSaleCreateLinesToInvoiceLines(
+      [
+        {
+          description: "عصير",
+          quantity: 2,
+          netAmount: "24.00",
+          originOrderItemId: 91,
+        },
+      ],
+      [
+        {
+          menuItemId: 3,
+          nameAr: "عصير برتقال",
+          nameEn: "Orange juice",
+          price: "12.00",
+          quantity: 2,
+        },
+      ]
+    );
+    const ticket = catalogTicketFromInvoiceLines(lines);
+    expect(ticket).toEqual([
+      {
+        menuItemId: 3,
+        nameAr: "عصير برتقال",
+        nameEn: "Orange juice",
+        price: "12.00",
+        quantity: 2,
+      },
+    ]);
+    expect(cashierCatalogTicketMatchesInvoiceLines(ticket, lines)).toBe(true);
+    expect(
+      cashierCatalogTicketMatchesInvoiceLines(
+        [{ ...ticket[0], quantity: 3 }],
+        lines
+      )
+    ).toBe(false);
   });
 });

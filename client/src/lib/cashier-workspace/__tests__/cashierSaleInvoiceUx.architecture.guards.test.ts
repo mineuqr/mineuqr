@@ -42,7 +42,6 @@ describe("CASHIER-SALE-INVOICE-UX-REALIGNMENT-1 architecture guards", () => {
   it("keeps the left SALE/INVOICE visible after persist and after cancel", () => {
     const panel = read(PANEL);
     expect(panel).toContain('t("saleInvoice")');
-    expect(panel).toContain("invoiceView.displayReference");
     expect(panel).toContain("invoiceView.lines.map");
     expect(panel).toContain("buildPreparedCashierInvoiceView");
     expect(panel).not.toContain('t("ticket")');
@@ -55,8 +54,11 @@ describe("CASHIER-SALE-INVOICE-UX-REALIGNMENT-1 architecture guards", () => {
       panel.indexOf("function resumePaymentSheet")
     );
     expect(cancelFn).toContain('setSalePhase("ticket")');
+    expect(cancelFn).toContain("catalogTicketFromInvoiceLines");
+    expect(cancelFn).toContain('persistDirectSaleSnapshot({ phase: "ticket" })');
     expect(cancelFn).not.toContain("setDirectSale(null)");
     expect(cancelFn).not.toContain("setTicket([])");
+    expect(cancelFn).not.toContain("setPaidReceipt");
     expect(cancelFn).not.toContain("mutateAsync");
   });
 

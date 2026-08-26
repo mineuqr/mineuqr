@@ -120,6 +120,37 @@ export function buildDraftCashierInvoiceView(input: {
   };
 }
 
+export function catalogTicketFromInvoiceLines(
+  lines: readonly CashierInvoiceLineView[]
+): CashierDraftCatalogLine[] {
+  const ticket: CashierDraftCatalogLine[] = [];
+  for (const line of lines) {
+    if (line.menuItemId == null) continue;
+    ticket.push({
+      menuItemId: line.menuItemId,
+      nameAr: line.nameAr,
+      nameEn: line.nameEn,
+      price: line.unitPrice,
+      quantity: line.quantity,
+    });
+  }
+  return ticket;
+}
+
+export function cashierCatalogTicketMatchesInvoiceLines(
+  ticket: readonly CashierDraftCatalogLine[],
+  lines: readonly CashierInvoiceLineView[]
+): boolean {
+  const fromLines = catalogTicketFromInvoiceLines(lines);
+  if (ticket.length === 0 || ticket.length !== fromLines.length) return false;
+  const keyOf = (rows: readonly CashierDraftCatalogLine[]) =>
+    [...rows]
+      .map((row) => `${row.menuItemId}:${row.quantity}`)
+      .sort()
+      .join("|");
+  return keyOf(ticket) === keyOf(fromLines);
+}
+
 export function mapSaleCreateLinesToInvoiceLines(
   lines: readonly CashierSaleCreateLine[],
   draftNames: readonly CashierDraftCatalogLine[] = []

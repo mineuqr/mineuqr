@@ -10,7 +10,7 @@ import type {
   CashierSaleCreateMoney,
 } from "./cashierInvoiceView";
 
-export type CashierDirectSalePhase = "payment" | "paid";
+export type CashierDirectSalePhase = "ticket" | "payment" | "paid";
 
 export type CashierDirectSaleInvoiceSnapshot = {
   createdAt: string;

@@ -2,7 +2,9 @@
  * POS-CASHIER-WORKSPACE-IMPLEMENTATION-1
  * Restaurant Dashboard cashier workspace. Presentation + existing POS tRPC only.
  * CASHIER-SALE-INVOICE-UX-REALIGNMENT-1 — left workspace is SALE/INVOICE.
- * Prepared invoice is sale.create money/lines. Payment reviews that invoice.
+ * CASHIER-PAYMENT-CANCEL-RETURN-TO-EDITABLE-1 — Cancel Payment restores
+ * catalog editing on the same Order. P# / date / time stay off the left
+ * panel until Confirm / Paid Receipt.
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -39,7 +41,6 @@ import {
 } from "@/lib/cashier-workspace/cashierDirectSaleStorage";
 import {
   buildCashierPaidReceiptSnapshot,
-  formatCashierReceiptDateTime,
   type CashierPaidReceiptSnapshot,
 } from "@/lib/cashier-workspace/cashierPaidReceipt";
 import {
@@ -55,6 +56,8 @@ import {
 import {
   buildDraftCashierInvoiceView,
   buildPreparedCashierInvoiceView,
+  cashierCatalogTicketMatchesInvoiceLines,
+  catalogTicketFromInvoiceLines,
   mapSaleCreateLinesToInvoiceLines,
   type CashierInvoiceLineView,
   type CashierSaleCreateMoney,
@@ -248,6 +251,10 @@ export function CashierWorkspacePanel({
       setCashReceived(snapshot.cashReceived);
       setCardTender(snapshot.cardTender ?? "");
       setOpenCheck(null);
+      const restoredTicket = catalogTicketFromInvoiceLines(
+        snapshot.invoice?.lines ?? []
+      );
+      if (restoredTicket.length > 0) setTicket(restoredTicket);
       setPaidCheckout(
         snapshot.paid
           ? {
@@ -416,7 +423,7 @@ export function CashierWorkspacePanel({
     price: string;
   }) {
     setTicket((current) => {
-      if (directSale) return current;
+      if (salePhase === "payment" || paidCheckout) return current;
       const existing = current.find((line) => line.menuItemId === item.menuItemId);
       if (!existing) return [...current, { ...item, quantity: 1 }];
       return current.map((line) =>
@@ -428,7 +435,7 @@ export function CashierWorkspacePanel({
   }
 
   function changeQty(menuItemId: number, delta: number) {
-    if (directSale) return;
+    if (salePhase === "payment" || paidCheckout) return;
     setTicket((current) =>
       current
         .map((line) =>
@@ -465,7 +472,7 @@ export function CashierWorkspacePanel({
   }) {
     const sale = next?.sale === undefined ? directSale : next.sale;
     const phase = next?.phase ?? salePhase;
-    if (!sale || phase === "ticket") {
+    if (!sale) {
       clearCashierDirectSale(restaurantId);
       return;
     }
@@ -529,10 +536,12 @@ export function CashierWorkspacePanel({
     ) {
       return;
     }
-    // Presentation-only: close the payment sheet. Keep the Sale/Order invoice.
+    // Close Payment review. Keep the same Order identity and restore editing.
     endCashierPaymentFlow("cancelled");
+    const restored = catalogTicketFromInvoiceLines(directSale?.lines ?? []);
+    if (restored.length > 0) setTicket(restored);
     setSalePhase("ticket");
-    persistDirectSaleSnapshot({ phase: "payment" });
+    persistDirectSaleSnapshot({ phase: "ticket" });
   }
 
   function resumePaymentSheet() {
@@ -616,7 +625,6 @@ export function CashierWorkspacePanel({
       };
       settleKeyRef.current = newCashierIdempotencyKey("settle");
       paymentIntentRef.current = newCashierPaymentIntentId();
-      setTicket([]);
       setSelectedOrderId(result.orderId);
       setOpenCheck(null);
       setDirectSale(sale);
@@ -795,7 +803,9 @@ export function CashierWorkspacePanel({
     taxPolicySnapshot,
   });
   const cashierDisplayName = user?.name?.trim() ?? "";
-  const invoiceView = directSale
+  const reviewingPreparedInvoice =
+    salePhase === "payment" && directSale != null && !paidCheckout;
+  const invoiceView = reviewingPreparedInvoice && directSale
     ? buildPreparedCashierInvoiceView({
         orderId: directSale.orderId,
         orderNumber: directSale.orderNumber,
@@ -825,9 +835,6 @@ export function CashierWorkspacePanel({
         cashierDisplayName,
         terminalId,
       });
-  const invoiceWhen = invoiceView.createdAt
-    ? formatCashierReceiptDateTime(invoiceView.createdAt, language)
-    : null;
   const effectiveCashTender =
     tenderMode === "network" || tenderMode == null ? "" : cashReceived;
   const effectiveCardTender =
@@ -1168,7 +1175,7 @@ export function CashierWorkspacePanel({
                             price: item.price,
                           })
                         }
-                        disabled={Boolean(directSale)}
+                        disabled={salePhase === "payment" || Boolean(paidCheckout)}
                       >
                         {imageSrc ? (
                           <img src={imageSrc} alt="" className={cashierPos.productImage} />
@@ -1192,17 +1199,8 @@ export function CashierWorkspacePanel({
               <h2 className="mb-2 text-sm font-semibold text-[#111827]">
                 {t("saleInvoice")}
               </h2>
+              {(invoiceView.cashierDisplayName || selectedTerminalCode) ? (
               <div className="mb-3 space-y-0.5 text-xs text-[#6b7280]">
-                <p>
-                  {t("receiptInvoiceNumber")}:{" "}
-                  {invoiceView.displayReference ?? t("invoiceNew")}
-                </p>
-                <p>
-                  {t("receiptDate")}: {invoiceWhen?.date || "—"}
-                </p>
-                <p>
-                  {t("receiptTime")}: {invoiceWhen?.time || "—"}
-                </p>
                 {invoiceView.cashierDisplayName ? (
                   <p>
                     {t("receiptCashier")}: {invoiceView.cashierDisplayName}
@@ -1214,6 +1212,7 @@ export function CashierWorkspacePanel({
                   </p>
                 ) : null}
               </div>
+              ) : null}
               {invoiceView.lines.length === 0 ? (
                 <p className="text-sm text-[#6b7280]">{t("ticketEmpty")}</p>
               ) : (
@@ -1395,7 +1394,14 @@ export function CashierWorkspacePanel({
                     : ticket.length === 0)
                 }
                 onClick={() => {
-                  if (directSale && !paidCheckout) {
+                  if (
+                    directSale &&
+                    !paidCheckout &&
+                    cashierCatalogTicketMatchesInvoiceLines(
+                      ticket,
+                      directSale.lines
+                    )
+                  ) {
                     resumePaymentSheet();
                     return;
                   }
@@ -1405,16 +1411,6 @@ export function CashierWorkspacePanel({
                 <ShoppingCart />
                 {t("placeSale")}
               </Button>
-              {directSale && salePhase === "ticket" && !paidCheckout ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-2 min-h-12 w-full"
-                  onClick={resumePaymentSheet}
-                >
-                  {t("completePayment")} · {directSale.displayReference}
-                </Button>
-              ) : null}
             </div>
 
             <div className={cashierPos.checkout}>
