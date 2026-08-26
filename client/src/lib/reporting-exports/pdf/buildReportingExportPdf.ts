@@ -28,8 +28,9 @@ import { scopedOrderSalesFromRollup } from "../scopeTotals";
 import type { RestaurantReportingExportBundle } from "../types";
 import { preparePdfText } from "./arabicPdfText";
 import { loadExportFontBytes } from "./loadExportFont";
+import type PdfKit from "pdfkit";
 
-type PdfKitConstructor = typeof import("pdfkit").default;
+type PdfKitConstructor = typeof PdfKit;
 
 const NAVY = "#0B1F33";
 const NAVY_MID = "#16324F";
@@ -492,5 +493,7 @@ export async function buildReportingExportPdfBlob(
     fallbackCurrencySymbol,
     fallbackCurrencyCode
   );
-  return new Blob([bytes], { type: "application/pdf" });
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return new Blob([copy], { type: "application/pdf" });
 }

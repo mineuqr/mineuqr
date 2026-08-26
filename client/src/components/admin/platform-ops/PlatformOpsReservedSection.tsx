@@ -30,6 +30,12 @@ const FUTURE_OWNERSHIP: Record<
   >,
   string[]
 > = {
+  subscription: [
+    "admin.platformOps.subscription.architectureTitle",
+  ],
+  commercialCatalog: [
+    "admin.platformOps.sections.commercialCatalog",
+  ],
   audit: [
     "admin.platformOps.future.audit.platform",
     "admin.platformOps.future.audit.admin",

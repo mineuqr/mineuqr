@@ -19,7 +19,7 @@ import {
   type SemanticBadgeTone,
 } from "../tokens/badgeTone";
 
-export type SemanticBadgeProps = React.ComponentProps<"span"> & {
+export type SemanticBadgeProps = Omit<React.ComponentProps<"span">, "ref"> & {
   tone?: SemanticBadgeTone;
   density?: SemanticBadgeDensity;
   size?: SemanticBadgeSize;
@@ -49,7 +49,7 @@ export function SemanticBadge({
   children,
   ...props
 }: SemanticBadgeProps) {
-  const Comp = asChild ? Slot : interactive ? "button" : "span";
+  const Comp: React.ElementType = asChild ? Slot : interactive ? "button" : "span";
   const resolvedTone = disabled ? "disabled" : tone;
   const isCount = count !== undefined;
 

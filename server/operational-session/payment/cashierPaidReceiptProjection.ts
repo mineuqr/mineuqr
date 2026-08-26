@@ -11,7 +11,7 @@
 import { resolveOrderDisplayIdentity } from "../../order/business-identity/application/OrderDisplayIdentityResolver";
 import {
   cashierInvoicePresentationSubtotal,
-  type SelectablePaymentMethod,
+  type CanonicalMonetaryPaymentMethod,
 } from "@shared/operational-session";
 import type { CashierPaidMoneyFreeze } from "./collection-fact/commitCashierProductionCollectionFact";
 
@@ -24,7 +24,7 @@ export type CashierPaidReceiptInvoiceLine = Readonly<{
 }>;
 
 export type CashierPaidReceiptTenderProjection = Readonly<{
-  paymentMethod: SelectablePaymentMethod;
+  paymentMethod: CanonicalMonetaryPaymentMethod;
   amount: string;
 }>;
 

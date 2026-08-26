@@ -1,3 +1,5 @@
+import type { CashierPaidReceiptProjection } from "../../operational-session/payment/cashierPaidReceiptProjection";
+
 export type PosSettlementInitiateIdempotencyKey = {
   restaurantId: number;
   terminalId: string;

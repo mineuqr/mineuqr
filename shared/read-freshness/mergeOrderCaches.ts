@@ -56,6 +56,24 @@ export type KitchenQueueLike = {
   [key: string]: unknown;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+export function isActiveOrderListLike(value: unknown): value is ActiveOrderListLike {
+  return isRecord(value) && Array.isArray(value.items);
+}
+
+export function isKitchenQueueLike(value: unknown): value is KitchenQueueLike {
+  if (!isRecord(value) || !isRecord(value.columns)) return false;
+  const columns = value.columns;
+  return (
+    Array.isArray(columns.pending) &&
+    Array.isArray(columns.preparing) &&
+    Array.isArray(columns.ready)
+  );
+}
+
 function flattenKitchenTickets(
   columns: KitchenQueueColumnsLike
 ): KitchenTicketLike[] {

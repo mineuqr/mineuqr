@@ -70,11 +70,11 @@ export type RuntimeInstanceConfiguration = {
 };
 
 export type RuntimeInstanceCapabilities = {
-  supportedActions: string[];
-  supportedEvents: string[];
-  supportedViews: string[];
+  supportedActions: readonly string[];
+  supportedEvents: readonly string[];
+  supportedViews: readonly string[];
   supportedPrinting: boolean;
-  negotiatedFeatures: CapabilityId[];
+  negotiatedFeatures: readonly CapabilityId[];
 };
 
 export type RuntimeInstanceSession = {

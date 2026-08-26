@@ -266,15 +266,12 @@ async function defaultMembershipLookup(
   return { checkId: row.membership.checkId, checkOutcome: row.checkOutcome };
 }
 
-async function defaultProductionCollectionFactByOrder(input: {
-  restaurantId: number;
-  orderId: number;
-}): Promise<{
-  collectionFactId: string;
-  checkId: number | null;
-  amount: string;
-  paymentIntentId: string;
-} | null> {
+async function defaultProductionCollectionFactByOrder(
+  input: {
+    restaurantId: number;
+    orderId: number;
+  }
+): ReturnType<PosProductionCollectionFactLookup> {
   const fact = await findProductionCollectionFactByOrderId(input);
   if (!fact) return null;
   return {

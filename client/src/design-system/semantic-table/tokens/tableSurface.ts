@@ -15,7 +15,7 @@ export type SemanticTableDensity = "ops" | "ledger" | "comfortable";
  * Dual = desktop table (≥lg) + feature-supplied mobile list.
  * Scroll = horizontal scroll at all breakpoints (reporting/billing).
  */
-export const SEMANTIC_TABLE = Object.freeze({
+export const SEMANTIC_TABLE = {
   /** Outer stack */
   root: "flex w-full flex-col gap-3",
 
@@ -68,7 +68,7 @@ export const SEMANTIC_TABLE = Object.freeze({
 
   /** Selection checkbox cell */
   selectCell: "w-10 px-2 align-middle",
-}) as const;
+} as const;
 
 export function semanticTableClass(
   density: SemanticTableDensity = "ops"

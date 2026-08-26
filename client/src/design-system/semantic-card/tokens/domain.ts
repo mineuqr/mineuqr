@@ -80,7 +80,7 @@ function reportingCategoryParts(
   options?: { stripColSpan?: boolean }
 ): Pick<SemanticDomainSurface, "shell" | "icon" | "glow"> {
   const surface = SEMANTIC_CATEGORY_SURFACE[category];
-  let shell = surface.shell;
+  let shell: string = surface.shell;
   if (options?.stripColSpan) {
     shell = shell
       .replace(/\s*sm:col-span-2/g, "")

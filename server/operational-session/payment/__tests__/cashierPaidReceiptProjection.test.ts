@@ -23,13 +23,19 @@ function receiptFromFreezeMoney(input: {
   taxAmount: string;
   grandTotal: string;
   unusedDomainSubtotal?: string;
+  paymentMethod?: "cash" | "card" | "other";
 }) {
   const freeze = {
     orderId: 44,
     discountAmount: input.discountAmount,
     taxAmount: input.taxAmount,
     grandTotal: input.grandTotal,
-    tenders: [{ paymentMethod: "cash" as const, amount: input.grandTotal }],
+    tenders: [
+      {
+        paymentMethod: input.paymentMethod ?? "cash",
+        amount: input.grandTotal,
+      },
+    ],
     currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
     ...(input.unusedDomainSubtotal != null
       ? { subtotal: input.unusedDomainSubtotal }
@@ -191,5 +197,15 @@ describe("CASHIER-PAID-RECEIPT-SUBTOTAL-PRESENTATION-1", () => {
     expect(fromReplay.taxAmount).toBe(fromFreeze.taxAmount);
     expect(fromReplay.grandTotal).toBe(fromFreeze.grandTotal);
     expect(fromReplay.discountAmount).toBe(fromFreeze.discountAmount);
+  });
+
+  it("preserves canonical other tenders from freeze", () => {
+    const receipt = receiptFromFreezeMoney({
+      discountAmount: "0.00",
+      taxAmount: "0.00",
+      grandTotal: "10.00",
+      paymentMethod: "other",
+    });
+    expect(receipt.tenders).toEqual([{ paymentMethod: "other", amount: "10.00" }]);
   });
 });

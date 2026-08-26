@@ -105,4 +105,10 @@ describe("RevenueUnionService", () => {
     expect(published.totals.collectionFactCount).toBe(0);
     expect(published.eligibilityRejectedFactCount).toBe(1);
   });
+
+  it("rejects open Checks as Revenue Union legacy facts", () => {
+    expect(() =>
+      toRevenueUnionLegacyFact(check({ id: 8, outcome: "open", grandTotal: "12.00" }))
+    ).toThrow(/terminal Check outcome/);
+  });
 });

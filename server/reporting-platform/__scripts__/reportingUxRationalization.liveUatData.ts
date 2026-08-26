@@ -133,9 +133,7 @@ async function main() {
 
   const failed: string[] = [];
   for (const card of dashVm.groups[0]!.cards) {
-    if (card.kpiId === "refundRate") {
-      if (!blob.includes(business.refundRate)) failed.push("refundRate");
-    } else if (card.kpiId === "orderCount") {
+    if (card.kpiId === "orderCount") {
       if (!blob.includes(String(orderPeriod.orderCount))) failed.push("orderCount");
     } else if (!blob.includes(card.value)) {
       failed.push(card.kpiId);

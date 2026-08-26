@@ -129,7 +129,7 @@ export function CapabilityFilterPicker({
         <PlatformOpsMetricCard
           label={cc("capabilityExperience.metrics.enabled")}
           value={String(counts.enabled)}
-          tone="healthy"
+          tone="success"
           domain="information"
         />
         <PlatformOpsMetricCard

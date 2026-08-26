@@ -275,7 +275,7 @@ export function PricingManagementPanel({ data }: Props) {
   const [open, setOpen] = useState(false);
   const [planId, setPlanId] = useState("");
   const [billingCycleId, setBillingCycleId] = useState("");
-  const [currency, setCurrency] = useState(COMMERCIAL_CANONICAL_CURRENCY);
+  const [currency, setCurrency] = useState<string>(COMMERCIAL_CANONICAL_CURRENCY);
   const [amount, setAmount] = useState("");
   const [regionId, setRegionId] = useState("");
 
@@ -974,7 +974,7 @@ export function RegionsManagementPanel({ data }: Props) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [countryCode, setCountryCode] = useState("US");
-  const [currency, setCurrency] = useState(COMMERCIAL_CANONICAL_CURRENCY);
+  const [currency, setCurrency] = useState<string>(COMMERCIAL_CANONICAL_CURRENCY);
   const [taxPolicyRef, setTaxPolicyRef] = useState("");
 
   const createMut = trpc.commercialCatalog.createRegion.useMutation(

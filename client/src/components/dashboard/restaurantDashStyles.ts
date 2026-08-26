@@ -159,7 +159,7 @@ export const restaurantSemantic = {
   valueMuted: SEMANTIC_TONE.value.neutral,
 } as const;
 
-export type RestaurantKpiTone = Exclude<SemanticTone, "danger"> | "neutral" | "info" | "success" | "warning" | "accent";
+export type RestaurantKpiTone = SemanticTone;
 
 export type RestaurantKpiValueVariant = "operational" | "revenue";
 

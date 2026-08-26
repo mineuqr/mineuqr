@@ -147,6 +147,7 @@ const dash = {
   group: cn(restaurantDash.panel, "p-4 sm:p-6 lg:p-7"),
   groupDivider: "border-t border-slate-700/40 pt-5 sm:pt-6",
   contentPanel: cn(restaurantDash.panel, "p-4 sm:p-6 lg:p-7"),
+  emptyPanel: restaurantDash.emptyPanel,
 };
 
 type DashTab = { id: string; label: string; icon: ComponentType<{ className?: string }> };
@@ -3266,7 +3267,14 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
                 currencySymbol: currencySymbol || undefined,
                 taxEnabled,
                 taxMode,
-                taxPolicy,
+                taxPolicy: {
+                  version: taxPolicy.version,
+                  components: taxPolicy.components.map((component) => ({
+                    id: component.id,
+                    name: component.name,
+                    ratePercent: component.ratePercent,
+                  })),
+                },
                 whatsapp: whatsapp || null,
                 snapchat: snapchat || null,
                 instagram: instagram || null,

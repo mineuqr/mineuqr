@@ -5,7 +5,7 @@ import { Loader2, AlertCircle, Store } from "lucide-react";
 import { getTemplateComponent } from "@/components/MenuTemplates";
 import { DiningSessionBanner } from "@/components/customer/DiningSessionBanner";
 import { useLanguage } from "@/contexts/LanguageContext";
-import CartDrawer from "@/components/CartDrawer";
+import CartDrawer, { restaurantTableLabel } from "@/components/CartDrawer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
 import {
   isDiningSessionOrderingEnabled,
@@ -250,7 +250,7 @@ function QrMenuChannelShell() {
           slug={slug}
           tableNumber={tableNumber}
           currencySymbol={restaurant.currencySymbol || "ر.س"}
-          tableLabel={restaurant.tableLabel || "tables"}
+          tableLabel={restaurantTableLabel(restaurant.tableLabel)}
         />
       )}
     </>

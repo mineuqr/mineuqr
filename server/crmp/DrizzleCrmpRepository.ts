@@ -5,6 +5,7 @@
 
 import { and, desc, eq, gte, inArray, like, lte, sql } from "drizzle-orm";
 import { getDb } from "../db";
+import { readMysqlLastInsertId } from "../_core/mysqlLastInsertId";
 import {
   crmpDrawerCounts,
   crmpDrawerMovements,
@@ -468,8 +469,8 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
         VALUES (${restaurantId}, ${registerId}, LAST_INSERT_ID(1))
         ON DUPLICATE KEY UPDATE lastNumber = LAST_INSERT_ID(lastNumber + 1)
       `);
-      const [seqRow] = await db.execute(sql`SELECT LAST_INSERT_ID() AS n`);
-      const n = Number((seqRow as { n: number }[])[0]?.n ?? 1);
+      const seqResult = await db.execute(sql`SELECT LAST_INSERT_ID() AS n`);
+      const n = Number(readMysqlLastInsertId(seqResult) || 1);
       if (!Number.isInteger(n) || n < 1) {
         throw new Error("Failed to allocate shiftNumber");
       }

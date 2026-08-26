@@ -115,9 +115,7 @@ async function main() {
 
   const checks: Record<string, boolean> = {};
   for (const card of dashVm.groups[0]!.cards) {
-    if (card.kpiId === "refundRate") {
-      checks[card.kpiId] = blob.includes(business.refundRate);
-    } else if (card.kpiId === "orderCount") {
+    if (card.kpiId === "orderCount") {
       checks[card.kpiId] = blob.includes(String(orderPeriod.orderCount));
     } else {
       checks[card.kpiId] = blob.includes(card.value);

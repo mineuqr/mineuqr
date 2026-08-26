@@ -10,7 +10,7 @@ import type {
   TaxPolicySnapshot,
 } from "../../check/checkContract";
 import type { CanonicalMonetaryPaymentMethod } from "../../check/paymentMethod";
-import type { OrderingChannel } from "../../../ordering-platform/orderingChannelRegistry";
+import type { OrderingChannelId } from "../../../ordering-platform/orderingChannelRegistry";
 
 export const PAYMENT_COLLECTION_FACT_PROGRAM_ID =
   "PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1" as const;
@@ -64,7 +64,7 @@ export type CollectionFact = Readonly<{
   restaurantId: number;
   orderId: number;
   paymentIntentId: string;
-  orderingChannel: OrderingChannel | string;
+  orderingChannel: OrderingChannelId | string;
   kind: CollectionFactKind;
   purpose: CollectionFactPurpose;
   schemaVersion: typeof COLLECTION_FACT_SCHEMA_VERSION | number;
@@ -102,7 +102,7 @@ export type CommitCollectionFactCommand = Readonly<{
   restaurantId: number;
   orderId: number;
   paymentIntentId: string;
-  orderingChannel: OrderingChannel | string;
+  orderingChannel: OrderingChannelId | string;
   purpose: CollectionFactPurpose;
   subtotal: string;
   discountAmount: string;

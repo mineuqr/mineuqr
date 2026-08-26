@@ -11,6 +11,7 @@ import {
   rotateKioskDeviceSessionId,
 } from "@/lib/ordering-client/kiosk/kioskDeviceSessionIdentity";
 import type { KioskShellStage } from "@/lib/ordering-client/kiosk/createKioskOrderingNavigator";
+import type { OrderingClientStage } from "@/lib/ordering-client/contracts/OrderingNavigator";
 import type { KioskSessionResetTrigger } from "@/lib/ordering-platform/kioskSessionLifecycle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { KioskIdleScreen } from "./KioskIdleScreen";
@@ -245,7 +246,7 @@ export default function KioskShell({ activation }: KioskShellProps = {}) {
 }
 
 function KioskOrderingSurface(props: {
-  stage: "browse" | "cart" | "checkout" | "confirmation";
+  stage: OrderingClientStage;
   slug: string;
   stationId: string;
   qs: string;

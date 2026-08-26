@@ -45,11 +45,17 @@ export function toWesternDigits(input: string): string {
 }
 
 /** Merge Intl options so Western digits always win. */
-export function withWesternDigitsIntlOptions<T extends object>(
-  options?: T
-): T & { numberingSystem: typeof WESTERN_NUMBERING_SYSTEM } {
+export function withWesternDigitsIntlOptions(
+  options?: Intl.NumberFormatOptions
+): Intl.NumberFormatOptions;
+export function withWesternDigitsIntlOptions(
+  options?: Intl.DateTimeFormatOptions
+): Intl.DateTimeFormatOptions;
+export function withWesternDigitsIntlOptions(
+  options?: Intl.NumberFormatOptions | Intl.DateTimeFormatOptions
+): Intl.NumberFormatOptions | Intl.DateTimeFormatOptions {
   return {
-    ...(options as T),
+    ...options,
     numberingSystem: WESTERN_NUMBERING_SYSTEM,
   };
 }

@@ -24,6 +24,18 @@ import {
   listRefundSettlementRecordsForReporting,
   listSettlementRecordsForReporting,
 } from "../settlementRecordReportingAdapter";
+import type { CheckTerminalOutcome } from "@shared/operational-session";
+
+function toPublishedCheckOutcome(
+  outcome: CheckReportingRow["outcome"]
+): CheckTerminalOutcome {
+  if (outcome === "paid" || outcome === "complimentary" || outcome === "voided") {
+    return outcome;
+  }
+  throw new Error(
+    `Revenue Union legacy facts require a terminal Check outcome (got ${outcome})`
+  );
+}
 
 export function toRevenueUnionLegacyFact(
   row: CheckReportingRow,
@@ -38,7 +50,7 @@ export function toRevenueUnionLegacyFact(
     restaurantId: row.restaurantId,
     checkId: row.id,
     settlementRecordId: extras.settlementRecordId ?? null,
-    outcome: row.outcome,
+    outcome: toPublishedCheckOutcome(row.outcome),
     grandTotal: row.grandTotal,
     taxAmount: row.taxAmount,
     currencyCode: row.currencySnapshot.currencyCode,

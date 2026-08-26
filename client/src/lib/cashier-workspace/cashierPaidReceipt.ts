@@ -4,7 +4,7 @@
  * Does not recalculate money. Does not use the live ticket.
  */
 
-import type { SelectablePaymentMethod } from "@shared/operational-session";
+import type { CanonicalMonetaryPaymentMethod } from "@shared/operational-session";
 import type { CashierLang } from "./cashierCopy";
 
 export type CashierPaidReceiptInvoiceLine = Readonly<{
@@ -16,7 +16,7 @@ export type CashierPaidReceiptInvoiceLine = Readonly<{
 }>;
 
 export type CashierPaidReceiptTender = Readonly<{
-  paymentMethod: SelectablePaymentMethod;
+  paymentMethod: CanonicalMonetaryPaymentMethod;
   amount: string;
 }>;
 

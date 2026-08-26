@@ -11,13 +11,13 @@ import type {
   CommitCollectionFactCommand,
 } from "./collectionFactContract";
 import type { CurrencySnapshot, TaxBreakdown, TaxPolicySnapshot } from "../../check/checkContract";
-import type { OrderingChannel } from "../../../ordering-platform/orderingChannelRegistry";
+import type { OrderingChannelId } from "../../../ordering-platform/orderingChannelRegistry";
 
 export type CollectionFactFreezeSource = Readonly<{
   restaurantId: number;
   orderId: number;
   paymentIntentId: string;
-  orderingChannel: OrderingChannel | string;
+  orderingChannel: OrderingChannelId | string;
   purpose: CollectionFactPurpose;
   subtotal: string;
   discountAmount: string;

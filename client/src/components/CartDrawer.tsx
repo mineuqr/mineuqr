@@ -12,6 +12,12 @@ interface CartDrawerProps {
   tableLabel?: "tables" | "rooms";
 }
 
+export function restaurantTableLabel(
+  value: string | null | undefined
+): "tables" | "rooms" {
+  return value === "rooms" ? "rooms" : "tables";
+}
+
 export default function CartDrawer({
   slug,
   tableNumber,

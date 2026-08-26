@@ -146,8 +146,6 @@ export function listSoftSunsetUnusedSurfaces(): readonly LegacyReportingSurface[
 }
 
 export function listArchitecturalGaps(): readonly LegacyReportingSurface[] {
-  return LEGACY_REPORTING_SURFACES.filter(
-    (s): s is LegacyReportingSurface & { gapProgram: string } =>
-      "gapProgram" in s && Boolean(s.gapProgram)
-  );
+  const surfaces: readonly LegacyReportingSurface[] = LEGACY_REPORTING_SURFACES;
+  return surfaces.filter((s) => Boolean(s.gapProgram));
 }
