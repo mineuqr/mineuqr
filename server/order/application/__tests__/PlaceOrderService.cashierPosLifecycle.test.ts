@@ -75,7 +75,7 @@ describe("PlaceOrderService cashier_pos inbound acceptance", () => {
       expect.objectContaining({
         createRowStatus: "preparing",
         orderingChannel: "cashier_pos",
-        skipBusinessIdentityAllocation: true,
+        skipBusinessIdentityAllocation: false,
       })
     );
   });

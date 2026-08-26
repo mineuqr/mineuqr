@@ -39,23 +39,22 @@ describe("CASHIER-CHECKOUT-PRINT-FLOW-1 architecture guards", () => {
     expect(cancelFn).not.toContain("trpc.refund");
   });
 
-  it("reuses stable sale and settle idempotency keys instead of minting per click", () => {
+  it("reuses stable settle idempotency keys instead of minting per click", () => {
     const panel = read(PANEL);
     const placeSaleFn = panel.slice(
-      panel.indexOf("async function placeSale"),
+      panel.indexOf("function placeSale"),
       panel.indexOf("async function completePayment")
     );
-    expect(placeSaleFn).toContain("saleKeyRef.current");
-    expect(placeSaleFn).toContain("idempotencyKey: saleKeyRef.current");
-    expect(placeSaleFn).not.toContain("idempotencyKey: newCashierIdempotencyKey");
     expect(placeSaleFn).toContain('setSalePhase("payment")');
     expect(placeSaleFn).not.toContain("invalidateOrderReads");
+    expect(placeSaleFn).not.toContain("saleMutation.mutateAsync");
 
     const completeFn = panel.slice(
       panel.indexOf("async function completePayment"),
       panel.indexOf("function returnToDashboard")
     );
     expect(completeFn).toContain("settleKeyRef.current");
+    expect(completeFn).toContain("writeCashierPendingSaleAttempt");
     expect(completeFn).not.toContain('idempotencyKey: newCashierIdempotencyKey("settle")');
     expect(completeFn).toContain("settleMutation.mutateAsync");
     expect(completeFn.indexOf("settleMutation.mutateAsync")).toBeLessThan(

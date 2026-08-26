@@ -24,7 +24,6 @@ describe("CASHIER-POS-CHECK-READ-CONTRACT-1 architecture", () => {
     expect(panel).toContain("resolveCashierPaymentReadiness");
     expect(panel).toContain("previewGrandTotal");
     expect(panel).toContain("paymentReadiness.confirmDisabled");
-    expect(panel).toContain("t(\"verifyingAmount\")");
     expect(panel).not.toContain("settlementRow?.outstandingAmount");
     expect(panel).not.toContain("intakeMutation.isPending ?");
     expect(panel).toContain('current === "" || current === directSale?.totalAmount');

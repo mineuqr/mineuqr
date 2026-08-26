@@ -19,7 +19,7 @@ export type CashierDirectSaleInvoiceSnapshot = {
 };
 
 export type CashierDirectSaleSnapshot = {
-  v: 1 | 2;
+  v: 1 | 2 | 3;
   orderId: number;
   orderNumber: string;
   displayReference: string;
@@ -59,7 +59,10 @@ export function readCashierDirectSale(
     const raw = sessionStorage.getItem(storageKey(restaurantId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CashierDirectSaleSnapshot;
-    if ((parsed?.v !== 1 && parsed?.v !== 2) || !Number.isInteger(parsed.orderId)) {
+    if (
+      (parsed?.v !== 1 && parsed?.v !== 2 && parsed?.v !== 3) ||
+      !Number.isInteger(parsed.orderId)
+    ) {
       return null;
     }
     return parsed;

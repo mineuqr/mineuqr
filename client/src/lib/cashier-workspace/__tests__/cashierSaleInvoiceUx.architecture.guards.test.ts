@@ -18,24 +18,19 @@ const STORAGE = "client/src/lib/cashier-workspace/cashierDirectSaleStorage.ts";
 const COPY = "client/src/lib/cashier-workspace/cashierCopy.ts";
 
 describe("CASHIER-SALE-INVOICE-UX-REALIGNMENT-1 architecture guards", () => {
-  it("retains sale.create money and lines as the prepared invoice", () => {
+  it("retains local prepared invoice money and lines for Payment UI", () => {
     const panel = read(PANEL);
     const placeSaleFn = panel.slice(
-      panel.indexOf("async function placeSale"),
+      panel.indexOf("function placeSale"),
       panel.indexOf("async function completePayment")
     );
-    expect(placeSaleFn).toContain("result.money");
-    expect(placeSaleFn).toContain("result.lines");
-    expect(placeSaleFn).toContain("result.displayReference");
-    expect(placeSaleFn).toContain("result.createdAt");
-    expect(placeSaleFn).toContain("mapSaleCreateLinesToInvoiceLines(result.lines, ticket)");
-    expect(placeSaleFn).toContain("setDirectSale(sale)");
-    expect(placeSaleFn.indexOf("saleMutation.mutateAsync")).toBeLessThan(
-      placeSaleFn.indexOf('setSalePhase("payment")')
-    );
+    expect(placeSaleFn).toContain("mapDraftTicketToPreparedInvoiceLines");
+    expect(placeSaleFn).toContain("setDirectSale(payable)");
+    expect(placeSaleFn).toContain('setSalePhase("payment")');
+    expect(placeSaleFn).not.toContain("saleMutation.mutateAsync");
     expect(read(VIEW)).toContain("buildPreparedCashierInvoiceView");
     expect(read(STORAGE)).toContain("invoice?:");
-    expect(read(STORAGE)).toContain("v: 1 | 2");
+    expect(read(STORAGE)).toContain("v: 1 | 2 | 3");
     expect(panel).toContain("invoice: {");
   });
 

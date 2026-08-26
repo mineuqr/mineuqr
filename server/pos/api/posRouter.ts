@@ -90,16 +90,21 @@ const settlementLineInput = z.object({
   amount: moneyAmountInput.optional(),
 });
 
-const settlementInitiateInput = terminalInput.extend({
-  orderId: z.number().int().positive(),
-  idempotencyKey: z.string().min(8).max(128),
-  paymentIntentId: z.string().min(8).max(128),
-  /** Catalog keys from SELECTABLE_PAYMENT_METHODS. Amounts stay Check-owned. */
-  paymentMethod: z.enum(["cash", "card"]).optional(),
-  settlements: z.array(settlementLineInput).min(1).max(8).optional(),
-  /** Discount intent. Server calculates authoritative discount at Confirm. */
-  billDiscountAmount: moneyAmountInput.optional(),
-});
+const settlementInitiateInput = terminalInput
+  .extend({
+    orderId: z.number().int().positive().optional(),
+    items: z.array(saleItemInput).min(1).max(100).optional(),
+    idempotencyKey: z.string().min(8).max(128),
+    paymentIntentId: z.string().min(8).max(128),
+    /** Catalog keys from SELECTABLE_PAYMENT_METHODS. Amounts stay Check-owned. */
+    paymentMethod: z.enum(["cash", "card"]).optional(),
+    settlements: z.array(settlementLineInput).min(1).max(8).optional(),
+    /** Discount intent. Server calculates authoritative discount at Confirm. */
+    billDiscountAmount: moneyAmountInput.optional(),
+  })
+  .refine((value) => (value.items?.length ?? 0) > 0 || value.orderId != null, {
+    message: "Prepared invoice items are required",
+  });
 
 const cashierRegisterInput = terminalInput.extend({
   registerId: z.string().min(1).max(128),
@@ -413,6 +418,7 @@ export const posRouter = router({
               restaurantId: input.restaurantId,
               terminalId: input.terminalId,
               orderId: input.orderId,
+              items: input.items,
               idempotencyKey: input.idempotencyKey,
               paymentIntentId: input.paymentIntentId,
               paymentMethod: input.paymentMethod,

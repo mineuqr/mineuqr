@@ -53,21 +53,17 @@ describe("CASHIER-REBUILD-1 cashier pre-CONFIRM architecture", () => {
     expect(sale).not.toContain("commitCollectionFact");
   });
 
-  it("opens Payment UI after sale.create returns an orderId, not a checkId", () => {
+  it("opens Payment UI from the local prepared invoice, not a persisted orderId", () => {
     const panel = read(
       "client/src/components/cashier-workspace/CashierWorkspacePanel.tsx"
     );
     const placeSaleFn = panel.slice(
-      panel.indexOf("async function placeSale"),
+      panel.indexOf("function placeSale"),
       panel.indexOf("async function completePayment")
     );
-    expect(placeSaleFn.indexOf("saleMutation.mutateAsync")).toBeLessThan(
-      placeSaleFn.indexOf('setSalePhase("payment")')
-    );
-    expect(placeSaleFn).toContain("result.orderId");
+    expect(placeSaleFn).toContain('setSalePhase("payment")');
+    expect(placeSaleFn).not.toContain("saleMutation.mutateAsync");
     expect(placeSaleFn).not.toContain("result.checkId");
-    expect(placeSaleFn).not.toContain('result.outcome !== "open"');
-    expect(panel).toContain("directSale?.orderId");
     expect(panel).not.toContain("directSale?.checkId");
   });
 
@@ -115,6 +111,7 @@ describe("CASHIER-REBUILD-1 cashier pre-CONFIRM architecture", () => {
     expect(cashier).not.toContain("recalculateOrderSettlementsForCheck");
     expect(confirm).toContain("commitCashierProductionCollectionFactInTransaction");
     expect(adapter).toContain("createDrizzleCollectionFactStore(tx)");
+    expect(settle).toContain("finalizeCashierPreparedInvoice");
     expect(settle).not.toContain("check_already_terminal");
     expect(settle).toContain("posCheckIdFromFact");
   });

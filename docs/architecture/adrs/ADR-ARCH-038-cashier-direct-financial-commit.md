@@ -55,19 +55,18 @@ ADR-037 §5 target journey already sequences **Confirm → Payment process → C
 
 **Historical (ADR publication, 2026-08-19):** Cashier Confirm was gated on `pos.check.intake` + OPEN Check.grandTotal. That sequencing is **superseded for Cashier runtime**.
 
-**Current Cashier path** (`CASHIER-PASS-2-BOUNDARY-COMPLIANCE-AND-HARDENING-1`):
+**Current Cashier path** (`CASHIER-PASS-2-CONFIRM-FINALIZATION-1`):
 
 ```
 Cashier دفع (placeSale)
-  → pos.sale.create          // commercial Order + items; enrollCheck: false; awaitRelay: false
-                             // not Collection Fact; not PAID
-  → Payment UI               // payable = sale lines + frozen billDiscount via computeCheckMoney
+  → Payment UI               // local prepared invoice; no Order persist
   → tender (local)
   → تأكيد الدفع / إتمام الدفع
-  → pos.settlement.initiate  // confirmPayment({ orderId }), awaitAttribution: false
-       freezeCashierPosPayableFromOrder
-       Collection Fact COMMIT = PAID
-  → paidReceipt (invoice number / date / time)
+  → pos.settlement.initiate  // items + discount + tender intent
+       IdentityPlaceOrder (enrollCheck: false)
+       freezeCashierPosPayableFromOrder (same TX)
+       Collection Fact COMMIT = PAID (same TX)
+  → paidReceipt (invoice number / date / time = Confirm success)
   → Print
   → attribution / operational Check / SR (background)
 ```

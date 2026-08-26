@@ -51,7 +51,6 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
     expect(panel).toContain("trpc.pos.read.orders.getTimeline");
     expect(panel).toContain("trpc.pos.read.orderSettlement.listByOrder");
     expect(panel).toContain("trpc.pos.read.check.getByOrder");
-    expect(panel).toContain("trpc.pos.sale.create");
     expect(panel).toContain("trpc.pos.settlement.initiate");
     expect(panel).toContain("trpc.pos.settlement.initiate");
     expect(panel).not.toContain("trpc.order.read");
@@ -79,7 +78,7 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
     expect(panel).toContain('setSalePhase("payment")');
     expect(panel).not.toContain("RegisterOperationsPanel");
     const placeSaleFn = panel.slice(
-      panel.indexOf("async function placeSale"),
+      panel.indexOf("function placeSale"),
       panel.indexOf("async function completePayment")
     );
     expect(placeSaleFn).not.toContain("invalidateOrderReads");

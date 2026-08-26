@@ -466,6 +466,7 @@ export class PosSaleService {
                   // Post-commit ensureCheckForOrder stays off the cashier HTTP
                   // path. OPEN Check is not part of sale.create.
                   enrollCheck: false,
+                  skipBusinessIdentityAllocation: true,
                 }
               ),
             { awaitRelay: false }

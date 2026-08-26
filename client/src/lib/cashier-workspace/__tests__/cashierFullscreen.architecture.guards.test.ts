@@ -87,7 +87,6 @@ describe("CASHIER-UX-FULLSCREEN-AND-THEME-1 architecture guards", () => {
     expect(panel).toContain('language === "ar" ? "rtl" : "ltr"');
     expect(fallback).toContain("returnDashboard");
     expect(fallback).toContain('section: "home"');
-    expect(panel).toContain("trpc.pos.sale.create");
     expect(panel).toContain("trpc.pos.settlement.initiate");
     expect(panel).toContain("trpc.pos.settlement.initiate");
     expect(panel).toContain("CashierPaidReceiptDialog");

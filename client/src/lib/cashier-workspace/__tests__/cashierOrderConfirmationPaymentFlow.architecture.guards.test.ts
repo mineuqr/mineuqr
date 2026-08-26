@@ -30,18 +30,18 @@ describe("CASHIER-ORDER-CONFIRMATION-PAYMENT-FLOW-1", () => {
     expect(copy).not.toContain("Confirm order");
   });
 
-  it("keeps Payment CTA on pos.sale.create and Confirm Payment on settlement.initiate", () => {
+  it("keeps Payment CTA local and Confirm Payment on settlement.initiate", () => {
     const panel = read(PANEL);
     const sale = read(SALE);
     const placeSaleFn = panel.slice(
-      panel.indexOf("async function placeSale"),
+      panel.indexOf("function placeSale"),
       panel.indexOf("async function completePayment")
     );
     const completeFn = panel.slice(
       panel.indexOf("async function completePayment"),
       panel.indexOf("function returnToDashboard")
     );
-    expect(placeSaleFn).toContain("saleMutation.mutateAsync");
+    expect(placeSaleFn).not.toContain("saleMutation.mutateAsync");
     expect(placeSaleFn).toContain('setSalePhase("payment")');
     expect(placeSaleFn).not.toContain("settleMutation");
     expect(completeFn).toContain("settleMutation.mutateAsync");

@@ -47,6 +47,7 @@ describe("PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 non-adoption", () => {
     const panel = read(PANEL);
     const router = read(ROUTER);
     const sale = read(SALE);
+    const finalize = read("server/pos/services/finalizeCashierPreparedInvoice.ts");
     expect(confirm).toContain("commitCashierProductionCollectionFact");
     expect(confirm).not.toContain("insertCollectionFact");
     expect(confirm).not.toContain("paymentCollectionFacts");
@@ -55,9 +56,12 @@ describe("PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 non-adoption", () => {
     expect(check).not.toContain("commitCollectionFact");
     expect(check).not.toContain("paymentCollectionFacts");
     expect(panel).not.toContain("commitCollectionFact");
+    expect(panel).not.toContain("trpc.pos.sale.create");
     expect(panel).toContain("paymentIntentId");
     expect(router).not.toContain("commitCollectionFact");
     expect(sale).not.toContain("commitCollectionFact");
+    expect(finalize).toContain("commitCashierProductionCollectionFact");
+    expect(finalize).not.toContain("insertCollectionFact");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(confirm).toContain("await settleCheckPaidByIdDetailed({");
     expect(settle).toContain("confirmPayment");

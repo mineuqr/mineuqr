@@ -151,7 +151,13 @@ export function getPosSettlementInitiateService(): PosSettlementInitiateService 
     getPosGrantStore(),
     getPosAccessService(),
     getPosSettlementInitiateIdempotencyStore(),
-    getPosRegisterShiftContextService()
+    getPosRegisterShiftContextService(),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    identityPlaceOrderService
   );
 }
 

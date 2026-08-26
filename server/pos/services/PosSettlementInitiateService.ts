@@ -3,8 +3,9 @@
  * POS Settlement Initiation is a command into the existing Check / Financial
  * Settlement Platform. POS does not own Check, Settlement, Register, or totals.
  *
- * PAYMENT-CONFIRM-SERVICE-1 — cashier Confirm Payment transport. Process
- * ownership is confirmPayment. Collection Fact is Cashier financial authority.
+ * CASHIER-PASS-2-CONFIRM-FINALIZATION-1 — Cashier Confirm with prepared
+ * invoice items creates Order + Collection Fact in one persist transaction.
+ * Legacy orderId Confirm still uses confirmPayment.
  */
 
 import { createHash } from "node:crypto";
@@ -14,7 +15,13 @@ import {
   type StaffSettlementLineInput,
 } from "@shared/operational-session";
 import { CollectionFactError } from "@shared/operational-session/payment/collection-fact";
-import { findProductionCollectionFactByOrderId } from "../../operational-session/payment/collection-fact/collectionFactRepository";
+import {
+  findCollectionFactByIdempotency,
+  findProductionCollectionFactByOrderId,
+} from "../../operational-session/payment/collection-fact/collectionFactRepository";
+import type { CollectionFact } from "@shared/operational-session/payment/collection-fact";
+import type { IdentityPlaceOrderService } from "../../order/application/IdentityPlaceOrderService";
+import { finalizeCashierPreparedInvoice } from "./finalizeCashierPreparedInvoice";
 import type { SettlementContext } from "@shared/crmp";
 import { opsLog } from "../../_core/opsLog";
 import { getOrderById, getOrderItemsByOrderId } from "../../db";
@@ -48,10 +55,20 @@ export class PosSettlementInitiateError extends Error {
   }
 }
 
+export type PosSettlementSaleLineInput = {
+  menuItemId: number;
+  quantity: number;
+  notes?: string | null;
+  modifiers?: readonly string[] | null;
+};
+
 export type PosSettlementInitiateCommand = {
   restaurantId: number;
   terminalId: string;
-  orderId: number;
+  /** Legacy Confirm of an already persisted cashier_pos Order. */
+  orderId?: number;
+  /** Prepared invoice intent. Confirm creates/finalizes the Order. */
+  items?: readonly PosSettlementSaleLineInput[];
   idempotencyKey: string;
   paymentIntentId: string;
   /** Canonical catalog key forwarded to Check. Not a POS amount. */
@@ -219,7 +236,8 @@ function fingerprintOf(input: {
   restaurantId: number;
   terminalId: string;
   userId: number;
-  orderId: number;
+  orderId: number | null;
+  itemsKey: string | null;
   paymentIntentId: string;
   paymentMethod?: SelectablePaymentMethod | null;
   settlements?: readonly StaffSettlementLineInput[];
@@ -239,6 +257,7 @@ function fingerprintOf(input: {
         terminalId: input.terminalId,
         userId: input.userId,
         orderId: input.orderId,
+        itemsKey: input.itemsKey,
         paymentIntentId: input.paymentIntentId,
         paymentMethod: input.paymentMethod ?? null,
         billDiscountAmount: input.billDiscountAmount ?? null,
@@ -246,6 +265,55 @@ function fingerprintOf(input: {
       })
     )
     .digest("hex");
+}
+
+function preparedItemsKey(
+  items: readonly PosSettlementSaleLineInput[] | undefined
+): string | null {
+  if (!items || items.length === 0) return null;
+  return [...items]
+    .map((item) => `${item.menuItemId}:${item.quantity}`)
+    .sort()
+    .join("|");
+}
+
+function moneyKey(value: string | undefined): string {
+  const trimmed = (value ?? "0.00").trim();
+  return trimmed.length === 0 ? "0.00" : trimmed;
+}
+
+function tenderMethodsKey(
+  command: Pick<PosSettlementInitiateCommand, "paymentMethod" | "settlements">
+): string {
+  if (command.settlements && command.settlements.length > 0) {
+    return [...command.settlements]
+      .map((line) => line.paymentMethod)
+      .sort()
+      .join("|");
+  }
+  return command.paymentMethod ?? "";
+}
+
+function cashierIntentMatchesExistingFact(input: {
+  command: PosSettlementInitiateCommand;
+  fact: CollectionFact;
+  orderItems: readonly { menuItemId?: number | null; quantity?: number | string | null }[];
+}): boolean {
+  const items = input.command.items ?? [];
+  const persistedKey = [...input.orderItems]
+    .map((row) => `${Number(row.menuItemId)}:${Number(row.quantity ?? 1)}`)
+    .sort()
+    .join("|");
+  if (preparedItemsKey(items) !== persistedKey) return false;
+  if (moneyKey(input.command.billDiscountAmount) !== moneyKey(input.fact.discountAmount)) {
+    return false;
+  }
+  const commandTenders = tenderMethodsKey(input.command);
+  const factTenders = [...input.fact.tenders]
+    .map((line) => line.paymentMethod)
+    .sort()
+    .join("|");
+  return commandTenders.length === 0 || commandTenders === factTenders;
 }
 
 function assertIdempotencyKey(key: string): void {
@@ -264,6 +332,23 @@ async function defaultMembershipLookup(
   const row = await findBlockingMembershipForOrder(restaurantId, orderId);
   if (!row) return null;
   return { checkId: row.membership.checkId, checkOutcome: row.checkOutcome };
+}
+
+function collectionFactToLookup(fact: CollectionFact): NonNullable<
+  Awaited<ReturnType<PosProductionCollectionFactLookup>>
+> {
+  return {
+    collectionFactId: fact.collectionFactId,
+    checkId: fact.checkId,
+    amount: fact.amount,
+    paymentIntentId: fact.paymentIntentId,
+    subtotal: fact.subtotal,
+    discountAmount: fact.discountAmount,
+    taxAmount: fact.taxAmount,
+    tenders: fact.tenders,
+    committedAt: fact.committedAt,
+    currencySnapshot: fact.currencySnapshot,
+  };
 }
 
 async function defaultProductionCollectionFactByOrder(
@@ -487,7 +572,8 @@ export class PosSettlementInitiateService {
     _membershipLookup: PosSettlementMembershipLookup = defaultMembershipLookup,
     private readonly checkLookup: PosSettlementCheckLookup = defaultCheckLookup,
     private readonly settlePaid: PosSettlementSettlePaid = defaultSettlePaid,
-    private readonly productionCollectionFactByOrderLookup: PosProductionCollectionFactLookup = defaultProductionCollectionFactByOrder
+    private readonly productionCollectionFactByOrderLookup: PosProductionCollectionFactLookup = defaultProductionCollectionFactByOrder,
+    private readonly placeOrder?: IdentityPlaceOrderService
   ) {}
 
   async initiate(input: {
@@ -507,19 +593,29 @@ export class PosSettlementInitiateService {
     let checkLoadedAt: string | undefined;
     let financialTransactionStartedAt: string | undefined;
     assertIdempotencyKey(input.command.idempotencyKey);
+    const preparedItems = input.command.items ?? [];
+    const hasPreparedItems = preparedItems.length > 0;
+    const commandOrderId = input.command.orderId;
+    const hasOrderId =
+      commandOrderId != null &&
+      Number.isInteger(commandOrderId) &&
+      commandOrderId > 0;
+    if (!hasPreparedItems && !hasOrderId) {
+      throw new PosSettlementInitiateError(
+        "invalid_settlement",
+        "Prepared invoice items are required"
+      );
+    }
     if (
       !input.command.paymentIntentId.trim() ||
       input.command.paymentIntentId.length > 128 ||
-      input.command.paymentIntentId === String(input.command.orderId) ||
-      input.command.paymentIntentId === input.command.idempotencyKey
+      input.command.paymentIntentId === input.command.idempotencyKey ||
+      (hasOrderId && input.command.paymentIntentId === String(commandOrderId))
     ) {
       throw new PosSettlementInitiateError(
         "invalid_payment_intent",
         "A legitimate paymentIntentId is required"
       );
-    }
-    if (!Number.isInteger(input.command.orderId) || input.command.orderId <= 0) {
-      throw new PosSettlementInitiateError("order_not_found", "Order is invalid");
     }
 
     const authStarted = clock.mark();
@@ -556,36 +652,44 @@ export class PosSettlementInitiateService {
     }
     authMs = clock.since(authStarted);
 
+    const itemsKey = preparedItemsKey(hasPreparedItems ? preparedItems : undefined);
+    let order: NonNullable<Awaited<ReturnType<PosSettlementInitiateOrderLookup>>> | null =
+      null;
     const orderStarted = clock.mark();
-    const order = await this.orderLookup(input.command.orderId);
-    orderLoadMs = clock.since(orderStarted);
-    if (!order) {
-      throw new PosSettlementInitiateError("order_not_found", "Order not found");
-    }
-    if (order.restaurantId !== context.restaurantId) {
-      throw new PosSettlementInitiateError(
-        "order_wrong_restaurant",
-        "Order does not belong to this restaurant"
-      );
-    }
-    if (order.orderingChannel !== ORDERING_CHANNEL_CASHIER_POS) {
-      throw new PosSettlementInitiateError(
-        "order_not_eligible",
-        "Order is not a direct POS Sale"
-      );
-    }
-    if (order.status === "cancelled") {
-      throw new PosSettlementInitiateError(
-        "order_not_eligible",
-        "Order is not eligible"
-      );
+    if (!hasPreparedItems && hasOrderId) {
+      order = await this.orderLookup(commandOrderId as number);
+      orderLoadMs = clock.since(orderStarted);
+      if (!order) {
+        throw new PosSettlementInitiateError("order_not_found", "Order not found");
+      }
+      if (order.restaurantId !== context.restaurantId) {
+        throw new PosSettlementInitiateError(
+          "order_wrong_restaurant",
+          "Order does not belong to this restaurant"
+        );
+      }
+      if (order.orderingChannel !== ORDERING_CHANNEL_CASHIER_POS) {
+        throw new PosSettlementInitiateError(
+          "order_not_eligible",
+          "Order is not a direct POS Sale"
+        );
+      }
+      if (order.status === "cancelled") {
+        throw new PosSettlementInitiateError(
+          "order_not_eligible",
+          "Order is not eligible"
+        );
+      }
+    } else {
+      orderLoadMs = clock.since(orderStarted);
     }
 
     const fingerprint = fingerprintOf({
       restaurantId: context.restaurantId,
       terminalId: context.terminalId,
       userId: context.userId,
-      orderId: order.id,
+      orderId: order?.id ?? null,
+      itemsKey,
       paymentIntentId: input.command.paymentIntentId,
       paymentMethod: input.command.paymentMethod ?? null,
       settlements: input.command.settlements,
@@ -643,6 +747,151 @@ export class PosSettlementInitiateService {
       settlementContextCompletedAt = new Date().toISOString();
       ensureCheckMs = 0;
       checkLoadMs = 0;
+
+      if (hasPreparedItems) {
+        const existingByKey = await findCollectionFactByIdempotency({
+          restaurantId: context.restaurantId,
+          idempotencyKey: input.command.idempotencyKey,
+        });
+        if (existingByKey) {
+          const persistedOrder = await this.orderLookup(existingByKey.orderId);
+          if (!persistedOrder) {
+            throw new PosSettlementInitiateError(
+              "order_not_found",
+              "Order not found"
+            );
+          }
+          const persistedItems =
+            (await getOrderItemsByOrderId(persistedOrder.id)) ?? [];
+          if (
+            !cashierIntentMatchesExistingFact({
+              command: input.command,
+              fact: existingByKey,
+              orderItems: persistedItems,
+            })
+          ) {
+            throw new PosSettlementInitiateError(
+              "idempotency_conflict",
+              "Idempotency key was already used for a different settlement"
+            );
+          }
+          const factView = collectionFactToLookup(existingByKey);
+          const paidReceipt = await paidReceiptFromExistingFact({
+            order: persistedOrder,
+            fact: factView,
+            cashierUserId: context.userId,
+            cashierDisplayName: input.user.name,
+            terminalId: context.terminalId,
+          });
+          void this.idempotency
+            .put({
+              restaurantId: context.restaurantId,
+              terminalId: context.terminalId,
+              userId: context.userId,
+              idempotencyKey: input.command.idempotencyKey,
+              fingerprint,
+              orderId: persistedOrder.id,
+              checkId: posCheckIdFromFact(existingByKey.checkId),
+              outcome: "paid",
+              grandTotal: existingByKey.amount,
+              settlementRecordId: null,
+              sessionId: null,
+              registerId: operational.registerId,
+              financialShiftId: operational.financialShiftId,
+              createdAt: new Date().toISOString(),
+              paidReceipt,
+            })
+            .catch(() => undefined);
+          return resultFrom({
+            checkId: posCheckIdFromFact(existingByKey.checkId),
+            orderId: persistedOrder.id,
+            restaurantId: context.restaurantId,
+            grandTotal: existingByKey.amount,
+            settlementRecordId: null,
+            sessionId: null,
+            terminalId: context.terminalId,
+            cashierUserId: context.userId,
+            registerId: operational.registerId,
+            financialShiftId: operational.financialShiftId,
+            replayed: true,
+            paidReceipt,
+          });
+        }
+
+        const settlements = resolveCommandSettlements(input.command);
+        const txnStarted = clock.mark();
+        financialTransactionStartedAt = new Date(txnStarted).toISOString();
+        try {
+          const placeOrder =
+            this.placeOrder ??
+            (await import("../../order/placeOrderComposition")).identityPlaceOrderService;
+          const finalized = await finalizeCashierPreparedInvoice(placeOrder, {
+            restaurantId: context.restaurantId,
+            terminalId: context.terminalId,
+            items: preparedItems,
+            billDiscountAmount: input.command.billDiscountAmount,
+            settlements,
+            paymentIntentId: input.command.paymentIntentId,
+            idempotencyKey: input.command.idempotencyKey,
+            actorUserId: context.userId,
+            actorDisplayName: input.user.name,
+            settlementContext: crmp.settlementContext,
+            settlementContextHints: {
+              registerId: operational.registerId,
+              operatorUserId: context.userId,
+              deviceId: operational.deviceId,
+            },
+          });
+          financialTxnMs = clock.since(txnStarted);
+          void this.idempotency
+            .put({
+              restaurantId: context.restaurantId,
+              terminalId: context.terminalId,
+              userId: context.userId,
+              idempotencyKey: input.command.idempotencyKey,
+              fingerprint,
+              orderId: finalized.orderId,
+              checkId: 0,
+              outcome: "paid",
+              grandTotal: finalized.grandTotal,
+              settlementRecordId: null,
+              sessionId: null,
+              registerId: operational.registerId,
+              financialShiftId: operational.financialShiftId,
+              createdAt: new Date().toISOString(),
+              paidReceipt: finalized.paidReceipt,
+            })
+            .catch(() => undefined);
+          return resultFrom({
+            checkId: 0,
+            orderId: finalized.orderId,
+            restaurantId: context.restaurantId,
+            grandTotal: finalized.grandTotal,
+            settlementRecordId: null,
+            sessionId: null,
+            terminalId: context.terminalId,
+            cashierUserId: context.userId,
+            registerId: operational.registerId,
+            financialShiftId: operational.financialShiftId,
+            replayed: false,
+            paidReceipt: finalized.paidReceipt,
+          });
+        } catch (err) {
+          if (err instanceof CollectionFactError) {
+            throw new PosSettlementInitiateError(
+              err.code === "CONFLICT"
+                ? "idempotency_conflict"
+                : "collection_fact_rejected",
+              err.message
+            );
+          }
+          throw err;
+        }
+      }
+
+      if (!order) {
+        throw new PosSettlementInitiateError("order_not_found", "Order not found");
+      }
 
       const existingFact = await this.productionCollectionFactByOrderLookup({
         restaurantId: context.restaurantId,

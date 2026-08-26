@@ -23,7 +23,7 @@ describe("CASHIER-ORDER-AND-CHECKOUT-LATENCY-FORENSICS-1 architecture guards", (
     expect(sale).not.toContain("const stored = await this.idempotency.get");
     expect(place).toContain("enrollCheck: false");
     const placeSaleFn = panel.slice(
-      panel.indexOf("async function placeSale"),
+      panel.indexOf("function placeSale"),
       panel.indexOf("async function completePayment")
     );
     expect(placeSaleFn).not.toContain("invalidateOrderReads");

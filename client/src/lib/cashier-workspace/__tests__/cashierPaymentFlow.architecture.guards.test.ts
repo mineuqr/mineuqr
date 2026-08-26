@@ -84,18 +84,17 @@ describe("CASHIER-PAYMENT-FLOW-IMPLEMENTATION-1 architecture", () => {
     const settle = read(SETTLE);
     const visibility = read(VISIBILITY);
     const placeSaleFn = panel.slice(
-      panel.indexOf("async function placeSale"),
+      panel.indexOf("function placeSale"),
       panel.indexOf("async function completePayment")
     );
     const completeFn = panel.slice(
       panel.indexOf("async function completePayment"),
       panel.indexOf("function returnToDashboard")
     );
-    expect(placeSaleFn.indexOf("saleMutation.mutateAsync")).toBeLessThan(
-      placeSaleFn.indexOf('setSalePhase("payment")')
-    );
+    expect(placeSaleFn).not.toContain("saleMutation.mutateAsync");
     expect(placeSaleFn).not.toContain("settleMutation");
     expect(completeFn).toContain("settleMutation.mutateAsync");
+    expect(completeFn).toContain("items: confirmItems");
     expect(completeFn).not.toContain("directSale?.totalAmount");
     expect(sale).toContain("enrollCheck: false");
     expect(sale).toContain("awaitRelay: false");

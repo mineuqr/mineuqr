@@ -1,6 +1,5 @@
 /**
- * CASHIER-PASS-2-INVOICE-IDENTITY-1
- * Session-local sale.create attempt identity. Not a second idempotency store.
+ * Session-local Confirm attempt identity. Not a second idempotency store.
  * Survives lost HTTP responses / refresh so the same key is retried.
  */
 
@@ -8,6 +7,7 @@ import type { CashierSaleAttemptLine } from "./cashierInvoiceView";
 
 export type CashierPendingSaleAttempt = {
   idempotencyKey: string;
+  paymentIntentId?: string;
   items: readonly CashierSaleAttemptLine[];
 };
 
@@ -43,7 +43,15 @@ export function readCashierPendingSaleAttempt(
       }
       items.push({ menuItemId: row.menuItemId, quantity: row.quantity });
     }
-    return { idempotencyKey: parsed.idempotencyKey, items };
+    return {
+      idempotencyKey: parsed.idempotencyKey,
+      paymentIntentId:
+        typeof parsed.paymentIntentId === "string" &&
+        parsed.paymentIntentId.length >= 8
+          ? parsed.paymentIntentId
+          : undefined,
+      items,
+    };
   } catch {
     return null;
   }

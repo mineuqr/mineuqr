@@ -5,6 +5,7 @@ import {
   cashierCatalogTicketMatchesInvoiceLines,
   cashierTicketMatchesSaleAttempt,
   catalogTicketFromInvoiceLines,
+  mapDraftTicketToPreparedInvoiceLines,
   mapSaleCreateLinesToInvoiceLines,
   projectPreparedCashierInvoiceMoney,
   unitPriceFromLineTotal,
@@ -87,6 +88,21 @@ describe("CashierInvoiceView", () => {
     expect(view.money?.grandTotal).toBe("27.60");
     expect(view.money?.taxAmount).toBe("3.60");
     expect(view.money?.subtotal).toBe("24.00");
+  });
+
+  it("maps draft catalog lines into a prepared invoice without Order identity", () => {
+    const lines = mapDraftTicketToPreparedInvoiceLines([
+      {
+        menuItemId: 3,
+        nameAr: "عصير",
+        nameEn: "Juice",
+        price: "10.00",
+        quantity: 2,
+      },
+    ]);
+    expect(lines[0]?.menuItemId).toBe(3);
+    expect(lines[0]?.lineTotal).toBe("20.00");
+    expect(lines[0]?.unitPrice).toBe("10.00");
   });
 
   it("round-trips prepared lines to an editable catalog ticket", () => {

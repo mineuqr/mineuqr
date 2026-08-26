@@ -33,18 +33,16 @@ describe("CASHIER-PAYMENT-FLOW-UX-CORRECTION-1 architecture", () => {
     expect(panel).not.toContain('t("taxAtPayment")');
   });
 
-  it("opens the Payment overlay after sale.create persists the Order invoice", () => {
+  it("opens the Payment overlay from the local prepared invoice", () => {
     const panel = read(PANEL);
     const placeSaleFn = panel.slice(
-      panel.indexOf("async function placeSale"),
+      panel.indexOf("function placeSale"),
       panel.indexOf("async function completePayment")
     );
     expect(panel).toContain('salePhase === "payment"');
-    expect(placeSaleFn.indexOf("saleMutation.mutateAsync")).toBeLessThan(
-      placeSaleFn.indexOf('setSalePhase("payment")')
-    );
+    expect(placeSaleFn).toContain('setSalePhase("payment")');
+    expect(placeSaleFn).not.toContain("saleMutation.mutateAsync");
     expect(placeSaleFn).not.toContain("settleMutation");
-    expect(panel).toContain("t(\"verifyingAmount\")");
     expect(panel).not.toContain('t("preparingPayment")');
   });
 

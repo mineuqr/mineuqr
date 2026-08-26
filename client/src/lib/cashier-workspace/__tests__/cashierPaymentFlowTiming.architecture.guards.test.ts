@@ -47,7 +47,6 @@ describe("CASHIER-PAYMENT-FLOW-BOUNDARY-INSTRUMENTATION-1 architecture", () => {
     expect(timing).toContain("cashier-flow-");
     expect(panel).not.toContain("idempotencyKey: cashierFlowId");
     expect(panel).not.toContain("idempotencyKey: flowId");
-    expect(panel).toContain('newCashierIdempotencyKey("sale")');
     expect(panel).toContain('newCashierIdempotencyKey("settle")');
     expect(schema).not.toMatch(/cashierFlowId|cashier_payment_flow/);
     expect(schema).not.toMatch(/export const cashierPaymentFlows/);

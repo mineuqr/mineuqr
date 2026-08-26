@@ -48,6 +48,7 @@ describe("ADR-ARCH-038 cashier direct financial commit", () => {
     const payment = read(PAYMENT);
     const check = read(CHECK);
     expect(settle).toContain("confirmPayment");
+    expect(settle).toContain("finalizeCashierPreparedInvoice");
     expect(settle).not.toContain("ensureCheckForOrder");
     expect(settle).not.toContain("settleCheckPaidByIdDetailed");
     expect(settle).toContain("orderId: order.id");

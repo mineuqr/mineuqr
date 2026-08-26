@@ -40,11 +40,12 @@ describe("PAYMENT-COLLECTION-FACT-PRODUCTION-ELIGIBILITY-1", () => {
     expect(PUBLISHED_COLLECTION_FACT_PURPOSES).toEqual(["production"]);
   });
 
-  it("does not connect Cashier Confirm or sale.create to Collection Fact writes", () => {
+  it("keeps Collection Fact writes on the certified adapter, not Cashier UI or sale.create", () => {
     const confirm = read(
       "server/operational-session/payment/PaymentConfirmService.ts"
     );
     const settle = read("server/pos/services/PosSettlementInitiateService.ts");
+    const finalize = read("server/pos/services/finalizeCashierPreparedInvoice.ts");
     const panel = read(
       "client/src/components/cashier-workspace/CashierWorkspacePanel.tsx"
     );
@@ -56,6 +57,9 @@ describe("PAYMENT-COLLECTION-FACT-PRODUCTION-ELIGIBILITY-1", () => {
     expect(confirm).toContain("commitCashierProductionCollectionFact");
     expect(confirm).not.toContain("insertCollectionFact");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
+    expect(finalize).toContain("commitCashierProductionCollectionFact");
+    expect(finalize).not.toContain("insertCollectionFact");
+    expect(panel).not.toContain("trpc.pos.sale.create");
   });
 
   it("does not create a payments table or rewrite Check/Settlement", () => {

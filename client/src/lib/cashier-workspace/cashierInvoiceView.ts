@@ -2,9 +2,8 @@
  * CASHIER-SALE-INVOICE-UX-REALIGNMENT-1
  * CASHIER-PASS-2-BOUNDARY-COMPLIANCE-AND-HARDENING-1
  * Presentation-only Cashier invoice view. Not a DB entity, Check, or
- * Collection Fact. Draft money is a display preview. Prepared lines come
- * from pos.sale.create. Prepared payable money is computeCheckMoney on
- * those lines plus the frozen bill discount (same engine as Confirm freeze).
+ * Collection Fact. Draft and Payment-UI money are display previews via
+ * computeCheckMoney. Confirm creates the commercial Order and Collection Fact.
  * Customer-facing invoice number/date/time are paidReceipt only.
  */
 
@@ -165,7 +164,7 @@ export type CashierSaleAttemptLine = Readonly<{
   quantity: number;
 }>;
 
-/** Same composition the client last sent to pos.sale.create (retry / lost response). */
+/** Same composition the client last sent to Confirm (retry / lost response). */
 export function cashierTicketMatchesSaleAttempt(
   ticket: readonly Pick<CashierDraftCatalogLine, "menuItemId" | "quantity">[],
   attempt: readonly CashierSaleAttemptLine[]
@@ -232,6 +231,27 @@ export function toCashierSaleCreateMoney(
     grandTotal: money.grandTotal,
     billDiscountAmount: money.discountAmount,
   };
+}
+
+export function mapDraftTicketToPreparedInvoiceLines(
+  ticket: readonly CashierDraftCatalogLine[]
+): CashierInvoiceLineView[] {
+  return ticket.map((line) => {
+    const cents = parseCents(line.price);
+    const lineTotal =
+      cents != null && Number.isInteger(line.quantity) && line.quantity >= 0
+        ? fromCents(cents * line.quantity)
+        : line.price;
+    return {
+      key: `prepared-${line.menuItemId}`,
+      nameAr: line.nameAr,
+      nameEn: line.nameEn?.trim() ? line.nameEn : line.nameAr,
+      quantity: line.quantity,
+      unitPrice: line.price,
+      lineTotal,
+      menuItemId: line.menuItemId,
+    };
+  });
 }
 
 export function mapSaleCreateLinesToInvoiceLines(

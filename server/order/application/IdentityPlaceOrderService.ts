@@ -65,7 +65,10 @@ export class IdentityPlaceOrderService {
    */
   async execute(
     command: IdentityPlaceOrderCommand,
-    persist?: Pick<SaveOrderOptions, "afterPersistInTransaction"> & {
+    persist?: Pick<
+      SaveOrderOptions,
+      "afterPersistInTransaction" | "skipBusinessIdentityAllocation"
+    > & {
       /**
        * Default true (CHECK-GENERALIZATION-M5). POS sale HTTP sets false so
        * post-commit ensureCheckForOrder is skipped. Cashier OPEN Check is not
@@ -121,7 +124,10 @@ export class IdentityPlaceOrderService {
     };
     const enrollCheck = persist?.enrollCheck !== false;
     const saveOpts = persist
-      ? { afterPersistInTransaction: persist.afterPersistInTransaction }
+      ? {
+          afterPersistInTransaction: persist.afterPersistInTransaction,
+          skipBusinessIdentityAllocation: persist.skipBusinessIdentityAllocation,
+        }
       : undefined;
     const result = saveOpts
       ? await this.placeOrder.execute(placeCommand, saveOpts)
