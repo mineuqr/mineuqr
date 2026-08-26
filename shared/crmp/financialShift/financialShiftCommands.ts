@@ -468,11 +468,16 @@ export function recordDrawerCount(
   }
 
   if (command.kind === "final") {
-    const existingFinal = command.shift.drawer.counts.some(
+    const existingFinal = command.shift.drawer.counts.find(
       (c) => c.kind === "final"
     );
     if (existingFinal) {
-      throw new CrmpConflictError("Shift already has a final drawer count");
+      if (toCents(existingFinal.actualAmount) === toCents(command.actualAmount)) {
+        return command.shift;
+      }
+      throw new CrmpConflictError(
+        "Final drawer count already recorded with a different amount"
+      );
     }
   }
 

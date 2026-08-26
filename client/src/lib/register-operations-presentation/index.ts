@@ -81,6 +81,10 @@ export {
   rememberActiveRegister,
 } from "./registerOperationsStationContext";
 export {
+  readOrCreateRegisterCloseAttemptKey,
+  clearRegisterCloseAttemptKey,
+} from "./registerCloseAttemptStorage";
+export {
   isCatalogActiveRegister,
   parseUserAgentFriendly,
   presentFriendlyDevice,

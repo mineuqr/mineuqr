@@ -471,4 +471,113 @@ describe("FinancialShiftDomainService + repository", () => {
       })
     ).rejects.toBeInstanceOf(CrmpConflictError);
   });
+
+  it("closeWithFinalCount is idempotent and reuses a persisted final count", async () => {
+    await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "40.00",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_1",
+      at: "t2",
+    });
+    await shifts.recordCount({
+      restaurantId: 1,
+      financialShiftId: "fsh_1",
+      kind: "final",
+      actualAmount: "40.00",
+      actorUserId: 10,
+      at: "t3",
+    });
+    const closed = await shifts.closeWithFinalCount({
+      restaurantId: 1,
+      financialShiftId: "fsh_1",
+      actualCashAmount: "40.00",
+      actorUserId: 10,
+      closeDuty: true,
+      at: "t4",
+    });
+    expect(closed.shift.status).toBe("closed");
+    expect(
+      closed.shift.drawer.counts.filter((c) => c.kind === "final")
+    ).toHaveLength(1);
+    const duty = await registers.get(1, "reg_1");
+    expect(duty?.dutyStatus).toBe("closed");
+
+    const again = await shifts.closeWithFinalCount({
+      restaurantId: 1,
+      financialShiftId: "fsh_1",
+      actualCashAmount: "40.00",
+      actorUserId: 10,
+      closeDuty: true,
+      at: "t5",
+    });
+    expect(again.alreadyApplied).toBe(true);
+    expect(
+      again.shift.drawer.counts.filter((c) => c.kind === "final")
+    ).toHaveLength(1);
+
+    await expect(
+      shifts.closeWithFinalCount({
+        restaurantId: 1,
+        financialShiftId: "fsh_1",
+        actualCashAmount: "41.00",
+        actorUserId: 10,
+        closeDuty: true,
+        at: "t6",
+      })
+    ).resolves.toMatchObject({ alreadyApplied: true });
+  });
+
+  it("closeWithFinalCount rejects a conflicting count while the shift is still open", async () => {
+    await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "40.00",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_open",
+      at: "t2",
+    });
+    await shifts.recordCount({
+      restaurantId: 1,
+      financialShiftId: "fsh_open",
+      kind: "final",
+      actualAmount: "40.00",
+      actorUserId: 10,
+      at: "t3",
+    });
+    await expect(
+      shifts.closeWithFinalCount({
+        restaurantId: 1,
+        financialShiftId: "fsh_open",
+        actualCashAmount: "10.00",
+        actorUserId: 10,
+        at: "t4",
+      })
+    ).rejects.toBeInstanceOf(CrmpConflictError);
+  });
+
+  it("closeWithFinalCount reports stale version", async () => {
+    const { shift } = await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "12.00",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_ver",
+      at: "t2",
+    });
+    await expect(
+      shifts.closeWithFinalCount({
+        restaurantId: 1,
+        financialShiftId: "fsh_ver",
+        actualCashAmount: "12.00",
+        actorUserId: 10,
+        expectedVersion: shift.version - 1,
+        at: "t3",
+      })
+    ).rejects.toBeInstanceOf(CrmpConflictError);
+  });
 });

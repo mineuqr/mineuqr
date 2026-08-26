@@ -46,6 +46,8 @@ describe("Register Operations presentation architecture guards", () => {
     expect(panel).toContain("needsOpeningFloatPrompt");
     expect(panel).toContain("OpeningFloatDialog");
     expect(panel).toContain("ShiftClosingSummaryDialog");
+    expect(panel).toContain("closeDuty: true");
+    expect(panel).toContain("readOrCreateRegisterCloseAttemptKey");
     expect(panel).toContain("CashDrawerSummaryCard");
     expect(panel).toContain("FinancialShiftTenderSummaryCard");
     expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-PRESENTATION-1");

@@ -46,6 +46,8 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
       "server/crmp/api/crmpFinancialShiftOperationsService.ts"
     );
     expect(shiftSvc).toContain("getExpectedCash");
+    expect(shiftSvc).toContain("closeWithFinalCount");
+    expect(shiftSvc).not.toMatch(/recordCount\s*\(/);
     expect(shiftSvc).not.toMatch(/computeExpectedCash|grandTotal|toCents/);
     expect(shiftSvc).not.toMatch(/openRegister|closeRegister/);
   });
@@ -185,5 +187,31 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
     expect(vos).toContain("ADR-ARCH-030");
     expect(vos).toContain("suspended");
     expect(vos).toMatch(/Persisted `pending` is prohibited/);
+  });
+
+  it("register close corridor is retry-safe and isolated from Cashier PAID", () => {
+    const ops = read("server/crmp/api/crmpFinancialShiftOperationsService.ts");
+    const domain = read("server/crmp/FinancialShiftDomainService.ts");
+    const panel = read(
+      "client/src/components/register-operations/RegisterOperationsPanel.tsx"
+    );
+    const cashier = read(
+      "client/src/components/cashier-workspace/CashierWorkspacePanel.tsx"
+    );
+    const errors = read(
+      "client/src/lib/register-operations-presentation/registerOperationsErrorPresentation.ts"
+    );
+    expect(domain).toContain("closeWithFinalCount");
+    expect(domain).toContain("commitCloseCorridor");
+    expect(ops).toContain("closeIdempotencyKey");
+    expect(ops).not.toMatch(/pos\.sale|commitCashierProductionCollectionFact/);
+    expect(panel).toContain("closeDuty: true");
+    expect(panel).toContain("closeIdempotencyKey");
+    expect(panel).toContain("readOrCreateRegisterCloseAttemptKey");
+    expect(errors).toContain("stale_version");
+    expect(errors).toContain("final_count_conflict");
+    expect(errors).toContain("duty_blocked");
+    expect(cashier).not.toContain("trpc.crmp.financialShift.close");
+    expect(cashier).not.toContain("closeWithFinalCount");
   });
 });

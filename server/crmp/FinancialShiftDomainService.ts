@@ -17,6 +17,7 @@ import {
   buildFinancialShiftSuspendedEvent,
   cancelOpenFinancialShift,
   closeFinancialShift,
+  closeRegister,
   createSettlementAttribution,
   initiateHandover,
   openFinancialShift,
@@ -32,9 +33,11 @@ import {
   type FinancialShiftDomainEvent,
   type MovementType,
   type SettlementAttribution,
+  type CashRegister,
   CrmpConflictError,
   CrmpNotFoundError,
   computeExpectedCash,
+  isTerminalShiftStatus,
 } from "@shared/crmp";
 import type { CrmpUnitOfWork } from "./CrmpRepository";
 import { newCrmpId } from "./crmpIds";
@@ -211,6 +214,137 @@ export class FinancialShiftDomainService {
     return {
       shift: next,
       events: [buildFinancialShiftClosedEvent(next, at)],
+    };
+  }
+
+  /**
+   * REGISTER-CLOSE-IDEMPOTENT-ATOMIC-CORRIDOR-1
+   * Final drawer count + shift close (+ optional duty) as one persist unit.
+   * Reuses an existing matching final count; does not insert a second one.
+   */
+  async closeWithFinalCount(input: {
+    restaurantId: number;
+    financialShiftId: string;
+    actualCashAmount: string;
+    actorUserId: number;
+    at?: string;
+    expectedVersion?: number;
+    closeDuty?: boolean;
+    countId?: string;
+  }): Promise<
+    FinancialShiftCommandResult & {
+      registerAlreadyApplied?: boolean;
+    }
+  > {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireShift(
+      input.restaurantId,
+      input.financialShiftId
+    );
+
+    if (isTerminalShiftStatus(current.status)) {
+      if (!input.closeDuty) {
+        return { shift: current, events: [], alreadyApplied: true };
+      }
+      const duty = await this.closeDutyIfRequested({
+        restaurantId: input.restaurantId,
+        registerId: current.registerId,
+        at,
+        closingShiftId: current.financialShiftId,
+      });
+      if (duty.register && !duty.alreadyApplied) {
+        await this.uow.registers.update(
+          duty.register,
+          duty.expectedVersion
+        );
+      }
+      return {
+        shift: current,
+        events: [],
+        alreadyApplied: duty.alreadyApplied,
+        registerAlreadyApplied: duty.alreadyApplied,
+      };
+    }
+
+    if (
+      input.expectedVersion != null &&
+      input.expectedVersion !== current.version
+    ) {
+      throw new CrmpConflictError(
+        `Financial Shift version conflict: expected ${input.expectedVersion}, found ${current.version}`
+      );
+    }
+
+    const countId = input.countId ?? newCrmpId("cnt");
+
+    const counted = recordDrawerCount({
+      shift: current,
+      countId,
+      kind: "final",
+      actualAmount: input.actualCashAmount,
+      actorUserId: input.actorUserId,
+      recordedAt: at,
+    });
+    const next = closeFinancialShift({ shift: counted, closedAt: at });
+    const duty = input.closeDuty
+      ? await this.closeDutyIfRequested({
+          restaurantId: input.restaurantId,
+          registerId: next.registerId,
+          at,
+          closingShiftId: next.financialShiftId,
+        })
+      : { register: null, expectedVersion: undefined, alreadyApplied: true };
+
+    await this.uow.commitCloseCorridor({
+      shift: next,
+      shiftExpectedVersion: current.version,
+      register: duty.alreadyApplied ? null : duty.register,
+      registerExpectedVersion: duty.expectedVersion,
+    });
+
+    return {
+      shift: next,
+      events: [buildFinancialShiftClosedEvent(next, at)],
+      alreadyApplied: false,
+      registerAlreadyApplied: duty.alreadyApplied,
+    };
+  }
+
+  private async closeDutyIfRequested(input: {
+    restaurantId: number;
+    registerId: string;
+    at: string;
+    closingShiftId: string;
+  }): Promise<{
+    register: CashRegister | null;
+    expectedVersion?: number;
+    alreadyApplied: boolean;
+  }> {
+    const current = await this.uow.registers.findById(
+      input.restaurantId,
+      input.registerId
+    );
+    if (!current) {
+      throw new CrmpNotFoundError(`Register not found: ${input.registerId}`);
+    }
+    const active = await this.uow.shifts.findActiveByRegister(
+      input.restaurantId,
+      input.registerId
+    );
+    const hasOtherActive =
+      active != null && active.financialShiftId !== input.closingShiftId;
+    const next = closeRegister({
+      register: current,
+      hasActiveShift: hasOtherActive,
+      at: input.at,
+    });
+    if (next === current || next.version === current.version) {
+      return { register: current, alreadyApplied: true };
+    }
+    return {
+      register: next,
+      expectedVersion: current.version,
+      alreadyApplied: false,
     };
   }
 

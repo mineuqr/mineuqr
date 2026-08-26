@@ -31,7 +31,7 @@ function operatorMessage(error: CrmpDomainError): string {
     case "INVARIANT_VIOLATION": {
       const m = error.message.toLowerCase();
       if (m.includes("financial shift is active")) {
-        return "Register unavailable while a financial shift is active";
+        return "Register duty cannot close while a financial shift is active";
       }
       if (m.includes("duty is not closed")) {
         return "Register duty must be closed first";
@@ -83,7 +83,11 @@ export function throwCrmpApiError(error: unknown): never {
         ? "Drawer movement already recorded with a different payload"
         : m.includes("does not match the active")
           ? "Financial Shift does not match the active Register"
-          : operatorMessage(error),
+          : m.includes("version conflict")
+            ? "Register state is stale — refresh and retry"
+            : m.includes("different amount")
+              ? "Final cash count does not match the recorded close count"
+              : operatorMessage(error),
     });
   }
 

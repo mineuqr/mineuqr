@@ -220,6 +220,38 @@ describe("CRMP Financial Shift commands", () => {
     ).toThrow(CrmpImmutabilityError);
   });
 
+  it("reuses a matching final count and rejects a different amount", () => {
+    let shift = openShift();
+    shift = recordDrawerCount({
+      shift,
+      countId: "cnt_1",
+      kind: "final",
+      actualAmount: "100.00",
+      actorUserId: 10,
+      recordedAt: "t8",
+    });
+    const again = recordDrawerCount({
+      shift,
+      countId: "cnt_2",
+      kind: "final",
+      actualAmount: "100.00",
+      actorUserId: 10,
+      recordedAt: "t8b",
+    });
+    expect(again.drawer.counts.filter((c) => c.kind === "final")).toHaveLength(1);
+    expect(again.version).toBe(shift.version);
+    expect(() =>
+      recordDrawerCount({
+        shift,
+        countId: "cnt_3",
+        kind: "final",
+        actualAmount: "90.00",
+        actorUserId: 10,
+        recordedAt: "t8c",
+      })
+    ).toThrow(CrmpConflictError);
+  });
+
   it("handover requires two distinct users (D-INV-06)", () => {
     expect(() =>
       initiateHandover({

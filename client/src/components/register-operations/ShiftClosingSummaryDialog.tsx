@@ -71,6 +71,8 @@ type Props = {
   tenderSummary: TenderSummary | null | undefined;
   tenderLoading: boolean;
   pending: boolean;
+  resumeRecordedCount?: boolean;
+  recordedActualCashAmount?: string | null;
   onConfirm: (payload: ShiftClosingConfirmPayload) => void;
   /** Loads the single print host then prints (parent owns the only print root). */
   onPrint: (report: ShiftClosingReportVm) => void;
@@ -92,6 +94,8 @@ export function ShiftClosingSummaryDialog({
   tenderSummary,
   tenderLoading,
   pending,
+  resumeRecordedCount = false,
+  recordedActualCashAmount = null,
   onConfirm,
   onPrint,
   onCancel,
@@ -105,7 +109,11 @@ export function ShiftClosingSummaryDialog({
 
   useEffect(() => {
     if (!open) return;
-    setRaw(expectedCashAmount);
+    setRaw(
+      resumeRecordedCount && recordedActualCashAmount
+        ? recordedActualCashAmount
+        : expectedCashAmount
+    );
     setError(null);
     setAutoPrint(readAutoPrintClosingReport());
     setClosedAtPreview(new Date().toISOString());
@@ -113,7 +121,7 @@ export function ShiftClosingSummaryDialog({
       setClosedAtPreview(new Date().toISOString());
     }, 30_000);
     return () => window.clearInterval(timer);
-  }, [open, expectedCashAmount]);
+  }, [open, expectedCashAmount, resumeRecordedCount, recordedActualCashAmount]);
 
   const liveDifference = useMemo(
     () => computeLiveCashDifference(expectedCashAmount, raw),
@@ -233,7 +241,10 @@ export function ShiftClosingSummaryDialog({
             {registerOperationsUiLabel("cashCountTitle", language)}
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-400 sm:text-sm">
-            {registerOperationsUiLabel("cashCountSubtitle", language)}
+            {registerOperationsUiLabel(
+              resumeRecordedCount ? "cashCountResumeSubtitle" : "cashCountSubtitle",
+              language
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -381,7 +392,7 @@ export function ShiftClosingSummaryDialog({
                   inputMode="decimal"
                   autoFocus
                   value={raw}
-                  disabled={pending}
+                  disabled={pending || resumeRecordedCount}
                   className="min-h-10 text-base sm:min-h-11"
                   aria-invalid={error ? true : undefined}
                   onChange={(e) => {

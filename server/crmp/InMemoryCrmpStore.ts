@@ -169,5 +169,17 @@ export function createInMemoryCrmpStore(): CrmpUnitOfWork {
     },
   };
 
-  return { registers: registerRepo, shifts: shiftRepo };
+  return {
+    registers: registerRepo,
+    shifts: shiftRepo,
+    async commitCloseCorridor(input) {
+      await shiftRepo.save(input.shift, input.shiftExpectedVersion);
+      if (input.register) {
+        await registerRepo.update(
+          input.register,
+          input.registerExpectedVersion
+        );
+      }
+    },
+  };
 }

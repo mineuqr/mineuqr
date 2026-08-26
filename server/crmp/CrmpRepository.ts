@@ -69,7 +69,19 @@ export type CrmpFinancialShiftRepository = {
   ): Promise<SettlementAttribution | null>;
 };
 
+export type CrmpCloseCorridorCommit = Readonly<{
+  shift: FinancialShift;
+  shiftExpectedVersion: number;
+  register?: CashRegister | null;
+  registerExpectedVersion?: number;
+}>;
+
 export type CrmpUnitOfWork = {
   registers: CrmpRegisterRepository;
   shifts: CrmpFinancialShiftRepository;
+  /**
+   * REGISTER-CLOSE-IDEMPOTENT-ATOMIC-CORRIDOR-1
+   * Persist closed shift graph and optional duty close in one unit.
+   */
+  commitCloseCorridor(input: CrmpCloseCorridorCommit): Promise<void>;
 };

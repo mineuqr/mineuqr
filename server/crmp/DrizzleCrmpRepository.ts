@@ -5,6 +5,7 @@
 
 import { and, desc, eq, gte, inArray, like, lte, sql } from "drizzle-orm";
 import { getDb } from "../db";
+import { readMysqlAffectedRows } from "../db/mysqlAffectedRows";
 import { readMysqlLastInsertId } from "../_core/mysqlLastInsertId";
 import {
   crmpDrawerCounts,
@@ -16,6 +17,7 @@ import {
 } from "../../drizzle/schema";
 import {
   CrmpConflictError,
+  CrmpNotFoundError,
   type CashRegister,
   type DrawerCount,
   type DrawerMovement,
@@ -151,41 +153,142 @@ async function loadShiftGraph(
   };
 }
 
-async function persistShiftGraph(shift: FinancialShift): Promise<void> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+type CrmpDb = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+type CrmpPersistExecutor = Pick<CrmpDb, "insert" | "update" | "delete" | "select">;
 
+const SHIFT_HEADER_SET = (shift: FinancialShift) => ({
+  status: shift.status,
+  operatorUserId: shift.operatorUserId,
+  version: shift.version,
+  closedAt: shift.closedAt,
+  closeReason: shift.closeReason,
+  archivedAt: shift.archivedAt,
+  updatedAt: shift.updatedAt,
+});
+
+async function persistRegisterUpdate(
+  register: CashRegister,
+  db: CrmpPersistExecutor,
+  expectedVersion?: number
+): Promise<void> {
+  const set = {
+    code: register.code,
+    displayName: register.displayName,
+    registerType: register.registerType,
+    status: register.status,
+    dutyStatus: register.dutyStatus,
+    archivedAt: register.archivedAt,
+    deviceId: register.deviceId,
+    assignedOperatorUserId: register.assignedOperatorUserId,
+    operatorAssignedAt: register.operatorAssignedAt,
+    version: register.version,
+    updatedAt: register.updatedAt,
+  };
+  if (expectedVersion != null) {
+    const result = await db
+      .update(crmpRegisters)
+      .set(set)
+      .where(
+        and(
+          eq(crmpRegisters.restaurantId, register.restaurantId),
+          eq(crmpRegisters.registerId, register.registerId),
+          eq(crmpRegisters.version, expectedVersion)
+        )
+      );
+    if (readMysqlAffectedRows(result) === 0) {
+      const rows = await db
+        .select({ version: crmpRegisters.version })
+        .from(crmpRegisters)
+        .where(
+          and(
+            eq(crmpRegisters.restaurantId, register.restaurantId),
+            eq(crmpRegisters.registerId, register.registerId)
+          )
+        )
+        .limit(1);
+      if (!rows[0]) {
+        throw new CrmpNotFoundError(`Register not found: ${register.registerId}`);
+      }
+      throw new CrmpConflictError(
+        `Register version conflict: expected ${expectedVersion}, found ${rows[0].version}`
+      );
+    }
+    return;
+  }
   await db
-    .insert(crmpFinancialShifts)
-    .values({
-      financialShiftId: shift.financialShiftId,
-      shiftNumber: shift.shiftNumber,
-      restaurantId: shift.restaurantId,
-      registerId: shift.registerId,
-      operatorUserId: shift.operatorUserId,
-      status: shift.status,
-      openingFloatAmount: shift.openingFloatAmount,
-      currencyCode: shift.currencyCode,
-      drawerId: shift.drawer.drawerId,
-      version: shift.version,
-      openedAt: shift.openedAt,
-      closedAt: shift.closedAt,
-      closeReason: shift.closeReason,
-      archivedAt: shift.archivedAt,
-      updatedAt: shift.updatedAt,
-    })
-    .onDuplicateKeyUpdate({
-      set: {
-        status: shift.status,
+    .update(crmpRegisters)
+    .set(set)
+    .where(
+      and(
+        eq(crmpRegisters.restaurantId, register.restaurantId),
+        eq(crmpRegisters.registerId, register.registerId)
+      )
+    );
+}
+
+async function persistShiftGraph(
+  shift: FinancialShift,
+  db: CrmpPersistExecutor,
+  expectedVersion?: number
+): Promise<void> {
+  if (expectedVersion != null) {
+    const result = await db
+      .update(crmpFinancialShifts)
+      .set(SHIFT_HEADER_SET(shift))
+      .where(
+        and(
+          eq(crmpFinancialShifts.restaurantId, shift.restaurantId),
+          eq(crmpFinancialShifts.financialShiftId, shift.financialShiftId),
+          eq(crmpFinancialShifts.version, expectedVersion)
+        )
+      );
+    if (readMysqlAffectedRows(result) === 0) {
+      const rows = await db
+        .select({ version: crmpFinancialShifts.version })
+        .from(crmpFinancialShifts)
+        .where(
+          and(
+            eq(crmpFinancialShifts.restaurantId, shift.restaurantId),
+            eq(
+              crmpFinancialShifts.financialShiftId,
+              shift.financialShiftId
+            )
+          )
+        )
+        .limit(1);
+      if (!rows[0]) {
+        throw new CrmpNotFoundError(
+          `Financial Shift not found: ${shift.financialShiftId}`
+        );
+      }
+      throw new CrmpConflictError(
+        `Financial Shift version conflict: expected ${expectedVersion}, found ${rows[0].version}`
+      );
+    }
+  } else {
+    await db
+      .insert(crmpFinancialShifts)
+      .values({
+        financialShiftId: shift.financialShiftId,
+        shiftNumber: shift.shiftNumber,
+        restaurantId: shift.restaurantId,
+        registerId: shift.registerId,
         operatorUserId: shift.operatorUserId,
+        status: shift.status,
+        openingFloatAmount: shift.openingFloatAmount,
+        currencyCode: shift.currencyCode,
+        drawerId: shift.drawer.drawerId,
         version: shift.version,
+        openedAt: shift.openedAt,
         closedAt: shift.closedAt,
         closeReason: shift.closeReason,
         archivedAt: shift.archivedAt,
         updatedAt: shift.updatedAt,
-        // shiftNumber is immutable — never updated
-      },
-    });
+      })
+      .onDuplicateKeyUpdate({
+        set: SHIFT_HEADER_SET(shift),
+      });
+  }
 
   // Replace children by delete+insert for this shift (append-only domain; full graph rewrite ok).
   await db
@@ -291,44 +394,7 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
     async update(register, expectedVersion) {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      if (expectedVersion != null) {
-        const rows = await db
-          .select({ version: crmpRegisters.version })
-          .from(crmpRegisters)
-          .where(
-            and(
-              eq(crmpRegisters.restaurantId, register.restaurantId),
-              eq(crmpRegisters.registerId, register.registerId)
-            )
-          )
-          .limit(1);
-        if (rows[0] && rows[0].version !== expectedVersion) {
-          throw new CrmpConflictError(
-            `Register version conflict: expected ${expectedVersion}, found ${rows[0].version}`
-          );
-        }
-      }
-      await db
-        .update(crmpRegisters)
-        .set({
-          code: register.code,
-          displayName: register.displayName,
-          registerType: register.registerType,
-          status: register.status,
-          dutyStatus: register.dutyStatus,
-          archivedAt: register.archivedAt,
-          deviceId: register.deviceId,
-          assignedOperatorUserId: register.assignedOperatorUserId,
-          operatorAssignedAt: register.operatorAssignedAt,
-          version: register.version,
-          updatedAt: register.updatedAt,
-        })
-        .where(
-          and(
-            eq(crmpRegisters.restaurantId, register.restaurantId),
-            eq(crmpRegisters.registerId, register.registerId)
-          )
-        );
+      await persistRegisterUpdate(register, db, expectedVersion);
     },
     async findById(restaurantId, registerId) {
       const db = await getDb();
@@ -358,32 +424,16 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
 
   const shifts: CrmpFinancialShiftRepository = {
     async insert(shift) {
-      await persistShiftGraph(shift);
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      await persistShiftGraph(shift, db);
     },
     async save(shift, expectedVersion) {
-      if (expectedVersion != null) {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        const rows = await db
-          .select({ version: crmpFinancialShifts.version })
-          .from(crmpFinancialShifts)
-          .where(
-            and(
-              eq(crmpFinancialShifts.restaurantId, shift.restaurantId),
-              eq(
-                crmpFinancialShifts.financialShiftId,
-                shift.financialShiftId
-              )
-            )
-          )
-          .limit(1);
-        if (rows[0] && rows[0].version !== expectedVersion) {
-          throw new CrmpConflictError(
-            `Financial Shift version conflict: expected ${expectedVersion}, found ${rows[0].version}`
-          );
-        }
-      }
-      await persistShiftGraph(shift);
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      await db.transaction(async (tx) => {
+        await persistShiftGraph(shift, tx, expectedVersion);
+      });
     },
     async findById(restaurantId, financialShiftId) {
       const db = await getDb();
@@ -566,5 +616,26 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
     },
   };
 
-  return { registers, shifts };
+  return {
+    registers,
+    shifts,
+    async commitCloseCorridor(input) {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      await db.transaction(async (tx) => {
+        await persistShiftGraph(
+          input.shift,
+          tx,
+          input.shiftExpectedVersion
+        );
+        if (input.register) {
+          await persistRegisterUpdate(
+            input.register,
+            tx,
+            input.registerExpectedVersion
+          );
+        }
+      });
+    },
+  };
 }

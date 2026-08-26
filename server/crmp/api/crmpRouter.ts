@@ -115,6 +115,8 @@ const closeFinancialShiftInput = restaurantInput
     financialShiftId: z.string().min(1).max(128),
     actualCashAmount: moneyAmountInput,
     actorUserId: z.coerce.number().int().positive(),
+    closeIdempotencyKey: z.string().min(8).max(128).optional(),
+    closeDuty: z.boolean().optional(),
   });
 
 const archiveFinancialShiftInput = restaurantInput
@@ -721,6 +723,8 @@ export const crmpRouter = router({
             actorUserId: input.actorUserId,
             expectedVersion: input.expectedVersion,
             at: input.at,
+            closeIdempotencyKey: input.closeIdempotencyKey,
+            closeDuty: input.closeDuty,
           })
         );
       }),

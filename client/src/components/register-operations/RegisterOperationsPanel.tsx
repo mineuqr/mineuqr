@@ -8,7 +8,8 @@
  * REGISTER-CREATION-UX-CONSOLIDATION-1 /
  * REGISTER-CREATION-LABEL-ADOPTION-1 /
  * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 /
- * REGISTER-OPERATIONS-RESPONSIBILITY-CLEANUP-1 — financial responsibilities only.
+ * REGISTER-OPERATIONS-RESPONSIBILITY-CLEANUP-1 /
+ * REGISTER-CLOSE-IDEMPOTENT-ATOMIC-CORRIDOR-1 — financial responsibilities only.
  * Presentation only — crmp.register.* + crmp.financialShift.*.
  * Unpaid Order queues live in Orders Workspace (not Register Ops).
  * Shift Archive + human Shift Number; DRAP display window transparent.
@@ -53,6 +54,8 @@ import {
   registerOperationsErrorMessage,
   registerOperationsUiLabel,
   rememberActiveRegister,
+  readOrCreateRegisterCloseAttemptKey,
+  clearRegisterCloseAttemptKey,
   resolvePrimaryDutyAction,
   resolveRegisterOpsLayoutMode,
   selectActiveRegisters,
@@ -486,13 +489,18 @@ export function RegisterOperationsPanel({
         actualCashAmount: payload.actualCashAmount,
         actorUserId: user.id,
         expectedVersion: activeShift.version,
+        closeDuty: true,
+        closeIdempotencyKey: readOrCreateRegisterCloseAttemptKey(
+          restaurantId,
+          activeShift.financialShiftId
+        ),
       });
       setCloseVariance(closed.shift.finalCount?.varianceAmount ?? null);
       setCashCountOpen(false);
-      await mutations.close.mutateAsync({
+      clearRegisterCloseAttemptKey(
         restaurantId,
-        registerId: register.registerId,
-      });
+        activeShift.financialShiftId
+      );
       if (payload.autoPrint) {
         runClosingPrint(payload.report);
       }
@@ -1070,6 +1078,10 @@ export function RegisterOperationsPanel({
           tenderLoading={tenderQuery.isLoading || tenderQuery.isFetching}
           pending={
             shiftMutations.close.isPending || mutations.close.isPending
+          }
+          resumeRecordedCount={activeShift.finalCount != null}
+          recordedActualCashAmount={
+            activeShift.finalCount?.actualAmount ?? null
           }
           onConfirm={(payload) => void confirmCashCount(payload)}
           onPrint={runClosingPrint}

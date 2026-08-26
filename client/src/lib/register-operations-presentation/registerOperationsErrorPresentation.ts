@@ -7,6 +7,9 @@ export type RegisterOperationsErrorKind =
   | "not_found"
   | "bad_request"
   | "conflict"
+  | "stale_version"
+  | "final_count_conflict"
+  | "duty_blocked"
   | "forbidden"
   | "unauthorized"
   | "offline"
@@ -25,12 +28,30 @@ export function mapRegisterOperationsApiError(
     shape?: { data?: { code?: string } };
   };
   const code = err?.data?.code ?? err?.shape?.data?.code;
+  const message = typeof err?.message === "string" ? err.message : "";
   if (code === "NOT_FOUND") return "not_found";
   if (code === "BAD_REQUEST") return "bad_request";
-  if (code === "CONFLICT") return "conflict";
   if (code === "FORBIDDEN") return "forbidden";
   if (code === "UNAUTHORIZED") return "unauthorized";
   if (code === "PRECONDITION_FAILED") return "unavailable";
+  if (
+    /state is stale|version conflict/i.test(message)
+  ) {
+    return "stale_version";
+  }
+  if (
+    /final cash count does not match|different amount/i.test(message)
+  ) {
+    return "final_count_conflict";
+  }
+  if (
+    /duty cannot close|financial shift is active|must be closed first/i.test(
+      message
+    )
+  ) {
+    return "duty_blocked";
+  }
+  if (code === "CONFLICT") return "conflict";
   if (
     typeof err?.message === "string" &&
     /network|fetch|offline|failed to fetch/i.test(err.message)
@@ -49,6 +70,21 @@ export function registerOperationsErrorMessage(
   }
   if (kind === "bad_request") {
     return language === "ar" ? "طلب غير صالح — راجع المدخلات" : "Invalid request — check the inputs";
+  }
+  if (kind === "stale_version") {
+    return language === "ar"
+      ? "حالة الصندوق تغيّرت — حدّث ثم أعد المحاولة"
+      : "Register state is stale — refresh and retry";
+  }
+  if (kind === "final_count_conflict") {
+    return language === "ar"
+      ? "مبلغ الإغلاق لا يطابق العدّ النقدي المسجّل"
+      : "Final cash count does not match the recorded close count";
+  }
+  if (kind === "duty_blocked") {
+    return language === "ar"
+      ? "لا يمكن إغلاق الصندوق قبل إغلاق الوردية"
+      : "Register duty cannot close while a financial shift is active";
   }
   if (kind === "conflict") {
     return language === "ar"

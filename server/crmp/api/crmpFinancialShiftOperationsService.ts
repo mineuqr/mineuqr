@@ -26,7 +26,7 @@ import {
   toDrawerMovementCommandResultDto,
   toFinancialShiftCommandResultDto,
 } from "./crmpApiMapper";
-import { drawerMovementIdForRetry } from "./crmpDrawerMovementId";
+import { drawerMovementIdForRetry, drawerCountIdForCloseRetry } from "./crmpDrawerMovementId";
 import {
   buildFinancialShiftTenderSummary,
   type SettlementRecordBatchLoader,
@@ -70,8 +70,9 @@ export class CrmpFinancialShiftOperationsService {
   }
 
   /**
-   * Application close corridor: final cash count → domain close.
-   * Amount is recorded via certified `recordCount`; `close` stays amount-free.
+   * REGISTER-CLOSE-IDEMPOTENT-ATOMIC-CORRIDOR-1
+   * Load current shift → reuse or record matching final count → close shift
+   * → optional duty close, in one UoW commit.
    */
   async close(input: {
     restaurantId: number;
@@ -80,21 +81,32 @@ export class CrmpFinancialShiftOperationsService {
     actorUserId: number;
     expectedVersion?: number;
     at?: string;
+    closeIdempotencyKey?: string;
+    closeDuty?: boolean;
   }): Promise<FinancialShiftCommandResultDto> {
-    const counted = await this.shifts.recordCount({
+    const current = await this.shifts.get(
+      input.restaurantId,
+      input.financialShiftId
+    );
+    const countId =
+      current && input.closeIdempotencyKey
+        ? drawerCountIdForCloseRetry({
+            restaurantId: input.restaurantId,
+            registerId: current.registerId,
+            financialShiftId: input.financialShiftId,
+            actorUserId: input.actorUserId,
+            idempotencyKey: input.closeIdempotencyKey,
+          })
+        : undefined;
+    const result = await this.shifts.closeWithFinalCount({
       restaurantId: input.restaurantId,
       financialShiftId: input.financialShiftId,
-      kind: "final",
-      actualAmount: input.actualCashAmount,
+      actualCashAmount: input.actualCashAmount,
       actorUserId: input.actorUserId,
       at: input.at,
       expectedVersion: input.expectedVersion,
-    });
-    const result = await this.shifts.close({
-      restaurantId: input.restaurantId,
-      financialShiftId: input.financialShiftId,
-      at: input.at,
-      expectedVersion: counted.version,
+      closeDuty: input.closeDuty === true,
+      countId,
     });
     const expectedCashAmount = await this.shifts.getExpectedCash(
       input.restaurantId,

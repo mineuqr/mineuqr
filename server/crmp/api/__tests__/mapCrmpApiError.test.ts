@@ -31,9 +31,23 @@ describe("mapCrmpApiError", () => {
       expect((e as TRPCError).message).toContain("financial shift is active");
     }
     try {
-      throwCrmpApiError(new CrmpConflictError("dup"));
+      throwCrmpApiError(
+        new CrmpConflictError(
+          "Financial Shift version conflict: expected 1, found 2"
+        )
+      );
     } catch (e) {
       expect((e as TRPCError).code).toBe("CONFLICT");
+      expect((e as TRPCError).message).toMatch(/stale/i);
+    }
+    try {
+      throwCrmpApiError(
+        new CrmpConflictError(
+          "Final drawer count already recorded with a different amount"
+        )
+      );
+    } catch (e) {
+      expect((e as TRPCError).message).toMatch(/Final cash count/i);
     }
   });
 

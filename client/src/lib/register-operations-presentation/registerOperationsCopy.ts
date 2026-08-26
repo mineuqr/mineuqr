@@ -223,6 +223,10 @@ const COPY = {
     ar: "راجع ملخص الوردية وأدخل النقد الفعلي قبل الإغلاق.",
     en: "Review the shift summary and enter actual cash before closing.",
   },
+  cashCountResumeSubtitle: {
+    ar: "عُدّ النقد مسبقاً. أعد المحاولة لإكمال إغلاق الوردية والصندوق.",
+    en: "Cash is already counted. Retry to finish closing the shift and register.",
+  },
   closingReportTitle: {
     ar: "تقرير إغلاق الوردية",
     en: "Shift closing report",
