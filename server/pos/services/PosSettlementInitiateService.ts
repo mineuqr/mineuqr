@@ -17,14 +17,17 @@ import { CollectionFactError } from "@shared/operational-session/payment/collect
 import { findProductionCollectionFactByOrderId } from "../../operational-session/payment/collection-fact/collectionFactRepository";
 import type { SettlementContext } from "@shared/crmp";
 import { opsLog } from "../../_core/opsLog";
-import { getOrderById } from "../../db";
+import { getOrderById, getOrderItemsByOrderId } from "../../db";
 import {
   CheckTransitionError,
   getCheckById,
 } from "../../operational-session/check/CheckService";
 import { CheckMembershipError } from "../../operational-session/check/checkMembershipService";
-import { confirmPayment } from "../../operational-session/payment/PaymentConfirmService";
 import { findBlockingMembershipForOrder } from "../../operational-session/check/checkOrderMembershipRepository";
+import { confirmPayment } from "../../operational-session/payment/PaymentConfirmService";
+import { buildCashierPaidReceiptProjection } from "../../operational-session/payment/cashierPaidReceiptProjection";
+import type { CashierPaidReceiptProjection } from "../../operational-session/payment/cashierPaidReceiptProjection";
+import { mapOrderItemsToReceiptInvoiceLines } from "../../operational-session/payment/cashierPosOrderFreeze";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
 import type { PosSettlementInitiateIdempotencyStore } from "../infrastructure/PosSettlementInitiateIdempotencyStore";
 import type { PosPermissionGrantStore } from "../infrastructure/PosPermissionGrantStore";
@@ -76,6 +79,7 @@ export type PosSettlementInitiateResult = {
   registerId: string | null;
   financialShiftId: string | null;
   replayed: boolean;
+  paidReceipt: CashierPaidReceiptProjection | null;
 };
 
 export type PosSettlementInitiateOrderLookup = (orderId: number) => Promise<{
@@ -83,6 +87,13 @@ export type PosSettlementInitiateOrderLookup = (orderId: number) => Promise<{
   restaurantId: number;
   orderingChannel?: string | null;
   status?: string | null;
+  orderNumber?: string | null;
+  totalAmount?: string | number | null;
+  businessDay?: string | null;
+  dailyDisplayNumber?: number | null;
+  identityScope?: string | null;
+  fulfilmentAnchorType?: string | null;
+  serviceMode?: string | null;
 } | null>;
 
 export type PosSettlementCheckView = {
@@ -111,6 +122,12 @@ export type PosProductionCollectionFactLookup = (input: {
   checkId: number | null;
   amount: string;
   paymentIntentId: string;
+  subtotal: string;
+  discountAmount: string;
+  taxAmount: string;
+  tenders: CashierPaidReceiptProjection["tenders"];
+  committedAt: string;
+  currencySnapshot: { currencyCode: string; currencySymbol: string };
 } | null>;
 
 export type PosSettlementEnsureCheck = (input: {
@@ -151,10 +168,12 @@ export type PosSettlementSettlePaid = (input: {
   idempotencyKey: string;
   terminalId: string;
   actorUserId: number;
+  actorDisplayName?: string | null;
 }) => Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
   finalizeStageMs?: PosSettlementFinancialStageMs;
+  paidReceipt?: CashierPaidReceiptProjection | null;
 }>;
 
 const AUTH_DENIED_CODES = new Set([
@@ -263,6 +282,12 @@ async function defaultProductionCollectionFactByOrder(input: {
     checkId: fact.checkId,
     amount: fact.amount,
     paymentIntentId: fact.paymentIntentId,
+    subtotal: fact.subtotal,
+    discountAmount: fact.discountAmount,
+    taxAmount: fact.taxAmount,
+    tenders: fact.tenders,
+    committedAt: fact.committedAt,
+    currencySnapshot: fact.currencySnapshot,
   };
 }
 
@@ -296,10 +321,12 @@ async function defaultSettlePaid(input: {
   idempotencyKey: string;
   terminalId: string;
   actorUserId: number;
+  actorDisplayName?: string | null;
 }): Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
   finalizeStageMs?: PosSettlementFinancialStageMs;
+  paidReceipt?: CashierPaidReceiptProjection | null;
 }> {
   const financial = await confirmPayment({
     restaurantId: input.restaurantId,
@@ -317,6 +344,7 @@ async function defaultSettlePaid(input: {
     terminalId: input.terminalId,
     actorType: "staff_user",
     actorUserId: input.actorUserId,
+    actorDisplayName: input.actorDisplayName,
     // CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 — do not wait for Attribution.
     awaitAttribution: false,
   });
@@ -331,6 +359,7 @@ async function defaultSettlePaid(input: {
     settlementRecordId:
       financial.settlementRecord.record?.settlementRecordId ?? null,
     finalizeStageMs: financial.finalizeStageMs,
+    paidReceipt: financial.paidReceipt ?? null,
   };
 }
 
@@ -385,6 +414,39 @@ function posCheckIdFromFact(checkId: number | null | undefined): number {
   return checkId != null && checkId > 0 ? checkId : 0;
 }
 
+async function paidReceiptFromExistingFact(input: {
+  order: NonNullable<Awaited<ReturnType<PosSettlementInitiateOrderLookup>>>;
+  fact: NonNullable<Awaited<ReturnType<PosProductionCollectionFactLookup>>>;
+  cashierUserId: number;
+  cashierDisplayName?: string | null;
+  terminalId: string;
+}): Promise<CashierPaidReceiptProjection> {
+  const items = (await getOrderItemsByOrderId(input.order.id)) ?? [];
+  const persistedOrder = input.order;
+  return buildCashierPaidReceiptProjection({
+    freeze: {
+      orderId: persistedOrder.id,
+      subtotal: input.fact.subtotal,
+      discountAmount: input.fact.discountAmount,
+      taxAmount: input.fact.taxAmount,
+      grandTotal: input.fact.amount,
+      tenders: input.fact.tenders,
+      currencySnapshot: input.fact.currencySnapshot,
+    },
+    receiptInvoiceLines: mapOrderItemsToReceiptInvoiceLines(items, {
+      id: persistedOrder.id,
+      restaurantId: persistedOrder.restaurantId,
+      orderNumber: persistedOrder.orderNumber,
+      totalAmount: persistedOrder.totalAmount,
+    }),
+    order: persistedOrder,
+    paidAt: input.fact.committedAt,
+    cashierUserId: input.cashierUserId,
+    cashierDisplayName: input.cashierDisplayName,
+    terminalId: input.terminalId,
+  });
+}
+
 function resultFrom(fields: {
   checkId: number;
   orderId: number;
@@ -397,6 +459,7 @@ function resultFrom(fields: {
   registerId: string | null;
   financialShiftId: string | null;
   replayed: boolean;
+  paidReceipt: CashierPaidReceiptProjection | null;
 }): PosSettlementInitiateResult {
   return {
     checkId: fields.checkId,
@@ -412,6 +475,7 @@ function resultFrom(fields: {
     registerId: fields.registerId,
     financialShiftId: fields.financialShiftId,
     replayed: fields.replayed,
+    paidReceipt: fields.paidReceipt,
   };
 }
 
@@ -559,6 +623,7 @@ export class PosSettlementInitiateService {
           registerId: existing.registerId,
           financialShiftId: existing.financialShiftId,
           replayed: true,
+          paidReceipt: existing.paidReceipt ?? null,
         });
       }
 
@@ -588,6 +653,13 @@ export class PosSettlementInitiateService {
       if (existingFact) {
         // Collection Fact is the authoritative replay source. Check/ST/OS/SR
         // are downstream operational state and cannot gate Cashier success.
+        const paidReceipt = await paidReceiptFromExistingFact({
+          order,
+          fact: existingFact,
+          cashierUserId: context.userId,
+          cashierDisplayName: input.user.name,
+          terminalId: context.terminalId,
+        });
         void this.idempotency.put({
           restaurantId: context.restaurantId,
           terminalId: context.terminalId,
@@ -603,6 +675,7 @@ export class PosSettlementInitiateService {
           registerId: operational.registerId,
           financialShiftId: operational.financialShiftId,
           createdAt: new Date().toISOString(),
+          paidReceipt,
         }).catch(() => undefined);
         return resultFrom({
           checkId: posCheckIdFromFact(existingFact.checkId),
@@ -616,6 +689,7 @@ export class PosSettlementInitiateService {
           registerId: operational.registerId,
           financialShiftId: operational.financialShiftId,
           replayed: true,
+          paidReceipt,
         });
       }
 
@@ -639,6 +713,7 @@ export class PosSettlementInitiateService {
           idempotencyKey: input.command.idempotencyKey,
           terminalId: context.terminalId,
           actorUserId: context.userId,
+          actorDisplayName: input.user.name,
           ...(settlements ? { settlements } : {}),
         });
         financialTxnMs = clock.since(txnStarted);
@@ -657,18 +732,29 @@ export class PosSettlementInitiateService {
             orderId: order.id,
           });
         if (committedFactAfterFailure) {
+          const paidReceipt = await paidReceiptFromExistingFact({
+            order,
+            fact: committedFactAfterFailure,
+            cashierUserId: context.userId,
+            cashierDisplayName: input.user.name,
+            terminalId: context.terminalId,
+          });
           void this.idempotency.put({
             restaurantId: context.restaurantId,
             terminalId: context.terminalId,
             userId: context.userId,
             idempotencyKey: input.command.idempotencyKey,
             fingerprint,
+            orderId: order.id,
             checkId: posCheckIdFromFact(committedFactAfterFailure.checkId),
+            outcome: "paid",
+            grandTotal: committedFactAfterFailure.amount,
             settlementRecordId: null,
             sessionId: null,
             registerId: operational.registerId,
             financialShiftId: operational.financialShiftId,
             createdAt: new Date().toISOString(),
+            paidReceipt,
           }).catch(() => undefined);
           return resultFrom({
             checkId: posCheckIdFromFact(committedFactAfterFailure.checkId),
@@ -682,6 +768,7 @@ export class PosSettlementInitiateService {
             registerId: operational.registerId,
             financialShiftId: operational.financialShiftId,
             replayed: true,
+            paidReceipt,
           });
         }
         if (
@@ -695,6 +782,13 @@ export class PosSettlementInitiateService {
           if (committedFact) {
             // A concurrent command may lose operational Check work after the
             // financial fact committed. Replaying that fact is still PAID.
+            const paidReceipt = await paidReceiptFromExistingFact({
+              order,
+              fact: committedFact,
+              cashierUserId: context.userId,
+              cashierDisplayName: input.user.name,
+              terminalId: context.terminalId,
+            });
             void this.idempotency.put({
               restaurantId: context.restaurantId,
               terminalId: context.terminalId,
@@ -710,6 +804,7 @@ export class PosSettlementInitiateService {
               registerId: operational.registerId,
               financialShiftId: operational.financialShiftId,
               createdAt: new Date().toISOString(),
+              paidReceipt,
             }).catch(() => undefined);
             return resultFrom({
               checkId: posCheckIdFromFact(committedFact.checkId),
@@ -723,6 +818,7 @@ export class PosSettlementInitiateService {
               registerId: operational.registerId,
               financialShiftId: operational.financialShiftId,
               replayed: true,
+              paidReceipt,
             });
           }
           throw new PosSettlementInitiateError(
@@ -758,6 +854,7 @@ export class PosSettlementInitiateService {
         registerId: operational.registerId,
         financialShiftId: operational.financialShiftId,
         createdAt: new Date().toISOString(),
+        paidReceipt: settled.paidReceipt ?? null,
       }).catch(() => undefined);
       responseConstructionMs = clock.since(responseStarted);
 
@@ -849,6 +946,7 @@ export class PosSettlementInitiateService {
         registerId: operational.registerId,
         financialShiftId: operational.financialShiftId,
         replayed: false,
+        paidReceipt: settled.paidReceipt ?? null,
       });
     });
   }

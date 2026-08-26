@@ -20,6 +20,7 @@ export type PosSettlementInitiateIdempotencyRecord = {
   registerId: string | null;
   financialShiftId: string | null;
   createdAt: string;
+  paidReceipt: CashierPaidReceiptProjection | null;
 };
 
 export type PosSettlementInitiateIdempotencyStore = {

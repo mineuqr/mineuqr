@@ -142,6 +142,8 @@ import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextR
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import { dispatchBestEffortDownstreamDelivery } from "../payment/dispatchBestEffortDownstreamDelivery";
+import { buildCashierPaidReceiptProjection } from "../payment/cashierPaidReceiptProjection";
+import type { CashierPaidReceiptProjection } from "../payment/cashierPaidReceiptProjection";
 import {
   CASHIER_CONFIRM_UNASSIGNED_CHECK_ID,
   freezeCashierPosPayableFromOrder,
@@ -252,6 +254,8 @@ export type CheckFinancialMutationResult = Readonly<{
   settlementAttributionEvents: readonly SettlementAttributed[];
   /** Timing-only. Absent on callers that do not go through finalizeOpenCheckById. */
   finalizeStageMs: CheckFinancialFinalizeStageMs;
+  /** Cashier Confirm display projection. Not financial authority. */
+  paidReceipt?: CashierPaidReceiptProjection | null;
 }>;
 
 function elapsedSinceMs(startedAt: number): number {
@@ -1828,6 +1832,9 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
   settlementContextHints?: SettlementContextHints;
   awaitAttribution?: boolean;
   deferOperationalSettlementAfterCollectionFact?: boolean;
+  terminalId?: string;
+  actorUserId?: number;
+  actorDisplayName?: string | null;
   productionCollectionCommit?: (
     freeze: CashierAuthoritativePaidFreeze
   ) => Promise<void>;
@@ -1855,13 +1862,14 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
     input.restaurantId
   );
   const freezeStartedAt = Date.now();
-  const freeze = await freezeCashierPosPayableFromOrder({
+  const payable = await freezeCashierPosPayableFromOrder({
     restaurantId: input.restaurantId,
     order,
     billDiscountAmount,
     snapshots,
     settlements: input.settlements,
   });
+  const freeze = payable.freeze;
   const validationMs = elapsedSinceMs(freezeStartedAt);
   const now = formatDiningSessionTimestamp();
   const settlementContext =
@@ -1932,6 +1940,15 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
       attributionCompletedAt: null,
       settlementContextReused: input.settlementContext != null,
     },
+    paidReceipt: buildCashierPaidReceiptProjection({
+      freeze,
+      receiptInvoiceLines: payable.receiptInvoiceLines,
+      order,
+      paidAt: financialTransactionCommittedAt,
+      cashierUserId: input.actorUserId ?? 0,
+      cashierDisplayName: input.actorDisplayName,
+      terminalId: input.terminalId ?? "",
+    }),
   };
 
   dispatchBestEffortDownstreamDelivery({

@@ -58,6 +58,7 @@ export type PaymentConfirmCommand = {
   terminalId?: string;
   actorType?: string;
   actorUserId?: number;
+  actorDisplayName?: string | null;
   /** Tests inject an in-memory store. Production uses the Drizzle store. */
   collectionFactStore?: CollectionFactStore;
 };
@@ -114,6 +115,9 @@ export async function confirmPayment(
           settlementContextHints: command.settlementContextHints,
           awaitAttribution: command.awaitAttribution,
           deferOperationalSettlementAfterCollectionFact: true,
+          terminalId: command.terminalId,
+          actorUserId: command.actorUserId,
+          actorDisplayName: command.actorDisplayName,
           productionCollectionCommit: async (freeze) => {
             const payload = {
               paymentIntentId: command.paymentIntentId as string,

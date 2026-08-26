@@ -30,6 +30,9 @@ describe("cashier presentation helpers", () => {
     expect(cashierUiLabel("receiptItems", "en")).toBe("Items");
     expect(cashierUiLabel("receiptClose", "ar")).toBe("إغلاق");
     expect(cashierUiLabel("receiptClose", "en")).toBe("Close");
+    expect(cashierUiLabel("receiptInvoiceNumber", "ar")).toBe("فاتورة رقم");
+    expect(cashierUiLabel("receiptVat", "ar")).toBe("الضريبة VAT");
+    expect(cashierUiLabel("receiptPaidStamp", "en")).toBe("Paid");
     expect(cashierUiLabel("shiftBeforePay", "ar")).toBe(
       "يجب فتح وردية الصندوق قبل إتمام الدفع"
     );

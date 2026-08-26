@@ -26,6 +26,7 @@ vi.mock("../../operational-session/payment/collection-fact/collectionFactReposit
 }));
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
+  getOrderItemsByOrderId: vi.fn(async () => []),
 }));
 vi.mock("../../subscription-runtime", () => ({
   checkLimit: vi.fn(),
@@ -230,6 +231,30 @@ function harness(options?: {
         options?.settleSettlementRecordId === undefined
           ? "sr-pos-1"
           : options.settleSettlementRecordId,
+      paidReceipt: {
+        orderId: input.orderId,
+        orderNumber: String(input.orderId),
+        displayReference: `P #${input.orderId}`,
+        paidAt: "2026-08-26T00:00:00.000Z",
+        cashierUserId: input.settlementContextHints?.operatorUserId ?? 0,
+        cashierDisplayName: "",
+        terminalId: TERMINAL_A,
+        currencySymbol: "ر.س",
+        lines: [
+          {
+            nameAr: "صنف",
+            nameEn: "Item",
+            quantity: 1,
+            unitPrice: GRAND_TOTAL,
+            lineTotal: GRAND_TOTAL,
+          },
+        ],
+        subtotal: GRAND_TOTAL,
+        discountAmount: "0.00",
+        taxAmount: "0.00",
+        grandTotal: liveCheck?.grandTotal ?? GRAND_TOTAL,
+        tenders: [{ paymentMethod: "cash", amount: GRAND_TOTAL }],
+      },
       ...(options?.finalizeStageMs
         ? { finalizeStageMs: options.finalizeStageMs }
         : {}),
@@ -580,6 +605,12 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
       checkId: CHECK_A,
       amount: GRAND_TOTAL,
       paymentIntentId: "cpi_prior",
+      subtotal: GRAND_TOTAL,
+      discountAmount: "0.00",
+      taxAmount: "0.00",
+      tenders: [{ paymentMethod: "cash", amount: GRAND_TOTAL }],
+      committedAt: "2026-08-26T00:00:00.000Z",
+      currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
     } as never);
     const { store, grants, service, settle } = harness();
     await seedTerminal(store);
@@ -596,6 +627,10 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(result.outcome).toBe("paid");
     expect(result.checkId).toBe(CHECK_A);
     expect(settle).not.toHaveBeenCalled();
+    expect(result.paidReceipt?.grandTotal).toBe(GRAND_TOTAL);
+    expect(result.paidReceipt?.tenders).toEqual([
+      { paymentMethod: "cash", amount: GRAND_TOTAL },
+    ]);
   });
 
   it("replays an existing production Collection Fact that has no Check reference", async () => {
@@ -604,6 +639,12 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
       checkId: null,
       amount: GRAND_TOTAL,
       paymentIntentId: "cpi_prior",
+      subtotal: GRAND_TOTAL,
+      discountAmount: "0.00",
+      taxAmount: "0.00",
+      tenders: [{ paymentMethod: "cash", amount: GRAND_TOTAL }],
+      committedAt: "2026-08-26T00:00:00.000Z",
+      currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
     } as never);
     const { store, grants, service, settle } = harness();
     await seedTerminal(store);
@@ -856,6 +897,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     ]);
     expect(first.checkId).toBe(second.checkId);
     expect(first.grandTotal).toBe(second.grandTotal);
+    expect(first.paidReceipt).toEqual(second.paidReceipt);
     expect([first.replayed, second.replayed].filter(Boolean)).toHaveLength(1);
     expect(settle).toHaveBeenCalledTimes(1);
   });
@@ -871,6 +913,12 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
         checkId: CHECK_A,
         amount: GRAND_TOTAL,
         paymentIntentId: command.paymentIntentId,
+        subtotal: GRAND_TOTAL,
+        discountAmount: "0.00",
+        taxAmount: "0.00",
+        tenders: [{ paymentMethod: "cash", amount: GRAND_TOTAL }],
+        committedAt: "2026-08-26T00:00:00.000Z",
+        currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
       } as never);
     settle.mockRejectedValue(
       new CheckTransitionError("Cannot finalize check from outcome paid")

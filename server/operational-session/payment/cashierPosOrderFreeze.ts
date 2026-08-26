@@ -21,6 +21,7 @@ import { computeChargeNetAmount, sumChargeNetAmounts } from "@shared/operational
 import { freezeBusinessDayFromTimestamp } from "@shared/operational-session/check/settlementRecord/settlementRecordSnapshot";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 import type { CashierPaidMoneyFreeze } from "./collection-fact/commitCashierProductionCollectionFact";
+import type { CashierPaidReceiptInvoiceLine } from "./cashierPaidReceiptProjection";
 
 /** Leftover POS checkId column filler. Not operational_checks.id. */
 export const CASHIER_CONFIRM_UNASSIGNED_CHECK_ID = 0;
@@ -34,6 +35,57 @@ export type CashierPosOrderFreezeSource = {
   totalAmount?: string | number | null;
 };
 
+export function mapOrderItemsToReceiptInvoiceLines(
+  items: readonly {
+    id?: number;
+    nameAr?: string | null;
+    nameEn?: string | null;
+    quantity?: number | string | null;
+    price?: string | number | null;
+  }[],
+  order: CashierPosOrderFreezeSource
+): CashierPaidReceiptInvoiceLine[] {
+  if (items.length === 0) {
+    const unitPrice = String(order.totalAmount ?? "0.00");
+    const netAmount = computeChargeNetAmount({
+      unitPrice,
+      quantity: 1,
+      lineDiscount: "0.00",
+      modifierAmount: "0.00",
+    });
+    if (netAmount === "0.00") return [];
+    return [
+      {
+        nameAr: `طلب ${order.orderNumber ?? order.id}`,
+        nameEn: `Order ${order.orderNumber ?? order.id}`,
+        quantity: 1,
+        unitPrice,
+        lineTotal: netAmount,
+      },
+    ];
+  }
+  const lines: CashierPaidReceiptInvoiceLine[] = [];
+  for (const item of items) {
+    const quantity = Number(item.quantity ?? 1);
+    if (!Number.isInteger(quantity) || quantity < 1) continue;
+    const unitPrice = String(item.price ?? "0.00");
+    const netAmount = computeChargeNetAmount({
+      unitPrice,
+      quantity,
+      lineDiscount: "0.00",
+      modifierAmount: "0.00",
+    });
+    lines.push({
+      nameAr: item.nameAr || item.nameEn || `Item ${item.id}`,
+      nameEn: item.nameEn || item.nameAr || `Item ${item.id}`,
+      quantity,
+      unitPrice,
+      lineTotal: netAmount,
+    });
+  }
+  return lines;
+}
+
 export async function freezeCashierPosPayableFromOrder(input: {
   restaurantId: number;
   order: CashierPosOrderFreezeSource;
@@ -44,7 +96,10 @@ export async function freezeCashierPosPayableFromOrder(input: {
   >;
   settlements?: readonly StaffSettlementLineInput[];
   client?: SessionDbClient;
-}): Promise<CashierPaidMoneyFreeze> {
+}): Promise<{
+  freeze: CashierPaidMoneyFreeze;
+  receiptInvoiceLines: readonly CashierPaidReceiptInvoiceLine[];
+}> {
   if (input.order.restaurantId !== input.restaurantId) {
     throw new DiningSessionValidationError("Order not found");
   }
@@ -58,45 +113,15 @@ export async function freezeCashierPosPayableFromOrder(input: {
   }
 
   const items = (await getOrderItemsByOrderId(input.order.id, input.client)) ?? [];
-  const compositionLines: CashierPaidMoneyFreeze["composition"] = [];
-  if (items.length === 0) {
-    const unitPrice = String(input.order.totalAmount ?? "0.00");
-    const netAmount = computeChargeNetAmount({
-      unitPrice,
-      quantity: 1,
-      lineDiscount: "0.00",
-      modifierAmount: "0.00",
-    });
-    if (netAmount !== "0.00") {
-      compositionLines.push({
-        sequence: 1,
-        description: `Order ${input.order.orderNumber ?? input.order.id}`,
-        netAmount,
-        taxAmount: "0.00",
-        originOrderId: input.order.id,
-      });
-    }
-  } else {
-    let sequence = 1;
-    for (const item of items) {
-      const quantity = Number(item.quantity ?? 1);
-      if (!Number.isInteger(quantity) || quantity < 1) continue;
-      const netAmount = computeChargeNetAmount({
-        unitPrice: String(item.price ?? "0.00"),
-        quantity,
-        lineDiscount: "0.00",
-        modifierAmount: "0.00",
-      });
-      compositionLines.push({
-        sequence,
-        description: item.nameEn || item.nameAr || `Item ${item.id}`,
-        netAmount,
-        taxAmount: "0.00",
-        originOrderId: input.order.id,
-      });
-      sequence += 1;
-    }
-  }
+  const receiptInvoiceLines = mapOrderItemsToReceiptInvoiceLines(items, input.order);
+  const compositionLines: CashierPaidMoneyFreeze["composition"] =
+    receiptInvoiceLines.map((line, index) => ({
+      sequence: index + 1,
+      description: line.nameEn || line.nameAr,
+      netAmount: line.lineTotal,
+      taxAmount: "0.00",
+      originOrderId: input.order.id,
+    }));
 
   const chargesSubtotal = sumChargeNetAmounts(compositionLines);
   const money = computeCheckMoney({
@@ -123,19 +148,22 @@ export async function freezeCashierPosPayableFromOrder(input: {
 
   const now = formatDiningSessionTimestamp();
   return {
-    restaurantId: input.restaurantId,
-    checkId: null,
-    orderId: input.order.id,
-    orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
-    subtotal: money.subtotal,
-    discountAmount: input.billDiscountAmount,
-    taxAmount: money.taxAmount,
-    grandTotal: money.grandTotal,
-    currencySnapshot: input.snapshots.currencySnapshot,
-    taxPolicySnapshot: input.snapshots.taxPolicySnapshot,
-    taxBreakdown: money.taxBreakdown,
-    businessDay: freezeBusinessDayFromTimestamp(now),
-    tenders,
-    composition: compositionLines,
+    freeze: {
+      restaurantId: input.restaurantId,
+      checkId: null,
+      orderId: input.order.id,
+      orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+      subtotal: money.subtotal,
+      discountAmount: input.billDiscountAmount,
+      taxAmount: money.taxAmount,
+      grandTotal: money.grandTotal,
+      currencySnapshot: input.snapshots.currencySnapshot,
+      taxPolicySnapshot: input.snapshots.taxPolicySnapshot,
+      taxBreakdown: money.taxBreakdown,
+      businessDay: freezeBusinessDayFromTimestamp(now),
+      tenders,
+      composition: compositionLines,
+    },
+    receiptInvoiceLines,
   };
 }

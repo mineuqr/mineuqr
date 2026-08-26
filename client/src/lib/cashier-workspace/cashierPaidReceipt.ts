@@ -1,14 +1,17 @@
 /**
- * CASHIER-POST-PAYMENT-PRINT-UX-1
- * Paid invoice/receipt snapshot for Cashier print. Not Settlement Record. Not Check.
- * Amounts come from the Confirm HTTP result (Collection Fact / PAID), not a live ticket.
+ * CASHIER-PAID-RECEIPT-DATA-COMPLETENESS-1
+ * Client snapshot of the Confirm HTTP paid-receipt projection.
+ * Does not recalculate money. Does not use the live ticket.
  */
 
 import type { SelectablePaymentMethod } from "@shared/operational-session";
+import type { CashierLang } from "./cashierCopy";
 
-export type CashierPaidReceiptLine = Readonly<{
-  description: string;
+export type CashierPaidReceiptInvoiceLine = Readonly<{
+  nameAr: string;
+  nameEn: string;
   quantity: number;
+  unitPrice: string;
   lineTotal: string;
 }>;
 
@@ -17,61 +20,35 @@ export type CashierPaidReceiptTender = Readonly<{
   amount: string;
 }>;
 
-export type CashierPaidReceiptSnapshot = Readonly<{
+export type CashierPaidReceiptProjection = Readonly<{
   orderId: number;
   orderNumber: string;
   displayReference: string;
-  grandTotal: string;
-  restaurantName: string;
-  currencySymbol: string;
-  lines: readonly CashierPaidReceiptLine[];
-  tenders: readonly CashierPaidReceiptTender[];
   paidAt: string;
+  cashierUserId: number;
+  cashierDisplayName: string;
+  terminalId: string;
+  currencySymbol: string;
+  lines: readonly CashierPaidReceiptInvoiceLine[];
+  subtotal: string;
+  discountAmount: string;
+  taxAmount: string;
+  grandTotal: string;
+  tenders: readonly CashierPaidReceiptTender[];
 }>;
 
+export type CashierPaidReceiptSnapshot = CashierPaidReceiptProjection &
+  Readonly<{
+    restaurantName: string;
+  }>;
+
 export function buildCashierPaidReceiptSnapshot(input: {
-  orderId: number;
-  grandTotal: string;
-  orderNumber?: string | null;
-  displayReference?: string | null;
+  projection: CashierPaidReceiptProjection;
   restaurantName?: string | null;
-  currencySymbol?: string | null;
-  ticketLines?: readonly {
-    nameAr: string;
-    nameEn: string | null;
-    price: string;
-    quantity: number;
-  }[];
-  tenders: readonly { paymentMethod: SelectablePaymentMethod; amount?: string }[];
-  language: "ar" | "en";
-  paidAt?: string;
 }): CashierPaidReceiptSnapshot {
-  const grandTotal = input.grandTotal;
-  const lines = (input.ticketLines ?? []).map((line) => ({
-    description:
-      input.language === "ar"
-        ? line.nameAr || line.nameEn || "item"
-        : line.nameEn || line.nameAr || "item",
-    quantity: line.quantity,
-    lineTotal: (Number.parseFloat(line.price) * line.quantity).toFixed(2),
-  }));
-  const tenders = input.tenders.map((tender) => ({
-    paymentMethod: tender.paymentMethod,
-    amount: tender.amount && tender.amount.length > 0 ? tender.amount : grandTotal,
-  }));
   return {
-    orderId: input.orderId,
-    orderNumber: input.orderNumber?.trim() || String(input.orderId),
-    displayReference:
-      input.displayReference?.trim() ||
-      input.orderNumber?.trim() ||
-      String(input.orderId),
-    grandTotal,
+    ...input.projection,
     restaurantName: input.restaurantName?.trim() || "",
-    currencySymbol: input.currencySymbol?.trim() || "",
-    lines,
-    tenders,
-    paidAt: input.paidAt ?? new Date().toISOString(),
   };
 }
 
@@ -81,4 +58,27 @@ export function formatCashierReceiptMoney(
 ): string {
   if (!currencySymbol) return amount;
   return `${amount} ${currencySymbol}`;
+}
+
+export function formatCashierReceiptDateTime(
+  iso: string,
+  language: CashierLang
+): { date: string; time: string } {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) {
+    return { date: iso, time: "" };
+  }
+  const locale = language === "ar" ? "ar-SA-u-ca-gregory-nu-latn" : "en-GB";
+  return {
+    date: new Intl.DateTimeFormat(locale, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(parsed),
+    time: new Intl.DateTimeFormat(locale, {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(parsed),
+  };
 }

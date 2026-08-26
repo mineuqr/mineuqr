@@ -21,6 +21,14 @@ const RECEIPT_COPY_KEYS = [
   "receiptTitle",
   "receiptItems",
   "receiptClose",
+  "receiptInvoiceNumber",
+  "receiptDate",
+  "receiptTime",
+  "receiptCashier",
+  "receiptQty",
+  "receiptUnitPrice",
+  "receiptVat",
+  "receiptPaidStamp",
 ] as const;
 
 describe("CASHIER-POST-PAYMENT-PRINT-UX-1 paid receipt copy", () => {

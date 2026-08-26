@@ -670,17 +670,12 @@ export function CashierWorkspacePanel({
         cashierFlowIdRef.current,
         result.checkId
       );
-      const receipt = buildCashierPaidReceiptSnapshot({
-        orderId: result.orderId,
-        grandTotal: result.grandTotal,
-        orderNumber: directSale?.orderNumber,
-        displayReference: directSale?.displayReference,
-        restaurantName,
-        currencySymbol,
-        language,
-        ticketLines: ticket,
-        tenders: plan.settlements,
-      });
+      const receipt = result.paidReceipt
+        ? buildCashierPaidReceiptSnapshot({
+            projection: result.paidReceipt,
+            restaurantName,
+          })
+        : null;
       setRegisterGap(null);
       cashierPaymentFlowTiming.mark(
         cashierFlowIdRef.current,
@@ -692,8 +687,10 @@ export function CashierWorkspacePanel({
       );
       invalidateOrderReads();
       startNewSale();
-      setPaidReceipt(receipt);
-      setPrintOpen(true);
+      if (receipt) {
+        setPaidReceipt(receipt);
+        setPrintOpen(true);
+      }
     } catch (error) {
       const gap = classifyCashierRegisterGap(error);
       if (gap) {

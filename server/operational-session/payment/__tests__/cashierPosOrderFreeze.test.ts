@@ -50,15 +50,24 @@ describe("freezeCashierPosPayableFromOrder", () => {
       billDiscountAmount: "0.00",
       snapshots: SNAPSHOTS,
     });
-    expect(freeze.grandTotal).toBe("20.00");
-    expect(freeze.checkId).toBeNull();
-    expect(freeze.tenders).toEqual([{ paymentMethod: "other", amount: "20.00" }]);
-    expect(freeze.composition).toEqual([
+    expect(freeze.freeze.grandTotal).toBe("20.00");
+    expect(freeze.freeze.checkId).toBeNull();
+    expect(freeze.freeze.tenders).toEqual([{ paymentMethod: "other", amount: "20.00" }]);
+    expect(freeze.freeze.composition).toEqual([
       expect.objectContaining({
         netAmount: "20.00",
         originOrderId: 44,
         description: "Kabsa",
       }),
+    ]);
+    expect(freeze.receiptInvoiceLines).toEqual([
+      {
+        nameAr: "Kabsa",
+        nameEn: "Kabsa",
+        quantity: 2,
+        unitPrice: "10.00",
+        lineTotal: "20.00",
+      },
     ]);
   });
 

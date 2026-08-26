@@ -81,7 +81,8 @@ describe("CASHIER-CHECKOUT-PRINT-FLOW-1 architecture guards", () => {
     expect(panel.indexOf("print:hidden")).toBeLessThan(
       panel.indexOf("<CashierPaidReceiptDialog")
     );
-    expect(completeFn).toContain("buildCashierPaidReceiptSnapshot");
+    expect(completeFn).toContain("result.paidReceipt");
+    expect(completeFn).not.toContain("ticketLines: ticket");
     expect(completeFn).toContain("startNewSale()");
     expect(completeFn).toContain("setPaidReceipt(receipt)");
     expect(completeFn).toContain("setPrintOpen(true)");
@@ -90,6 +91,8 @@ describe("CASHIER-CHECKOUT-PRINT-FLOW-1 architecture guards", () => {
     );
     expect(completeFn).not.toContain("if (paid.settlementRecordId)");
     expect(completeFn).not.toContain("settlementRecord.getReceipt");
+    expect(completeFn).not.toContain("trpc.pos.read.check");
+    expect(completeFn).not.toContain("computeCheckMoney");
     expect(startNewSaleFn).not.toContain("setPrintOpen(false)");
     expect(startNewSaleFn).not.toContain("setPaidReceipt");
     expect(panel).not.toContain("تأكيد الدفع والطباعة");
