@@ -84,6 +84,16 @@ describe("needsOpeningFloatPrompt", () => {
       })
     ).toBe(false);
   });
+
+  it("K. opening-float exits when Shift B exists", () => {
+    expect(
+      needsOpeningFloatPrompt({
+        dutyStatus: "open",
+        hasActiveFinancialShift: true,
+        currentLoaded: true,
+      })
+    ).toBe(false);
+  });
 });
 
 describe("closeRequiresCashCount", () => {

@@ -9,7 +9,8 @@
  * REGISTER-CREATION-LABEL-ADOPTION-1 /
  * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 /
  * REGISTER-OPERATIONS-RESPONSIBILITY-CLEANUP-1 /
- * REGISTER-CLOSE-IDEMPOTENT-ATOMIC-CORRIDOR-1 — financial responsibilities only.
+ * REGISTER-CLOSE-IDEMPOTENT-ATOMIC-CORRIDOR-1 /
+ * REGISTER-OPERATIONS-SHIFT-ROTATION-STATE-FIX-1 — financial responsibilities only.
  * Presentation only — crmp.register.* + crmp.financialShift.*.
  * Unpaid Order queues live in Orders Workspace (not Register Ops).
  * Shift Archive + human Shift Number; DRAP display window transparent.
@@ -23,6 +24,8 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
@@ -46,6 +49,8 @@ import {
   dutyStatusLabel,
   filterRegisterRows,
   formatRegisterMoneyDisplay,
+  decideRegisterDutyCloseWithoutShift,
+  isAuthoritativeCurrentShift,
   mapRegisterOperationsApiError,
   needsOpeningFloatPrompt,
   presentFriendlyDevice,
@@ -330,6 +335,8 @@ export function RegisterOperationsPanel({
 
   const mutations = useRegisterOperationsMutations(restaurantId, language);
   const shiftMutations = useFinancialShiftMutations(restaurantId, language);
+  const utils = trpc.useUtils();
+  const [dutyCloseReconciling, setDutyCloseReconciling] = useState(false);
   const invalidate = useInvalidateRegisterOperationsQueries();
 
   const registers = listQuery.data ?? [];
@@ -382,12 +389,11 @@ export function RegisterOperationsPanel({
   const view = currentQuery.data;
   const register = view?.register;
   const version = register?.version;
-  const activeShift = shiftQuery.data ?? null;
+  const activeShift = isAuthoritativeCurrentShift(shiftQuery.data)
+    ? shiftQuery.data
+    : null;
   const hasActiveShift = activeShift != null;
-  const shiftInfo = shiftBadgeFromRef(
-    hasActiveShift || !!view?.financialShift,
-    language
-  );
+  const shiftInfo = shiftBadgeFromRef(hasActiveShift, language);
 
   const showOpeningFloat = needsOpeningFloatPrompt({
     dutyStatus: register?.dutyStatus,
@@ -420,7 +426,8 @@ export function RegisterOperationsPanel({
     mutations.suspend.isPending ||
     mutations.resume.isPending ||
     shiftMutations.open.isPending ||
-    shiftMutations.close.isPending;
+    shiftMutations.close.isPending ||
+    dutyCloseReconciling;
 
   const listError =
     listQuery.error != null
@@ -440,13 +447,40 @@ export function RegisterOperationsPanel({
 
   const dir = language === "ar" ? "rtl" : "ltr";
 
-  function closeDuty() {
+  async function closeDuty() {
     if (!register) return;
-    mutations.close.mutate({
-      restaurantId,
-      registerId: register.registerId,
-      expectedVersion: version,
-    });
+    setDutyCloseReconciling(true);
+    try {
+      const current = await utils.crmp.financialShift.getCurrent.fetch(
+        {
+          restaurantId,
+          registerId: register.registerId,
+        },
+        { staleTime: 0 }
+      );
+      if (decideRegisterDutyCloseWithoutShift(current).action === "block") {
+        utils.crmp.financialShift.getCurrent.setData(
+          { restaurantId, registerId: register.registerId },
+          current
+        );
+        toast.error(registerOperationsErrorMessage("duty_blocked", language));
+        return;
+      }
+      mutations.close.mutate({
+        restaurantId,
+        registerId: register.registerId,
+        expectedVersion: version,
+      });
+    } catch (error) {
+      toast.error(
+        registerOperationsErrorMessage(
+          mapRegisterOperationsApiError(error),
+          language
+        )
+      );
+    } finally {
+      setDutyCloseReconciling(false);
+    }
   }
 
   function runPrimaryAction() {
@@ -758,10 +792,7 @@ export function RegisterOperationsPanel({
                   const isSelected = selectedId === row.registerId;
                   const shift =
                     isSelected && (activeShift || view)
-                      ? shiftBadgeFromRef(
-                          hasActiveShift || !!view?.financialShift,
-                          language
-                        )
+                      ? shiftBadgeFromRef(hasActiveShift, language)
                       : undefined;
                   return (
                     <li key={row.registerId}>
@@ -1049,7 +1080,11 @@ export function RegisterOperationsPanel({
         open={showOpeningFloat}
         language={language}
         currencySymbol={currencySymbol}
-        pending={shiftMutations.open.isPending || mutations.close.isPending}
+        pending={
+          shiftMutations.open.isPending ||
+          mutations.close.isPending ||
+          dutyCloseReconciling
+        }
         onConfirm={confirmOpeningFloat}
         onCloseDutyWithoutShift={closeDuty}
       />

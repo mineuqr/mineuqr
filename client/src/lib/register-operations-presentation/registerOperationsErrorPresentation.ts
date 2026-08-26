@@ -5,6 +5,8 @@
 
 export type RegisterOperationsErrorKind =
   | "not_found"
+  | "shift_not_found"
+  | "no_current_shift"
   | "bad_request"
   | "conflict"
   | "stale_version"
@@ -29,7 +31,17 @@ export function mapRegisterOperationsApiError(
   };
   const code = err?.data?.code ?? err?.shape?.data?.code;
   const message = typeof err?.message === "string" ? err.message : "";
-  if (code === "NOT_FOUND") return "not_found";
+  if (code === "NOT_FOUND") {
+    const m = message.toLowerCase();
+    if (
+      /no current (financial )?shift|no active (financial )?shift/.test(m)
+    ) {
+      return "no_current_shift";
+    }
+    if (/financial shift/.test(m)) return "shift_not_found";
+    if (/register/.test(m) || /صندوق/.test(message)) return "not_found";
+    return "unknown";
+  }
   if (code === "BAD_REQUEST") return "bad_request";
   if (code === "FORBIDDEN") return "forbidden";
   if (code === "UNAUTHORIZED") return "unauthorized";
@@ -67,6 +79,14 @@ export function registerOperationsErrorMessage(
 ): string {
   if (kind === "not_found") {
     return language === "ar" ? "الصندوق غير موجود" : "Register not found";
+  }
+  if (kind === "shift_not_found") {
+    return language === "ar" ? "الوردية غير موجودة" : "Financial shift not found";
+  }
+  if (kind === "no_current_shift") {
+    return language === "ar"
+      ? "لا توجد وردية حالية"
+      : "No current financial shift";
   }
   if (kind === "bad_request") {
     return language === "ar" ? "طلب غير صالح — راجع المدخلات" : "Invalid request — check the inputs";

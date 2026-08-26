@@ -1,5 +1,9 @@
 /**
- * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 — opening float collection dialog.
+ * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
+ * REGISTER-OPERATIONS-SHIFT-ROTATION-STATE-FIX-1 —
+ * opening float collection dialog.
+ * `open` is parent-controlled from authoritative financialShift.getCurrent.
+ * Required float rules stay non-bypassable while no current shift exists.
  */
 
 import { useState } from "react";

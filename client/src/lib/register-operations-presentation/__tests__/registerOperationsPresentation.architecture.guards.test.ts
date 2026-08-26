@@ -74,6 +74,37 @@ describe("Register Operations presentation architecture guards", () => {
     expect(panel).not.toContain("attachDevice");
   });
 
+  it("REGISTER-OPERATIONS-SHIFT-ROTATION-STATE-FIX-1 reconciles current shift", () => {
+    const shiftM = read(
+      "src/lib/register-operations-presentation/useFinancialShiftMutations.ts"
+    );
+    const queries = read(
+      "src/lib/register-operations-presentation/useRegisterOperationsQueries.ts"
+    );
+    const panel = read(
+      "src/components/register-operations/RegisterOperationsPanel.tsx"
+    );
+    const errors = read(
+      "src/lib/register-operations-presentation/registerOperationsErrorPresentation.ts"
+    );
+    const cashier = read(
+      "src/components/cashier-workspace/CashierWorkspacePanel.tsx"
+    );
+    expect(shiftM).toContain("getCurrent.cancel");
+    expect(shiftM).toContain("getCurrent.setData");
+    expect(shiftM).toContain("result.shift");
+    expect(shiftM).toMatch(/getCurrent\.setData\([\s\S]*null/);
+    expect(shiftM).toContain("reconcileIncomingCurrentShift");
+    expect(queries).toContain("getCurrent.cancel");
+    expect(panel).toContain("isAuthoritativeCurrentShift");
+    expect(panel).toContain("decideRegisterDutyCloseWithoutShift");
+    expect(panel).toContain("staleTime: 0");
+    expect(panel).not.toMatch(/hasActiveShift \|\| !!view\?\.financialShift/);
+    expect(errors).toContain("shift_not_found");
+    expect(errors).toContain("no_current_shift");
+    expect(cashier).not.toContain("crmp.financialShift.close");
+  });
+
   it("tender summary presentation groups Ops rows without Domain/API changes", () => {
     const present = read(
       "src/lib/register-operations-presentation/financialShiftTenderSummaryPresentation.ts"

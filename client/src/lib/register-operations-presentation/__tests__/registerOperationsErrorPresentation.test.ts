@@ -10,8 +10,26 @@ import {
 describe("registerOperationsErrorPresentation (UX refinement)", () => {
   it("maps TRPC codes to kinds", () => {
     expect(
-      mapRegisterOperationsApiError({ data: { code: "NOT_FOUND" } })
+      mapRegisterOperationsApiError({
+        data: { code: "NOT_FOUND" },
+        message: "Register not found",
+      })
     ).toBe("not_found");
+    expect(
+      mapRegisterOperationsApiError({
+        data: { code: "NOT_FOUND" },
+        message: "Financial Shift not found",
+      })
+    ).toBe("shift_not_found");
+    expect(
+      mapRegisterOperationsApiError({
+        data: { code: "NOT_FOUND" },
+        message: "No current financial shift",
+      })
+    ).toBe("no_current_shift");
+    expect(
+      mapRegisterOperationsApiError({ data: { code: "NOT_FOUND" } })
+    ).toBe("unknown");
     expect(
       mapRegisterOperationsApiError({ data: { code: "CONFLICT" } })
     ).toBe("conflict");
@@ -56,6 +74,15 @@ describe("registerOperationsErrorPresentation (UX refinement)", () => {
     ).toContain("العدّ");
     expect(registerOperationsErrorMessage("duty_blocked", "en")).toContain(
       "duty"
+    );
+    expect(registerOperationsErrorMessage("not_found", "ar")).toBe(
+      "الصندوق غير موجود"
+    );
+    expect(registerOperationsErrorMessage("shift_not_found", "ar")).not.toBe(
+      "الصندوق غير موجود"
+    );
+    expect(registerOperationsErrorMessage("shift_not_found", "en")).toContain(
+      "shift"
     );
   });
 

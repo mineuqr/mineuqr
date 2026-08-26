@@ -1,6 +1,8 @@
 /**
  * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
- * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 — mutations/queries over crmp.financialShift.*.
+ * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 /
+ * REGISTER-OPERATIONS-SHIFT-ROTATION-STATE-FIX-1 —
+ * mutations/queries over crmp.financialShift.*.
  */
 
 import { toast } from "sonner";
@@ -14,6 +16,13 @@ import {
   type RegisterOperationsLang,
 } from "./registerOperationsCopy";
 import { useInvalidateRegisterOperationsQueries } from "./useRegisterOperationsQueries";
+import {
+  markRegisterShiftClosed,
+  markRegisterShiftOpened,
+  readCurrentShiftSnapshot,
+  reconcileIncomingCurrentShift,
+} from "./financialShiftCurrentReconciliation";
+import type { CurrentRegisterViewDto } from "./registerOperationsApiTypes";
 
 export function useFinancialShiftMutations(
   restaurantId: number,
@@ -30,8 +39,41 @@ export function useFinancialShiftMutations(
   return {
     open: trpc.crmp.financialShift.open.useMutation({
       onSuccess: async (result) => {
-        await invalidate(restaurantId, result.shift.registerId);
-        await utils.crmp.financialShift.getCurrent.invalidate();
+        const registerId = result.shift.registerId;
+        markRegisterShiftOpened(restaurantId, registerId);
+        await Promise.all([
+          utils.crmp.financialShift.getCurrent.cancel({
+            restaurantId,
+            registerId,
+          }),
+          utils.crmp.register.getCurrent.cancel({ restaurantId, registerId }),
+        ]);
+        utils.crmp.financialShift.getCurrent.setData(
+          { restaurantId, registerId },
+          result.shift
+        );
+        utils.crmp.register.getCurrent.setData(
+          { restaurantId, registerId },
+          (old: CurrentRegisterViewDto | undefined) =>
+            old
+              ? {
+                  ...old,
+                  financialShift: {
+                    financialShiftId: result.shift.financialShiftId,
+                    shiftNumber: result.shift.shiftNumber,
+                    registerId: result.shift.registerId,
+                    restaurantId: result.shift.restaurantId,
+                    status: result.shift.status,
+                    operatorUserId: result.shift.operatorUserId,
+                    openedAt: result.shift.openedAt,
+                    closedAt: result.shift.closedAt,
+                    archivedAt: result.shift.archivedAt,
+                    version: result.shift.version,
+                  },
+                }
+              : old
+        );
+        await invalidate(restaurantId, registerId);
         toast.success(
           registerOperationsUiLabel("shiftOpenSuccess", language)
         );
@@ -40,8 +82,29 @@ export function useFinancialShiftMutations(
     }),
     close: trpc.crmp.financialShift.close.useMutation({
       onSuccess: async (result) => {
-        await invalidate(restaurantId, result.shift.registerId);
-        await utils.crmp.financialShift.getCurrent.invalidate();
+        const registerId = result.shift.registerId;
+        markRegisterShiftClosed(
+          restaurantId,
+          registerId,
+          result.shift.financialShiftId
+        );
+        await Promise.all([
+          utils.crmp.financialShift.getCurrent.cancel({
+            restaurantId,
+            registerId,
+          }),
+          utils.crmp.register.getCurrent.cancel({ restaurantId, registerId }),
+        ]);
+        utils.crmp.financialShift.getCurrent.setData(
+          { restaurantId, registerId },
+          null
+        );
+        utils.crmp.register.getCurrent.setData(
+          { restaurantId, registerId },
+          (old: CurrentRegisterViewDto | undefined) =>
+            old ? { ...old, financialShift: null } : old
+        );
+        await invalidate(restaurantId, registerId);
         toast.success(
           registerOperationsUiLabel("shiftCloseSuccess", language)
         );
@@ -104,6 +167,27 @@ export function useFinancialShiftCurrent(
       input.registerId.length > 0,
     staleTime: 3_000,
     refetchInterval: 15_000,
+    structuralSharing: (oldData: unknown, newData: unknown): unknown => {
+      const next = reconcileIncomingCurrentShift({
+        restaurantId: input.restaurantId,
+        registerId: input.registerId,
+        cached: readCurrentShiftSnapshot(oldData),
+        incoming: readCurrentShiftSnapshot(newData),
+      });
+      if (next == null) return null;
+      const incomingSnap = readCurrentShiftSnapshot(newData);
+      if (
+        incomingSnap &&
+        next.financialShiftId === incomingSnap.financialShiftId
+      ) {
+        return newData;
+      }
+      const cachedSnap = readCurrentShiftSnapshot(oldData);
+      if (cachedSnap && next.financialShiftId === cachedSnap.financialShiftId) {
+        return oldData;
+      }
+      return newData ?? oldData ?? null;
+    },
   });
 }
 

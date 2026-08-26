@@ -77,6 +77,11 @@ export {
   needsOpeningFloatPrompt,
 } from "./registerOperationsWorkflow";
 export {
+  decideRegisterDutyCloseWithoutShift,
+  isAuthoritativeCurrentShift,
+  reconcileIncomingCurrentShift,
+} from "./financialShiftCurrentReconciliation";
+export {
   readActiveRegister,
   rememberActiveRegister,
 } from "./registerOperationsStationContext";

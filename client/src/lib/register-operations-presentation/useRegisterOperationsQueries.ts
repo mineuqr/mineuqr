@@ -1,5 +1,6 @@
 /**
- * REGISTER-OPERATIONS-UI-1 — tRPC query hooks over crmp.register.* only.
+ * REGISTER-OPERATIONS-UI-1 /
+ * REGISTER-OPERATIONS-SHIFT-ROTATION-STATE-FIX-1 — tRPC query hooks over crmp.register.*.
  */
 
 import { trpc } from "@/lib/trpc";
@@ -47,38 +48,64 @@ export function useRegisterHistory(
 export function useInvalidateRegisterOperationsQueries() {
   const utils = trpc.useUtils();
   return async (restaurantId: number, registerId?: string) => {
+    if (registerId) {
+      await Promise.all([
+        utils.crmp.financialShift.getCurrent.cancel({
+          restaurantId,
+          registerId,
+        }),
+        utils.crmp.register.getCurrent.cancel({ restaurantId, registerId }),
+        utils.crmp.financialShift.getTenderSummary.cancel({
+          restaurantId,
+          registerId,
+        }),
+        utils.crmp.register.getCurrentFinancialShift.cancel({
+          restaurantId,
+          registerId,
+        }),
+      ]);
+    }
     await Promise.all([
       utils.crmp.register.listAvailable.invalidate({ restaurantId }),
-      utils.crmp.register.get.invalidate(),
-      utils.crmp.register.getCurrent.invalidate(),
-      utils.crmp.register.getDutyStatus.invalidate(),
-      utils.crmp.register.getCurrentOperator.invalidate(),
-      utils.crmp.register.getCurrentDevice.invalidate(),
-      utils.crmp.register.getCurrentFinancialShift.invalidate(),
-      utils.crmp.register.getHistory.invalidate(),
-      utils.crmp.register.resolveActive.invalidate(),
-      utils.crmp.register.resolveByDevice.invalidate(),
-      utils.crmp.register.resolveByOperator.invalidate(),
-      utils.crmp.financialShift.getCurrent.invalidate(),
-      utils.crmp.financialShift.getTenderSummary.invalidate(),
+      registerId
+        ? utils.crmp.register.get.invalidate({ restaurantId, registerId })
+        : utils.crmp.register.get.invalidate(),
       registerId
         ? utils.crmp.register.getCurrent.invalidate({
             restaurantId,
             registerId,
           })
-        : Promise.resolve(),
+        : utils.crmp.register.getCurrent.invalidate(),
+      utils.crmp.register.getDutyStatus.invalidate(),
+      utils.crmp.register.getCurrentOperator.invalidate(),
+      utils.crmp.register.getCurrentDevice.invalidate(),
+      registerId
+        ? utils.crmp.register.getCurrentFinancialShift.invalidate({
+            restaurantId,
+            registerId,
+          })
+        : utils.crmp.register.getCurrentFinancialShift.invalidate(),
+      registerId
+        ? utils.crmp.register.getHistory.invalidate({
+            restaurantId,
+            registerId,
+          })
+        : utils.crmp.register.getHistory.invalidate(),
+      utils.crmp.register.resolveActive.invalidate(),
+      utils.crmp.register.resolveByDevice.invalidate(),
+      utils.crmp.register.resolveByOperator.invalidate(),
       registerId
         ? utils.crmp.financialShift.getCurrent.invalidate({
             restaurantId,
             registerId,
           })
-        : Promise.resolve(),
+        : utils.crmp.financialShift.getCurrent.invalidate(),
       registerId
         ? utils.crmp.financialShift.getTenderSummary.invalidate({
             restaurantId,
             registerId,
           })
-        : Promise.resolve(),
+        : utils.crmp.financialShift.getTenderSummary.invalidate(),
     ]);
   };
 }
