@@ -24,6 +24,12 @@ describe("cashier presentation helpers", () => {
     expect(cashierUiLabel("recoveryUnknown", "en")).toContain("Do not retry");
     expect(cashierUiLabel("recoveryNotCommitted", "en")).toContain("may try again");
     expect(cashierUiLabel("printInvoice", "ar")).toBe("طباعة الفاتورة");
+    expect(cashierUiLabel("receiptTitle", "ar")).toBe("فاتورة مدفوعة");
+    expect(cashierUiLabel("receiptTitle", "en")).toBe("Paid receipt");
+    expect(cashierUiLabel("receiptItems", "ar")).toBe("الأصناف");
+    expect(cashierUiLabel("receiptItems", "en")).toBe("Items");
+    expect(cashierUiLabel("receiptClose", "ar")).toBe("إغلاق");
+    expect(cashierUiLabel("receiptClose", "en")).toBe("Close");
     expect(cashierUiLabel("shiftBeforePay", "ar")).toBe(
       "يجب فتح وردية الصندوق قبل إتمام الدفع"
     );

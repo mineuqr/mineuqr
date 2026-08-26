@@ -156,6 +156,9 @@ const COPY: Record<string, { ar: string; en: string }> = {
   confirmPayment: { ar: "تأكيد الدفع", en: "Confirm payment" },
   paidSuccess: { ar: "تم الدفع بنجاح", en: "Payment successful" },
   printInvoice: { ar: "طباعة الفاتورة", en: "Print invoice" },
+  receiptTitle: { ar: "فاتورة مدفوعة", en: "Paid receipt" },
+  receiptItems: { ar: "الأصناف", en: "Items" },
+  receiptClose: { ar: "إغلاق", en: "Close" },
   printUnavailable: {
     ar: "الفاتورة غير جاهزة للطباعة بعد.",
     en: "The receipt isn't ready to print yet.",
