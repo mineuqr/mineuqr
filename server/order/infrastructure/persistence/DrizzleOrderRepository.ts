@@ -162,7 +162,7 @@ export class DrizzleOrderRepository implements OrderRepository {
     );
 
     let businessIdentity: SaveOrderResult["businessIdentity"];
-    if (this.businessIdentityAllocator) {
+    if (this.businessIdentityAllocator && !options?.skipBusinessIdentityAllocation) {
       const assignment = await this.businessIdentityAllocator.allocateForNewOrder(
         tx,
         {

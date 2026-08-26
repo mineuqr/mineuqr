@@ -25,6 +25,18 @@ SELECT ITEMS → DRAFT
 - Discount-before-VAT via `computeCheckMoney`. Payment UI amount must match Confirm `billDiscountAmount` (frozen on the prepared invoice money).
 - Unpaid Order A/B after composition change remains a domain gap (no supersession in this package).
 
+## Runtime split (`CASHIER-PASS-2-PAYMENT-BOUNDARY-RUNTIME-IMPLEMENTATION-1`)
+
+Payment UI still waits for **commercial invoice persist** (`pos.sale.create` HTTP). It does **not** open on draft-only state.
+
+| sale.create step | Class | Blocks Payment UI? |
+|---|---|---|
+| Restaurant scope + terminal access | A auth | Yes, **overlapped** (`Promise.all`) |
+| Pricing + order number | A composition | Yes, already overlapped |
+| Order + items persist + sale idempotency + outbox | A commercial invoice | Yes |
+| cashier_pos daily-display BI allocation | C identity | **No** — skipped; paidReceipt uses `orderNumber` fallback |
+| Relay / OPEN Check / CF | E / D | No |
+
 ## Non-goals
 
 - Moving Order persist to Confirm

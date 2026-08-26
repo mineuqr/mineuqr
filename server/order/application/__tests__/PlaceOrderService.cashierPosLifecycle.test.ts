@@ -75,6 +75,7 @@ describe("PlaceOrderService cashier_pos inbound acceptance", () => {
       expect.objectContaining({
         createRowStatus: "preparing",
         orderingChannel: "cashier_pos",
+        skipBusinessIdentityAllocation: true,
       })
     );
   });
@@ -137,5 +138,8 @@ describe("PlaceOrderService cashier_pos inbound acceptance", () => {
       })
     );
     expect(vi.mocked(repo.save).mock.calls[0]?.[1]?.createRowStatus).toBeUndefined();
+    expect(vi.mocked(repo.save).mock.calls[0]?.[1]?.skipBusinessIdentityAllocation).toBe(
+      false
+    );
   });
 });

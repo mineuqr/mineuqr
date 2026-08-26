@@ -229,6 +229,9 @@ export class PlaceOrderService {
           ? CASHIER_POS_INBOUND_STATUS
           : undefined,
       afterPersistInTransaction: persist?.afterPersistInTransaction,
+      // Payment UI does not show customer-facing P#; skip sequence alloc on this HTTP.
+      skipBusinessIdentityAllocation:
+        orderingChannel === ORDERING_CHANNEL_CASHIER_POS,
     });
     persisted.clearDomainEvents();
 

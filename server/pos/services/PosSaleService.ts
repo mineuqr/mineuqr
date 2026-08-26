@@ -2,6 +2,8 @@
  * POS-SALE-ORDER-IMPLEMENTATION-1
  * POS Sale is a command into the canonical Order Domain.
  * POS does not own Order, Check, Settlement, or pricing.
+ * CASHIER-PASS-2-PAYMENT-BOUNDARY-RUNTIME-IMPLEMENTATION-1 — restaurant/terminal
+ * auth overlap; cashier_pos skips daily-display BI on this HTTP (paidReceipt).
  */
 
 import { createHash } from "node:crypto";
@@ -326,19 +328,25 @@ export class PosSaleService {
   }): Promise<PosSaleResult> {
     assertIdempotencyKey(input.command.idempotencyKey);
 
-    const scope = await assertRestaurantPosScope(
-      { user: input.user },
-      input.command.restaurantId,
-      this.grants,
-      "pos.sale.create"
-    );
-    const decision = await this.access.resolvePosTerminalAccess({
-      restaurantId: input.command.restaurantId,
-      terminalId: input.command.terminalId,
-      userId: input.user.id,
-      requiredPermission: "SALE_CREATE",
-      restaurantScope: scope.kind,
-    });
+    // CASHIER-PASS-2-PAYMENT-BOUNDARY-RUNTIME-IMPLEMENTATION-1
+    // Restaurant scope (tax + tenancy) and terminal access are independent reads.
+    // evaluate() stamps restaurantScope onto context only; allow/deny does not
+    // depend on kind. Stamp the authoritative kind after both complete.
+    const [scope, decision] = await Promise.all([
+      assertRestaurantPosScope(
+        { user: input.user },
+        input.command.restaurantId,
+        this.grants,
+        "pos.sale.create"
+      ),
+      this.access.resolvePosTerminalAccess({
+        restaurantId: input.command.restaurantId,
+        terminalId: input.command.terminalId,
+        userId: input.user.id,
+        requiredPermission: "SALE_CREATE",
+        restaurantScope: "pos_grant",
+      }),
+    ]);
     if (!decision.allowed || !decision.context) {
       throw new PosSaleError(
         AUTH_DENIED_CODES.has(decision.reasonCode)
@@ -347,7 +355,10 @@ export class PosSaleService {
         "غير مصرح بالوصول"
       );
     }
-    const context = decision.context;
+    const context = {
+      ...decision.context,
+      restaurantScope: scope.kind,
+    };
     if (
       !context.permissions.includes("POS_ACCESS") ||
       !context.permissions.includes("SALE_CREATE")
@@ -363,7 +374,6 @@ export class PosSaleService {
         taxPolicyJson: scope.taxSettings.taxPolicyJson,
       })
     );
-
     assertSaleItems(input.command.items);
 
     if (input.command.sessionId != null) {

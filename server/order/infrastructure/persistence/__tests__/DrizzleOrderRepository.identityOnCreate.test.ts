@@ -228,6 +228,19 @@ describe("DrizzleOrderRepository identity-on-create", () => {
     ]);
   });
 
+  it("skips daily-display allocation when skipBusinessIdentityAllocation is set", async () => {
+    const result = await repository().save(placeOrder(), {
+      identityScope: "POS",
+      skipBusinessIdentityAllocation: true,
+    });
+    expect(allocateForNewOrder).not.toHaveBeenCalled();
+    expect(result.businessIdentity).toBeUndefined();
+    expect(orderInsertValues?.businessDay).toBeUndefined();
+    expect(orderInsertValues?.dailyDisplayNumber).toBeUndefined();
+    expect(sequence).toEqual(["lock", "insert-orders", "insert-lines", "outbox"]);
+    expect(appendInTransaction).toHaveBeenCalledTimes(1);
+  });
+
   it("rolls back the persist callback when Order INSERT fails after sequence allocation", async () => {
     insertOrdersShouldFail = true;
     await expect(

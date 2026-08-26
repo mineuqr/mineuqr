@@ -50,6 +50,13 @@ export type SaveOrderOptions = {
     tx: unknown,
     result: SaveOrderResult
   ) => Promise<void>;
+  /**
+   * CASHIER-PASS-2-PAYMENT-BOUNDARY-RUNTIME-IMPLEMENTATION-1
+   * cashier_pos sale HTTP: skip daily display allocation. Payment UI does not
+   * show customer-facing invoice identity; paidReceipt falls back to orderNumber
+   * until BI exists. Order + items + outbox + sale idempotency still persist.
+   */
+  skipBusinessIdentityAllocation?: boolean;
 };
 
 export interface OrderRepository {

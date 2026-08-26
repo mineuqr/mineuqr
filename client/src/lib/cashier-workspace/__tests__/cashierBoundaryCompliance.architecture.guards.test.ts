@@ -38,6 +38,24 @@ describe("CASHIER-PASS-2-BOUNDARY-COMPLIANCE-AND-HARDENING-1", () => {
     expect(placeSaleFn).not.toContain("replaceItems");
   });
 
+  it("overlaps restaurant and terminal auth and skips cashier BI on sale HTTP", () => {
+    const sale = read(SALE);
+    const place = read("server/order/application/PlaceOrderService.ts");
+    const repo = read(
+      "server/order/infrastructure/persistence/DrizzleOrderRepository.ts"
+    );
+    expect(sale).toContain("Promise.all([");
+    expect(sale).toContain("assertRestaurantPosScope");
+    expect(sale).toContain("resolvePosTerminalAccess");
+    expect(sale.indexOf("Promise.all([")).toBeLessThan(
+      sale.indexOf("this.idempotency.runExclusive")
+    );
+    expect(place).toContain("skipBusinessIdentityAllocation");
+    expect(repo).toContain("!options?.skipBusinessIdentityAllocation");
+    expect(sale).toContain("enrollCheck: false");
+    expect(sale).toContain("awaitRelay: false");
+  });
+
   it("Payment UI payable uses prepared lines plus frozen discount through the shared engine", () => {
     const panel = read(PANEL);
     const view = read(VIEW);
