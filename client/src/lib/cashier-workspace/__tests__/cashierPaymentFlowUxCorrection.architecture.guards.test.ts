@@ -73,7 +73,7 @@ describe("CASHIER-PAYMENT-FLOW-UX-CORRECTION-1 architecture", () => {
       panel.indexOf("function returnToDashboard")
     );
     expect(completeFn).toContain("settleMutation.mutateAsync");
-    expect(completeFn).toContain("billDiscountAmount: ticketDiscount");
+    expect(completeFn).toContain("billDiscountAmount: directSale.money.billDiscountAmount");
     expect(completeFn).not.toContain("ticketMoney");
     expect(completeFn).not.toContain("paymentDisplayMoney");
     expect(completeFn).not.toContain("directSale?.totalAmount");

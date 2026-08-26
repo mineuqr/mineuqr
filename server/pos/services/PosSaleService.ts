@@ -263,7 +263,9 @@ function invoiceFromOrder(
     billDiscountAmount: "0.00",
     taxPolicySnapshot,
   });
-  // VAT/grandTotal come from computeCheckMoney inside the projector.
+  // Payable discount is Confirm intent, projected onto these lines for Payment UI
+  // via projectPreparedCashierInvoiceMoney / computeCheckMoney. sale.create money
+  // remains the undiscounted commercial composition snapshot.
   return {
     money: {
       subtotal: projected.subtotal,

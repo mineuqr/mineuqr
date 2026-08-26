@@ -55,8 +55,10 @@ describe("CASHIER-PAYMENT-CANCEL-RETURN-TO-EDITABLE-1 architecture guards", () =
     expect(aside).not.toContain("invoiceView.displayReference");
     expect(aside).not.toContain("invoiceWhen");
     const overlay = panel.slice(panel.indexOf("cashierPos.overlay"));
-    expect(overlay).toContain('t("receiptInvoiceNumber")');
-    expect(overlay).toContain("directSale.displayReference");
+    expect(overlay).not.toContain('t("receiptInvoiceNumber")');
+    expect(overlay).not.toContain("directSale.displayReference");
+    expect(overlay).not.toContain('t("receiptDate")');
+    expect(overlay).not.toContain('t("receiptTime")');
     expect(read(DIALOG)).toContain("receipt.displayReference");
     expect(read(DIALOG)).toContain("formatCashierReceiptDateTime");
   });

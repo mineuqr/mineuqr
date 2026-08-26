@@ -68,8 +68,8 @@ export class IdentityPlaceOrderService {
     persist?: Pick<SaveOrderOptions, "afterPersistInTransaction"> & {
       /**
        * Default true (CHECK-GENERALIZATION-M5). POS sale HTTP sets false so
-       * post-commit ensureCheckForOrder is skipped; cashier OPEN Check is
-       * written inside the Order persist transaction instead.
+       * post-commit ensureCheckForOrder is skipped. Cashier OPEN Check is not
+       * part of sale.create; Confirm commits Collection Fact from the Order.
        */
       enrollCheck?: boolean;
     }

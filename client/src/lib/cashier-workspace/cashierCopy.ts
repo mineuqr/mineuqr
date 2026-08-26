@@ -89,6 +89,10 @@ const COPY: Record<string, { ar: string; en: string }> = {
   modifiers: { ar: "إضافات", en: "Modifiers" },
   loading: { ar: "جاري التحميل…", en: "Loading…" },
   retry: { ar: "إعادة المحاولة", en: "Retry" },
+  saleRetrySameItems: {
+    ar: "أعد الدفع بنفس الأصناف. لا تغيّر الفاتورة قبل اكتمال المحاولة السابقة.",
+    en: "Retry Payment with the same items. Do not change the invoice until the previous attempt finishes.",
+  },
   errorTitle: { ar: "تعذر تحميل الكاشير", en: "Cashier could not load" },
   emptyCatalog: { ar: "لا توجد أصناف متاحة.", en: "No available items." },
   salePlaced: { ar: "جاهز للدفع", en: "Ready to pay" },

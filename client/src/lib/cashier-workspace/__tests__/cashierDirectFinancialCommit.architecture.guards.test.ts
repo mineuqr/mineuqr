@@ -36,7 +36,7 @@ describe("ADR-ARCH-038 cashier direct financial commit", () => {
     expect(panel).not.toContain("function orchestrateIntake");
     expect(panel).not.toContain("trpc.pos.check.intake");
     expect(panel).not.toContain("amountDueIsOrderFallback");
-    expect(panel).toContain("billDiscountAmount: ticketDiscount");
+    expect(panel).toContain("billDiscountAmount: directSale.money.billDiscountAmount");
     expect(panel).toContain("setPrintOpen(true)");
     expect(panel).toContain("cancelPaymentSheet");
     expect(panel).not.toContain("trpc.order.cancel");

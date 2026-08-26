@@ -317,4 +317,53 @@ describe("CASHIER-SALE-INVOICE-TAX-PROJECTION-1 sale.create money", () => {
     expect(payable.freeze.taxAmount).toBe(result.money.taxAmount);
     expect(payable.freeze.grandTotal).toBe(result.money.grandTotal);
   });
+
+  it("Confirm freeze with discount matches computeCheckMoney on sale line nets", async () => {
+    const { sale } = await ready({
+      totalAmount: "100.00",
+      taxEnabled: true,
+      taxMode: "exclusive",
+    });
+    const result = await sale.create({
+      user: user(STAFF_A),
+      command: { ...command, idempotencyKey: "sale-tax-freeze-discount-01" },
+    });
+    vi.mocked(getOrderItemsByOrderId).mockResolvedValue([
+      {
+        id: 1,
+        nameAr: "عصير",
+        nameEn: "Juice",
+        quantity: 1,
+        price: "100.00",
+      },
+    ] as never);
+    const snapshots = {
+      currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
+      taxPolicySnapshot: captureTaxPolicySnapshot(
+        businessTaxSettingsFromRestaurantRow({
+          currencyCode: "SAR",
+          currencySymbol: "ر.س",
+          taxEnabled: true,
+          taxMode: "exclusive",
+          taxPolicyJson: VAT_15,
+        })
+      ),
+    };
+    const payable = await freezeCashierPosPayableFromOrder({
+      restaurantId: RESTAURANT_A,
+      order: {
+        id: result.orderId,
+        restaurantId: RESTAURANT_A,
+        orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+        orderNumber: result.orderNumber,
+        totalAmount: "100.00",
+      },
+      billDiscountAmount: "20.00",
+      snapshots,
+    });
+    expect(payable.freeze.discountAmount).toBe("20.00");
+    expect(payable.freeze.taxAmount).toBe("12.00");
+    expect(payable.freeze.grandTotal).toBe("92.00");
+    expect(result.money.billDiscountAmount).toBe("0.00");
+  });
 });

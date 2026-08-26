@@ -3,8 +3,10 @@ import {
   buildDraftCashierInvoiceView,
   buildPreparedCashierInvoiceView,
   cashierCatalogTicketMatchesInvoiceLines,
+  cashierTicketMatchesSaleAttempt,
   catalogTicketFromInvoiceLines,
   mapSaleCreateLinesToInvoiceLines,
+  projectPreparedCashierInvoiceMoney,
   unitPriceFromLineTotal,
 } from "../cashierInvoiceView";
 
@@ -74,7 +76,10 @@ describe("CashierInvoiceView", () => {
     });
     expect(view.stage).toBe("prepared");
     expect(view.editable).toBe(false);
-    expect(view.displayReference).toBe("P #015");
+    expect(view.displayReference).toBeNull();
+    expect(view.createdAt).toBeNull();
+    expect(view.orderId).toBe(44);
+    expect(view.orderNumber).toBe("ORD-0007");
     expect(view.lines).toHaveLength(1);
     expect(view.lines[0]?.nameEn).toBe("Orange juice");
     expect(view.lines[0]?.unitPrice).toBe("12.00");
@@ -121,5 +126,64 @@ describe("CashierInvoiceView", () => {
         lines
       )
     ).toBe(false);
+    expect(
+      cashierCatalogTicketMatchesInvoiceLines(
+        [{ ...ticket[0], price: "11.00" }],
+        lines
+      )
+    ).toBe(false);
+  });
+
+  it("matches a pending sale.create attempt by menu item and quantity", () => {
+    expect(
+      cashierTicketMatchesSaleAttempt(
+        [{ menuItemId: 3, quantity: 2, nameAr: "x", nameEn: "x", price: "1.00" }],
+        [{ menuItemId: 3, quantity: 2 }]
+      )
+    ).toBe(true);
+    expect(
+      cashierTicketMatchesSaleAttempt(
+        [{ menuItemId: 3, quantity: 3, nameAr: "x", nameEn: "x", price: "1.00" }],
+        [{ menuItemId: 3, quantity: 2 }]
+      )
+    ).toBe(false);
+  });
+
+  it("projects prepared payable money with discount before VAT using the shared engine", () => {
+    const lines = mapSaleCreateLinesToInvoiceLines(
+      [
+        {
+          description: "item",
+          quantity: 1,
+          netAmount: "100.00",
+          originOrderItemId: 1,
+        },
+      ],
+      [
+        {
+          menuItemId: 3,
+          nameAr: "x",
+          nameEn: "x",
+          price: "100.00",
+          quantity: 1,
+        },
+      ]
+    );
+    const money = projectPreparedCashierInvoiceMoney({
+      lines,
+      billDiscountAmount: "20.00",
+      taxPolicySnapshot: {
+        version: 1,
+        enabled: true,
+        mode: "exclusive",
+        components: [{ id: "vat", name: "VAT", ratePercent: "15.00" }],
+      },
+    });
+    expect(money).toEqual({
+      subtotal: "80.00",
+      discountAmount: "20.00",
+      taxAmount: "12.00",
+      grandTotal: "92.00",
+    });
   });
 });

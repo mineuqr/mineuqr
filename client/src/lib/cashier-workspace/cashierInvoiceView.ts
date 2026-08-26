@@ -1,9 +1,15 @@
 /**
  * CASHIER-SALE-INVOICE-UX-REALIGNMENT-1
+ * CASHIER-PASS-2-BOUNDARY-COMPLIANCE-AND-HARDENING-1
  * Presentation-only Cashier invoice view. Not a DB entity, Check, or
- * Collection Fact. Draft money is a display preview. Prepared money/lines
- * come from pos.sale.create. Paid presentation is paidReceipt.
+ * Collection Fact. Draft money is a display preview. Prepared lines come
+ * from pos.sale.create. Prepared payable money is computeCheckMoney on
+ * those lines plus the frozen bill discount (same engine as Confirm freeze).
+ * Customer-facing invoice number/date/time are paidReceipt only.
  */
+
+import { projectCashierSaleInvoiceMoney } from "@shared/operational-session";
+import type { TaxPolicySnapshot } from "@shared/operational-session";
 
 export type CashierInvoiceStage = "draft" | "prepared" | "paid";
 
@@ -145,10 +151,87 @@ export function cashierCatalogTicketMatchesInvoiceLines(
   if (ticket.length === 0 || ticket.length !== fromLines.length) return false;
   const keyOf = (rows: readonly CashierDraftCatalogLine[]) =>
     [...rows]
-      .map((row) => `${row.menuItemId}:${row.quantity}`)
+      .map(
+        (row) =>
+          `${row.menuItemId}:${row.quantity}:${moneyKey(row.price)}`
+      )
       .sort()
       .join("|");
   return keyOf(ticket) === keyOf(fromLines);
+}
+
+export type CashierSaleAttemptLine = Readonly<{
+  menuItemId: number;
+  quantity: number;
+}>;
+
+/** Same composition the client last sent to pos.sale.create (retry / lost response). */
+export function cashierTicketMatchesSaleAttempt(
+  ticket: readonly Pick<CashierDraftCatalogLine, "menuItemId" | "quantity">[],
+  attempt: readonly CashierSaleAttemptLine[]
+): boolean {
+  if (ticket.length === 0 || ticket.length !== attempt.length) return false;
+  const keyOf = (
+    rows: readonly Pick<CashierDraftCatalogLine, "menuItemId" | "quantity">[]
+  ) =>
+    [...rows]
+      .map((row) => `${row.menuItemId}:${row.quantity}`)
+      .sort()
+      .join("|");
+  return keyOf(ticket) === keyOf(attempt);
+}
+
+function moneyKey(value: string): string {
+  const cents = parseCents(value);
+  return cents == null ? value.trim() : String(cents);
+}
+
+export function chargesSubtotalFromInvoiceLines(
+  lines: readonly CashierInvoiceLineView[]
+): string | null {
+  if (lines.length === 0) return null;
+  let cents = 0;
+  for (const line of lines) {
+    const lineCents = parseCents(line.lineTotal);
+    if (lineCents == null) return null;
+    cents += lineCents;
+  }
+  return fromCents(cents);
+}
+
+/**
+ * Payable prepared-invoice money. Reuses projectCashierSaleInvoiceMoney /
+ * computeCheckMoney. Not a second tax engine. Not Collection Fact.
+ */
+export function projectPreparedCashierInvoiceMoney(input: {
+  lines: readonly CashierInvoiceLineView[];
+  billDiscountAmount: string;
+  taxPolicySnapshot: TaxPolicySnapshot;
+}): CashierInvoiceMoneyView | null {
+  const chargesSubtotal = chargesSubtotalFromInvoiceLines(input.lines);
+  if (chargesSubtotal == null) return null;
+  const projected = projectCashierSaleInvoiceMoney({
+    chargesSubtotal,
+    billDiscountAmount: input.billDiscountAmount,
+    taxPolicySnapshot: input.taxPolicySnapshot,
+  });
+  return {
+    subtotal: projected.subtotal,
+    discountAmount: projected.billDiscountAmount,
+    taxAmount: projected.taxAmount,
+    grandTotal: projected.grandTotal,
+  };
+}
+
+export function toCashierSaleCreateMoney(
+  money: CashierInvoiceMoneyView
+): CashierSaleCreateMoney {
+  return {
+    subtotal: money.subtotal,
+    taxAmount: money.taxAmount,
+    grandTotal: money.grandTotal,
+    billDiscountAmount: money.discountAmount,
+  };
 }
 
 export function mapSaleCreateLinesToInvoiceLines(
@@ -184,10 +267,10 @@ export function buildPreparedCashierInvoiceView(input: {
   return {
     stage: "prepared",
     editable: false,
-    displayReference: input.displayReference,
+    displayReference: null,
     orderId: input.orderId,
     orderNumber: input.orderNumber,
-    createdAt: input.createdAt,
+    createdAt: null,
     cashierDisplayName: input.cashierDisplayName,
     terminalId: input.terminalId,
     lines: input.lines,

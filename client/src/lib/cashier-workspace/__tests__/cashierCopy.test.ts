@@ -13,6 +13,7 @@ describe("cashier presentation helpers", () => {
     expect(cashierUiLabel("returnDashboard", "ar")).toBe("العودة إلى لوحة التحكم");
     expect(cashierUiLabel("openNewTab", "ar")).toBe("فتح الكاشير في تبويب جديد");
     expect(cashierUiLabel("allCategories", "ar")).toBe("الكل");
+    expect(cashierUiLabel("saleRetrySameItems", "en")).toContain("same items");
     expect(cashierUiLabel("placeSale", "ar")).toBe("الدفع");
     expect(cashierUiLabel("placeSale", "en")).toBe("Payment");
     expect(cashierUiLabel("salePlaced", "en")).toBe("Ready to pay");

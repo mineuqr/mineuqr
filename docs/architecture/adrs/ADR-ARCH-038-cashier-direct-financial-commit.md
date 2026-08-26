@@ -53,25 +53,30 @@ ADR-037 §5 target journey already sequences **Confirm → Payment process → C
 
 ### 2.2 Runtime (evidence)
 
-Current Cashier path (`CashierWorkspacePanel`, `PosSaleService`, `PosCheckIntakeService`, `PosSettlementInitiateService`, `PaymentConfirmService`, `CheckService`):
+**Historical (ADR publication, 2026-08-19):** Cashier Confirm was gated on `pos.check.intake` + OPEN Check.grandTotal. That sequencing is **superseded for Cashier runtime**.
+
+**Current Cashier path** (`CASHIER-PASS-2-BOUNDARY-COMPLIANCE-AND-HARDENING-1`):
 
 ```
 Cashier دفع (placeSale)
-  → pos.sale.create          // Order; enrollCheck: false; awaitRelay: false
-  → payment sheet opens
-  → pos.check.intake         // ensureCheckForOrder
-  → pos.read.check.getByOrder
-  → resolveCashierPaymentReadiness requires open Check.grandTotal
-  → تأكيد الدفع
-  → pos.settlement.initiate  // confirmPayment(checkId), awaitAttribution: false
-      → finalizeOpenCheckById (PAID + ST + OS settled + SR)
+  → pos.sale.create          // commercial Order + items; enrollCheck: false; awaitRelay: false
+                             // not Collection Fact; not PAID
+  → Payment UI               // payable = sale lines + frozen billDiscount via computeCheckMoney
+  → tender (local)
+  → تأكيد الدفع / إتمام الدفع
+  → pos.settlement.initiate  // confirmPayment({ orderId }), awaitAttribution: false
+       freezeCashierPosPayableFromOrder
+       Collection Fact COMMIT = PAID
+  → paidReceipt (invoice number / date / time)
+  → Print
+  → attribution / operational Check / SR (background)
 ```
 
-`PaymentConfirmCommand` requires `checkId`. `finalizeOpenCheckById` requires `check.outcome === "open"`. `resolveCashierPaymentReadiness` sets `confirmDisabled` unless `checkOutcome === "open"` and `grandTotal` is a numeric Check amount. Confirm is further blocked when payable would be Order `totalAmount` (`amountDueIsOrderFallback`).
+Customer-facing invoice number/date/time are **paidReceipt** after PAID, not the Payment overlay.
 
-`IdentityPlaceOrderService` default `enrollCheck: true` still enrolls sessionless/ephemeral channels (kiosk/waiter). POS sale sets `enrollCheck: false` so **sale HTTP** does not wait. `OrderSessionConsumer` on sessionless `OrderCreated` still calls `ensureCheckForOrder` for **all** sessionless Orders, including `cashier_pos`.
+`IdentityPlaceOrderService` default `enrollCheck: true` still enrolls sessionless/ephemeral channels (kiosk/waiter). POS sale sets `enrollCheck: false`. Cashier Confirm does **not** require an OPEN Check.
 
-Program-local POS-CHECK-01 defines intake as the Cashier Check command. POS-SETTLE-01 defines settlement as wrapping settle of an **existing** Check. Those program ADRs describe current transport; they do **not** override ADR-037. This ADR **does** override their Cashier *readiness* sequencing.
+Program-local POS-CHECK-01 / POS-SETTLE-01 describe older Check-intake transport and **do not** override this Cashier path.
 
 ### 2.3 Operational listing (evidence)
 
@@ -101,13 +106,13 @@ The defect is architectural **placement**, not the existence of Check, Charges, 
 | Finalize requires OPEN Check | `finalizeOpenCheckById` |
 | Sale does not enroll Check on HTTP | `PosSaleService` `enrollCheck: false` |
 | Sessionless consumer still enrolls | `OrderSessionConsumer.handleOrderCreated` when `sessionId == null` |
-| Discount today on intake, not Confirm | `pos.check.intake` `billDiscountAmount`; `settlementInitiateInput` has no discount field |
+| Discount on Confirm | `settlementInitiateInput.billDiscountAmount`; Cashier sends frozen prepared `directSale.money.billDiscountAmount` |
 | Financial commit set at Confirm | `finalizeOpenCheckById` TX: Charge SUM, `computeCheckMoney`, ST, Check PAID, OS settle, SR |
 | Attribution not on financial TX | `awaitAttribution: false` on Cashier Confirm |
 | Unpaid cashier_pos hidden from ops lists | `cashierPosPaidOperationalVisibilitySql` |
 | No PaymentEngine / payments table | ADR-037 I-PAY-15; schema `operationalChecks` |
 
-**Contradiction recorded (not ignored):** ADR-037 I-PAY-09/12 already *allow* Order-before-Check and Confirm-as-boundary, but **runtime still requires an OPEN Check**. This ADR resolves that contradiction for `cashier_pos` only. It does **not** rewrite I-FIN-04’s historical “Order totalAmount” wording (ADR-037 already forbids reading that as Bill SSOT).
+**Publication-time contradiction (resolved in Cashier runtime):** ADR-037 I-PAY-09/12 already *allowed* Order-before-Check and Confirm-as-boundary. Cashier Confirm now uses `orderId` + Collection Fact; it does **not** require an OPEN Check. This ADR **does not** rewrite I-FIN-04’s historical “Order totalAmount” wording (ADR-037 already forbids reading that as Bill SSOT).
 
 ---
 

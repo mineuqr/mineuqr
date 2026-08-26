@@ -5,6 +5,11 @@
  * CASHIER-PAYMENT-CANCEL-RETURN-TO-EDITABLE-1 — Cancel Payment restores
  * catalog editing on the same Order. P# / date / time stay off the left
  * panel until Confirm / Paid Receipt.
+ * CASHIER-PASS-2-INVOICE-IDENTITY-1 — sale.create key is stable across lost
+ * responses; Confirm uses prepared Order identity, not the live ticket.
+ * CASHIER-PASS-2-BOUNDARY-COMPLIANCE-AND-HARDENING-1 — الدفع persists the
+ * commercial invoice (sale.create); Payment UI payable includes discount via
+ * computeCheckMoney; customer-facing invoice number is paidReceipt only.
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -35,6 +40,11 @@ import {
   type CashierRegisterGapKind,
 } from "@/lib/cashier-workspace/cashierRegisterGap";
 import {
+  clearCashierPendingSaleAttempt,
+  readCashierPendingSaleAttempt,
+  writeCashierPendingSaleAttempt,
+} from "@/lib/cashier-workspace/cashierPendingSaleAttemptStorage";
+import {
   clearCashierDirectSale,
   readCashierDirectSale,
   writeCashierDirectSale,
@@ -58,8 +68,11 @@ import {
   buildDraftCashierInvoiceView,
   buildPreparedCashierInvoiceView,
   cashierCatalogTicketMatchesInvoiceLines,
+  cashierTicketMatchesSaleAttempt,
   catalogTicketFromInvoiceLines,
   mapSaleCreateLinesToInvoiceLines,
+  projectPreparedCashierInvoiceMoney,
+  toCashierSaleCreateMoney,
   type CashierInvoiceLineView,
   type CashierSaleCreateMoney,
 } from "@/lib/cashier-workspace/cashierInvoiceView";
@@ -194,6 +207,9 @@ export function CashierWorkspacePanel({
   const saleInFlightRef = useRef(false);
   const payInFlightRef = useRef(false);
   const saleKeyRef = useRef<string | null>(null);
+  const saleAttemptItemsRef = useRef<
+    ReadonlyArray<{ menuItemId: number; quantity: number }> | null
+  >(null);
   const settleKeyRef = useRef<string | null>(null);
   const paymentIntentRef = useRef<string | null>(null);
   const cashierFlowIdRef = useRef<string | null>(null);
@@ -225,6 +241,9 @@ export function CashierWorkspacePanel({
     setOrdersOpen(false);
     setPrintOpen(false);
     setPaidReceipt(null);
+    const pendingAttempt = readCashierPendingSaleAttempt(restaurantId);
+    saleKeyRef.current = pendingAttempt?.idempotencyKey ?? null;
+    saleAttemptItemsRef.current = pendingAttempt?.items ?? null;
     const snapshot = readCashierDirectSale(restaurantId);
     if (snapshot) {
       const canResumePayment = Number.isInteger(snapshot.orderId) && snapshot.orderId > 0;
@@ -256,6 +275,10 @@ export function CashierWorkspacePanel({
         snapshot.invoice?.lines ?? []
       );
       if (restoredTicket.length > 0) setTicket(restoredTicket);
+      const restoredDiscount =
+        snapshot.invoice?.money.billDiscountAmount ?? "0.00";
+      setTicketDiscount(restoredDiscount);
+      setDiscountDraft("");
       setPaidCheckout(
         snapshot.paid
           ? {
@@ -269,6 +292,7 @@ export function CashierWorkspacePanel({
     } else {
       setDirectSale(null);
       setSalePhase("ticket");
+      setTicketDiscount("0.00");
     }
   }, [restaurantId]);
 
@@ -451,8 +475,10 @@ export function CashierWorkspacePanel({
   function selectOrder(orderId: number) {
     if (directSale?.orderId === orderId && !paidCheckout) {
       setSelectedOrderId(orderId);
-      setSalePhase("payment");
-      persistDirectSaleSnapshot({ phase: "payment" });
+      const catalogSubtotal = displayTicketTotal(ticket);
+      const discount = clampCashierDiscountAmount(ticketDiscount, catalogSubtotal);
+      setTicketDiscount(discount);
+      resumePaymentSheet(applyPreparedPayableDiscount(directSale, discount));
       return;
     }
     setSelectedOrderId(orderId);
@@ -500,6 +526,26 @@ export function CashierWorkspacePanel({
     });
   }
 
+  function applyPreparedPayableDiscount(
+    sale: DirectSale,
+    billDiscountAmount: string
+  ): DirectSale {
+    const projected = projectPreparedCashierInvoiceMoney({
+      lines: sale.lines,
+      billDiscountAmount,
+      taxPolicySnapshot: cashierDisplayTaxPolicy({
+        taxEnabled,
+        taxMode,
+        taxPolicyJson,
+      }),
+    });
+    if (!projected) return { ...sale, money: { ...sale.money, billDiscountAmount } };
+    return {
+      ...sale,
+      money: toCashierSaleCreateMoney(projected),
+    };
+  }
+
   function startNewSale() {
     // Clear the current sale only. Paid receipt snapshot / print stay open.
     endCashierPaymentFlow("abandoned");
@@ -507,6 +553,7 @@ export function CashierWorkspacePanel({
     payInFlightRef.current = false;
     setPaymentBusy(false);
     saleKeyRef.current = null;
+    saleAttemptItemsRef.current = null;
     settleKeyRef.current = null;
     paymentIntentRef.current = null;
     setTicket([]);
@@ -524,6 +571,7 @@ export function CashierWorkspacePanel({
     setDiscountDraft("");
     setDiscountOpen(false);
     setPaymentDisplayMoney(null);
+    clearCashierPendingSaleAttempt(restaurantId);
     clearCashierDirectSale(restaurantId);
   }
 
@@ -545,17 +593,41 @@ export function CashierWorkspacePanel({
     persistDirectSaleSnapshot({ phase: "ticket" });
   }
 
-  function resumePaymentSheet() {
-    if (!directSale || paidCheckout) return;
+  function resumePaymentSheet(sale?: DirectSale) {
+    const next = sale ?? directSale;
+    if (!next || paidCheckout) return;
+    if (sale) setDirectSale(sale);
     setSalePhase("payment");
-    persistDirectSaleSnapshot({ phase: "payment" });
+    persistDirectSaleSnapshot({ sale: next, phase: "payment" });
   }
 
   async function placeSale() {
     // Persist Order as the invoice first. Payment overlay is not money received.
     // OPEN Check is not created here.
+    // CASHIER-PASS-2-INVOICE-IDENTITY-1 — resume same Order when composition
+    // matches; keep the sale.create key across lost responses.
     if (!terminalId || ticket.length === 0) return;
     if (saleInFlightRef.current || saleMutation.isPending) return;
+    if (paidCheckout) return;
+    if (
+      directSale &&
+      cashierCatalogTicketMatchesInvoiceLines(ticket, directSale.lines)
+    ) {
+      const catalogSubtotal = displayTicketTotal(ticket);
+      const discount = clampCashierDiscountAmount(ticketDiscount, catalogSubtotal);
+      setTicketDiscount(discount);
+      resumePaymentSheet(applyPreparedPayableDiscount(directSale, discount));
+      return;
+    }
+    const pendingItems = saleAttemptItemsRef.current;
+    if (
+      saleKeyRef.current &&
+      pendingItems &&
+      !cashierTicketMatchesSaleAttempt(ticket, pendingItems)
+    ) {
+      toast.error(t("saleRetrySameItems"));
+      return;
+    }
     endCashierPaymentFlow("abandoned");
     cashierFlowIdRef.current = cashierPaymentFlowTiming.beginFlow({
       restaurantId,
@@ -566,9 +638,18 @@ export function CashierWorkspacePanel({
       "CASHIER_ORDER_CONFIRM_CLICK"
     );
     saleInFlightRef.current = true;
+    const attemptItems = ticket.map((line) => ({
+      menuItemId: line.menuItemId,
+      quantity: line.quantity,
+    }));
     if (!saleKeyRef.current) {
       saleKeyRef.current = newCashierIdempotencyKey("sale");
     }
+    saleAttemptItemsRef.current = attemptItems;
+    writeCashierPendingSaleAttempt(restaurantId, {
+      idempotencyKey: saleKeyRef.current,
+      items: attemptItems,
+    });
     setPaidCheckout(null);
     setRegisterGap(null);
     setPaymentMethod(null);
@@ -603,7 +684,6 @@ export function CashierWorkspacePanel({
         })),
         idempotencyKey: saleKeyRef.current,
       });
-      saleKeyRef.current = null;
       if (!Number.isInteger(result.orderId) || result.orderId <= 0) {
         throw new Error("Sale was not recorded");
       }
@@ -615,15 +695,20 @@ export function CashierWorkspacePanel({
         cashierFlowIdRef.current,
         result.orderId
       );
-      const sale: DirectSale = {
-        orderId: result.orderId,
-        orderNumber: result.orderNumber,
-        displayReference: result.displayReference,
-        totalAmount: result.totalAmount,
-        createdAt: result.createdAt,
-        money: result.money,
-        lines: mapSaleCreateLinesToInvoiceLines(result.lines, ticket),
-      };
+      const lines = mapSaleCreateLinesToInvoiceLines(result.lines, ticket);
+      const payable = applyPreparedPayableDiscount(
+        {
+          orderId: result.orderId,
+          orderNumber: result.orderNumber,
+          displayReference: result.displayReference,
+          totalAmount: result.totalAmount,
+          createdAt: result.createdAt,
+          money: result.money,
+          lines,
+        },
+        discount
+      );
+      const sale: DirectSale = payable;
       settleKeyRef.current = newCashierIdempotencyKey("settle");
       paymentIntentRef.current = newCashierPaymentIntentId();
       setSelectedOrderId(result.orderId);
@@ -638,6 +723,9 @@ export function CashierWorkspacePanel({
         received: "",
         card: "",
       });
+      saleKeyRef.current = null;
+      saleAttemptItemsRef.current = null;
+      clearCashierPendingSaleAttempt(restaurantId);
       setSalePhase("payment");
       cashierPaymentFlowTiming.mark(
         cashierFlowIdRef.current,
@@ -653,7 +741,9 @@ export function CashierWorkspacePanel({
   }
 
   async function completePayment() {
-    if (!terminalId || selectedOrderId == null) return;
+    const paymentOrderId = directSale?.orderId ?? null;
+    if (!terminalId || paymentOrderId == null || paymentOrderId <= 0) return;
+    if (!directSale) return;
     if (payInFlightRef.current || settleMutation.isPending) return;
     if (tenderMode == null) return;
     const due = amountDue;
@@ -692,13 +782,14 @@ export function CashierWorkspacePanel({
       const result = await settleMutation.mutateAsync({
         restaurantId,
         terminalId,
-        orderId: selectedOrderId,
+        orderId: paymentOrderId,
         idempotencyKey: settleKeyRef.current,
         paymentIntentId: paymentIntentRef.current,
         paymentMethod: plan.paymentMethod,
         settlements: [...plan.settlements],
-        ...(ticketDiscount && ticketDiscount !== "0.00"
-          ? { billDiscountAmount: ticketDiscount }
+        ...(directSale.money.billDiscountAmount &&
+        directSale.money.billDiscountAmount !== "0.00"
+          ? { billDiscountAmount: directSale.money.billDiscountAmount }
           : {}),
       });
       cashierPaymentFlowTiming.mark(
@@ -722,7 +813,7 @@ export function CashierWorkspacePanel({
       );
       endCashierPaymentFlow("completed");
       toast.success(
-        `${t("paidSuccess")} · ${directSale?.displayReference ?? ""} · ${result.grandTotal}`
+        `${t("paidSuccess")} · ${receipt?.displayReference ?? ""} · ${result.grandTotal}`
       );
       invalidateOrderReads();
       startNewSale();
@@ -1484,11 +1575,6 @@ export function CashierWorkspacePanel({
         <div className={cashierPos.overlay} role="dialog" aria-modal="true">
           <div className={cashierPos.sheet} dir={dir}>
                 <h2 className="text-lg font-semibold">{t("completePaymentTitle")}</h2>
-                {directSale ? (
-                  <p className="mt-1 text-sm text-[#6b7280]">
-                    {t("receiptInvoiceNumber")}: {directSale.displayReference}
-                  </p>
-                ) : null}
                 {sheetMoney ? (
                   <div className="mt-4 space-y-1">
                     <p className="flex justify-between text-sm text-[#6b7280]">
