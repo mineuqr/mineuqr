@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getOrderById: vi.fn(),
   getOrderItemsByOrderId: vi.fn(),
   listProductionCollectionFactsByOrderId: vi.fn(),
+  cashierInvoiceNumberForOrder: vi.fn(),
 }));
 
 vi.mock("../../../../db", () => ({
@@ -18,6 +19,11 @@ vi.mock("../../../../db", () => ({
 vi.mock("../../../payment/collection-fact/collectionFactRepository", () => ({
   listProductionCollectionFactsByOrderId: (...a: unknown[]) =>
     mocks.listProductionCollectionFactsByOrderId(...a),
+}));
+
+vi.mock("../../../../pos/cashier-invoice/cashierInvoiceRepository", () => ({
+  cashierInvoiceNumberForOrder: (...a: unknown[]) =>
+    mocks.cashierInvoiceNumberForOrder(...a),
 }));
 
 import {
@@ -90,11 +96,13 @@ describe("resolvePaidSaleReceiptFromCollectionFact", () => {
     mocks.getOrderById.mockReset();
     mocks.getOrderItemsByOrderId.mockReset();
     mocks.listProductionCollectionFactsByOrderId.mockReset();
+    mocks.cashierInvoiceNumberForOrder.mockReset();
     mocks.getOrderById.mockResolvedValue(order());
     mocks.getOrderItemsByOrderId.mockResolvedValue([
       { nameEn: "Kabsa", nameAr: "", quantity: 2, price: "40.00" },
     ]);
     mocks.listProductionCollectionFactsByOrderId.mockResolvedValue([fact()]);
+    mocks.cashierInvoiceNumberForOrder.mockResolvedValue(null);
   });
 
   it("resolves a unique production Collection Fact without Settlement Record identity", async () => {
@@ -121,6 +129,19 @@ describe("resolvePaidSaleReceiptFromCollectionFact", () => {
     expect(receipt?.businessDay).toBe("2026-08-27");
     expect(receipt?.itemsSnapshot[0]?.name).toBe("Kabsa");
     expect(receipt?.outcome).toBe("paid");
+  });
+
+  it("uses Cashier invoice number as document identity without replacing Order displayReference", async () => {
+    mocks.cashierInvoiceNumberForOrder.mockResolvedValue("000126");
+    const receipt = await resolvePaidSaleReceiptFromCollectionFact({
+      restaurantId: 1,
+      orderId: 55,
+    });
+    expect(receipt?.documentNumber).toBe("000126");
+    expect(receipt?.settlementNumber).toBe("000126");
+    expect(receipt?.orders[0]?.orderId).toBe(55);
+    expect(receipt?.orders[0]?.displayReference).not.toBe("000126");
+    expect(receipt?.orders[0]?.displayReference).toBeTruthy();
   });
 
   it("maps a zero-amount Collection Fact as complimentary", async () => {

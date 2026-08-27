@@ -881,7 +881,7 @@ export function CashierWorkspacePanel({
       );
       endCashierPaymentFlow("completed");
       toast.success(
-        `${t("paidSuccess")} · ${receipt?.displayReference ?? ""} · ${result.grandTotal}`
+        `${t("paidSuccess")} · ${receipt?.invoiceNumber?.trim() || receipt?.displayReference || ""} · ${result.grandTotal}`
       );
       invalidateOrderReads();
       startNewSale();
@@ -1371,7 +1371,7 @@ export function CashierWorkspacePanel({
               <div className="mb-3 space-y-0.5 text-xs text-[#6b7280]">
                 {invoiceView.orderId != null && invoiceView.orderId > 0 && invoiceView.orderNumber ? (
                   <p>
-                    {t("incomingOperationalOrder")}: {invoiceView.orderNumber}
+                    {t("receiptOrderNumber")}: {invoiceView.orderNumber}
                     {directSale?.displayReference &&
                     directSale.displayReference !== invoiceView.orderNumber
                       ? ` · ${directSale.displayReference}`

@@ -31,6 +31,7 @@ vi.mock("../../operational-session/payment/recoverCashierPosDownstreamSettlement
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
   getOrderItemsByOrderId: vi.fn(async () => []),
+  getDb: vi.fn(async () => null),
 }));
 vi.mock("../../subscription-runtime", () => ({
   checkLimit: vi.fn(),

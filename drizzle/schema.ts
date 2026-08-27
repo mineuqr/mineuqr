@@ -1242,6 +1242,39 @@ export const cashierOrderHandoffs = mysqlTable(
 export type InsertCashierOrderHandoff = typeof cashierOrderHandoffs.$inferInsert;
 export type SelectCashierOrderHandoff = typeof cashierOrderHandoffs.$inferSelect;
 
+/**
+ * CASHIER-INVOICE-IDENTITY-IMPLEMENTATION-1
+ * Cashier-owned invoice identity. Not Order identity. Not Collection Fact.
+ * Sequence is restaurant-scoped and does not reset on business day.
+ */
+export const cashierInvoiceSequences = mysqlTable("cashier_invoice_sequences", {
+	restaurantId: int().notNull().primaryKey(),
+	lastNumber: int().notNull().default(0),
+});
+
+export const cashierInvoices = mysqlTable(
+	"cashier_invoices",
+	{
+		restaurantId: int().notNull(),
+		orderId: int().notNull(),
+		sequenceNumber: int().notNull(),
+		allocatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.restaurantId, table.orderId],
+			name: "cashier_invoices_pk",
+		}),
+		uniqueIndex("cashier_invoices_restaurant_sequence_unique").on(
+			table.restaurantId,
+			table.sequenceNumber
+		),
+	]
+);
+
+export type InsertCashierInvoice = typeof cashierInvoices.$inferInsert;
+export type SelectCashierInvoice = typeof cashierInvoices.$inferSelect;
+
 // ─── Customer Push Subscriptions (BACKGROUND-NOTIFICATIONS-1A) ───
 export const customerPushSubscriptions = mysqlTable("customer_push_subscriptions", {
 	id: int().autoincrement().notNull(),

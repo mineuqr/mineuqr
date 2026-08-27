@@ -24,6 +24,7 @@ export type CashierPaidReceiptProjection = Readonly<{
   orderId: number;
   orderNumber: string;
   displayReference: string;
+  invoiceNumber?: string | null;
   paidAt: string;
   cashierUserId: number;
   cashierDisplayName: string;

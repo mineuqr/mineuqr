@@ -107,7 +107,14 @@ export function CashierPaidReceiptDialog({
             ) : null}
             <div className="space-y-1 text-center">
               <p>
-                {t("receiptInvoiceNumber")}: {receipt.displayReference}
+                {t("receiptInvoiceNumber")}:{" "}
+                {receipt.invoiceNumber?.trim() || receipt.displayReference}
+              </p>
+              <p className="text-muted-foreground">
+                {t("receiptOrderNumber")}:{" "}
+                {receipt.displayReference !== receipt.orderNumber
+                  ? `${receipt.displayReference} · ${receipt.orderNumber}`
+                  : receipt.orderNumber}
               </p>
               <p className="text-muted-foreground">{t("paidTitle")}</p>
             </div>

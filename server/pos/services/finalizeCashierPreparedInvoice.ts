@@ -24,6 +24,9 @@ import {
 } from "../../operational-session/payment/collection-fact/commitCashierProductionCollectionFact";
 import { createDrizzleCollectionFactStore } from "../../operational-session/payment/collection-fact/collectionFactRepository";
 import { dispatchBestEffortDownstreamDelivery } from "../../operational-session/payment/dispatchBestEffortDownstreamDelivery";
+import {
+  allocateCashierInvoiceForOrder,
+} from "../cashier-invoice/cashierInvoiceRepository";
 import type { SessionDbClient } from "../../diningSession/sessionRepository";
 import type { SettlementContext } from "@shared/crmp";
 
@@ -74,6 +77,7 @@ export async function finalizeCashierPreparedInvoice(
   let businessDay: string | null = null;
   let dailyDisplayNumber: number | null = null;
   let identityScope: string | null = "POS";
+  let invoiceNumber: string | null = null;
 
   const placed = await runOrderCommand(
     () =>
@@ -125,6 +129,11 @@ export async function finalizeCashierPreparedInvoice(
             businessDay = result.businessIdentity?.businessDay ?? null;
             dailyDisplayNumber = result.businessIdentity?.dailyDisplayNumber ?? null;
             identityScope = result.businessIdentity?.identityScope ?? "POS";
+            const invoice = await allocateCashierInvoiceForOrder(
+              { restaurantId: input.restaurantId, orderId },
+              tx as SessionDbClient
+            );
+            invoiceNumber = invoice.invoiceNumber;
             await commitCashierProductionCollectionFact(
               {
                 paymentIntentId: input.paymentIntentId,
@@ -167,6 +176,7 @@ export async function finalizeCashierPreparedInvoice(
     cashierUserId: input.actorUserId,
     cashierDisplayName: input.actorDisplayName,
     terminalId: input.terminalId,
+    invoiceNumber,
   });
   const displayReference = placed.displayReference?.trim()
     ? placed.displayReference

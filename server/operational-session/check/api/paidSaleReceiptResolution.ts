@@ -15,6 +15,7 @@ import {
   type CollectionFact,
 } from "@shared/operational-session/payment/collection-fact";
 import { listProductionCollectionFactsByOrderId } from "../../payment/collection-fact/collectionFactRepository";
+import { cashierInvoiceNumberForOrder } from "../../../pos/cashier-invoice/cashierInvoiceRepository";
 import type { SettlementRecordReceiptDto } from "./settlementRecordApiDtos";
 
 export class PaidSaleReceiptIdentityError extends Error {
@@ -39,12 +40,16 @@ function parseAmount(value: string): number {
 function toReceiptFromCollectionFact(input: {
   fact: CollectionFact;
   displayReference: string | null;
+  invoiceNumber: string | null;
   itemsSnapshot: SettlementRecordReceiptDto["itemsSnapshot"];
 }): SettlementRecordReceiptDto {
   const { fact } = input;
   const complimentary = parseAmount(fact.amount) === 0;
   const outcome = complimentary ? "complimentary" : "paid";
-  const documentNumber = input.displayReference ?? String(fact.orderId);
+  const documentNumber =
+    input.invoiceNumber?.trim() ||
+    input.displayReference ||
+    String(fact.orderId);
   return {
     settlementRecordId: "",
     settlementNumber: documentNumber,
@@ -167,10 +172,15 @@ export async function resolvePaidSaleReceiptFromCollectionFact(input: {
     unitPrice: item.price != null ? String(item.price) : null,
     lineTotal: null,
   }));
+  const invoiceNumber = await cashierInvoiceNumberForOrder({
+    restaurantId: input.restaurantId,
+    orderId: input.orderId,
+  });
 
   return toReceiptFromCollectionFact({
     fact,
     displayReference: identity.displayReference,
+    invoiceNumber,
     itemsSnapshot,
   });
 }

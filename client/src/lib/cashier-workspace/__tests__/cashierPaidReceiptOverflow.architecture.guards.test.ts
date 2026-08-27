@@ -68,6 +68,8 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(dialog).toContain("receipt.grandTotal");
     expect(dialog).toContain("receipt.tenders.map");
     expect(dialog).toContain("receipt.displayReference");
+    expect(dialog).toContain("receipt.invoiceNumber");
+    expect(dialog).toContain("receiptOrderNumber");
     expect(dialog).toContain("formatCashierReceiptDateTime");
     expect(dialog).toContain("receipt.cashierDisplayName");
     expect(dialog).toContain("receipt.terminalId");

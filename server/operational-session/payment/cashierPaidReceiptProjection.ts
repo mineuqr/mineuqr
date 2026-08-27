@@ -32,6 +32,8 @@ export type CashierPaidReceiptProjection = Readonly<{
   orderId: number;
   orderNumber: string;
   displayReference: string;
+  /** Cashier-owned invoice identity. Null for historical sales without a row. */
+  invoiceNumber: string | null;
   paidAt: string;
   cashierUserId: number;
   cashierDisplayName: string;
@@ -69,6 +71,7 @@ export function buildCashierPaidReceiptProjection(input: {
   cashierUserId: number;
   cashierDisplayName?: string | null;
   terminalId: string;
+  invoiceNumber?: string | null;
 }): CashierPaidReceiptProjection {
   const orderNumber =
     input.order.orderNumber?.trim() || String(input.order.id);
@@ -84,6 +87,7 @@ export function buildCashierPaidReceiptProjection(input: {
     orderId: input.freeze.orderId,
     orderNumber,
     displayReference,
+    invoiceNumber: input.invoiceNumber?.trim() || null,
     paidAt: input.paidAt,
     cashierUserId: input.cashierUserId,
     cashierDisplayName: input.cashierDisplayName?.trim() || "",

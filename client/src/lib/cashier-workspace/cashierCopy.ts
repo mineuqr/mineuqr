@@ -172,6 +172,7 @@ const COPY: Record<string, { ar: string; en: string }> = {
   receiptItems: { ar: "الأصناف", en: "Items" },
   receiptClose: { ar: "إغلاق", en: "Close" },
   receiptInvoiceNumber: { ar: "فاتورة رقم", en: "Invoice" },
+  receiptOrderNumber: { ar: "طلب", en: "Order" },
   receiptDate: { ar: "التاريخ", en: "Date" },
   receiptTime: { ar: "الوقت", en: "Time" },
   receiptCashier: { ar: "الكاشير", en: "Cashier" },

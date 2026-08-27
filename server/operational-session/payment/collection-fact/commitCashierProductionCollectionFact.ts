@@ -21,6 +21,8 @@ import type {
 import { isCashierFinalizableOrderingChannel } from "@shared/pos";
 import { getDb } from "../../../db";
 import { DiningSessionUnavailableError } from "../../../diningSession/sessionTypes";
+import type { SessionDbClient } from "../../../diningSession/sessionRepository";
+import { allocateCashierInvoiceForOrder } from "../../../pos/cashier-invoice/cashierInvoiceRepository";
 import { commitCollectionFact } from "./CollectionFactService";
 import { createDrizzleCollectionFactStore } from "./collectionFactRepository";
 import type { CollectionFactStore } from "./collectionFactStore";
@@ -112,8 +114,9 @@ export async function commitCashierProductionCollectionFact(
 }
 
 /**
- * One financial transaction: Collection Fact insert (or idempotent replay) is PAID.
- * Check is not a participant.
+ * One financial transaction: bind Cashier invoice identity, then Collection Fact.
+ * Invoice identity is not a ledger. Check is not a participant.
+ * Replay of the same orderId returns the same invoice number.
  */
 export async function commitCashierProductionCollectionFactInTransaction(
   input: CashierProductionCollectionCommitInput
@@ -122,10 +125,17 @@ export async function commitCashierProductionCollectionFactInTransaction(
   if (!db) {
     throw new DiningSessionUnavailableError();
   }
-  return db.transaction(async (tx) =>
-    commitCashierProductionCollectionFact(
+  return db.transaction(async (tx) => {
+    await allocateCashierInvoiceForOrder(
+      {
+        restaurantId: input.freeze.restaurantId,
+        orderId: input.freeze.orderId,
+      },
+      tx as SessionDbClient
+    );
+    return commitCashierProductionCollectionFact(
       input,
       createDrizzleCollectionFactStore(tx)
-    )
-  );
+    );
+  });
 }

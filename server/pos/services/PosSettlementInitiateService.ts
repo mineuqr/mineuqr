@@ -23,6 +23,7 @@ import {
 import type { CollectionFact } from "@shared/operational-session/payment/collection-fact";
 import type { IdentityPlaceOrderService } from "../../order/application/IdentityPlaceOrderService";
 import { finalizeCashierPreparedInvoice } from "./finalizeCashierPreparedInvoice";
+import { cashierInvoiceNumberForOrder } from "../cashier-invoice/cashierInvoiceRepository";
 import type { SettlementContext } from "@shared/crmp";
 import { opsLog } from "../../_core/opsLog";
 import { getOrderById, getOrderItemsByOrderId } from "../../db";
@@ -517,6 +518,10 @@ async function paidReceiptFromExistingFact(input: {
 }): Promise<CashierPaidReceiptProjection> {
   const items = (await getOrderItemsByOrderId(input.order.id)) ?? [];
   const persistedOrder = input.order;
+  const invoiceNumber = await cashierInvoiceNumberForOrder({
+    restaurantId: persistedOrder.restaurantId,
+    orderId: persistedOrder.id,
+  });
   // CF.subtotal stays on the lookup fact (taxable base). Receipt Subtotal
   // is cashierInvoicePresentationSubtotal(grandTotal, taxAmount).
   return buildCashierPaidReceiptProjection({
@@ -539,6 +544,7 @@ async function paidReceiptFromExistingFact(input: {
     cashierUserId: input.cashierUserId,
     cashierDisplayName: input.cashierDisplayName,
     terminalId: input.terminalId,
+    invoiceNumber,
   });
 }
 

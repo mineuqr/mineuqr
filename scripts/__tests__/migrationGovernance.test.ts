@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0100 contiguously", () => {
+  it("journal contains canonical migrations 0000–0101 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -62,15 +62,16 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     );
     expect(journal.entries[98]?.tag).toBe("0098_pos_sale_idempotency_open_check");
     expect(journal.entries[99]?.tag).toBe("0099_cashier_order_handoffs");
-    expect(journal.entries[100]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[100]?.tag).toBe(
+      "0100_crmp_collection_fact_attribution"
+    );
+    expect(journal.entries[101]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe(
-      "0100_crmp_collection_fact_attribution"
-    );
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(101);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0101_cashier_invoices");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(102);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -120,6 +121,8 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(verify).toContain("check_charges");
     expect(verify).toContain("payment_collection_facts");
     expect(verify).toContain("cashier_order_handoffs");
+    expect(verify).toContain("cashier_invoice_sequences");
+    expect(verify).toContain("cashier_invoices");
   });
 
   it("vercel build runs governance guard before compile", () => {
@@ -313,6 +316,31 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
     expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
     expect(sql).not.toMatch(/ALTER TABLE `settlement_records`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/^\s*UPDATE\b/im);
+    expect(sql).not.toMatch(/^\s*DELETE\b/im);
+    expect(sql).not.toMatch(/DROP\s+/i);
+  });
+
+  it("0101 is additive Cashier invoice identity and is not a financial rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0101_cashier_invoices.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `cashier_invoice_sequences`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `cashier_invoices`");
+    expect(sql).toContain("PRIMARY KEY (`restaurantId`, `orderId`)");
+    expect(sql).toContain(
+      "UNIQUE KEY `cashier_invoices_restaurant_sequence_unique`"
+    );
+    expect(sql).not.toContain("business_day");
+    expect(sql).not.toContain("businessDay");
+    expect(sql).not.toMatch(/CREATE TABLE `payments`/);
+    expect(sql).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+    expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
+    expect(sql).not.toMatch(/ALTER TABLE `pos_sale_idempotency`/);
+    expect(sql).not.toMatch(/ALTER TABLE `cashier_order_handoffs`/);
     expect(sql).not.toMatch(/INSERT\s+INTO/i);
     expect(sql).not.toMatch(/^\s*UPDATE\b/im);
     expect(sql).not.toMatch(/^\s*DELETE\b/im);

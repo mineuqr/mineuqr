@@ -91,6 +91,36 @@ describe("buildCashierPaidReceiptProjection", () => {
     expect(projection.cashierDisplayName).toBe("خالد");
     expect(projection.terminalId).toBe("term-1");
     expect(projection.displayReference.length).toBeGreaterThan(0);
+    expect(projection.invoiceNumber).toBeNull();
+  });
+
+  it("keeps Order displayReference independent of Cashier invoice number", () => {
+    const projection = buildCashierPaidReceiptProjection({
+      freeze: {
+        orderId: 44,
+        discountAmount: "0.00",
+        taxAmount: "0.00",
+        grandTotal: "10.00",
+        tenders: [{ paymentMethod: "cash", amount: "10.00" }],
+        currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
+      },
+      receiptInvoiceLines: [],
+      order: {
+        id: 44,
+        orderNumber: "ORD-0007",
+        businessDay: "2026-08-26",
+        dailyDisplayNumber: 6,
+        identityScope: "TABLE",
+      },
+      paidAt: "2026-08-26T12:30:00.000Z",
+      cashierUserId: 7,
+      terminalId: "term-1",
+      invoiceNumber: "000126",
+    });
+    expect(projection.invoiceNumber).toBe("000126");
+    expect(projection.orderNumber).toBe("ORD-0007");
+    expect(projection.displayReference).not.toBe("000126");
+    expect(projection.invoiceNumber).not.toBe(projection.displayReference);
   });
 });
 

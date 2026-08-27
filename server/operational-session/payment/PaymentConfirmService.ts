@@ -31,6 +31,7 @@ import {
   commitCashierProductionCollectionFactInTransaction,
 } from "./collection-fact/commitCashierProductionCollectionFact";
 import type { CollectionFactStore } from "./collection-fact/collectionFactStore";
+import { cashierInvoiceNumberForOrder } from "../../pos/cashier-invoice/cashierInvoiceRepository";
 
 export const PAYMENT_CONFIRM_PROGRAM_ID = "PAYMENT-CONFIRM-SERVICE-1" as const;
 
@@ -158,5 +159,17 @@ export async function confirmPayment(
       collectionFactOutcome,
     },
   });
+  if (result.paidReceipt && command.orderId != null) {
+    const invoiceNumber = await cashierInvoiceNumberForOrder({
+      restaurantId: command.restaurantId,
+      orderId: command.orderId,
+    });
+    if (invoiceNumber) {
+      return {
+        ...result,
+        paidReceipt: { ...result.paidReceipt, invoiceNumber },
+      };
+    }
+  }
   return result;
 }

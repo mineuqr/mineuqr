@@ -36,6 +36,12 @@ export {
   type InvoiceIntentStatus,
 } from "./cashierFinancialFinalization";
 export {
+  CASHIER_INVOICE_IDENTITY_PROGRAM_ID,
+  CASHIER_INVOICE_NUMBER_PAD,
+  formatCashierInvoiceNumber,
+  type CashierInvoiceAssignment,
+} from "./cashierInvoiceIdentity";
+export {
   FINANCIAL_RESPONSIBILITY_MAP,
   ATTRIBUTION_RESPONSIBILITY_MAP,
   REFUND_RESPONSIBILITY_MAP,

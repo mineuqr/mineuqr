@@ -46,6 +46,7 @@ describe("SESSION-TO-CASHIER-HANDOFF-1 architecture", () => {
     expect(intent).toContain("resolveOrderDisplayIdentity");
     expect(intent).not.toContain("commitCollectionFact");
     expect(intent).not.toContain("DrizzleBusinessIdentityAllocator");
+    expect(intent).not.toContain("allocateCashierInvoiceForOrder");
     expect(panel).toContain("reviewInvoiceIntent");
     expect(panel).toContain("intent.displayReference || intent.orderNumber");
     expect(panel).toContain("incomingOperationalOrder");
@@ -58,18 +59,24 @@ describe("SESSION-TO-CASHIER-HANDOFF-1 architecture", () => {
     expect(confirm).not.toContain("closeSession");
   });
 
-  it("keeps Confirm → CF → PAID frozen and does not add 0101", () => {
+  it("keeps Confirm → CF → PAID frozen; 0101 is invoice identity only", () => {
     const journal = read("drizzle/meta/_journal.json");
     const cf = read(
       "server/operational-session/payment/collection-fact/commitCashierProductionCollectionFact.ts"
     );
     const initiate = read("server/pos/services/PosSettlementInitiateService.ts");
     const close = read("server/diningSession/sessionService.ts");
+    const sql0101 = read("drizzle/0101_cashier_invoices.sql");
     expect(journal).toContain("0098_pos_sale_idempotency_open_check");
     expect(journal).toContain("0099_cashier_order_handoffs");
     expect(journal).toContain("0100_crmp_collection_fact_attribution");
-    expect(journal).not.toContain("0101_");
+    expect(journal).toContain("0101_cashier_invoices");
+    expect(sql0101).toContain("cashier_invoice_sequences");
+    expect(sql0101).not.toContain("business_day");
+    expect(sql0101).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql0101).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
     expect(cf).toContain("collectionFactCommitIsPaid");
+    expect(cf).toContain("allocateCashierInvoiceForOrder");
     expect(initiate).toContain("finalizeCashierPreparedInvoice");
     expect(initiate).toContain("this.settlePaid");
     expect(close).toContain('source: "manual_close"');

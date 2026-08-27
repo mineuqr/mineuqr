@@ -75,17 +75,20 @@ describe("SR-OVERLAP-IDENTITY-HARDENING-1 architecture", () => {
     }
   });
 
-  it("does not create 0101 and leaves 0098–0100 untouched", () => {
+  it("does not create an SR overlap migration and leaves 0098–0100 untouched", () => {
     const sql = readdirSync(join(repoRoot, "drizzle")).filter((name) =>
       name.endsWith(".sql")
     );
-    expect(sql.some((name) => name.startsWith("0101"))).toBe(false);
+    expect(existsSync(join(repoRoot, "drizzle/0101_paid_sale_receipt.sql"))).toBe(
+      false
+    );
     expect(existsSync(join(repoRoot, "drizzle/0101.sql"))).toBe(false);
+    expect(sql).toContain("0101_cashier_invoices.sql");
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0098_pos_sale_idempotency_open_check");
     expect(journal).toContain("0099_cashier_order_handoffs");
     expect(journal).toContain("0100_crmp_collection_fact_attribution");
-    expect(journal).not.toContain("0101_");
+    expect(journal).toContain("0101_cashier_invoices");
     const sql0098 = read("drizzle/0098_pos_sale_idempotency_open_check.sql");
     const sql0099 = read("drizzle/0099_cashier_order_handoffs.sql");
     const sql0100 = read("drizzle/0100_crmp_collection_fact_attribution.sql");

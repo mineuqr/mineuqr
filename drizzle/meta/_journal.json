@@ -708,6 +708,13 @@
       "when": 1785400000000,
       "tag": "0100_crmp_collection_fact_attribution",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "5",
+      "when": 1785500000000,
+      "tag": "0101_cashier_invoices",
+      "breakpoints": true
     }
   ]
 }

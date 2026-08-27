@@ -260,6 +260,19 @@ const REQUIRED = {
     ["cashier_order_handoffs", "cashier_order_handoffs_pk"],
     ["cashier_order_handoffs", "cashier_order_handoffs_restaurant_handed_off"],
   ],
+  /** CASHIER-INVOICE-IDENTITY-IMPLEMENTATION-1 — document identity, not a ledger. */
+  cashierInvoiceTables: ["cashier_invoice_sequences", "cashier_invoices"],
+  cashierInvoiceColumns: [
+    ["cashier_invoice_sequences", "restaurantId"],
+    ["cashier_invoice_sequences", "lastNumber"],
+    ["cashier_invoices", "restaurantId"],
+    ["cashier_invoices", "orderId"],
+    ["cashier_invoices", "sequenceNumber"],
+    ["cashier_invoices", "allocatedAt"],
+  ],
+  cashierInvoiceIndexes: [
+    ["cashier_invoices", "cashier_invoices_restaurant_sequence_unique"],
+  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -482,10 +495,25 @@ async function main() {
         missing.push(`index:${table}.${indexName}`);
       }
     }
+    for (const table of REQUIRED.cashierInvoiceTables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.cashierInvoiceColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+    for (const [table, indexName] of REQUIRED.cashierInvoiceIndexes) {
+      if (!(await indexExists(conn, table, indexName))) {
+        missing.push(`index:${table}.${indexName}`);
+      }
+    }
 
     if (missing.length === 0) {
       console.log(
-        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements, check-charges, payment-collection-facts, cashier-order-handoffs)."
+        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements, check-charges, payment-collection-facts, cashier-order-handoffs, cashier-invoices)."
       );
       return;
     }
