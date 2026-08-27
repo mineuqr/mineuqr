@@ -117,6 +117,7 @@ export type RequestRefundCommand = Readonly<{
   priorSettlementRecordRestaurantId: number;
   priorSettlementGeneration: number;
   recordGeneration: number;
+  originalCollectionFactId?: string | null;
   allocations?: readonly Omit<RefundAllocation, "allocationId">[];
   reason?: string | null;
   refundId?: RefundId;
@@ -183,6 +184,7 @@ export function requestRefund(cmd: RequestRefundCommand): RefundCommandResult {
       priorSettlementRecordId: cmd.priorSettlementRecordId,
       settlementRecordGeneration: cmd.priorSettlementGeneration,
       checkId: cmd.checkId,
+      originalCollectionFactId: cmd.originalCollectionFactId ?? null,
     },
     allocations,
     reverseSnapshot,
@@ -471,8 +473,9 @@ export type ExecuteRefundOnCheckCommand = Readonly<{
   existingRefund?: Refund | null;
   existingRefundRecord?: SettlementRecord | null;
   /**
-   * REFUND-CF-ANCHOR-1 — original Cashier sale identity.
-   * When collection_fact, original collected amount is CF.amount.
+   * REFUND-DOCUMENT-PERSISTENCE-SEPARATION-1 — original Cashier sale identity.
+   * When collection_fact, original collected amount is CF.amount and gen=1 SR
+   * is not required to identify the sale. Refund persistence remains SR.
    * Omitted / legacy_settlement_record keeps gen=1 SR as the original amount.
    */
   originalSaleAnchor?: RefundOriginalSaleAnchor;
@@ -503,12 +506,16 @@ export function executeRefundOnCheck(
     settlementRecords: cmd.settlementRecords,
     originalSale: cmd.originalSaleAnchor,
   });
-  if (!budget.priorSettlementRecordId) {
+  const cfBacked = cmd.originalSaleAnchor?.kind === "collection_fact";
+  if (!budget.priorSettlementRecordId && !cfBacked) {
     throw new NoPriorSettlementError(
       `RF-INV-P02: Refund document chain requires a published Settlement Record for check=${check.id}`
     );
   }
 
+  const priorRecord = cmd.settlementRecords.find(
+    (record) => record.settlementRecordId === budget.priorSettlementRecordId
+  );
   const refundId =
     cmd.refundId ??
     buildRefundId({
@@ -556,8 +563,14 @@ export function executeRefundOnCheck(
             priorSettlementRecordId:
               cmd.existingRefundRecord.priorSettlementRecordId ??
               budget.priorSettlementRecordId,
-            settlementRecordGeneration: budget.nextRecordGeneration,
+            settlementRecordGeneration:
+              priorRecord?.recordGeneration ??
+              (budget.priorSettlementRecordId ? 1 : 0),
             checkId: check.id,
+            originalCollectionFactId:
+              cmd.originalSaleAnchor?.kind === "collection_fact"
+                ? cmd.originalSaleAnchor.collectionFactId
+                : null,
           },
           allocations: [],
           reverseSnapshot: buildRefundReverseSnapshot(
@@ -597,8 +610,12 @@ export function executeRefundOnCheck(
     currencyCode: check.currencySnapshot.currencyCode,
     priorSettlementRecordId: budget.priorSettlementRecordId,
     priorSettlementRecordRestaurantId: check.restaurantId,
-    priorSettlementGeneration: 1,
+    priorSettlementGeneration: priorRecord?.recordGeneration ?? 0,
     recordGeneration: budget.nextRecordGeneration,
+    originalCollectionFactId:
+      cmd.originalSaleAnchor?.kind === "collection_fact"
+        ? cmd.originalSaleAnchor.collectionFactId
+        : null,
     allocations: cmd.allocations,
     reason: cmd.reason,
     refundId,

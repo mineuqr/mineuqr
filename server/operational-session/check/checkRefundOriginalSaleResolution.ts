@@ -45,6 +45,8 @@ export async function resolveRefundOriginalSaleAnchorForCheck(
     input.checkId,
     client
   );
+  // Query failure must propagate. Empty rows are the only "no production CF"
+  // case that may enter the legacy SR original-amount path.
   const facts = await listProductionCollectionFactsForRefundAnchor(
     {
       restaurantId: input.restaurantId,

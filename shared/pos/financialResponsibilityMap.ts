@@ -43,7 +43,7 @@ export const REFUND_RESPONSIBILITY_MAP = {
   targetFinancialIdentity:
     "original Collection Fact (collectionFactId / paymentIntentId / orderId)",
   remainingLegacy:
-    "Refund persistence, chain, and RF- documents remain Check/SR; non-CF sales keep the SR original-amount path",
+    "Refund persistence, RF- documents, and refund history remain Check/SR. CF-backed original-sale identity does not use gen=1 SR. priorSettlementRecordId is document-chain only. Non-CF sales keep the SR original-amount path",
 } as const;
 
 export const CHECK_ST_OS_SR_CLASSIFICATION = {

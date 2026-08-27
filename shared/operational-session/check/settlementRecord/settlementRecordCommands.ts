@@ -67,7 +67,8 @@ export type CreateCompensatingSettlementRecordCommand = Readonly<{
   outcome: CheckTerminalOutcome;
   recordKind: Exclude<SettlementRecordKind, "settlement">;
   recordGeneration: number;
-  priorSettlementRecordId: string;
+  /** Document-chain prior. First CF-backed refund may omit it (original sale is CF). */
+  priorSettlementRecordId: string | null;
   businessDay?: string;
   createdAt: string;
   orderIds: readonly number[];

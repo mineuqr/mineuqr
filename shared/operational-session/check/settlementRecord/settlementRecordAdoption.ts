@@ -72,7 +72,8 @@ export function sortSettlementRecordsNewestFirst(
 
 /**
  * Assert compensating chain integrity for a Check's Settlement Records.
- * Does not mutate. Primary settlement/void gens may omit prior; refund requires prior.
+ * Does not mutate. Primary settlement/void gens may omit prior.
+ * First CF-backed refund may omit prior (original sale is CF). Reversal/correction still require prior.
  */
 export function assertSettlementRecordChainIntegrity(
   records: readonly SettlementRecord[]

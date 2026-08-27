@@ -145,6 +145,27 @@ describe("REFUND-SETTLEMENT-RECORD-ADOPTION-1", () => {
     assertSettlementRecordChainIntegrity([primary, refund]);
   });
 
+  it("first CF-backed refund without a document prior remains a native refund SR", () => {
+    const refund = createCompensatingSettlementRecord({
+      check: makeCheck({
+        subtotal: "10.00",
+        billDiscountAmount: "0.00",
+        taxAmount: "0.00",
+        taxBreakdown: { totalTaxAmount: "0.00", lines: [] },
+        grandTotal: "10.00",
+      }),
+      outcome: "paid",
+      recordKind: "refund",
+      recordGeneration: 1,
+      priorSettlementRecordId: null,
+      createdAt: "2026-07-26 14:00:00",
+      orderIds: [55],
+    }).record;
+    expect(isRefundSettlementRecord(refund)).toBe(true);
+    expect(refund.priorSettlementRecordId).toBeNull();
+    assertSettlementRecordChainIntegrity([refund]);
+  });
+
   it("immutability: original settlement unchanged; mutation forbidden", () => {
     const primary = primarySettlement();
     const snapshot = { ...primary };

@@ -47,12 +47,16 @@ export type RefundAllocation = Readonly<{
 }>;
 
 /**
- * Immutable link from Refund to the Settlement/Payment facts it reverses.
+ * Document-chain link plus optional CF original-sale identity.
+ * priorSettlementRecordId is refund-document chaining, not original-sale SSOT.
+ * Empty prior is allowed for the first CF-backed refund document.
  */
 export type RefundReferenceLink = Readonly<{
   priorSettlementRecordId: string;
   settlementRecordGeneration: number;
   checkId: number;
+  /** CF original-sale identity. Not a document id. Optional for legacy SR-anchored refunds. */
+  originalCollectionFactId?: string | null;
 }>;
 
 /**
@@ -102,7 +106,8 @@ export type Refund = Readonly<{
  * Derived refundable budget.
  * CF-backed original collected amount comes from production Collection Fact.
  * Already-refunded remains the existing refund SR chain (document persistence).
- * Never UI-invented (RF-BUDGET-02).
+ * priorSettlementRecordId is the refund-document prior (gen=1 or previous refund),
+ * not original-sale identity. Never UI-invented (RF-BUDGET-02).
  */
 export type RefundBudget = Readonly<{
   restaurantId: number;

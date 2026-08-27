@@ -486,7 +486,7 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
     ).toThrow(AlreadyRefundedError);
   });
 
-  it("CF-backed budget works without gen=1 SR; execute still requires the refund document chain", () => {
+  it("CF-backed refund identifies the original sale without gen=1 SR and persists a refund SR", () => {
     const check = makeCheck();
     const originalSale = {
       kind: "collection_fact" as const,
@@ -512,6 +512,125 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
     });
     expect(budget.settledValue).toBe("90.00");
     expect(budget.priorSettlementRecordId).toBe("");
+    expect(budget.collectionFactId).toBe("cf-1");
+
+    expect(() =>
+      executeRefundOnCheck({
+        check,
+        amount: "90.01",
+        settlementRecords: [],
+        orderSettlements: [makeSettledOs(55, "90.00")],
+        at: AT,
+        originalSaleAnchor: originalSale,
+      })
+    ).toThrow(RefundBudgetExceededError);
+
+    const first = executeRefundOnCheck({
+      check,
+      amount: "10.00",
+      settlementRecords: [],
+      orderSettlements: [makeSettledOs(55, "90.00")],
+      at: AT,
+      originalSaleAnchor: originalSale,
+      tenderMethod: "card",
+    });
+    expect(first.outcome).toBe("applied");
+    expect(first.remainingBudget).toBe("80.00");
+    expect(first.refund.referenceLink.originalCollectionFactId).toBe("cf-1");
+    expect(first.refund.referenceLink.priorSettlementRecordId).toBe("");
+    const refundDoc = first.settlementRecordResult?.record;
+    expect(refundDoc?.recordKind).toBe("refund");
+    expect(refundDoc?.priorSettlementRecordId).toBeNull();
+    expect(refundDoc?.grandTotal).toBe("10.00");
+    expect(refundDoc?.paymentSnapshot[0]?.paymentMethod).toBe("card");
+    expect(refundDoc?.recordGeneration).toBe(1);
+
+    const second = executeRefundOnCheck({
+      check,
+      amount: "40.00",
+      settlementRecords: [refundDoc!],
+      orderSettlements: first.orderSettlements,
+      at: "2026-07-26 14:05:00",
+      originalSaleAnchor: originalSale,
+    });
+    expect(second.remainingBudget).toBe("40.00");
+    expect(second.refund.referenceLink.priorSettlementRecordId).toBe(
+      refundDoc!.settlementRecordId
+    );
+    expect(second.settlementRecordResult?.record.priorSettlementRecordId).toBe(
+      refundDoc!.settlementRecordId
+    );
+
+    const last = executeRefundOnCheck({
+      check,
+      amount: "40.00",
+      settlementRecords: [refundDoc!, second.settlementRecordResult!.record],
+      orderSettlements: second.orderSettlements,
+      at: "2026-07-26 14:10:00",
+      originalSaleAnchor: originalSale,
+    });
+    expect(last.remainingBudget).toBe("0.00");
+    expect(last.orderSettlements[0]?.status).toBe("refunded");
+
+    expect(() =>
+      executeRefundOnCheck({
+        check,
+        amount: "0.01",
+        settlementRecords: [
+          refundDoc!,
+          second.settlementRecordResult!.record,
+          last.settlementRecordResult!.record,
+        ],
+        orderSettlements: last.orderSettlements,
+        at: "2026-07-26 14:15:00",
+        originalSaleAnchor: originalSale,
+      })
+    ).toThrow(AlreadyRefundedError);
+  });
+
+  it("CF-backed refund retry at the same generation is already_applied", () => {
+    const check = makeCheck();
+    const originalSale = {
+      kind: "collection_fact" as const,
+      collectionFactId: "cf-1",
+      paymentIntentId: "pi-1",
+      orderId: 55,
+      restaurantId: 1,
+      checkId: 100,
+      originalCollectedAmount: "90.00",
+      currencyCode: "SAR",
+      tenders: [{ paymentMethod: "cash", amount: "90.00" }],
+      committedAt: AT,
+      businessDay: "2026-07-26",
+      actorId: "7",
+      terminalId: "term-1",
+      orderingChannel: "qr",
+    };
+    const first = executeRefundOnCheck({
+      check,
+      amount: "10.00",
+      settlementRecords: [],
+      orderSettlements: [makeSettledOs(55, "90.00")],
+      at: AT,
+      originalSaleAnchor: originalSale,
+    });
+    const retry = executeRefundOnCheck({
+      check,
+      amount: "10.00",
+      settlementRecords: [],
+      orderSettlements: [makeSettledOs(55, "90.00")],
+      at: AT,
+      originalSaleAnchor: originalSale,
+      existingRefundRecord: first.settlementRecordResult!.record,
+    });
+    expect(retry.outcome).toBe("already_applied");
+    expect(retry.settlementRecordResult?.record.settlementRecordId).toBe(
+      first.settlementRecordResult?.record.settlementRecordId
+    );
+  });
+
+  it("legacy refund without production CF still requires gen=1 SR", () => {
+    const check = makeCheck();
     expect(() =>
       executeRefundOnCheck({
         check,
@@ -519,7 +638,12 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
         settlementRecords: [],
         orderSettlements: [makeSettledOs(55)],
         at: AT,
-        originalSaleAnchor: originalSale,
+        originalSaleAnchor: {
+          kind: "legacy_settlement_record",
+          restaurantId: 1,
+          checkId: 100,
+          reason: "no_production_collection_fact",
+        },
       })
     ).toThrow(NoPriorSettlementError);
   });

@@ -184,7 +184,7 @@ export function buildSettlementRecordSnapshot(
         checkId: source.check.id,
         recordGeneration: source.recordGeneration,
       }),
-    priorSettlementRecordId: source.priorSettlementRecordId ?? null,
+    priorSettlementRecordId: source.priorSettlementRecordId?.trim() || null,
     orderRefs,
     orderSettlementRefs,
     // Opaque copies — SR-INV-01

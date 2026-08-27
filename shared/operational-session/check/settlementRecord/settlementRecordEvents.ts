@@ -44,7 +44,7 @@ export type SettlementRecordCreated = SettlementRecordEventBase &
 export type SettlementRecordRefunded = SettlementRecordEventBase &
   Readonly<{
     eventType: "SettlementRecordRefunded";
-    priorSettlementRecordId: string;
+    priorSettlementRecordId: string | null;
   }>;
 
 export type SettlementRecordVoided = SettlementRecordEventBase &
@@ -94,10 +94,8 @@ export function buildSettlementRecordRefundedEvent(
   record: SettlementRecord,
   occurredAt: string
 ): SettlementRecordRefunded {
-  if (record.recordKind !== "refund" || !record.priorSettlementRecordId) {
-    throw new Error(
-      "SettlementRecordRefunded requires recordKind=refund and priorSettlementRecordId"
-    );
+  if (record.recordKind !== "refund") {
+    throw new Error("SettlementRecordRefunded requires recordKind=refund");
   }
   return {
     eventType: "SettlementRecordRefunded",

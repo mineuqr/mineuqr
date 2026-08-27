@@ -77,12 +77,16 @@ export function assertCompensatingRequiresPrior(
   priorSettlementRecordId: string | null
 ): void {
   // Primary Check void finalize publishes recordKind=void without a prior.
-  // Refund / reversal / correction always compensate a prior document.
+  // REFUND-DOCUMENT-PERSISTENCE-SEPARATION-1: first CF-backed refund document
+  // may omit priorSettlementRecordId because original sale identity is CF.
+  // reversal / correction still compensate a prior document.
+  const prior =
+    priorSettlementRecordId != null && priorSettlementRecordId.trim() !== ""
+      ? priorSettlementRecordId
+      : null;
   if (
-    (recordKind === "refund" ||
-      recordKind === "reversal" ||
-      recordKind === "correction") &&
-    priorSettlementRecordId == null
+    (recordKind === "reversal" || recordKind === "correction") &&
+    prior == null
   ) {
     throw new SettlementRecordInvariantError(
       `Compensating recordKind=${recordKind} requires priorSettlementRecordId`

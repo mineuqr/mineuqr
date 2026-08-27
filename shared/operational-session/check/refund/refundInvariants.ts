@@ -31,9 +31,12 @@ export function assertRefundValid(refund: Refund): void {
   if (!Number.isInteger(refund.checkId) || refund.checkId <= 0) {
     throw new RefundInvariantViolationError("checkId required", "RF-INV-TEN01");
   }
-  if (!refund.referenceLink.priorSettlementRecordId) {
+  if (
+    !refund.referenceLink.priorSettlementRecordId &&
+    !refund.referenceLink.originalCollectionFactId
+  ) {
     throw new RefundInvariantViolationError(
-      "RF-INV-P02: priorSettlementRecordId required",
+      "RF-INV-P02: refund document chain requires a prior Settlement Record or a Collection Fact original-sale anchor",
       "RF-INV-P02"
     );
   }

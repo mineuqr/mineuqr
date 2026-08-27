@@ -61,7 +61,7 @@ vi.mock("../../payment/collection-fact/collectionFactRepository", () => ({
     mocks.listProductionCollectionFactsForRefundAnchor(...a),
 }));
 
-import { applyRefundOnCheck } from "../checkRefundIntegration";
+import { applyRefundOnCheck, getRefundBudgetForCheck } from "../checkRefundIntegration";
 import {
   createSettlementRecord,
   type OperationalCheck,
@@ -270,5 +270,136 @@ describe("checkRefundIntegration", () => {
     expect(result.settledValue).toBe("90.00");
     expect(result.settlementRecord?.recordKind).toBe("refund");
     expect(mocks.insertSettlementRecord).toHaveBeenCalled();
+  });
+
+  it("CF-backed apply without gen=1 SR still persists a refund Settlement Record", async () => {
+    mocks.listSettlementRecordsForCheck.mockResolvedValue([]);
+    mocks.listProductionCollectionFactsForRefundAnchor.mockResolvedValue([
+      {
+        collectionFactId: "cf-1",
+        restaurantId: 1,
+        orderId: 55,
+        paymentIntentId: "pi-1",
+        purpose: "production",
+        amount: "90.00",
+        discountAmount: "0.00",
+        currencyCode: "SAR",
+        tenders: [{ paymentMethod: "cash", amount: "90.00" }],
+        checkId: 100,
+        committedAt: AT,
+        businessDay: "2026-07-26",
+        actorId: "7",
+        terminalId: "term-1",
+        orderingChannel: "qr",
+      },
+    ]);
+
+    const result = await applyRefundOnCheck({
+      restaurantId: 1,
+      checkId: 100,
+      amount: "25.00",
+      tenderMethod: "card",
+    });
+    expect(result.outcome).toBe("applied");
+    expect(result.settledValue).toBe("90.00");
+    expect(result.remainingBudget).toBe("65.00");
+    expect(result.settlementRecord?.recordKind).toBe("refund");
+    expect(result.settlementRecord?.priorSettlementRecordId).toBeNull();
+    expect(mocks.insertSettlementRecord).toHaveBeenCalledTimes(1);
+    expect(mocks.allocateRefundDocumentNumber).toHaveBeenCalled();
+  });
+
+  it("CF-backed refund budget works without gen=1 SR", async () => {
+    mocks.listSettlementRecordsForCheck.mockResolvedValue([]);
+    mocks.listProductionCollectionFactsForRefundAnchor.mockResolvedValue([
+      {
+        collectionFactId: "cf-1",
+        restaurantId: 1,
+        orderId: 55,
+        paymentIntentId: "pi-1",
+        purpose: "production",
+        amount: "90.00",
+        discountAmount: "0.00",
+        currencyCode: "SAR",
+        tenders: [{ paymentMethod: "cash", amount: "90.00" }],
+        checkId: 100,
+        committedAt: AT,
+        businessDay: "2026-07-26",
+        actorId: "7",
+        terminalId: "term-1",
+        orderingChannel: "qr",
+      },
+    ]);
+    const budget = await getRefundBudgetForCheck({
+      restaurantId: 1,
+      checkId: 100,
+    });
+    expect(budget.settledValue).toBe("90.00");
+    expect(budget.refundableBalance).toBe("90.00");
+    expect(budget.originalSaleKind).toBe("collection_fact");
+    expect(budget.collectionFactId).toBe("cf-1");
+    expect(budget.priorSettlementRecordId).toBe("");
+  });
+
+  it("Collection Fact lookup failure does not fall through to the legacy SR path", async () => {
+    mocks.listProductionCollectionFactsForRefundAnchor.mockRejectedValue(
+      new Error("collection fact query failed")
+    );
+    await expect(
+      applyRefundOnCheck({
+        restaurantId: 1,
+        checkId: 100,
+        amount: "10.00",
+      })
+    ).rejects.toThrow(/collection fact query failed/);
+    expect(mocks.insertSettlementRecord).not.toHaveBeenCalled();
+  });
+
+  it("multiple production Collection Facts fail closed", async () => {
+    mocks.listProductionCollectionFactsForRefundAnchor.mockResolvedValue([
+      {
+        collectionFactId: "cf-a",
+        restaurantId: 1,
+        orderId: 55,
+        paymentIntentId: "pi-a",
+        purpose: "production",
+        amount: "90.00",
+        discountAmount: "0.00",
+        currencyCode: "SAR",
+        tenders: [{ paymentMethod: "cash", amount: "90.00" }],
+        checkId: 100,
+        committedAt: AT,
+        businessDay: "2026-07-26",
+        actorId: "7",
+        terminalId: "term-1",
+        orderingChannel: "qr",
+      },
+      {
+        collectionFactId: "cf-b",
+        restaurantId: 1,
+        orderId: 56,
+        paymentIntentId: "pi-b",
+        purpose: "production",
+        amount: "10.00",
+        discountAmount: "0.00",
+        currencyCode: "SAR",
+        tenders: [{ paymentMethod: "cash", amount: "10.00" }],
+        checkId: 100,
+        committedAt: AT,
+        businessDay: "2026-07-26",
+        actorId: "7",
+        terminalId: "term-1",
+        orderingChannel: "qr",
+      },
+    ]);
+    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55, 56]);
+    await expect(
+      applyRefundOnCheck({
+        restaurantId: 1,
+        checkId: 100,
+        amount: "10.00",
+      })
+    ).rejects.toThrow(/RF-CF-ANCHOR-01|fail closed/);
+    expect(mocks.insertSettlementRecord).not.toHaveBeenCalled();
   });
 });

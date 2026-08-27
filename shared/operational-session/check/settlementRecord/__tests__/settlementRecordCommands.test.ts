@@ -150,6 +150,35 @@ describe("Settlement Record domain commands", () => {
     expect(refund.record.recordGeneration).toBe(2);
   });
 
+  it("allows the first CF-backed refund document without a prior Settlement Record", () => {
+    const refund = createCompensatingSettlementRecord({
+      check: makeCheck({ outcome: "paid", settledAt: "2026-07-23 13:00:00" }),
+      outcome: "paid",
+      recordKind: "refund",
+      recordGeneration: 1,
+      priorSettlementRecordId: "",
+      createdAt: "2026-07-23 14:00:00",
+      orderIds: [],
+    });
+    expect(refund.outcome).toBe("applied");
+    expect(refund.record.recordKind).toBe("refund");
+    expect(refund.record.priorSettlementRecordId).toBeNull();
+  });
+
+  it("still requires priorSettlementRecordId for reversal compensation", () => {
+    expect(() =>
+      createCompensatingSettlementRecord({
+        check: makeCheck({ outcome: "paid", settledAt: "2026-07-23 13:00:00" }),
+        outcome: "paid",
+        recordKind: "reversal",
+        recordGeneration: 2,
+        priorSettlementRecordId: "",
+        createdAt: "2026-07-23 14:00:00",
+        orderIds: [],
+      })
+    ).toThrow(/requires priorSettlementRecordId/);
+  });
+
   it("rejects money mismatch against Check freeze", () => {
     const check = makeCheck();
     const result = createSettlementRecord({

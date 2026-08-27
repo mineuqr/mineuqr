@@ -86,13 +86,19 @@ export function calculateRefundBudget(input: {
     0
   );
 
+  const latestRefund = [...scoped]
+    .filter((r) => r.recordKind === "refund")
+    .sort((a, b) => b.recordGeneration - a.recordGeneration)[0];
+  const documentPriorId =
+    primary?.settlementRecordId ?? latestRefund?.settlementRecordId ?? "";
+
   return {
     restaurantId: input.restaurantId,
     checkId: input.checkId,
     settledValue,
     appliedRefundTotal,
     refundableBalance,
-    priorSettlementRecordId: primary?.settlementRecordId ?? "",
+    priorSettlementRecordId: documentPriorId,
     nextRecordGeneration: maxGeneration + 1,
     originalSaleKind:
       originalSale?.kind === "collection_fact"
