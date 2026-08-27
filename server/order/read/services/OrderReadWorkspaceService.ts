@@ -5,11 +5,12 @@
  * - lifecycleStage = active
  * - optional status pending | preparing | ready
  * - cashier_pos excluded from Dining operational membership
- * Cashier workspace listActive uses paid-visible membership separately.
+ * POS listActive uses the same exclude membership (direct sales are not Incoming).
+ * Kitchen keeps paid-visible cashier_pos for fulfillment.
  * Served/cancelled leave this set when lifecycle becomes completed.
  * Catch-up drains deferred outbox before the projection query so create/serve
- * converge without awaitRelay on the mutation HTTP path. Kitchen/POS readers
- * share the same single-flight drain.
+ * converge without awaitRelay on the mutation HTTP path. Kitchen readers
+ * share the same single-flight drain; Kitchen keeps paid-visible cashier_pos.
  */
 import type {
   ActiveOrderListQuery,

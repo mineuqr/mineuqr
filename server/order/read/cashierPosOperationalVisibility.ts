@@ -1,8 +1,9 @@
 /**
- * CASHIER-ORDER-OPERATIONAL-ISOLATION-1
- * Dining operational membership excludes cashier_pos entirely.
- * Kitchen / Cashier workspace still list cashier_pos after a Paid/Complimentary
- * Check or production Collection Fact (CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1).
+ * CASHIER-ORDER-OPERATIONAL-ISOLATION-1 / CASHIER-DIRECT-ORDER-VISIBILITY-FIX-1
+ * Dining operational membership and Cashier POS listActive exclude cashier_pos.
+ * Kitchen still lists cashier_pos after a Paid/Complimentary Check or production
+ * Collection Fact (fulfillment, not Incoming Queue).
+ * Direct Cashier sales stay on the ticket / Confirm / receipt, not Incoming.
  * Not a second Order. Not a frontend hide.
  */
 

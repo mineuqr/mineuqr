@@ -47,7 +47,7 @@ export class PosOrderReadService {
         limit: input.command.limit,
         cursor: input.command.cursor,
       },
-      { cashierPosMembership: "paid-visible" }
+      { cashierPosMembership: "exclude" }
     );
   }
 

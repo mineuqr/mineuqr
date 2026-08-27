@@ -47,6 +47,27 @@ describe("CASHIER-INCOMING-ORDER-HANDOFF-1", () => {
     expect(panel).toContain("startNewSale");
   });
 
+  it("does not list cashier_pos on Incoming or Cashier Active orders", () => {
+    const panel = read("client/src/components/cashier-workspace/CashierWorkspacePanel.tsx");
+    const posRead = read("server/pos/services/PosOrderReadService.ts");
+    const sale = read("server/pos/services/PosSaleService.ts");
+    const finalize = read("server/pos/services/finalizeCashierPreparedInvoice.ts");
+    const intent = read("server/pos/services/InvoiceIntentService.ts");
+    const handoff = read("server/pos/cashier-handoff/CashierHandoffService.ts");
+    expect(panel).toContain("listInvoiceIntents.useQuery");
+    expect(panel).toContain("incomingOrders");
+    expect(panel).toContain("listActive.useQuery");
+    expect(posRead).toContain('cashierPosMembership: "exclude"');
+    expect(posRead).not.toContain('cashierPosMembership: "paid-visible"');
+    expect(intent).toContain("listCashierHandoffsByRestaurant");
+    expect(intent).toContain("ORDERING_CHANNEL_CASHIER_POS");
+    expect(handoff).toContain("Direct Cashier sales are not Incoming Queue items");
+    expect(sale).not.toContain("insertCashierHandoff");
+    expect(sale).not.toContain("activateCashierHandoff");
+    expect(finalize).not.toContain("insertCashierHandoff");
+    expect(finalize).not.toContain("activateCashierHandoff");
+  });
+
   it("does not restore Session/QR/Counter financial writers", () => {
     const bar = read("client/src/components/dashboard/DiningSessionActionBar.tsx");
     const qr = read("server/order/application/SettleOrderPaidService.ts");

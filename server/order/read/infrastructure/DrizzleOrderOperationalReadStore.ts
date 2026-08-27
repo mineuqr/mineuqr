@@ -51,7 +51,7 @@ function mapOrder(row: OrderRow, lineItems: LineItemRow[]): ActiveOrderItemDto {
 /**
  * Q-01 / Q-03 / Q-04 read store — order_read_* projections only.
  * listActive dining membership: restaurant + lifecycleStage active, cashier_pos excluded.
- * Cashier workspace passes paid-visible so cashier_pos remains after CF/Paid Check.
+ * POS listActive uses the same exclude membership. Kitchen keeps paid-visible.
  * Catch-up runs in OrderReadWorkspaceService before this query.
  */
 export class DrizzleOrderOperationalReadStore {

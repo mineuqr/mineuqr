@@ -46,7 +46,8 @@ describe("CASHIER-ORDER-OPERATIONAL-ISOLATION-1 architecture guards", () => {
 
     expect(workspace).toContain('cashierPosMembership: options?.cashierPosMembership ?? "exclude"');
     expect(diningStore).toContain("diningOperationalExcludeCashierPosSql()");
-    expect(posRead).toContain('cashierPosMembership: "paid-visible"');
+    expect(posRead).toContain('cashierPosMembership: "exclude"');
+    expect(posRead).not.toContain('cashierPosMembership: "paid-visible"');
     expect(kitchen).toContain("cashierPosPaidOperationalVisibilitySql()");
     expect(board).toContain("ORDERING_CHANNEL_CASHIER_POS");
     expect(db).toContain("ORDERING_CHANNEL_CASHIER_POS");

@@ -160,12 +160,15 @@ describe("POS order/catalog/settlement reads", () => {
       },
     });
 
-    expect(listActive).toHaveBeenCalledWith({
-      restaurantId: RESTAURANT_A,
-      status: "pending",
-      limit: 10,
-      cursor: undefined,
-    });
+    expect(listActive).toHaveBeenCalledWith(
+      {
+        restaurantId: RESTAURANT_A,
+        status: "pending",
+        limit: 10,
+        cursor: undefined,
+      },
+      { cashierPosMembership: "exclude" }
+    );
     expect(result.items).toEqual([]);
   });
 
@@ -405,12 +408,15 @@ describe("POS order/catalog/settlement reads", () => {
         cursor: "2026-08-17T00:00:00.000Z",
       },
     });
-    expect(listActive).toHaveBeenCalledWith({
-      restaurantId: RESTAURANT_A,
-      status: undefined,
-      limit: 25,
-      cursor: "2026-08-17T00:00:00.000Z",
-    });
+    expect(listActive).toHaveBeenCalledWith(
+      {
+        restaurantId: RESTAURANT_A,
+        status: undefined,
+        limit: 25,
+        cursor: "2026-08-17T00:00:00.000Z",
+      },
+      { cashierPosMembership: "exclude" }
+    );
 
     const catalog = new PosCatalogReadService(
       grants,
