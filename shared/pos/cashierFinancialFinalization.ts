@@ -88,7 +88,16 @@ export type InvoiceIntent = Readonly<{
   sourceChannel: OrderingChannelId | string;
   sessionId: number | null;
   orderId: number;
+  /** Operational Order number (channel/session). Not Cashier invoice identity. */
   orderNumber: string;
+  /**
+   * Existing Order display identity (T #006 / W # / K #).
+   * Allocated at Place. Not a new Cashier invoice sequence. Not financial.
+   */
+  displayReference: string;
+  /** Padded daily sequence from existing Order identity. */
+  displayOrderNumber: string;
+  tableNumber: number | null;
   orderStatus: string;
   items: readonly InvoiceIntentLine[];
   expectedSubtotal: string;

@@ -77,6 +77,7 @@ export function SessionRowQuickActions({
   const sendToCashierMutation = trpc.session.sendToCashier.useMutation({
     onSuccess: () => {
       handoffOperationalOrderToCashier({ utils, language: lang });
+      void invalidateAfterAction();
     },
     onError: (err: unknown) => toastTrpcError(err, t),
   });
@@ -137,14 +138,6 @@ export function SessionRowQuickActions({
                 }
               >
                 {sessionActionLabel("sendToCashier", lang)}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={pending}
-                onClick={() =>
-                  sendToCashierMutation.mutate({ restaurantId, sessionId })
-                }
-              >
-                {sessionActionLabel("markComplimentary", lang)}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={pending}

@@ -138,6 +138,57 @@ describe("CashierHandoffService", () => {
     expect(mocks.insertCashierHandoffIgnoreDuplicate).toHaveBeenCalledTimes(1);
   });
 
+  it("session Send hands off every eligible Order on the same session without a second Order", async () => {
+    mocks.findSessionById.mockResolvedValue({
+      id: 9,
+      restaurantId: 1,
+      status: "open",
+    });
+    mocks.getOrdersBySessionId.mockResolvedValue([{ id: 44 }, { id: 45 }, { id: 46 }]);
+    mocks.getOrderById.mockImplementation(async (id: number) => ({
+      ...TABLE_ORDER,
+      id,
+    }));
+    const result = await activateCashierHandoffForSession({
+      restaurantId: 1,
+      sessionId: 9,
+    });
+    expect(result.orderIds).toEqual([44, 45, 46]);
+    expect(mocks.insertCashierHandoffIgnoreDuplicate).toHaveBeenCalledTimes(3);
+    expect(
+      mocks.insertCashierHandoffIgnoreDuplicate.mock.calls.map(
+        (call) => call[0]?.orderId
+      )
+    ).toEqual([44, 45, 46]);
+  });
+
+  it("rejects empty, all-cancelled, and all-paid sessions", async () => {
+    mocks.findSessionById.mockResolvedValue({
+      id: 9,
+      restaurantId: 1,
+      status: "open",
+    });
+    mocks.getOrdersBySessionId.mockResolvedValue([]);
+    await expect(
+      activateCashierHandoffForSession({ restaurantId: 1, sessionId: 9 })
+    ).rejects.toThrow("No eligible orders to send to Cashier");
+
+    mocks.getOrdersBySessionId.mockResolvedValue([{ id: 44 }]);
+    mocks.getOrderById.mockResolvedValue({ ...TABLE_ORDER, status: "cancelled" });
+    await expect(
+      activateCashierHandoffForSession({ restaurantId: 1, sessionId: 9 })
+    ).rejects.toThrow("No eligible orders to send to Cashier");
+
+    mocks.getOrderById.mockResolvedValue(TABLE_ORDER);
+    mocks.findProductionCollectionFactByOrderId.mockResolvedValue({
+      collectionFactId: "pcf_1",
+    });
+    await expect(
+      activateCashierHandoffForSession({ restaurantId: 1, sessionId: 9 })
+    ).rejects.toThrow("No eligible orders to send to Cashier");
+    expect(mocks.insertCashierHandoffIgnoreDuplicate).not.toHaveBeenCalled();
+  });
+
   it("concurrent duplicate Send converges on one orderId", async () => {
     mocks.getOrderById.mockResolvedValue(TABLE_ORDER);
     let inserts = 0;

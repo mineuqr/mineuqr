@@ -498,7 +498,7 @@ export function CashierWorkspacePanel({
       {
         orderId: intent.orderId,
         orderNumber: intent.orderNumber,
-        displayReference: intent.orderNumber,
+        displayReference: intent.displayReference || intent.orderNumber,
         totalAmount: preview?.grandTotal ?? intent.expectedGrandTotal,
         createdAt: "",
         money: {
@@ -1367,8 +1367,17 @@ export function CashierWorkspacePanel({
               <h2 className="mb-2 text-sm font-semibold text-[#111827]">
                 {t("saleInvoice")}
               </h2>
-              {(invoiceView.cashierDisplayName || selectedTerminalCode) ? (
+              {(invoiceView.cashierDisplayName || selectedTerminalCode || (invoiceView.orderId != null && invoiceView.orderId > 0)) ? (
               <div className="mb-3 space-y-0.5 text-xs text-[#6b7280]">
+                {invoiceView.orderId != null && invoiceView.orderId > 0 && invoiceView.orderNumber ? (
+                  <p>
+                    {t("incomingOperationalOrder")}: {invoiceView.orderNumber}
+                    {directSale?.displayReference &&
+                    directSale.displayReference !== invoiceView.orderNumber
+                      ? ` · ${directSale.displayReference}`
+                      : ""}
+                  </p>
+                ) : null}
                 {invoiceView.cashierDisplayName ? (
                   <p>
                     {t("receiptCashier")}: {invoiceView.cashierDisplayName}
@@ -1603,15 +1612,18 @@ export function CashierWorkspacePanel({
                         onClick={() => void selectOrder(intent.orderId)}
                       >
                         <span className="block font-medium text-[#111827]">
-                          {intent.orderNumber}
+                          {intent.displayReference || intent.orderNumber}
                         </span>
                         <span className="text-xs text-[#6b7280]">
-                          {intent.sourceChannel}
+                          {t("incomingOperationalOrder")} {intent.orderNumber}
+                          {intent.tableNumber != null
+                            ? ` · ${t("incomingTable")} ${intent.tableNumber}`
+                            : ""}
                           {intent.sessionId != null
                             ? ` · session ${intent.sessionId}`
                             : ""}{" "}
-                          · {intent.items.length} {t("incomingOrderItems")} ·{" "}
-                          {intent.expectedGrandTotal}
+                          · {intent.sourceChannel} · {intent.items.length}{" "}
+                          {t("incomingOrderItems")} · {intent.expectedGrandTotal}
                         </span>
                       </button>
                     </li>

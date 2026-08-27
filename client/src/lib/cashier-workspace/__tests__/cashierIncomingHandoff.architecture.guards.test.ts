@@ -44,6 +44,8 @@ describe("CASHIER-INCOMING-ORDER-HANDOFF-1", () => {
     expect(panel).toContain("inboundOrderId");
     expect(panel).toContain("? { orderId: inboundOrderId }");
     expect(panel).toContain(": { items: confirmItems }");
+    expect(panel).toContain("intent.displayReference || intent.orderNumber");
+    expect(panel).toContain("incomingOperationalOrder");
     expect(panel).toContain("startNewSale");
   });
 

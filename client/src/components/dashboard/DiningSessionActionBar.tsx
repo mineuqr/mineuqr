@@ -66,6 +66,7 @@ export function DiningSessionActionBar({
   const sendToCashierMutation = trpc.session.sendToCashier.useMutation({
     onSuccess: () => {
       handoffOperationalOrderToCashier({ utils, language: lang });
+      void invalidateAfterAction();
     },
     onError: (err: unknown) => toastTrpcError(err, t),
   });
@@ -152,17 +153,6 @@ export function DiningSessionActionBar({
               }
             >
               {sessionActionLabel("sendToCashier", lang)}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full sm:w-auto"
-              disabled={pending}
-              onClick={() =>
-                sendToCashierMutation.mutate({ restaurantId, sessionId })
-              }
-            >
-              {sessionActionLabel("markComplimentary", lang)}
             </Button>
             <Button
               type="button"

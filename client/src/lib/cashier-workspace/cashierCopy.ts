@@ -223,6 +223,8 @@ const COPY: Record<string, { ar: string; en: string }> = {
     en: "No orders awaiting payment.",
   },
   incomingOrderItems: { ar: "صنف", en: "items" },
+  incomingOperationalOrder: { ar: "طلب", en: "Order" },
+  incomingTable: { ar: "طاولة", en: "Table" },
   cancelPayment: { ar: "إلغاء", en: "Cancel" },
   totalTendered: { ar: "إجمالي المدفوع", en: "Total tendered" },
   remainingAmount: { ar: "الباقي", en: "Remaining" },

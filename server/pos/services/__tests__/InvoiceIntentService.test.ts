@@ -125,4 +125,39 @@ describe("InvoiceIntentService Cashier Handoff membership", () => {
     expect(invoiceIntentIdForOrder(3, 44)).not.toContain("pcf");
     expect(invoiceIntentIdForOrder(3, 44)).not.toContain("paid");
   });
+
+  it("hydrates the same orderId with existing Order display identity, not a new invoice sequence", async () => {
+    mocks.hasCashierHandoff.mockResolvedValue(true);
+    mocks.getOrderById.mockResolvedValue({
+      ...TABLE_ORDER,
+      businessDay: "2026-08-27",
+      dailyDisplayNumber: 6,
+      identityScope: "TABLE",
+      tableNumber: 1,
+      fulfilmentAnchorType: "table",
+      serviceMode: "table_service",
+    });
+    const intent = await buildInvoiceIntentForOrder({
+      restaurantId: 1,
+      orderId: 44,
+    });
+    expect(intent?.orderId).toBe(44);
+    expect(intent?.orderNumber).toBe("T-44");
+    expect(intent?.displayReference).toBe("T #006");
+    expect(intent?.displayOrderNumber).toBe("006");
+    expect(intent?.tableNumber).toBe(1);
+    expect(intent?.sessionId).toBe(9);
+    expect(intent?.status).toBe("awaiting_cashier");
+    expect(intent?.items).toEqual([
+      {
+        menuItemId: 7,
+        nameAr: "كبسة",
+        nameEn: "Kabsa",
+        quantity: 2,
+        unitPrice: "12.50",
+        lineTotal: "25.00",
+      },
+    ]);
+    expect(mocks.findProductionCollectionFactByOrderId).toHaveBeenCalled();
+  });
 });

@@ -4,6 +4,7 @@
  * Awaiting Cashier membership requires an explicit Cashier Handoff.
  */
 import { getOrderById, getOrderItemsByOrderId } from "../../db";
+import { resolveOrderDisplayIdentity } from "../../order/business-identity/application/OrderDisplayIdentityResolver";
 import { findProductionCollectionFactByOrderId } from "../../operational-session/payment/collection-fact/collectionFactRepository";
 import {
   isCashierFinalizableOrderingChannel,
@@ -80,13 +81,29 @@ export async function buildInvoiceIntentForOrder(input: {
   }
   const items = mapIntentLines(await getOrderItemsByOrderId(input.orderId));
   const total = String(order.totalAmount ?? "0.00");
+  const orderNumber = order.orderNumber?.trim() || String(order.id);
+  const identity = resolveOrderDisplayIdentity({
+    orderNumber,
+    businessDay: order.businessDay ?? null,
+    dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+    identityScope: order.identityScope ?? null,
+    fulfilmentAnchorType: order.fulfilmentAnchorType ?? null,
+    serviceMode: order.serviceMode ?? null,
+  });
+  const tableNumber =
+    typeof order.tableNumber === "number" && order.tableNumber > 0
+      ? order.tableNumber
+      : null;
   return {
     invoiceIntentId: invoiceIntentIdForOrder(input.restaurantId, input.orderId),
     restaurantId: input.restaurantId,
     sourceChannel: order.orderingChannel ?? "unspecified",
     sessionId: order.sessionId ?? null,
     orderId: order.id,
-    orderNumber: order.orderNumber,
+    orderNumber,
+    displayReference: identity.displayReference,
+    displayOrderNumber: identity.displayOrderNumber,
+    tableNumber,
     orderStatus: order.status,
     items,
     expectedSubtotal: total,
