@@ -203,4 +203,323 @@ describe("checkSettlementAttributionAdoption", () => {
     expect(bundle.attribution.outcome).toBe("skipped");
     expect(bundle.attribution.gaps).toContain("outcome_not_attributable");
   });
+
+  it("attributes a CF-backed Cashier sale without a Settlement Record", async () => {
+    const bundle = await adoptSettlementAttributionAfterFinalize(
+      {
+        restaurantId: 1,
+        outcome: "paid",
+        settlementContext: resolvedContext(),
+        settlementRecord: null,
+        settlementLines: null,
+        at: "t3",
+        collectionFact: {
+          collectionFactId: "cf_1",
+          restaurantId: 1,
+          orderId: 44,
+          paymentIntentId: "cpi_1",
+          purpose: "production",
+          amount: "50.00",
+          discountAmount: "0.00",
+          currencyCode: "SAR",
+          tenders: [
+            { paymentMethod: "cash", amount: "20.00" },
+            { paymentMethod: "card", amount: "30.00" },
+          ],
+          checkId: null,
+          committedAt: "t3",
+          businessDay: "2026-08-27",
+          actorId: "10",
+          terminalId: "term_1",
+          orderingChannel: "cashier_pos",
+        },
+      },
+      { shiftService: shifts }
+    );
+    expect(bundle.attribution.outcome).toBe("created");
+    expect(bundle.attribution.collectionFactId).toBe("cf_1");
+    expect(bundle.attribution.settlementRecordId).toBeNull();
+    expect(bundle.attribution.cashTenderAmount).toBe("20.00");
+    expect(bundle.events[0]?.collectionFactId).toBe("cf_1");
+  });
+
+  it("is idempotent by collectionFactId on replay", async () => {
+    const input = {
+      restaurantId: 1,
+      outcome: "paid" as const,
+      settlementContext: resolvedContext(),
+      settlementRecord: null,
+      settlementLines: null,
+      at: "t3",
+      collectionFact: {
+        collectionFactId: "cf_replay",
+        restaurantId: 1,
+        orderId: 44,
+        paymentIntentId: "cpi_1",
+        purpose: "production" as const,
+        amount: "10.00",
+        discountAmount: "0.00",
+        currencyCode: "SAR",
+        tenders: [{ paymentMethod: "cash" as const, amount: "10.00" }],
+        checkId: null,
+        committedAt: "t3",
+        businessDay: "2026-08-27",
+        actorId: "10",
+        terminalId: "term_1",
+        orderingChannel: "cashier_pos",
+      },
+    };
+    const first = await adoptSettlementAttributionAfterFinalize(input, {
+      shiftService: shifts,
+    });
+    const second = await adoptSettlementAttributionAfterFinalize(
+      { ...input, at: "t4" },
+      { shiftService: shifts }
+    );
+    expect(first.attribution.outcome).toBe("created");
+    expect(second.attribution.outcome).toBe("already_applied");
+    expect(second.attribution.attributionId).toBe(
+      first.attribution.attributionId
+    );
+    const loaded = await shifts.get(1, "fsh_1");
+    expect(loaded.attributions).toHaveLength(1);
+  });
+
+  it("fails closed for an isolated Collection Fact", async () => {
+    const bundle = await adoptSettlementAttributionAfterFinalize(
+      {
+        restaurantId: 1,
+        outcome: "paid",
+        settlementContext: resolvedContext(),
+        settlementRecord: sr("cash", "10.00"),
+        settlementLines: null,
+        at: "t3",
+        collectionFact: {
+          collectionFactId: "cf_iso",
+          restaurantId: 1,
+          orderId: 44,
+          paymentIntentId: "cpi_1",
+          purpose: "shadow",
+          amount: "10.00",
+          discountAmount: "0.00",
+          currencyCode: "SAR",
+          tenders: [{ paymentMethod: "cash", amount: "10.00" }],
+          checkId: 100,
+          committedAt: "t3",
+          businessDay: "2026-08-27",
+          actorId: "10",
+          terminalId: "term_1",
+          orderingChannel: "cashier_pos",
+        },
+      },
+      { shiftService: shifts }
+    );
+    expect(bundle.attribution.outcome).toBe("failed");
+    expect(bundle.attribution.gaps).toContain("isolated_collection_fact");
+  });
+
+  it("fails closed for the wrong restaurant", async () => {
+    const bundle = await adoptSettlementAttributionAfterFinalize(
+      {
+        restaurantId: 1,
+        outcome: "paid",
+        settlementContext: resolvedContext(),
+        settlementRecord: null,
+        settlementLines: null,
+        at: "t3",
+        collectionFact: {
+          collectionFactId: "cf_x",
+          restaurantId: 9,
+          orderId: 44,
+          paymentIntentId: "cpi_1",
+          purpose: "production",
+          amount: "10.00",
+          discountAmount: "0.00",
+          currencyCode: "SAR",
+          tenders: [{ paymentMethod: "cash", amount: "10.00" }],
+          checkId: null,
+          committedAt: "t3",
+          businessDay: "2026-08-27",
+          actorId: "10",
+          terminalId: "term_1",
+          orderingChannel: "cashier_pos",
+        },
+      },
+      { shiftService: shifts }
+    );
+    expect(bundle.attribution.outcome).toBe("failed");
+    expect(bundle.attribution.gaps).toContain("wrong_restaurant");
+  });
+
+  it("attributes a Check-scoped unique Collection Fact without reading SR money", async () => {
+    const bundle = await adoptSettlementAttributionAfterFinalize(
+      {
+        restaurantId: 1,
+        outcome: "paid",
+        settlementContext: resolvedContext(),
+        settlementRecord: sr("cash", "99.00"),
+        settlementLines: [{ paymentMethod: "cash", amount: "99.00" }],
+        at: "t3",
+        checkId: 100,
+        orderIds: [44],
+      },
+      {
+        shiftService: shifts,
+        listProductionFacts: async () => [
+          {
+            collectionFactId: "cf_money",
+            restaurantId: 1,
+            orderId: 44,
+            paymentIntentId: "cpi_m",
+            purpose: "production",
+            amount: "12.00",
+            discountAmount: "0.00",
+            currencyCode: "SAR",
+            tenders: [{ paymentMethod: "card", amount: "12.00" }],
+            checkId: 100,
+            committedAt: "t3",
+            businessDay: "2026-08-27",
+            actorId: "10",
+            terminalId: "term_1",
+            orderingChannel: "cashier_pos",
+          },
+        ],
+      }
+    );
+    expect(bundle.attribution.outcome).toBe("created");
+    expect(bundle.attribution.collectionFactId).toBe("cf_money");
+    expect(bundle.attribution.settlementRecordId).toBeNull();
+    expect(bundle.attribution.cashTenderAmount).toBe("0.00");
+  });
+
+  it("fails closed when a Check has multiple production Collection Facts", async () => {
+    const bundle = await adoptSettlementAttributionAfterFinalize(
+      {
+        restaurantId: 1,
+        outcome: "paid",
+        settlementContext: resolvedContext(),
+        settlementRecord: sr("cash", "10.00"),
+        settlementLines: null,
+        at: "t3",
+        checkId: 100,
+        orderIds: [44, 45],
+      },
+      {
+        shiftService: shifts,
+        listProductionFacts: async () => [
+          {
+            collectionFactId: "cf_a",
+            restaurantId: 1,
+            orderId: 44,
+            paymentIntentId: "cpi_a",
+            purpose: "production",
+            amount: "10.00",
+            discountAmount: "0.00",
+            currencyCode: "SAR",
+            tenders: [{ paymentMethod: "cash", amount: "10.00" }],
+            checkId: 100,
+            committedAt: "t3",
+            businessDay: "2026-08-27",
+            actorId: "10",
+            terminalId: "term_1",
+            orderingChannel: "cashier_pos",
+          },
+          {
+            collectionFactId: "cf_b",
+            restaurantId: 1,
+            orderId: 45,
+            paymentIntentId: "cpi_b",
+            purpose: "production",
+            amount: "10.00",
+            discountAmount: "0.00",
+            currencyCode: "SAR",
+            tenders: [{ paymentMethod: "card", amount: "10.00" }],
+            checkId: 100,
+            committedAt: "t3",
+            businessDay: "2026-08-27",
+            actorId: "10",
+            terminalId: "term_1",
+            orderingChannel: "cashier_pos",
+          },
+        ],
+      }
+    );
+    expect(bundle.attribution.outcome).toBe("failed");
+    expect(bundle.attribution.gaps).toContain("ambiguous_collection_facts");
+  });
+
+  it("attributes complimentary Collection Fact cash as zero", async () => {
+    const bundle = await adoptSettlementAttributionAfterFinalize(
+      {
+        restaurantId: 1,
+        outcome: "complimentary",
+        settlementContext: resolvedContext(),
+        settlementRecord: null,
+        settlementLines: null,
+        at: "t3",
+        collectionFact: {
+          collectionFactId: "cf_comp",
+          restaurantId: 1,
+          orderId: 44,
+          paymentIntentId: "cpi_c",
+          purpose: "production",
+          amount: "0.00",
+          discountAmount: "15.00",
+          currencyCode: "SAR",
+          tenders: [{ paymentMethod: "other", amount: "0.00" }],
+          checkId: null,
+          committedAt: "t3",
+          businessDay: "2026-08-27",
+          actorId: "10",
+          terminalId: "term_1",
+          orderingChannel: "cashier_pos",
+        },
+      },
+      { shiftService: shifts }
+    );
+    expect(bundle.attribution.outcome).toBe("created");
+    expect(bundle.attribution.cashTenderAmount).toBe("0.00");
+    expect(bundle.attribution.collectionFactId).toBe("cf_comp");
+  });
+
+  it("concurrent CF attribution converges on one row", async () => {
+    const input = {
+      restaurantId: 1,
+      outcome: "paid" as const,
+      settlementContext: resolvedContext(),
+      settlementRecord: null,
+      settlementLines: null,
+      at: "t3",
+      collectionFact: {
+        collectionFactId: "cf_race",
+        restaurantId: 1,
+        orderId: 44,
+        paymentIntentId: "cpi_r",
+        purpose: "production" as const,
+        amount: "10.00",
+        discountAmount: "0.00",
+        currencyCode: "SAR",
+        tenders: [{ paymentMethod: "cash" as const, amount: "10.00" }],
+        checkId: null,
+        committedAt: "t3",
+        businessDay: "2026-08-27",
+        actorId: "10",
+        terminalId: "term_1",
+        orderingChannel: "cashier_pos",
+      },
+    };
+    const [a, b] = await Promise.all([
+      adoptSettlementAttributionAfterFinalize(input, { shiftService: shifts }),
+      adoptSettlementAttributionAfterFinalize(input, { shiftService: shifts }),
+    ]);
+    expect(["created", "already_applied", "failed"]).toContain(
+      a.attribution.outcome
+    );
+    expect(["created", "already_applied", "failed"]).toContain(
+      b.attribution.outcome
+    );
+    const loaded = await shifts.get(1, "fsh_1");
+    expect(loaded.attributions).toHaveLength(1);
+    expect(loaded.attributions[0]?.collectionFactId).toBe("cf_race");
+  });
 });

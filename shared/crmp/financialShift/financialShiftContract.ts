@@ -55,18 +55,27 @@ export type ShiftHandover = Readonly<{
   resolvedAt: string | null;
 }>;
 
+export type SettlementAttributionSource =
+  | "collection_fact"
+  | "legacy_settlement_record";
+
 /**
  * Settlement Attribution — association only (never owns money).
  * cashTenderAmount is a copied custody fact supplied by the caller at create time
  * (settle cash ≥ 0; refund cash return may be negative — REFUND-REGISTER-ADOPTION-1);
- * CRMP does not read Settlement Platform in this program.
+ * CRMP does not read Settlement Platform or Collection Fact money in this module.
+ *
+ * Current Cashier sales: collectionFactId is the attribution identity.
+ * Historical SR-only sales and refunds: settlementRecordId is the identity.
  */
 export type SettlementAttribution = Readonly<{
   attributionId: AttributionId;
   restaurantId: number;
   registerId: string;
   financialShiftId: string;
-  settlementRecordId: string;
+  settlementRecordId: string | null;
+  collectionFactId: string | null;
+  source: SettlementAttributionSource;
   operatorUserId: number;
   /** Copied cash tender total for expected-cash formula; opaque decimal. */
   cashTenderAmount: string;

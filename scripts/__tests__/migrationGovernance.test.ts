@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0099 contiguously", () => {
+  it("journal contains canonical migrations 0000–0100 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -61,13 +61,16 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
       "0097_payment_collection_facts_production_purpose"
     );
     expect(journal.entries[98]?.tag).toBe("0098_pos_sale_idempotency_open_check");
-    expect(journal.entries[99]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[99]?.tag).toBe("0099_cashier_order_handoffs");
+    expect(journal.entries[100]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0099_cashier_order_handoffs");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(100);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe(
+      "0100_crmp_collection_fact_attribution"
+    );
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(101);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -291,6 +294,25 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
     expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
     expect(sql).not.toMatch(/ALTER TABLE `pos_sale_idempotency`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/^\s*UPDATE\b/im);
+    expect(sql).not.toMatch(/^\s*DELETE\b/im);
+    expect(sql).not.toMatch(/DROP\s+/i);
+  });
+
+  it("0100 is additive CRMP Collection Fact attribution identity and is not a financial rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0100_crmp_collection_fact_attribution.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("ALTER TABLE `crmp_settlement_attributions`");
+    expect(sql).toContain("collectionFactId");
+    expect(sql).toContain("crmp_settlement_attributions_cf_unique");
+    expect(sql).not.toMatch(/CREATE TABLE `payments`/);
+    expect(sql).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+    expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
+    expect(sql).not.toMatch(/ALTER TABLE `settlement_records`/);
     expect(sql).not.toMatch(/INSERT\s+INTO/i);
     expect(sql).not.toMatch(/^\s*UPDATE\b/im);
     expect(sql).not.toMatch(/^\s*DELETE\b/im);

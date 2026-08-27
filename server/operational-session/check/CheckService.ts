@@ -160,6 +160,7 @@ import {
 import {
   adoptRefundAttributionAfterFinalize,
   adoptSettlementAttributionAfterFinalize,
+  type CollectionFactAttributionInput,
 } from "./checkSettlementAttributionAdoption";
 
 export class CheckTransitionError extends Error {
@@ -731,7 +732,7 @@ async function finalizeOpenCheckById(
      */
     productionCollectionCommit?: (
       freeze: CashierAuthoritativePaidFreeze
-    ) => Promise<void>;
+    ) => Promise<{ fact: CollectionFactAttributionInput } | void>;
     /**
      * CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1
      * Cashier HTTP returns after Collection Fact. Check PAID / ST / OS / SR
@@ -775,6 +776,7 @@ async function finalizeOpenCheckById(
     );
   }
 
+  let membershipOrderIds: number[] = [];
   if (input.outcome === "paid" || input.outcome === "complimentary") {
     const orderIds =
       (await listActiveOrderIdsForCheck(
@@ -782,6 +784,7 @@ async function finalizeOpenCheckById(
         input.checkId,
         client
       )) ?? [];
+    membershipOrderIds = orderIds;
     for (const orderId of orderIds) {
       const order = await getOrderById(orderId, client);
       if (!order) {
@@ -1207,6 +1210,8 @@ async function finalizeOpenCheckById(
     settlementRecord: financial.settlementRecord.record,
     settlementLines,
     at: now,
+    checkId: input.checkId,
+    orderIds: membershipOrderIds,
   };
   const ownsCommit = client == null;
   if (!ownsCommit) {
@@ -1745,6 +1750,7 @@ function adoptAttributionAfterOwnedCommit(input: {
     settlementRecord: input.result.settlementRecord.record,
     settlementLines: [],
     at: formatDiningSessionTimestamp(),
+    checkId: input.checkId,
   }).catch((err: unknown) => {
     opsLog({
       type: OPS_EVENT.check_settlement_attribution_deferred_failed,
@@ -1874,7 +1880,7 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
   actorDisplayName?: string | null;
   productionCollectionCommit?: (
     freeze: CashierAuthoritativePaidFreeze
-  ) => Promise<void>;
+  ) => Promise<{ fact: CollectionFactAttributionInput } | void>;
   complimentary?: boolean;
 }): Promise<CheckFinancialMutationResult> {
   const order = await getOrderById(input.orderId);
@@ -1919,9 +1925,64 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
 
   const financialTransactionStartedAt = new Date().toISOString();
   const moneyTxStartedAt = Date.now();
-  await input.productionCollectionCommit(freeze);
+  const committed = await input.productionCollectionCommit(freeze);
   const moneyTxMs = elapsedSinceMs(moneyTxStartedAt);
   const financialTransactionCommittedAt = new Date().toISOString();
+  const collectionFact =
+    committed && typeof committed === "object" && "fact" in committed
+      ? committed.fact
+      : null;
+
+  const attributionInput = {
+    restaurantId: input.restaurantId,
+    outcome:
+      collectionFact != null && isComplimentaryCollectionFact(collectionFact)
+        ? "complimentary"
+        : "paid",
+    settlementContext,
+    settlementRecord: null,
+    settlementLines: null,
+    at: now,
+    collectionFact,
+  };
+  const awaitAttribution = input.awaitAttribution !== false;
+  let settlementAttribution = skippedAttribution({
+    gaps: ["deferred_post_commit"],
+    reason: "Attribution continues independently after financial commit",
+    collectionFactId: collectionFact?.collectionFactId ?? null,
+  });
+  let settlementAttributionEvents: CheckFinancialMutationResult["settlementAttributionEvents"] =
+    [];
+  let attributionMs = 0;
+  let attributionCompletedAt: string | null = null;
+  if (collectionFact && awaitAttribution) {
+    const attributionStartedAt = Date.now();
+    const attributionBundle = await adoptSettlementAttributionAfterFinalize(
+      attributionInput
+    );
+    attributionMs = elapsedSinceMs(attributionStartedAt);
+    attributionCompletedAt = new Date().toISOString();
+    settlementAttribution = attributionBundle.attribution;
+    settlementAttributionEvents = attributionBundle.events;
+  } else if (collectionFact) {
+    void adoptSettlementAttributionAfterFinalize(attributionInput).catch(
+      (err: unknown) => {
+        opsLog({
+          type: OPS_EVENT.check_settlement_attribution_deferred_failed,
+          category: "ORDER",
+          severity: "warn",
+          ts: new Date().toISOString(),
+          restaurantId: input.restaurantId,
+          action: "adoptSettlementAttributionAfterFinalize",
+          metadata: {
+            orderId: input.orderId,
+            collectionFactId: collectionFact.collectionFactId,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
+      }
+    );
+  }
 
   const result: CheckFinancialMutationResult = {
     check: {
@@ -1957,12 +2018,8 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
     },
     settlementRecordEvents: [],
     settlementContext,
-    settlementAttribution: skippedAttribution({
-      gaps: ["deferred_post_commit"],
-      reason: "Attribution continues independently after financial commit",
-      settlementRecordId: null,
-    }),
-    settlementAttributionEvents: [],
+    settlementAttribution,
+    settlementAttributionEvents,
     finalizeStageMs: {
       checkReloadMs: 0,
       orderDiscoveryMs: 0,
@@ -1973,10 +2030,10 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
       financialTransactionTxWallMs: moneyTxMs,
       moneyTxMs,
       postCommitProcessingMs: 0,
-      attributionMs: 0,
+      attributionMs,
       financialTransactionStartedAt,
       financialTransactionCommittedAt,
-      attributionCompletedAt: null,
+      attributionCompletedAt,
       settlementContextReused: input.settlementContext != null,
     },
     paidReceipt: buildCashierPaidReceiptProjection({

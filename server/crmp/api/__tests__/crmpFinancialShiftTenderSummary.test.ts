@@ -13,6 +13,7 @@ function sr(input: {
   checkId: number;
   recordKind?: SettlementRecord["recordKind"];
   grandTotal?: string;
+  orderIds?: readonly number[];
   lines: readonly { paymentMethod: string; amount: string }[];
 }): SettlementRecord {
   return {
@@ -20,7 +21,8 @@ function sr(input: {
     restaurantId: 42,
     checkId: input.checkId,
     sessionId: null,
-    orderIds: [],
+    orderRefs: (input.orderIds ?? []).map((orderId) => ({ orderId })),
+    orderSettlementRefs: [],
     businessDay: "2026-07-24",
     outcome: input.recordKind === "refund" ? "applied" : "paid",
     recordKind: input.recordKind ?? "settlement",
@@ -203,5 +205,129 @@ describe("buildFinancialShiftTenderSummary", () => {
       loadSettlementRecords: async () => [],
     });
     expect(summary).toBeNull();
+  });
+
+  it("reads current Cashier tenders from Collection Fact, including split tenders", async () => {
+    await shifts.createAttribution({
+      restaurantId: 42,
+      financialShiftId: "fsh_1",
+      collectionFactId: "cf_split",
+      operatorUserId: 7,
+      cashTenderAmount: "20.00",
+      at: "t4",
+    });
+
+    const summary = await buildFinancialShiftTenderSummary({
+      restaurantId: 42,
+      registerId: "reg_1",
+      shifts,
+      loadSettlementRecords: async () => [],
+      loadCollectionFacts: async () => [
+        {
+          collectionFactId: "cf_split",
+          restaurantId: 42,
+          orderId: 88,
+          purpose: "production",
+          amount: "50.00",
+          discountAmount: "0.00",
+          tenders: [
+            { paymentMethod: "cash", amount: "20.00" },
+            { paymentMethod: "card", amount: "30.00" },
+          ],
+          checkId: 9,
+          orderingChannel: "cashier_pos",
+        } as never,
+      ],
+    });
+
+    expect(summary!.monetaryTenderTotal).toBe("50.00");
+    expect(summary!.cashTenderTotal).toBe("20.00");
+    expect(
+      summary!.methods.find((m) => m.paymentMethod === "card")?.amount
+    ).toBe("30.00");
+  });
+
+  it("does not treat complimentary Collection Fact other/0.00 as collected revenue", async () => {
+    await shifts.createAttribution({
+      restaurantId: 42,
+      financialShiftId: "fsh_1",
+      collectionFactId: "cf_comp",
+      operatorUserId: 7,
+      cashTenderAmount: "0.00",
+      at: "t4",
+    });
+
+    const summary = await buildFinancialShiftTenderSummary({
+      restaurantId: 42,
+      registerId: "reg_1",
+      shifts,
+      loadSettlementRecords: async () => [],
+      loadCollectionFacts: async () => [
+        {
+          collectionFactId: "cf_comp",
+          restaurantId: 42,
+          orderId: 89,
+          purpose: "production",
+          amount: "0.00",
+          discountAmount: "15.00",
+          tenders: [{ paymentMethod: "other", amount: "0.00" }],
+          checkId: 10,
+          orderingChannel: "cashier_pos",
+        } as never,
+      ],
+    });
+
+    expect(summary!.monetaryTenderTotal).toBe("0.00");
+    expect(summary!.complimentaryAmount).toBe("15.00");
+  });
+
+  it("does not double-count overlapping CF and SR sale identities", async () => {
+    await shifts.createAttribution({
+      restaurantId: 42,
+      financialShiftId: "fsh_1",
+      collectionFactId: "cf_win",
+      operatorUserId: 7,
+      cashTenderAmount: "10.00",
+      at: "t4",
+    });
+    await shifts.createAttribution({
+      restaurantId: 42,
+      financialShiftId: "fsh_1",
+      settlementRecordId: "sr_overlap",
+      operatorUserId: 7,
+      cashTenderAmount: "10.00",
+      at: "t5",
+    });
+
+    const summary = await buildFinancialShiftTenderSummary({
+      restaurantId: 42,
+      registerId: "reg_1",
+      shifts,
+      loadCollectionFacts: async () => [
+        {
+          collectionFactId: "cf_win",
+          restaurantId: 42,
+          orderId: 77,
+          purpose: "production",
+          amount: "10.00",
+          discountAmount: "0.00",
+          tenders: [{ paymentMethod: "cash", amount: "10.00" }],
+          checkId: 5,
+          orderingChannel: "cashier_pos",
+        } as never,
+      ],
+      loadSettlementRecords: async () => [
+        sr({
+          id: "sr_overlap",
+          checkId: 5,
+          orderIds: [77],
+          grandTotal: "10.00",
+          lines: [{ paymentMethod: "cash", amount: "10.00" }],
+        }),
+      ],
+    });
+
+    expect(summary!.monetaryTenderTotal).toBe("10.00");
+    expect(summary!.cashTenderTotal).toBe("10.00");
   });
 });

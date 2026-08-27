@@ -53,6 +53,8 @@ vi.mock("../../../db", () => ({
 vi.mock("../../payment/collection-fact/collectionFactRepository", () => ({
   findProductionCollectionFactByOrderId: (...a: unknown[]) =>
     mocks.findProductionCollectionFactByOrderId(...a),
+  listProductionCollectionFactsForRefundAnchor: vi.fn(async () => []),
+  listCollectionFactsByIds: vi.fn(async () => []),
 }));
 
 vi.mock("../checkOrderSettlementIntegration", () => ({

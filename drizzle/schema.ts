@@ -1917,7 +1917,7 @@ export const crmpShiftHandovers = mysqlTable(
 	]
 );
 
-/** Settlement Attribution — association only; references Settlement Record id. No money ownership. */
+/** Settlement Attribution — association only. CF identity for current Cashier sales; SR for legacy/refunds. No money ownership. */
 export const crmpSettlementAttributions = mysqlTable(
 	"crmp_settlement_attributions",
 	{
@@ -1926,7 +1926,9 @@ export const crmpSettlementAttributions = mysqlTable(
 		restaurantId: int().notNull(),
 		registerId: varchar({ length: 128 }).notNull(),
 		financialShiftId: varchar({ length: 128 }).notNull(),
-		settlementRecordId: varchar({ length: 128 }).notNull(),
+		settlementRecordId: varchar({ length: 128 }),
+		collectionFactId: varchar({ length: 128 }),
+		source: mysqlEnum(['collection_fact','legacy_settlement_record']).default('legacy_settlement_record').notNull(),
 		operatorUserId: int().notNull(),
 		cashTenderAmount: decimal({ precision: 10, scale: 2 }).notNull(),
 		currencyCode: varchar({ length: 8 }).notNull(),
@@ -1935,6 +1937,7 @@ export const crmpSettlementAttributions = mysqlTable(
 	(table) => [
 		uniqueIndex("crmp_settlement_attributions_attr_id_unique").on(table.attributionId),
 		uniqueIndex("crmp_settlement_attributions_sr_unique").on(table.settlementRecordId),
+		uniqueIndex("crmp_settlement_attributions_cf_unique").on(table.collectionFactId),
 		index("crmp_settlement_attributions_shift_id").on(table.financialShiftId),
 		index("crmp_settlement_attributions_register_id").on(table.registerId),
 		index("crmp_settlement_attributions_restaurant_id").on(table.restaurantId),

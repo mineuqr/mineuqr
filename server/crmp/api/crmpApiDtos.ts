@@ -138,7 +138,8 @@ export type DrawerMovementCommandResultDto = Readonly<{
 
 /**
  * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 — shift-scoped tender summary.
- * Built from Attribution membership → Settlement Record payment snapshots.
+ * Built from Attribution membership → Collection Fact tenders (current Cashier)
+ * or Settlement Record payment snapshots (legacy / refunds).
  * Bucket rules reused from REPORTING-PAYMENT-METHOD-ANALYTICS-1 (no UI math).
  * Not Expected Cash. Not Check Revenue.
  */

@@ -136,6 +136,7 @@ export async function confirmPayment(
           )
         : await commitCashierProductionCollectionFactInTransaction(payload);
       collectionFactOutcome = committed.outcome;
+      return committed;
     },
   });
   opsLog({

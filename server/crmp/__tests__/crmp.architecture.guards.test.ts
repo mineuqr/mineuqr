@@ -64,6 +64,7 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
     expect(tender).toContain("FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1");
     expect(tender).toContain("buildPaymentMethodAnalyticsFromCapturedLines");
     expect(tender).toContain("listSettlementRecordsByIds");
+    expect(tender).toContain("listCollectionFactsByIds");
     expect(tender).not.toMatch(/computeExpectedCash\s*\(/);
     expect(tender).toContain("Does NOT invoke the Expected Cash formula");
     expect(expected).toContain("Σ attributed cash tender amounts");

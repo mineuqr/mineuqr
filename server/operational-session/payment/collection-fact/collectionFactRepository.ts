@@ -250,6 +250,32 @@ export async function listProductionCollectionFactsForRefundAnchor(
   return rows.map(mapRowToCollectionFact);
 }
 
+/**
+ * CRMP-CF-ATTRIBUTION-1 — load Collection Facts by immutable ids.
+ * No LIMIT. Caller ignores isolated purposes for current-sale money.
+ */
+export async function listCollectionFactsByIds(
+  input: {
+    restaurantId: number;
+    collectionFactIds: readonly string[];
+  },
+  client?: SessionDbClient
+): Promise<CollectionFact[]> {
+  const ids = input.collectionFactIds.filter((id) => id.trim().length > 0);
+  if (ids.length === 0) return [];
+  const db = await resolveDb(client);
+  const rows = await db
+    .select()
+    .from(paymentCollectionFacts)
+    .where(
+      and(
+        eq(paymentCollectionFacts.restaurantId, input.restaurantId),
+        inArray(paymentCollectionFacts.collectionFactId, ids)
+      )
+    );
+  return rows.map(mapRowToCollectionFact);
+}
+
 /** Production Cashier CFs whose Order has no paid/complimentary Check yet. */
 export async function listCashierPosProductionFactsAwaitingDownstreamSettlement(
   limit: number

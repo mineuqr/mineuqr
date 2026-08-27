@@ -24,7 +24,19 @@ describe("SETTLEMENT-ATTRIBUTION-ADOPTION-1 pure helpers", () => {
     ).toBe("0.00");
   });
 
-  it("eligible when paid + full context", () => {
+  it("eligible when paid + collectionFactId without Settlement Record", () => {
+    expect(
+      isAttributionEligible({
+        outcome: "paid",
+        collectionFactId: "cf:1",
+        registerId: "reg_1",
+        financialShiftId: "fsh_1",
+        operatorUserId: 10,
+      })
+    ).toEqual({ ok: true });
+  });
+
+  it("eligible when paid + full SR context", () => {
     expect(
       isAttributionEligible({
         outcome: "paid",

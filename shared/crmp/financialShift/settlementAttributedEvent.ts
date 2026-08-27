@@ -10,7 +10,8 @@ export type SettlementAttributed = Readonly<{
   restaurantId: number;
   registerId: string;
   financialShiftId: string;
-  settlementRecordId: string;
+  settlementRecordId: string | null;
+  collectionFactId: string | null;
   attributionId: string;
   operatorUserId: number;
   cashTenderAmount: string;
@@ -27,12 +28,15 @@ export function buildSettlementAttributedEvent(input: {
   occurredAt: string;
   alreadyApplied: boolean;
 }): SettlementAttributed {
+  const identity =
+    input.attribution.collectionFactId ?? input.attribution.settlementRecordId;
   return {
     eventType: "SettlementAttributed",
     restaurantId: input.attribution.restaurantId,
     registerId: input.attribution.registerId,
     financialShiftId: input.attribution.financialShiftId,
     settlementRecordId: input.attribution.settlementRecordId,
+    collectionFactId: input.attribution.collectionFactId,
     attributionId: input.attribution.attributionId,
     operatorUserId: input.attribution.operatorUserId,
     cashTenderAmount: input.attribution.cashTenderAmount,
@@ -40,6 +44,6 @@ export function buildSettlementAttributedEvent(input: {
     version: input.shiftVersion,
     occurredAt: input.occurredAt,
     alreadyApplied: input.alreadyApplied,
-    claimKey: `${input.attribution.settlementRecordId}:SettlementAttributed`,
+    claimKey: `${identity}:SettlementAttributed`,
   };
 }

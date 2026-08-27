@@ -395,6 +395,14 @@ export {
 } from "./settlementRecord";
 
 export {
+  CRMP_CF_ATTRIBUTION_PROGRAM_ID,
+  resolveCrmpSaleAttributionAnchor,
+  isCollectionFactCrmpAnchor,
+  type CrmpSaleAttributionAnchor,
+  type CrmpProductionFactCandidate,
+} from "./crmpSaleAttributionAnchor";
+
+export {
   REFUND_PROGRAM_ID,
   REFUND_ADR_ID,
   REFUND_STATUSES,

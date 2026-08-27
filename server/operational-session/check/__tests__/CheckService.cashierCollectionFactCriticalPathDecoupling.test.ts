@@ -121,6 +121,8 @@ vi.mock("../../payment/collection-fact/collectionFactRepository", () => ({
     amount: "10.00",
     discountAmount: "0.00",
   })),
+  listProductionCollectionFactsForRefundAnchor: vi.fn(async () => []),
+  listCollectionFactsByIds: vi.fn(async () => []),
 }));
 
 vi.mock("../../payment/dispatchBestEffortDownstreamDelivery", () => ({

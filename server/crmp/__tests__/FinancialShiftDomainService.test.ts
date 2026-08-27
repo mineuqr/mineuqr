@@ -143,6 +143,38 @@ describe("FinancialShiftDomainService + repository", () => {
     expect(second.shift.version).toBe(first.shift.version);
   });
 
+  it("attribution idempotent by collectionFactId", async () => {
+    const { shift } = await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "0",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_cf",
+      at: "t2",
+    });
+    const first = await shifts.createAttribution({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      collectionFactId: "cf:demo",
+      operatorUserId: 10,
+      cashTenderAmount: "25.00",
+      at: "t3",
+    });
+    const second = await shifts.createAttribution({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      collectionFactId: "cf:demo",
+      operatorUserId: 10,
+      cashTenderAmount: "99.00",
+      at: "t4",
+    });
+    expect(first.alreadyApplied).toBe(false);
+    expect(second.alreadyApplied).toBe(true);
+    expect(second.attribution.cashTenderAmount).toBe("25.00");
+    expect(second.attribution.settlementRecordId).toBeNull();
+  });
+
   it("attribution idempotent by settlementRecordId", async () => {
     const { shift } = await shifts.open({
       restaurantId: 1,

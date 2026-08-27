@@ -1,7 +1,8 @@
 /**
  * SETTLEMENT-ATTRIBUTION-ADOPTION-1 / REFUND-REGISTER-ADOPTION-1
  * Pure helpers for attribution adoption.
- * Copies cash tender facts from settle / refund SR snapshots — never recalculates Check totals.
+ * Copies cash tender facts from Collection Fact tenders (current Cashier sales)
+ * or settle / refund SR snapshots (legacy / refunds) — never recalculates Check totals.
  * Register remains custody only (ADR-ARCH-028 / 032).
  */
 
@@ -27,6 +28,7 @@ export type SettlementAttributionAdoptionResult = Readonly<{
   outcome: SettlementAttributionOutcome;
   attributionId: string | null;
   settlementRecordId: string | null;
+  collectionFactId: string | null;
   registerId: string | null;
   financialShiftId: string | null;
   operatorUserId: number | null;
@@ -39,11 +41,13 @@ export function skippedAttribution(input: {
   gaps: readonly string[];
   reason: string;
   settlementRecordId?: string | null;
+  collectionFactId?: string | null;
 }): SettlementAttributionAdoptionResult {
   return {
     outcome: "skipped",
     attributionId: null,
     settlementRecordId: input.settlementRecordId ?? null,
+    collectionFactId: input.collectionFactId ?? null,
     registerId: null,
     financialShiftId: null,
     operatorUserId: null,
@@ -57,11 +61,13 @@ export function failedAttribution(input: {
   gaps: readonly string[];
   reason: string;
   settlementRecordId?: string | null;
+  collectionFactId?: string | null;
 }): SettlementAttributionAdoptionResult {
   return {
     outcome: "failed",
     attributionId: null,
     settlementRecordId: input.settlementRecordId ?? null,
+    collectionFactId: input.collectionFactId ?? null,
     registerId: null,
     financialShiftId: null,
     operatorUserId: null,
@@ -83,16 +89,19 @@ export function sumCashTenderAmounts(
 }
 
 function assertContextResolved(input: {
-  settlementRecordId: string | null | undefined;
+  settlementRecordId?: string | null | undefined;
+  collectionFactId?: string | null | undefined;
   registerId: string | null | undefined;
   financialShiftId: string | null | undefined;
   operatorUserId: number | null | undefined;
 }): { ok: true } | { ok: false; gaps: string[]; reason: string } {
-  if (!input.settlementRecordId?.trim()) {
+  const collectionFactId = input.collectionFactId?.trim() ?? "";
+  const settlementRecordId = input.settlementRecordId?.trim() ?? "";
+  if (!collectionFactId && !settlementRecordId) {
     return {
       ok: false,
-      gaps: ["settlement_record_missing"],
-      reason: "Settlement Record id required for Attribution",
+      gaps: ["attribution_identity_missing"],
+      reason: "Collection Fact id or Settlement Record id required for Attribution",
     };
   }
   const gaps: string[] = [];
@@ -114,10 +123,12 @@ function assertContextResolved(input: {
 /**
  * Eligible when terminal paid/complimentary publish path and context is fully resolved.
  * Never fabricates missing Register/Shift/operator.
+ * Current Cashier sales may identify by collectionFactId without a Settlement Record.
  */
 export function isAttributionEligible(input: {
   outcome: string;
-  settlementRecordId: string | null | undefined;
+  settlementRecordId?: string | null | undefined;
+  collectionFactId?: string | null | undefined;
   registerId: string | null | undefined;
   financialShiftId: string | null | undefined;
   operatorUserId: number | null | undefined;

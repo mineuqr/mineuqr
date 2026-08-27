@@ -23,6 +23,7 @@ import {
   type DrawerMovement,
   type FinancialShift,
   type SettlementAttribution,
+  type SettlementAttributionSource,
   type ShiftHandover,
 } from "@shared/crmp";
 import type {
@@ -32,6 +33,32 @@ import type {
   FinancialShiftArchiveListQuery,
 } from "./CrmpRepository";
 import { isMysqlDuplicateKeyError } from "./crmpMysqlErrors";
+
+function mapAttributionRow(
+  a: typeof crmpSettlementAttributions.$inferSelect
+): SettlementAttribution {
+  const collectionFactId = a.collectionFactId?.trim() ? a.collectionFactId : null;
+  const settlementRecordId = a.settlementRecordId?.trim()
+    ? a.settlementRecordId
+    : null;
+  const source: SettlementAttributionSource =
+    a.source === "collection_fact" || collectionFactId
+      ? "collection_fact"
+      : "legacy_settlement_record";
+  return {
+    attributionId: a.attributionId,
+    restaurantId: a.restaurantId,
+    registerId: a.registerId,
+    financialShiftId: a.financialShiftId,
+    settlementRecordId,
+    collectionFactId,
+    source,
+    operatorUserId: a.operatorUserId,
+    cashTenderAmount: String(a.cashTenderAmount),
+    currencyCode: a.currencyCode,
+    attributedAt: a.attributedAt,
+  };
+}
 
 function mapRegister(
   row: typeof crmpRegisters.$inferSelect
@@ -114,17 +141,7 @@ async function loadShiftGraph(
       }
     : null;
 
-  const attrs: SettlementAttribution[] = attributions.map((a) => ({
-    attributionId: a.attributionId,
-    restaurantId: a.restaurantId,
-    registerId: a.registerId,
-    financialShiftId: a.financialShiftId,
-    settlementRecordId: a.settlementRecordId,
-    operatorUserId: a.operatorUserId,
-    cashTenderAmount: String(a.cashTenderAmount),
-    currencyCode: a.currencyCode,
-    attributedAt: a.attributedAt,
-  }));
+  const attrs: SettlementAttribution[] = attributions.map(mapAttributionRow);
 
   return {
     financialShiftId: shiftRow.financialShiftId,
@@ -367,6 +384,8 @@ async function persistShiftGraph(
         registerId: a.registerId,
         financialShiftId: a.financialShiftId,
         settlementRecordId: a.settlementRecordId,
+        collectionFactId: a.collectionFactId,
+        source: a.source,
         operatorUserId: a.operatorUserId,
         cashTenderAmount: a.cashTenderAmount,
         currencyCode: a.currencyCode,
@@ -650,6 +669,7 @@ export function createDrizzleCrmpUnitOfWork(
       restaurantId,
       settlementRecordId
     ) {
+      if (!settlementRecordId.trim()) return null;
       const db = await loadDb();
       if (!db) throw new Error("Database not available");
       const rows = await db
@@ -663,18 +683,24 @@ export function createDrizzleCrmpUnitOfWork(
         )
         .limit(1);
       const a = rows[0];
-      if (!a) return null;
-      return {
-        attributionId: a.attributionId,
-        restaurantId: a.restaurantId,
-        registerId: a.registerId,
-        financialShiftId: a.financialShiftId,
-        settlementRecordId: a.settlementRecordId,
-        operatorUserId: a.operatorUserId,
-        cashTenderAmount: String(a.cashTenderAmount),
-        currencyCode: a.currencyCode,
-        attributedAt: a.attributedAt,
-      };
+      return a ? mapAttributionRow(a) : null;
+    },
+    async findAttributionByCollectionFactId(restaurantId, collectionFactId) {
+      if (!collectionFactId.trim()) return null;
+      const db = await loadDb();
+      if (!db) throw new Error("Database not available");
+      const rows = await db
+        .select()
+        .from(crmpSettlementAttributions)
+        .where(
+          and(
+            eq(crmpSettlementAttributions.restaurantId, restaurantId),
+            eq(crmpSettlementAttributions.collectionFactId, collectionFactId)
+          )
+        )
+        .limit(1);
+      const a = rows[0];
+      return a ? mapAttributionRow(a) : null;
     },
   };
 

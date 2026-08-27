@@ -14,6 +14,7 @@ export {
   findProductionCollectionFactByCheckId,
   findProductionCollectionFactByOrderId,
   listProductionCollectionFactsForRefundAnchor,
+  listCollectionFactsByIds,
   updateCollectionFact,
   deleteCollectionFact,
   createDrizzleCollectionFactStore,

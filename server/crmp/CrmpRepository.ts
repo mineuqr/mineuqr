@@ -67,6 +67,10 @@ export type CrmpFinancialShiftRepository = {
     restaurantId: number,
     settlementRecordId: string
   ): Promise<SettlementAttribution | null>;
+  findAttributionByCollectionFactId(
+    restaurantId: number,
+    collectionFactId: string
+  ): Promise<SettlementAttribution | null>;
 };
 
 export type CrmpCloseCorridorCommit = Readonly<{

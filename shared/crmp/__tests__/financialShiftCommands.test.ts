@@ -179,7 +179,32 @@ describe("CRMP Financial Shift commands", () => {
     expect(second.attribution.cashTenderAmount).toBe("10.00");
   });
 
-  it("requires settlementRecordId for attribution (D-INV-04)", () => {
+  it("attribution is idempotent by collectionFactId", () => {
+    const shift = openShift();
+    const first = createSettlementAttribution({
+      shift,
+      attributionId: "attr_1",
+      collectionFactId: "cf_abc",
+      operatorUserId: 10,
+      cashTenderAmount: "20.00",
+      attributedAt: "t3",
+    });
+    const second = createSettlementAttribution({
+      shift: first.shift,
+      attributionId: "attr_2",
+      collectionFactId: "cf_abc",
+      operatorUserId: 10,
+      cashTenderAmount: "99.00",
+      attributedAt: "t4",
+    });
+    expect(first.attribution.source).toBe("collection_fact");
+    expect(first.attribution.settlementRecordId).toBeNull();
+    expect(second.alreadyApplied).toBe(true);
+    expect(second.shift.attributions).toHaveLength(1);
+    expect(second.attribution.cashTenderAmount).toBe("20.00");
+  });
+
+  it("requires collectionFactId or settlementRecordId for attribution (D-INV-04)", () => {
     expect(() =>
       createSettlementAttribution({
         shift: openShift(),
@@ -190,6 +215,20 @@ describe("CRMP Financial Shift commands", () => {
         attributedAt: "t",
       })
     ).toThrow();
+  });
+
+  it("rejects dual CF and SR identity on the same attribution", () => {
+    expect(() =>
+      createSettlementAttribution({
+        shift: openShift(),
+        attributionId: "a",
+        collectionFactId: "cf_1",
+        settlementRecordId: "sr_1",
+        operatorUserId: 10,
+        cashTenderAmount: "0.00",
+        attributedAt: "t",
+      })
+    ).toThrow(/both collectionFactId and settlementRecordId/);
   });
 
   it("closes only with final count; then immutable (D-INV-03/15)", () => {

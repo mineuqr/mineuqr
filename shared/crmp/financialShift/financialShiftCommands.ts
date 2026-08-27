@@ -522,14 +522,24 @@ export function recordDrawerCount(
 export type CreateSettlementAttributionCommand = Readonly<{
   shift: FinancialShift;
   attributionId: string;
-  settlementRecordId: string;
+  /** Legacy / refund Settlement Record identity. XOR with collectionFactId. */
+  settlementRecordId?: string | null;
+  /** Current Cashier Collection Fact identity. XOR with settlementRecordId. */
+  collectionFactId?: string | null;
   operatorUserId: number;
-  /** Copied custody fact — caller-supplied; CRMP does not load SR. */
+  /** Copied custody fact — caller-supplied; CRMP does not load CF/SR. */
   cashTenderAmount: string;
   attributedAt: string;
   /** Existing attribution for same SR (idempotency). */
   existingBySettlementRecordId?: SettlementAttribution | null;
+  /** Existing attribution for same CF (idempotency). */
+  existingByCollectionFactId?: SettlementAttribution | null;
 }>;
+
+function normalizeAttributionIdentity(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 export function createSettlementAttribution(
   command: CreateSettlementAttributionCommand
@@ -538,7 +548,23 @@ export function createSettlementAttribution(
   attribution: SettlementAttribution;
   alreadyApplied: boolean;
 } {
-  if (command.existingBySettlementRecordId) {
+  const collectionFactId = normalizeAttributionIdentity(command.collectionFactId);
+  const settlementRecordId = normalizeAttributionIdentity(
+    command.settlementRecordId
+  );
+  if (collectionFactId && settlementRecordId) {
+    throw new CrmpValidationError(
+      "Settlement Attribution cannot carry both collectionFactId and settlementRecordId"
+    );
+  }
+  if (collectionFactId && command.existingByCollectionFactId) {
+    return {
+      shift: command.shift,
+      attribution: command.existingByCollectionFactId,
+      alreadyApplied: true,
+    };
+  }
+  if (settlementRecordId && command.existingBySettlementRecordId) {
     return {
       shift: command.shift,
       attribution: command.existingBySettlementRecordId,
@@ -546,13 +572,13 @@ export function createSettlementAttribution(
     };
   }
   assertOpenMutable(command.shift);
-  if (!command.settlementRecordId.trim()) {
+  if (!collectionFactId && !settlementRecordId) {
     throw new CrmpValidationError(
-      "Settlement Attribution requires settlementRecordId"
+      "Settlement Attribution requires collectionFactId or settlementRecordId"
     );
   }
   // Signed custody fact: settle cash ≥ 0; refund cash return < 0 (REFUND-REGISTER-ADOPTION-1).
-  // CRMP never recalculates — caller copies from Settlement Record publication.
+  // CRMP never recalculates — caller copies from Collection Fact tenders or Settlement Record publication.
   assertMoneyAmount(
     {
       amount: command.cashTenderAmount,
@@ -561,8 +587,10 @@ export function createSettlementAttribution(
     "cashTenderAmount"
   );
 
-  const duplicate = command.shift.attributions.find(
-    (a) => a.settlementRecordId === command.settlementRecordId
+  const duplicate = command.shift.attributions.find((a) =>
+    collectionFactId
+      ? a.collectionFactId === collectionFactId
+      : a.settlementRecordId === settlementRecordId
   );
   if (duplicate) {
     return { shift: command.shift, attribution: duplicate, alreadyApplied: true };
@@ -573,7 +601,9 @@ export function createSettlementAttribution(
     restaurantId: command.shift.restaurantId,
     registerId: command.shift.registerId,
     financialShiftId: command.shift.financialShiftId,
-    settlementRecordId: command.settlementRecordId.trim(),
+    settlementRecordId,
+    collectionFactId,
+    source: collectionFactId ? "collection_fact" : "legacy_settlement_record",
     operatorUserId: command.operatorUserId,
     cashTenderAmount: normalizeAmount(command.cashTenderAmount),
     currencyCode: command.shift.currencyCode,

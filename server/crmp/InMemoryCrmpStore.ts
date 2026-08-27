@@ -169,10 +169,25 @@ export function createInMemoryCrmpStore(): CrmpUnitOfWork {
       restaurantId,
       settlementRecordId
     ): Promise<SettlementAttribution | null> {
+      if (!settlementRecordId.trim()) return null;
       for (const s of shifts.values()) {
         if (s.restaurantId !== restaurantId) continue;
         const hit = s.attributions.find(
           (a) => a.settlementRecordId === settlementRecordId
+        );
+        if (hit) return { ...hit };
+      }
+      return null;
+    },
+    async findAttributionByCollectionFactId(
+      restaurantId,
+      collectionFactId
+    ): Promise<SettlementAttribution | null> {
+      if (!collectionFactId.trim()) return null;
+      for (const s of shifts.values()) {
+        if (s.restaurantId !== restaurantId) continue;
+        const hit = s.attributions.find(
+          (a) => a.collectionFactId === collectionFactId
         );
         if (hit) return { ...hit };
       }

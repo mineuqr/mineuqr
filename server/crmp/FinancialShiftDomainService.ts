@@ -531,13 +531,15 @@ export class FinancialShiftDomainService {
   }
 
   /**
-   * Domain attribution. Caller supplies settlementRecordId + cashTenderAmount
-   * (custody copy). Settled via SETTLEMENT-ATTRIBUTION-ADOPTION-1 post-commit.
+   * Domain attribution. Caller supplies collectionFactId (current Cashier sale)
+   * or settlementRecordId (legacy / refund) plus cashTenderAmount (custody copy).
+   * Settled via SETTLEMENT-ATTRIBUTION-ADOPTION-1 / CRMP-CF-ATTRIBUTION-1 post-commit.
    */
   async createAttribution(input: {
     restaurantId: number;
     financialShiftId: string;
-    settlementRecordId: string;
+    settlementRecordId?: string | null;
+    collectionFactId?: string | null;
     operatorUserId: number;
     cashTenderAmount: string;
     at?: string;
@@ -546,11 +548,19 @@ export class FinancialShiftDomainService {
     attribution: SettlementAttribution;
     alreadyApplied: boolean;
   }> {
-    const existing =
-      await this.uow.shifts.findAttributionBySettlementRecordId(
-        input.restaurantId,
-        input.settlementRecordId
-      );
+    const collectionFactId = input.collectionFactId?.trim() || null;
+    const settlementRecordId = input.settlementRecordId?.trim() || null;
+    const existing = collectionFactId
+      ? await this.uow.shifts.findAttributionByCollectionFactId(
+          input.restaurantId,
+          collectionFactId
+        )
+      : settlementRecordId
+        ? await this.uow.shifts.findAttributionBySettlementRecordId(
+            input.restaurantId,
+            settlementRecordId
+          )
+        : null;
     const current = await this.requireShift(
       input.restaurantId,
       input.financialShiftId
@@ -558,11 +568,13 @@ export class FinancialShiftDomainService {
     const result = createSettlementAttribution({
       shift: current,
       attributionId: newCrmpId("attr"),
-      settlementRecordId: input.settlementRecordId,
+      settlementRecordId,
+      collectionFactId,
       operatorUserId: input.operatorUserId,
       cashTenderAmount: input.cashTenderAmount,
       attributedAt: input.at ?? new Date().toISOString(),
-      existingBySettlementRecordId: existing,
+      existingBySettlementRecordId: settlementRecordId ? existing : null,
+      existingByCollectionFactId: collectionFactId ? existing : null,
     });
     if (!result.alreadyApplied) {
       await this.uow.shifts.save(result.shift, current.version);
