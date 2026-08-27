@@ -46,6 +46,8 @@ function mapOrder(row: OrderRow, lineItems: LineItemRow[]): ActiveOrderItemDto {
 
 /**
  * Q-01 / Q-03 / Q-04 read store — order_read_* projections only.
+ * listActive membership: restaurant + lifecycleStage active (+ optional status).
+ * Catch-up runs in OrderReadWorkspaceService before this query.
  */
 export class DrizzleOrderOperationalReadStore {
   async listActiveOrders(input: {

@@ -40,6 +40,7 @@ import {
   useFinancialShiftCurrent,
 } from "@/lib/register-operations-presentation";
 import {
+  OPERATIONAL_LIFECYCLE_POLL_MS,
   orderReadListQueryOptions,
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
@@ -81,7 +82,7 @@ export function OrdersWorkspacePanel({
   const utils = trpc.useUtils();
 
   // REALTIME-ORDERS-ADOPTION-1 — SSE primary discovery; poll is recovery when live.
-  const { realtimePrimary } = useOrdersWorkspaceRealtime(restaurantId, enabled);
+  useOrdersWorkspaceRealtime(restaurantId, enabled);
 
   const activeRegisterId = readActiveRegister(restaurantId)?.trim() || "";
   const shiftQuery = useFinancialShiftCurrent(
@@ -94,19 +95,20 @@ export function OrdersWorkspacePanel({
     enabled,
     authPending,
     isAuthenticated,
-    pollMs: enabled ? (realtimePrimary ? 15_000 : 3_000) : undefined,
+    pollMs: enabled ? OPERATIONAL_LIFECYCLE_POLL_MS : undefined,
   });
 
   const listQuery = trpc.order.read.listActive.useQuery(
     {
       restaurantId,
+      // Membership = server listActive (active lifecycle). Tab status is a slice.
       status:
         active?.status === "late"
           ? undefined
           : (active?.status as "pending" | "preparing" | "ready" | undefined),
       limit: 100,
     },
-    orderReadListQueryOptions(enabled, { realtimePrimary })
+    orderReadListQueryOptions(enabled)
   );
 
   useEffect(() => {

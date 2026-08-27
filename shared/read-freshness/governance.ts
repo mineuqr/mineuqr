@@ -241,6 +241,10 @@ function isTerminalConfirmedOmission(orderId: number): boolean {
  * CASHIER-ORDER-AND-CHECKOUT-LATENCY-FORENSICS-1 — a confirmed terminal write
  * that already removed the row from cache must not be resurrected by a stale
  * listActive/Kitchen projection that still includes the Order.
+ *
+ * Confirmed-write omission is in-memory only. A remount/refresh has no
+ * confirmation; membership then follows the authoritative listActive payload
+ * (Order Read catch-up must have applied deferred lifecycle events).
  */
 export function mergeStatusBearingList<T extends StatusBearing>(
   existing: T[] | undefined,

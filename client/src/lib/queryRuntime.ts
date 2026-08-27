@@ -8,11 +8,13 @@ export const DASHBOARD_ORDER_LIST_POLL_MS = 10_000;
  * ORDER-LIFECYCLE-LATENCY-REMEDIATION-1 — Mode A fallback for active lifecycle lists.
  * Cross-device observers; BroadcastChannel covers same-origin tabs faster.
  *
- * REALTIME-ORDERS-ADOPTION-1 — when realtime is live, poll becomes recovery cadence.
+ * ORDERS-OPERATIONAL-LIFECYCLE-CONSISTENCY-REPAIR-1 — Orders listActive always
+ * uses this 3s cadence (not 15s while SSE is live). Poll is catch-up for
+ * deferred relay, not a hide-by-timeout membership rule.
  */
 export const OPERATIONAL_LIFECYCLE_POLL_MS = 3_000;
 
-/** Recovery poll while Orders realtime connection is live (primary = SSE). */
+/** Customer Tracking recovery poll while SSE is live (Orders does not use this). */
 export const OPERATIONAL_LIFECYCLE_REALTIME_RECOVERY_POLL_MS = 15_000;
 
 /**
@@ -116,16 +118,11 @@ export function printWorkspaceListQueryOptions(enabled: boolean) {
   } as const;
 }
 
-export function orderReadListQueryOptions(
-  enabled: boolean,
-  options?: { realtimePrimary?: boolean }
-) {
-  const pollMs = options?.realtimePrimary
-    ? OPERATIONAL_LIFECYCLE_REALTIME_RECOVERY_POLL_MS
-    : OPERATIONAL_LIFECYCLE_POLL_MS;
+/** Authoritative Orders query: trpc.order.read.listActive. */
+export function orderReadListQueryOptions(enabled: boolean) {
   return {
     enabled,
-    refetchInterval: enabled ? pollMs : false,
+    refetchInterval: enabled ? OPERATIONAL_LIFECYCLE_POLL_MS : false,
     staleTime: 0,
     structuralSharing: activeOrderListStructuralSharing,
   } as const;

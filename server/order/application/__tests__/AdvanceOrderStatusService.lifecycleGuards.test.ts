@@ -87,6 +87,10 @@ describe("AdvanceOrderStatusService LIFECYCLE-SETTLEMENT-GUARDS-1", () => {
       sessionId: null,
     });
     expect(order.advanceStatus).toHaveBeenCalled();
+    expect(order.advanceLifecycleStage).toHaveBeenCalledWith(
+      "completed",
+      expect.any(String)
+    );
     expect(result.newStatus).toBe("served");
   });
 
@@ -106,6 +110,10 @@ describe("AdvanceOrderStatusService LIFECYCLE-SETTLEMENT-GUARDS-1", () => {
       sessionId: 55,
     });
     expect(order.advanceStatus).toHaveBeenCalled();
+    expect(order.advanceLifecycleStage).toHaveBeenCalledWith(
+      "completed",
+      expect.any(String)
+    );
   });
 
   it("idempotent served request skips guard and completes leftover active lifecycle", async () => {

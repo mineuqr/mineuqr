@@ -125,6 +125,22 @@ describe("mergeActiveOrderListCache", () => {
     expect(merged.items).toEqual([]);
   });
 
+  it("on remount without confirmation, membership follows the authoritative list", () => {
+    const incomingCaughtUp = {
+      items: [{ orderId: 9, status: "preparing", readyAt: null }],
+      generatedAt: "t1",
+    };
+    const remount = mergeActiveOrderListCache(undefined, incomingCaughtUp);
+    expect(remount.items.map((item) => item.orderId)).toEqual([9]);
+
+    const staleServedStillActive = {
+      items: [{ orderId: 8, status: "served", readyAt: null }],
+      generatedAt: "t1",
+    };
+    const staleRemount = mergeActiveOrderListCache(undefined, staleServedStillActive);
+    expect(staleRemount.items.map((item) => item.orderId)).toEqual([8]);
+  });
+
   it("allows snapshot rollback after clearing confirmation", () => {
     confirmOrderStatusWrite(42, "ready");
     clearOrderStatusWriteConfirmation(42);

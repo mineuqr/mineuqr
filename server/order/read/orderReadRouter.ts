@@ -17,7 +17,11 @@ const orderDetailInput = restaurantInput.extend({
   orderId: z.coerce.number().int().positive(),
 });
 
-/** Q-01 / Q-03 / Q-04 — read-only exposure over order_read_* projections. */
+/**
+ * Q-01 / Q-03 / Q-04 — read-only exposure over order_read_* projections.
+ * listActive membership is defined on OrderReadWorkspaceService (active
+ * lifecycle on order_read_orders; optional status; cashier_pos extra gate).
+ */
 export const orderReadRouter = router({
   listActive: verifiedProcedure.input(listActiveInput).query(async ({ input, ctx }) => {
     await assertRestaurantAccess(ctx, input.restaurantId, "order.read.listActive");

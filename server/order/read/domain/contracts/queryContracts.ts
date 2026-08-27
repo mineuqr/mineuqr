@@ -60,6 +60,11 @@ export type PaginatedQuery = {
 
 export type ActiveOrderListQuery = TenantScopedQuery &
   PaginatedQuery & {
+    /**
+     * ORDERS-OPERATIONAL-LIFECYCLE-CONSISTENCY-REPAIR-1
+     * Optional operational-status slice. Omitted / all-active = every
+     * lifecycleStage=active projection row (not write-model orders).
+     */
     status?: "pending" | "preparing" | "ready" | "all-active";
   };
 
