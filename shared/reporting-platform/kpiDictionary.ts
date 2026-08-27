@@ -122,9 +122,9 @@ export const KPI_DICTIONARY = Object.freeze({
     /** Presentation name (Business Language). KPI id / formula unchanged. */
     name: "Total Sales",
     definition:
-      "Total Sales: financial sales after settlement across all sales channels — sum of Paid Check grand totals (gen=1 Settlement Record publications) in the reporting period. Refund publications do not mutate this KPI.",
+      "Total Sales: financial collections in the period. Current Cashier sales use production Collection Fact amount. Historical sales without Collection Fact use paid Settlement Record gen=1 grandTotal. Overlap: Collection Fact wins. Complimentary Collection Facts (amount 0) are not Total Sales. Refund publications do not mutate this KPI.",
     formula:
-      "SUM(settlement_records.grandTotal WHERE outcome = 'paid' AND recordGeneration = 1 AND recordKind IN ('settlement','void')) /* Gross — excludes recordKind=refund */",
+      "Revenue Union Gross = SUM(payment_collection_facts.amount WHERE purpose=production AND amount>0) + SUM(settlement_records.grandTotal WHERE outcome='paid' AND recordGeneration=1 AND no proven CF overlap) /* Gross — excludes complimentary CF and recordKind=refund */",
     kpiClass: "business",
     ownerDomain: "check",
     owner: "Check Management",
@@ -132,7 +132,7 @@ export const KPI_DICTIONARY = Object.freeze({
     sourceDto: "BusinessMetricsSummary",
     dtoField: "revenue",
     sourceOfTruth:
-      "settlement_records where outcome = paid AND recordGeneration = 1 → SUM(grandTotal) (Check freeze publication)",
+      "Revenue Union: production Collection Fact amount (current Cashier) else settlement_records where outcome = paid AND recordGeneration = 1 (historical, no CF overlap)",
     unit: "money",
     valueType: "decimal_string",
     aggregation: "sum",
@@ -256,7 +256,7 @@ export const KPI_DICTIONARY = Object.freeze({
     name: "Paid Checks",
     definition: "Count of Paid Checks in the reporting period.",
     formula:
-      "COUNT(settlement_records WHERE outcome = 'paid' AND recordGeneration = 1)",
+      "COUNT(published paid Revenue Union contributions: production Collection Facts + settlement_records WHERE outcome = 'paid' AND recordGeneration = 1 AND no CF overlap)",
     kpiClass: "business",
     ownerDomain: "check",
     owner: "Check Management",
@@ -264,7 +264,7 @@ export const KPI_DICTIONARY = Object.freeze({
     sourceDto: "BusinessMetricsSummary",
     dtoField: "paidCheckCount",
     sourceOfTruth:
-      "settlement_records where outcome = paid → COUNT(*) (Check freeze publication)",
+      "Revenue Union paid contribution count (Collection Fact + unmatched settlement_records)",
     unit: "count",
     valueType: "integer",
     aggregation: "count",
@@ -276,9 +276,9 @@ export const KPI_DICTIONARY = Object.freeze({
     id: "taxCollected",
     name: "Tax Collected",
     definition:
-      "Sum of taxAmount on Paid Checks. Tax is always from immutable Check Tax Policy Snapshot — never live Business Settings.",
+      "Sum of tax on paid financial contributions. Current Cashier: Collection Fact taxAmount. Historical without CF: Settlement Record tax snapshot. Never live Business Settings.",
     formula:
-      "SUM(settlement_records.taxAmount WHERE outcome = 'paid' AND recordGeneration = 1) /* Settlement Record tax snapshot */",
+      "SUM(payment_collection_facts.taxAmount for published paid CF) + SUM(settlement_records.taxAmount WHERE outcome = 'paid' AND recordGeneration = 1 AND no CF overlap)",
     kpiClass: "business",
     ownerDomain: "check",
     owner: "Check Management",
@@ -286,7 +286,7 @@ export const KPI_DICTIONARY = Object.freeze({
     sourceDto: "BusinessMetricsSummary",
     dtoField: "taxCollected",
     sourceOfTruth:
-      "settlement_records where outcome = paid → SUM(taxAmount) from published tax snapshot",
+      "Revenue Union taxCollected: Collection Fact taxAmount (current Cashier) else settlement_records paid tax snapshot",
     unit: "money",
     valueType: "decimal_string",
     aggregation: "sum",
@@ -319,7 +319,7 @@ export const KPI_DICTIONARY = Object.freeze({
     name: "Complimentary Checks",
     definition: "Count of complimentary Checks in the period.",
     formula:
-      "COUNT(settlement_records WHERE outcome = 'complimentary' AND recordGeneration = 1)",
+      "COUNT(complimentary Revenue Union contributions: CF amount=0 with discount>0 + settlement_records WHERE outcome = 'complimentary' AND recordGeneration = 1 AND no CF overlap)",
     kpiClass: "business",
     ownerDomain: "check",
     owner: "Check Management",
@@ -327,7 +327,7 @@ export const KPI_DICTIONARY = Object.freeze({
     sourceDto: "BusinessMetricsSummary",
     dtoField: "complimentaryCount",
     sourceOfTruth:
-      "settlement_records where outcome = complimentary (Check freeze publication)",
+      "Revenue Union complimentaryCount (Collection Fact complimentary + unmatched settlement_records)",
     unit: "count",
     valueType: "integer",
     aggregation: "count",
@@ -338,9 +338,10 @@ export const KPI_DICTIONARY = Object.freeze({
   complimentaryAmount: def({
     id: "complimentaryAmount",
     name: "Complimentary Amount",
-    definition: "Sum of complimentary Check grand totals. Not Revenue.",
+    definition:
+      "Sum of waived complimentary collections. Current Cashier: Collection Fact discountAmount when amount=0. Historical: complimentary Settlement Record grandTotal. Not Revenue.",
     formula:
-      "SUM(settlement_records.grandTotal WHERE outcome = 'complimentary' AND recordGeneration = 1)",
+      "SUM(payment_collection_facts.discountAmount WHERE amount=0 AND discount>0) + SUM(settlement_records.grandTotal WHERE outcome = 'complimentary' AND recordGeneration = 1 AND no CF overlap)",
     kpiClass: "business",
     ownerDomain: "check",
     owner: "Check Management",
@@ -348,7 +349,7 @@ export const KPI_DICTIONARY = Object.freeze({
     sourceDto: "BusinessMetricsSummary",
     dtoField: "complimentaryAmount",
     sourceOfTruth:
-      "settlement_records where outcome = complimentary → SUM(grandTotal)",
+      "Revenue Union complimentaryAmount (Collection Fact waived discount + unmatched settlement_records)",
     unit: "money",
     valueType: "decimal_string",
     aggregation: "sum",

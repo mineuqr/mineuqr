@@ -15,7 +15,7 @@ function read(rel: string): string {
 }
 
 describe("REPORTING-PAYMENT-METHOD-ANALYTICS-1 architecture guards", () => {
-  it("Check Revenue formula remains paid Check.grandTotal", () => {
+  it("Total Sales formula is Revenue Union Gross (CF + historical SR)", () => {
     const revenue = getKpiDefinition("revenue");
     expect(revenue.formula).toContain("grandTotal");
     expect(revenue.formula).toMatch(/paid/i);

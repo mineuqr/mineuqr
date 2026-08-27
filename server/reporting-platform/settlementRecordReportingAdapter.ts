@@ -1,9 +1,9 @@
 /**
  * SETTLEMENT-RECORD-REPORTING-ADOPTION-1 / ADR-ARCH-026
  *
- * Read-only Settlement Record adapter for Reporting Platform financial KPIs.
- * Settlement Record is the Canonical Financial Document (publication).
- * Check remains Monetary Aggregate Root — Reporting does not recalculate money.
+ * Read-only Settlement Record adapter for Reporting Platform.
+ * Historical Gross / refund publications. Current Cashier Gross is Collection Fact
+ * via Revenue Union (CF-NATIVE-REPORTING-1). Reporting does not recalculate money.
  */
 
 import { eq } from "drizzle-orm";

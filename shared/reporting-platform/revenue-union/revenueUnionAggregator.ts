@@ -2,11 +2,11 @@
  * REVENUE-UNION-ADOPTION-1 — Gross Union formula (shadow).
  *
  * Gross =
- *   Σ paid LEGACY_CHECK grandTotal (non-conflict)
- * + Σ eligible COLLECTION_FACT amount (non-conflict, kind=collection)
+ *   Σ paid LEGACY_CHECK grandTotal (non-conflict, no CF overlap)
+ * + Σ eligible COLLECTION_FACT amount (non-conflict, not complimentary)
  *
+ * Complimentary Collection Facts (amount 0, discount > 0) are not Gross.
  * Net = Gross − Σ legacy refund publications (Check/SR compensating docs).
- * Collection Fact refunds are not in the current fact contract (documented gap).
  */
 
 import { formatReportingAmount, parseReportingAmount } from "../reportingMoney";

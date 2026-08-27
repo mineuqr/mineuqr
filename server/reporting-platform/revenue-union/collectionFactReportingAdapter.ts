@@ -32,8 +32,21 @@ function asTenders(
   }));
 }
 
+function inDateWindow(
+  value: string | null | undefined,
+  from?: string,
+  to?: string
+): boolean {
+  if (!value) return false;
+  if (from && value < from) return false;
+  if (to && value > to) return false;
+  return true;
+}
+
 export async function listCollectionFactsForRevenueUnion(input: {
   restaurantId: number;
+  from?: string;
+  to?: string;
 }): Promise<readonly RevenueUnionCollectionFact[]> {
   const db = await getDb();
   if (!db) return [];
@@ -44,6 +57,13 @@ export async function listCollectionFactsForRevenueUnion(input: {
   const out: RevenueUnionCollectionFact[] = [];
   for (const row of rows) {
     if (!isCollectionFactPurpose(row.purpose)) continue;
+    const committedAt = String(row.committedAt);
+    if (
+      (input.from || input.to) &&
+      !inDateWindow(committedAt, input.from, input.to)
+    ) {
+      continue;
+    }
     out.push({
       collectionFactId: row.collectionFactId,
       restaurantId: row.restaurantId,
@@ -68,7 +88,7 @@ export async function listCollectionFactsForRevenueUnion(input: {
       tenders: asTenders(row.tendersJson),
       checkId: row.checkId ?? null,
       businessDay: row.businessDay,
-      committedAt: String(row.committedAt),
+      committedAt,
     });
   }
   return out;

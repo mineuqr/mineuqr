@@ -31,7 +31,8 @@ export type RevenueByPaymentMethodBucket = Readonly<{
 
 /**
  * Sum captured settlement transactions by payment method.
- * Presentation / future APIs only — not a substitute for Check Revenue KPI.
+ * Compatibility helper — not the published Payment Method Analytics path
+ * (CF-NATIVE-REPORTING-1 / ST-TENDER-PROJECTION-CLEANUP-1).
  */
 export async function listCapturedSettlementsByPaymentMethod(input: {
   restaurantId: number;

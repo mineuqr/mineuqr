@@ -189,6 +189,8 @@ describe("BusinessMetricsService — Revenue Union published pipeline", () => {
     expect(summary.paidCheckCount).toBe(1);
     expect(cfAdapter.listCollectionFactsForRevenueUnion).toHaveBeenCalledWith({
       restaurantId: 1,
+      from: "2026-07-01 00:00:00",
+      to: "2026-07-31 23:59:59",
     });
   });
 

@@ -148,6 +148,27 @@ describe("REVENUE-UNION-PRODUCTION-COLLECTION-AUTHORITY-1", () => {
     expect(union.totals.collectionFactGross).toBe("80.00");
   });
 
+  it("complimentary Collection Fact is not Gross", () => {
+    const union = computeRevenueUnion({
+      legacy: [],
+      facts: [
+        production({
+          paymentIntentId: "int-comp",
+          amount: "0.00",
+          taxAmount: "0.00",
+          discountAmount: "25.00",
+          tenders: [{ paymentMethod: "other", amount: "0.00" }],
+        }),
+      ],
+      eligibility: "published",
+    });
+    expect(union.totals.grossRevenue).toBe("0.00");
+    expect(union.totals.collectionFactGross).toBe("0.00");
+    expect(union.totals.complimentaryCount).toBe(1);
+    expect(union.totals.complimentaryAmount).toBe("25.00");
+    expect(union.totals.taxCollected).toBe("0.00");
+  });
+
   it("CASE 5 13 overlap without checkId when order membership matches", () => {
     const union = computeRevenueUnion({
       legacy: [

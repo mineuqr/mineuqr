@@ -2,10 +2,12 @@
  * SETTLEMENT-RECORD-REPORTING-ADOPTION-1
  * REFUND-REPORTING-ADOPTION-1
  * REVENUE-UNION-PUBLISHED-ADOPTION-1
+ * CF-NATIVE-REPORTING-1
  *
  * Business KPIs — published Revenue resolves through Revenue Union.
- * Legacy authority remains Settlement Record gen=1 (or Check emergency source).
- * Collection Fact contribution is published-eligibility gated (production only).
+ * Current Cashier Gross: production Collection Fact.
+ * Historical Gross without CF: Settlement Record gen=1 (Check emergency rollback).
+ * Refunds remain compensating Settlement Records.
  * Never reads live Business Settings for tax/currency.
  */
 
@@ -230,7 +232,11 @@ async function loadPublishedUnionInputs(input: ReportingPeriodInput) {
   const [{ rows }, refundRows, facts] = await Promise.all([
     loadFinancialFacts(input),
     listRefundSettlementRecordsForReporting(input),
-    listCollectionFactsForRevenueUnion({ restaurantId: input.restaurantId }),
+    listCollectionFactsForRevenueUnion({
+      restaurantId: input.restaurantId,
+      from: input.from,
+      to: input.to,
+    }),
   ]);
   return { rows, refundRows, facts };
 }

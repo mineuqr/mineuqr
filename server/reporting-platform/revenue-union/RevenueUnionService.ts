@@ -127,7 +127,11 @@ export async function comparePublishedLegacyToShadowUnion(input: {
   const [srRows, refundRows, facts] = await Promise.all([
     listSettlementRecordsForReporting(input),
     listRefundSettlementRecordsForReporting(input),
-    listCollectionFactsForRevenueUnion({ restaurantId: input.restaurantId }),
+    listCollectionFactsForRevenueUnion({
+      restaurantId: input.restaurantId,
+      from: input.from,
+      to: input.to,
+    }),
   ]);
   const legacy = srRows.map((row) => toRevenueUnionLegacyFromSettlement(row));
   const refunds = refundRows.map((row) =>

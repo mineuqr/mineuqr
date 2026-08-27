@@ -74,12 +74,9 @@ function sameRestaurantOrderMention(
 }
 
 /**
- * Canonical economic overlap: the Settlement Record is exclusively the same
- * sale as the Collection Fact (restaurantId + singleton orderId).
- * orderingChannel is required when the legacy snapshot has one; it is not
- * inferred from checkId, amount, terminal, or business day.
- * Empty legacy orderIds cannot prove overlap.
- * Multi-order Checks cannot prove the Check Gross is that one sale.
+ * Canonical economic overlap: exclusive restaurantId + singleton orderId.
+ * orderingChannel is required when the legacy snapshot has one.
+ * Empty legacy orderIds cannot prove overlap. checkId is not economic identity.
  */
 export function provenEconomicSaleOverlap(
   legacy: Pick<
