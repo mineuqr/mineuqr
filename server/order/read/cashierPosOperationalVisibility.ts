@@ -1,10 +1,11 @@
 /**
  * CASHIER-ORDER-OPERATIONAL-ISOLATION-1 / CASHIER-DIRECT-ORDER-VISIBILITY-FIX-1
- * Dining operational membership and Cashier POS listActive exclude cashier_pos.
- * Kitchen still lists cashier_pos after a Paid/Complimentary Check or production
- * Collection Fact (fulfillment, not Incoming Queue).
+ * / ORDERS-CASHIER-POS-VISIBILITY-REGRESSION-FIX-1
+ * Dining Session membership and Cashier Incoming (POS listActive) exclude cashier_pos.
+ * Orders Workspace and Kitchen list cashier_pos after a Paid/Complimentary Check
+ * or production Collection Fact (fulfillment, not Incoming Queue).
  * Direct Cashier sales stay on the ticket / Confirm / receipt, not Incoming.
- * Not a second Order. Not a frontend hide.
+ * Not a second Order. Not a frontend hide. Not Dining Session membership.
  */
 
 import { and, eq, exists, inArray, isNull, ne, or, sql } from "drizzle-orm";

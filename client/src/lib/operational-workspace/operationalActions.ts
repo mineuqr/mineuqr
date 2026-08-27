@@ -133,8 +133,8 @@ function getCashierPosOrdersActions(
   _gate: OrdersSettlementGate
 ): OperationalAction[] {
   if (status === "cancelled" || status === "served") return [];
-  // listActive Dining operational membership excludes cashier_pos.
-  // Kitchen still returns cashier_pos after a Paid/Complimentary Check.
+  // Orders Workspace listActive uses paid-visible cashier_pos membership.
+  // Dining Session membership still excludes cashier_pos.
   // Cancel is invalid on that surface (settled Check cannot be voided).
   // Unpaid cashier_pos is not listed; void remains the existing money path.
   // Served is terminal — تم التقديم must not remain as a live action.

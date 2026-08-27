@@ -82,6 +82,23 @@ describe("CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 operational listing", () =
     expect(sql).not.toContain("`payment_collection_facts`");
   });
 
+  it("Orders/Kitchen paid-visible membership includes cashier_pos via Check or production CF", () => {
+    expect(
+      isCashierPosOperationallyListed({
+        orderingChannel: "cashier_pos",
+        paidCheck: true,
+      })
+    ).toBe(true);
+    const dining = compileListActiveSql(diningOperationalExcludeCashierPosSql());
+    const paidVisible = compileListActiveVisibilitySql();
+    expect(dining.sql).not.toContain("`payment_collection_facts`");
+    expect(paidVisible.sql).toContain("`payment_collection_facts`");
+    expect(paidVisible.sql).toContain("`check_order_membership`");
+    expect(paidVisible.sql).not.toContain("'preparing'");
+    expect(paidVisible.sql).not.toContain("'pending'");
+    expect(paidVisible.sql).not.toContain("'ready'");
+  });
+
   it("compiles membership and Check columns from Drizzle schema objects", () => {
     const { sql, params } = compileListActiveVisibilitySql();
 

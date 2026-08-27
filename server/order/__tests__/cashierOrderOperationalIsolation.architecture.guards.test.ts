@@ -33,7 +33,7 @@ describe("CASHIER-ORDER-OPERATIONAL-ISOLATION-1 architecture guards", () => {
     expect(finalize).not.toContain("getOrCreateSession");
   });
 
-  it("excludes cashier_pos from Dining listActive and session operational counts", () => {
+  it("excludes cashier_pos from Dining Session and Incoming; Orders Workspace stays paid-visible", () => {
     const diningStore = read(
       "server/order/read/infrastructure/DrizzleOrderOperationalReadStore.ts"
     );
@@ -46,13 +46,18 @@ describe("CASHIER-ORDER-OPERATIONAL-ISOLATION-1 architecture guards", () => {
 
     expect(workspace).toContain('cashierPosMembership: options?.cashierPosMembership ?? "exclude"');
     expect(diningStore).toContain("diningOperationalExcludeCashierPosSql()");
+    expect(diningStore).toContain("cashierPosPaidOperationalVisibilitySql()");
     expect(posRead).toContain('cashierPosMembership: "exclude"');
     expect(posRead).not.toContain('cashierPosMembership: "paid-visible"');
     expect(kitchen).toContain("cashierPosPaidOperationalVisibilitySql()");
     expect(board).toContain("ORDERING_CHANNEL_CASHIER_POS");
     expect(db).toContain("ORDERING_CHANNEL_CASHIER_POS");
-    expect(router).not.toContain("cashierPosMembership");
+    expect(router).toContain('cashierPosMembership: "paid-visible"');
+    expect(router).not.toContain("diningOperationalExcludeCashierPosSql");
     expect(existsSync(join(repoRoot, "drizzle/0101_cashier_order_operational_isolation.sql"))).toBe(
+      false
+    );
+    expect(existsSync(join(repoRoot, "drizzle/0102_orders_cashier_pos_visibility.sql"))).toBe(
       false
     );
   });

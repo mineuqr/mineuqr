@@ -51,6 +51,58 @@ describe("OrderReadWorkspaceService", () => {
     expect(result.projectionSchemaVersion).toBeDefined();
   });
 
+  it("forwards paid-visible cashier_pos membership when Orders Workspace requests it", async () => {
+    const store = {
+      listActiveOrders: vi.fn().mockResolvedValue([sampleOrder]),
+      getTimeline: vi.fn(),
+      getOrderDetail: vi.fn(),
+    };
+    const service = new OrderReadWorkspaceService(store as never);
+
+    await service.listActive(
+      { restaurantId: 10, status: "preparing", limit: 20 },
+      { cashierPosMembership: "paid-visible" }
+    );
+
+    expect(store.listActiveOrders).toHaveBeenCalledWith({
+      restaurantId: 10,
+      status: "preparing",
+      limit: 21,
+      cashierPosMembership: "paid-visible",
+    });
+  });
+
+  it("returns cashier_pos preparing rows from the store without a second membership filter", async () => {
+    const cashierOrder = {
+      ...sampleOrder,
+      orderingChannel: "cashier_pos",
+      status: "preparing",
+    };
+    const qrOrder = { ...sampleOrder, orderId: 2, orderingChannel: "qr" };
+    const store = {
+      listActiveOrders: vi.fn().mockResolvedValue([cashierOrder, qrOrder]),
+      getTimeline: vi.fn(),
+      getOrderDetail: vi.fn(),
+    };
+    const service = new OrderReadWorkspaceService(store as never);
+
+    const first = await service.listActive(
+      { restaurantId: 10, limit: 100 },
+      { cashierPosMembership: "paid-visible" }
+    );
+    const refresh = await service.listActive(
+      { restaurantId: 10, limit: 100 },
+      { cashierPosMembership: "paid-visible" }
+    );
+
+    expect(first.items.map((item) => item.orderId)).toEqual([1, 2]);
+    expect(refresh.items.map((item) => item.orderId)).toEqual([1, 2]);
+    expect(first.items[0]).toMatchObject({
+      orderingChannel: "cashier_pos",
+      status: "preparing",
+    });
+  });
+
   it("lists active orders with pagination metadata", async () => {
     const store = {
       listActiveOrders: vi.fn().mockResolvedValue([sampleOrder, { ...sampleOrder, orderId: 2 }]),
