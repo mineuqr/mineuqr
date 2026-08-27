@@ -19,7 +19,8 @@ import {
 } from "@shared/operational-session";
 import { computeChargeNetAmount, sumChargeNetAmounts } from "@shared/operational-session/check/charge";
 import { freezeBusinessDayFromTimestamp } from "@shared/operational-session/check/settlementRecord/settlementRecordSnapshot";
-import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
+import { isCashierFinalizableOrderingChannel } from "@shared/pos";
+import { COMPLIMENTARY_COLLECTION_TENDER } from "@shared/pos";
 import type { CashierPaidMoneyFreeze } from "./collection-fact/commitCashierProductionCollectionFact";
 import type { CashierPaidReceiptInvoiceLine } from "./cashierPaidReceiptProjection";
 
@@ -95,6 +96,7 @@ export async function freezeCashierPosPayableFromOrder(input: {
     "currencySnapshot" | "taxPolicySnapshot"
   >;
   settlements?: readonly StaffSettlementLineInput[];
+  complimentary?: boolean;
   client?: SessionDbClient;
 }): Promise<{
   freeze: CashierPaidMoneyFreeze;
@@ -103,9 +105,9 @@ export async function freezeCashierPosPayableFromOrder(input: {
   if (input.order.restaurantId !== input.restaurantId) {
     throw new DiningSessionValidationError("Order not found");
   }
-  if (input.order.orderingChannel !== ORDERING_CHANNEL_CASHIER_POS) {
+  if (!isCashierFinalizableOrderingChannel(input.order.orderingChannel)) {
     throw new DiningSessionValidationError(
-      "Direct financial commit is limited to cashier_pos"
+      "Financial commit is limited to Cashier-finalizable ordering channels"
     );
   }
   if (input.order.status === "cancelled") {
@@ -124,21 +126,33 @@ export async function freezeCashierPosPayableFromOrder(input: {
     }));
 
   const chargesSubtotal = sumChargeNetAmounts(compositionLines);
+  const billDiscountAmount = input.complimentary
+    ? chargesSubtotal
+    : input.billDiscountAmount;
   const money = computeCheckMoney({
     chargesSubtotal,
-    billDiscountAmount: input.billDiscountAmount,
+    billDiscountAmount,
     taxPolicySnapshot: input.snapshots.taxPolicySnapshot,
   });
 
   let tenders: CashierPaidMoneyFreeze["tenders"];
   try {
-    const lines = input.settlements?.length
-      ? resolveStaffSettlementLines(money.grandTotal, input.settlements)
-      : [defaultPaidSettlementLine(money.grandTotal)];
-    tenders = lines.map((line) => ({
-      paymentMethod: line.paymentMethod,
-      amount: line.amount,
-    })) as CashierPaidMoneyFreeze["tenders"];
+    if (input.complimentary) {
+      if (chargesSubtotal === "0.00") {
+        throw new DiningSessionValidationError(
+          "Complimentary requires a non-empty bill"
+        );
+      }
+      tenders = [COMPLIMENTARY_COLLECTION_TENDER];
+    } else {
+      const lines = input.settlements?.length
+        ? resolveStaffSettlementLines(money.grandTotal, input.settlements)
+        : [defaultPaidSettlementLine(money.grandTotal)];
+      tenders = lines.map((line) => ({
+        paymentMethod: line.paymentMethod,
+        amount: line.amount,
+      })) as CashierPaidMoneyFreeze["tenders"];
+    }
   } catch (err) {
     if (err instanceof SettlementValidationError) {
       throw new DiningSessionValidationError(err.message);
@@ -152,9 +166,9 @@ export async function freezeCashierPosPayableFromOrder(input: {
       restaurantId: input.restaurantId,
       checkId: null,
       orderId: input.order.id,
-      orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+      orderingChannel: input.order.orderingChannel,
       subtotal: money.subtotal,
-      discountAmount: input.billDiscountAmount,
+      discountAmount: billDiscountAmount,
       taxAmount: money.taxAmount,
       grandTotal: money.grandTotal,
       currencySnapshot: input.snapshots.currencySnapshot,

@@ -29,6 +29,8 @@ export type CashierPaymentReadinessInput = {
   cashTender: string;
   cardTender: string;
   paymentSubmitting: boolean;
+  /** Complimentary Confirm waives collection; does not use cash/card tenders. */
+  complimentary?: boolean;
 };
 
 export type CashierPaymentReadiness = {
@@ -58,18 +60,38 @@ export function resolveCashierPaymentReadiness(
   const plan = tenderDraft ? resolveCashierSettlementPlan(tenderDraft) : null;
   const settlementValid =
     tenderDraft != null && canConfirmCashierSettlement(tenderDraft);
-  const canConfirmPayment = input.saleReady && settlementValid;
+  const complimentaryReady =
+    input.complimentary === true &&
+    input.saleReady &&
+    amountDue != null &&
+    Number.parseFloat(amountDue) > 0;
+  const canConfirmPayment = complimentaryReady
+    ? true
+    : input.saleReady && settlementValid;
   return {
     canConfirmPayment,
     confirmDisabled: input.paymentSubmitting || !canConfirmPayment,
     amountDue,
-    remainingDisplay: plan ? displayCents(plan.remainingCents) : amountDue,
-    totalTenderedDisplay: plan
-      ? displayCents(plan.totalEnteredCents)
-      : amountDue != null
+    remainingDisplay: input.complimentary
+      ? amountDue != null
         ? displayCents(0)
-        : null,
+        : null
+      : plan
+        ? displayCents(plan.remainingCents)
+        : amountDue,
+    totalTenderedDisplay: input.complimentary
+      ? amountDue != null
+        ? displayCents(0)
+        : null
+      : plan
+        ? displayCents(plan.totalEnteredCents)
+        : amountDue != null
+          ? displayCents(0)
+          : null,
     showCardOverTender:
-      plan != null && plan.remainingCents === 0 && !settlementValid,
+      !input.complimentary &&
+      plan != null &&
+      plan.remainingCents === 0 &&
+      !settlementValid,
   };
 }

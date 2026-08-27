@@ -1,7 +1,7 @@
 /**
  * LIFECYCLE-SETTLEMENT-GUARDS-1 — I/O adapter over pure lifecycle settlement guards.
  *
- * Loads Check state and enforces financial completion before terminal ops transitions.
+ * Loads Collection Fact presence and enforces financial completion before terminal ops transitions.
  * All channels (Session close, Self Ordering / Counter Pickup complete) consume this.
  */
 
@@ -11,30 +11,43 @@ import {
   LifecycleSettlementGuardError,
   LIFECYCLE_SETTLEMENT_GUARDS_PROGRAM_ID,
 } from "@shared/operational-session";
-import { getActiveCheckForSession } from "./CheckService";
-import { findBlockingMembershipForOrder } from "./checkOrderMembershipRepository";
+import { getOrdersBySessionId } from "../../db";
+import { findProductionCollectionFactByOrderId } from "../payment/collection-fact/collectionFactRepository";
+import { isComplimentaryCollectionFact } from "@shared/pos";
 
 export { LIFECYCLE_SETTLEMENT_GUARDS_PROGRAM_ID, LifecycleSettlementGuardError };
 
 /**
- * Session close — active Check must exist and be paid or complimentary.
- * Does not void, settle, or mutate money.
+ * Session close — every non-cancelled Order on the session must have a
+ * production Collection Fact (Cashier PAID). Check outcome is not authority.
  */
 export async function assertSessionCloseable(input: {
   restaurantId: number;
   sessionId: number;
 }): Promise<{ checkId: number; outcome: string }> {
-  const check = await getActiveCheckForSession({
-    restaurantId: input.restaurantId,
-    sessionId: input.sessionId,
-  });
-  assertSessionCloseAllowed(check?.outcome ?? null);
-  return { checkId: check!.id, outcome: check!.outcome };
+  const linked = await getOrdersBySessionId(input.restaurantId, input.sessionId);
+  const payable = linked.filter((row) => row.status !== "cancelled");
+  let complimentaryOnly = payable.length > 0;
+  for (const row of payable) {
+    const fact = await findProductionCollectionFactByOrderId({
+      restaurantId: input.restaurantId,
+      orderId: row.id,
+    });
+    if (!fact) {
+      assertSessionCloseAllowed(null);
+    } else if (!isComplimentaryCollectionFact(fact)) {
+      complimentaryOnly = false;
+    }
+  }
+  return {
+    checkId: 0,
+    outcome: complimentaryOnly ? "complimentary" : "paid",
+  };
 }
 
 /**
  * Order → served / pickup complete.
- * Sessionless (Self Ordering / Counter Pickup): enrolled Check must be paid/complimentary.
+ * Sessionless (Self Ordering / Counter Pickup): production Collection Fact.
  * Sessioned (Waiter / Table QR): serve remains operational — no settlement gate.
  */
 export async function assertOrderCompletable(input: {
@@ -46,12 +59,12 @@ export async function assertOrderCompletable(input: {
   const requiresSettlement = input.sessionId == null;
   if (!requiresSettlement) return;
 
-  const blocking = await findBlockingMembershipForOrder(
-    input.restaurantId,
-    input.orderId
-  );
+  const fact = await findProductionCollectionFactByOrderId({
+    restaurantId: input.restaurantId,
+    orderId: input.orderId,
+  });
   assertOrderCompleteAllowed({
     requiresSettlement: true,
-    checkOutcome: blocking?.checkOutcome ?? null,
+    checkOutcome: fact ? "paid" : null,
   });
 }

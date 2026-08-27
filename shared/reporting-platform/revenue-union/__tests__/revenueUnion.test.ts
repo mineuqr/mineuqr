@@ -166,6 +166,37 @@ describe("REVENUE-UNION-ADOPTION-1", () => {
     expect(union.totals.voidedCount).toBe(1);
   });
 
+  it("counts complimentary Collection Fact waived value without Gross, and excludes overlapping complimentary Check", () => {
+    const union = computeRevenueUnion({
+      legacy: [
+        legacy({
+          checkId: 10,
+          outcome: "complimentary",
+          grandTotal: "90.00",
+          orderIds: [44],
+        }),
+      ],
+      facts: [
+        fact({
+          paymentIntentId: "int-comp",
+          amount: "0.00",
+          discountAmount: "90.00",
+          orderId: 44,
+          purpose: "production",
+        }),
+      ],
+      eligibility: "published",
+    });
+    expect(union.totals.grossRevenue).toBe("0.00");
+    expect(union.totals.collectionFactGross).toBe("0.00");
+    expect(union.totals.complimentaryCount).toBe(1);
+    expect(union.totals.complimentaryAmount).toBe("90.00");
+    expect(union.contributions).toHaveLength(1);
+    expect(union.contributions[0]?.authority).toBe("COLLECTION_FACT");
+    expect(union.contributions[0]?.outcome).toBe("complimentary");
+    expect(union.excludedLegacyIds).toContain("check:1:10");
+  });
+
   it("subtracts legacy refund publications from Net without changing Gross", () => {
     const union = computeRevenueUnion({
       legacy: [legacy({ checkId: 10, outcome: "paid", grandTotal: "100.00" })],

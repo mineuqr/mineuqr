@@ -62,7 +62,7 @@ describe("PRODUCTION-COLLECTION-FACT-COMMIT-CONTRACT-1 architecture", () => {
     expect(sale).not.toContain("commitCollectionFact");
     expect(router).not.toContain("commitCollectionFact");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
-    expect(confirm).toContain("await settleCheckPaidByIdDetailed({");
+    expect(confirm).not.toContain("await settleCheckPaidByIdDetailed({");
   });
 
   it("P Q V does not introduce a Payment aggregate, payments table, or second PAID entity", () => {

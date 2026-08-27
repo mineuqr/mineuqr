@@ -15,7 +15,7 @@ function read(rel: string): string {
 describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 architecture guards", () => {
   it("settle façade routes Confirm Payment through confirmPayment", () => {
     const svc = read("server/order/application/SettleOrderPaidService.ts");
-    expect(svc).toContain("confirmPayment");
+    expect(svc).toContain("FINANCIAL_REQUIRES_CASHIER");
     expect(svc).not.toContain("settleCheckPaidByIdDetailed");
     expect(svc).toContain("findBlockingMembershipForOrder");
     expect(svc).not.toContain("insertSettlementRecord");

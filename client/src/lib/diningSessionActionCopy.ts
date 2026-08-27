@@ -7,17 +7,18 @@ type Lang = "ar" | "en";
 
 export const sessionActionLabels = {
   markPaid: { ar: "تسجيل الدفع", en: "Register Payment" },
+  sendToCashier: { ar: "إرسال للكاشير", en: "Send to Cashier" },
   markComplimentary: { ar: "ضيافة", en: "Mark Complimentary" },
   closeSession: { ar: "إغلاق الجلسة", en: "Close Session" },
   closeConfirmTitle: { ar: "إغلاق الجلسة؟", en: "Close session?" },
   closeConfirmBody: {
-    ar: "سيؤدي إغلاق الجلسة إلى تحرير الطاولة، وسيحتاج العملاء إلى بدء جلسة جديدة للطلب مجدداً.",
-    en: "Closing the session will free the table and customers must start a new session to order again.",
+    ar: "لا يمكن إغلاق الجلسة قبل دفع الكاشير. بعد الدفع يمكن إغلاق الجلسة يدوياً لتحرير الطاولة.",
+    en: "The session can close only after Cashier payment. After payment, close the session manually to free the table.",
   },
   paidConfirmTitle: { ar: "تسجيل الدفع؟", en: "Register payment?" },
   paidConfirmBody: {
-    ar: "اختر طريقة الدفع. سيتم تسوية الجلسة وإغلاقها تلقائياً وتحرير الطاولة.",
-    en: "Select a payment method. The session will be settled and closed automatically, freeing the table.",
+    ar: "ادفع من الكاشير. الجلسة لا تُغلق تلقائياً بعد الدفع.",
+    en: "Pay at Cashier. The session does not close automatically after payment.",
   },
   selectPaymentMethod: {
     ar: "طرق الدفع",
@@ -25,8 +26,8 @@ export const sessionActionLabels = {
   },
   complimentaryConfirmTitle: { ar: "تسجيل ضيافة؟", en: "Mark complimentary?" },
   complimentaryConfirmBody: {
-    ar: "سيتم تسوية الجلسة كضيافة وإغلاقها تلقائياً.",
-    en: "The session will be settled as complimentary and closed automatically.",
+    ar: "الضيافة تُؤكَّد من الكاشير. لا تُغلق الجلسة تلقائياً.",
+    en: "Complimentary is confirmed at Cashier. The session does not close automatically.",
   },
   actionError: { ar: "تعذر تنفيذ الإجراء", en: "Could not complete action" },
 } as const;

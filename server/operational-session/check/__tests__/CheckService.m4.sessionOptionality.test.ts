@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   listActiveOrderIdsForCheck: vi.fn(),
   findBlockingMembershipForOrder: vi.fn(),
+  findProductionCollectionFactByOrderId: vi.fn(),
   enrollOrderInCheck: vi.fn(),
   syncSessionOrdersToCheck: vi.fn(),
   deactivateMembershipsOnCheckVoid: vi.fn(),
@@ -47,6 +48,11 @@ vi.mock("../../../db", () => ({
   getOrderById: (...a: unknown[]) => mocks.getOrderById(...a),
   getOrderItemsByOrderId: vi.fn(async () => []),
   getDb: (...a: unknown[]) => mocks.getDb(...a),
+}));
+
+vi.mock("../../payment/collection-fact/collectionFactRepository", () => ({
+  findProductionCollectionFactByOrderId: (...a: unknown[]) =>
+    mocks.findProductionCollectionFactByOrderId(...a),
 }));
 
 vi.mock("../checkOrderSettlementIntegration", () => ({
@@ -207,6 +213,13 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
     });
     mocks.ensureOpenCheckChargeComposition.mockResolvedValue(undefined);
     mocks.loadChargesSubtotal.mockResolvedValue("0.00");
+    mocks.getOrderById.mockResolvedValue({
+      id: 55,
+      restaurantId: 1,
+      orderingChannel: "marketplace",
+      status: "pending",
+    });
+    mocks.findProductionCollectionFactByOrderId.mockResolvedValue(null);
   });
 
   it("createOpenCheck creates a sessionless Check without Session lookup", async () => {
@@ -299,6 +312,34 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
       fakeTx
     );
     expect(result.outcome).toBe("paid");
+  });
+
+  it("does not let Check paid-finalize when a membership order cannot be loaded", async () => {
+    mocks.findCheckById.mockResolvedValue(sessionlessOpenCheck);
+    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
+    mocks.getOrderById.mockResolvedValue(null);
+
+    await expect(
+      settleCheckPaidById({ restaurantId: 1, checkId: 200 })
+    ).rejects.toThrow(/Financial settlement requires Cashier Confirm/);
+    expect(mocks.finalizeCheckOutcome).not.toHaveBeenCalled();
+  });
+
+  it("does not let Check paid-finalize a cashier-controlled sale without Collection Fact", async () => {
+    mocks.findCheckById.mockResolvedValue(sessionlessOpenCheck);
+    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
+    mocks.getOrderById.mockResolvedValue({
+      id: 55,
+      restaurantId: 1,
+      orderingChannel: "cashier_pos",
+      status: "preparing",
+    });
+    mocks.findProductionCollectionFactByOrderId.mockResolvedValue(null);
+
+    await expect(
+      settleCheckPaidById({ restaurantId: 1, checkId: 200 })
+    ).rejects.toThrow(/Financial settlement requires Cashier Confirm/);
+    expect(mocks.finalizeCheckOutcome).not.toHaveBeenCalled();
   });
 
   it("settleCheckComplimentaryById freezes without Session", async () => {
@@ -437,11 +478,11 @@ describe("ADR-ARCH-038 cashier_pos direct financial commit", () => {
     });
   });
 
-  it("rejects non-cashier_pos orders", async () => {
+  it("rejects orders that are not Cashier-finalizable", async () => {
     mocks.getOrderById.mockResolvedValue({
       id: 55,
       restaurantId: 1,
-      orderingChannel: "kiosk",
+      orderingChannel: "marketplace",
       status: "pending",
     });
     await expect(
@@ -450,7 +491,7 @@ describe("ADR-ARCH-038 cashier_pos direct financial commit", () => {
         orderId: 55,
         awaitAttribution: false,
       })
-    ).rejects.toThrow(/cashier_pos/);
+    ).rejects.toThrow(/Cashier-finalizable/);
     expect(mocks.insertOperationalCheck).not.toHaveBeenCalled();
   });
 

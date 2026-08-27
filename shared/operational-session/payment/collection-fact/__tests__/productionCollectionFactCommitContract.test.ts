@@ -146,6 +146,31 @@ describe("PRODUCTION-COLLECTION-FACT-COMMIT-CONTRACT-1", () => {
     );
   });
 
+  it("B accepts complimentary zero collection with waived discount", () => {
+    expect(() =>
+      assertProductionCollectionFactCommit({
+        context: CONTEXT,
+        command: command({
+          amount: "0.00",
+          discountAmount: "100.00",
+          taxAmount: "0.00",
+          subtotal: "0.00",
+          tenders: [{ paymentMethod: "other", amount: "0.00" }],
+          taxBreakdown: { lines: [], totalTaxAmount: "0.00" },
+          composition: [
+            {
+              sequence: 1,
+              description: "Kabsa",
+              netAmount: "100.00",
+              taxAmount: "0.00",
+              originOrderId: 1001,
+            },
+          ],
+        }),
+      })
+    ).not.toThrow();
+  });
+
   it("C rejects invalid currency", () => {
     expectValidation(() =>
       assertProductionCollectionFactCommit({

@@ -86,51 +86,35 @@ describe("confirmPayment", () => {
     mocks.settleCashierPosOrderPaidByIdDetailed.mockResolvedValue(FINANCIAL);
   });
 
-  it("forwards the confirm command to settleCheckPaidByIdDetailed and returns that result", async () => {
-    const settlements = [{ paymentMethod: "cash" as const, amount: "42.50" }];
-    const result = await confirmPayment({
-      restaurantId: 1,
-      checkId: 100,
-      settlements,
-      settlementContextHints: {
-        registerId: "reg_1",
-        operatorUserId: 7,
-      },
-      awaitAttribution: false,
-    });
-    expect(mocks.settleCheckPaidByIdDetailed).toHaveBeenCalledTimes(1);
-    expect(mocks.settleCheckPaidByIdDetailed).toHaveBeenCalledWith({
-      restaurantId: 1,
-      checkId: 100,
-      settlements,
-      settlementContext: undefined,
-      settlementContextHints: {
-        registerId: "reg_1",
-        operatorUserId: 7,
-      },
-      awaitAttribution: false,
-    });
-    expect(result).toBe(FINANCIAL);
-    expect(mocks.opsLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: OPS_EVENT.payment_confirm,
-        category: "PAYMENT",
-        action: "payment.confirm",
+  it("rejects Check-id Confirm; Cashier orderId is the only financial Confirm path", async () => {
+    await expect(
+      confirmPayment({
         restaurantId: 1,
-        metadata: expect.objectContaining({
-          checkId: 100,
-          outcome: "paid",
-          awaitAttribution: false,
-        }),
+        checkId: 100,
+        settlements: [{ paymentMethod: "cash", amount: "42.50" }],
       })
-    );
+    ).rejects.toMatchObject({
+      code: "VALIDATION",
+      message: "Financial settlement requires Cashier Confirm",
+    });
+    expect(mocks.settleCheckPaidByIdDetailed).not.toHaveBeenCalled();
+    expect(mocks.settleCashierPosOrderPaidByIdDetailed).not.toHaveBeenCalled();
+    expect(mocks.opsLog).not.toHaveBeenCalled();
   });
 
   it("propagates certified settle errors without wrapping them", async () => {
     const err = new Error("Cannot finalize check from outcome paid");
-    mocks.settleCheckPaidByIdDetailed.mockRejectedValue(err);
+    mocks.settleCashierPosOrderPaidByIdDetailed.mockRejectedValue(err);
     await expect(
-      confirmPayment({ restaurantId: 1, checkId: 100 })
+      confirmPayment({
+        restaurantId: 1,
+        orderId: 55,
+        paymentIntentId: "cpi_confirm-1",
+        idempotencyKey: "cashier-settle-aaaaaaa",
+        terminalId: "11111111-1111-4111-8111-111111111111",
+        actorType: "staff_user",
+        actorUserId: 7,
+      })
     ).rejects.toBe(err);
     expect(mocks.opsLog).not.toHaveBeenCalled();
   });
@@ -147,17 +131,18 @@ describe("confirmPayment", () => {
       actorType: "staff_user",
       actorUserId: 7,
     });
-    expect(mocks.settleCashierPosOrderPaidByIdDetailed).toHaveBeenCalledWith({
-      restaurantId: 1,
-      orderId: 55,
-      billDiscountAmount: "1.00",
-      settlements: undefined,
-      settlementContext: undefined,
-      settlementContextHints: undefined,
-      awaitAttribution: false,
-      deferOperationalSettlementAfterCollectionFact: true,
-      productionCollectionCommit: expect.any(Function),
-    });
+    expect(mocks.settleCashierPosOrderPaidByIdDetailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: 1,
+        orderId: 55,
+        billDiscountAmount: "1.00",
+        awaitAttribution: false,
+        deferOperationalSettlementAfterCollectionFact: true,
+        actorUserId: 7,
+        terminalId: "11111111-1111-4111-8111-111111111111",
+        productionCollectionCommit: expect.any(Function),
+      })
+    );
     expect(mocks.settleCheckPaidByIdDetailed).not.toHaveBeenCalled();
     expect(result).toBe(FINANCIAL);
   });

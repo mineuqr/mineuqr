@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   getOrdersByIds: vi.fn(),
   getDb: vi.fn(),
   listActiveOrderIdsForCheck: vi.fn(),
+  getOrderById: vi.fn(),
   applyFullSettlementToCheckOrders: vi.fn(),
   createSettlementRecordForCheckFinalize: vi.fn(),
   resolveSettlementContextForSettle: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock("../../../_core/opsLog", () => ({
 vi.mock("../../../db", () => ({
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: vi.fn(),
+  getOrderById: (...a: unknown[]) => mocks.getOrderById(...a),
   getDb: (...a: unknown[]) => mocks.getDb(...a),
 }));
 
@@ -176,6 +178,12 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1", () => {
     mocks.ensureOpenCheckChargeComposition.mockResolvedValue(undefined);
     mocks.loadChargesSubtotal.mockResolvedValue("20.00");
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
+    mocks.getOrderById.mockResolvedValue({
+      id: 55,
+      restaurantId: 1,
+      orderingChannel: "marketplace",
+      status: "served",
+    });
     mocks.getOrdersByIds.mockResolvedValue([
       { id: 55, status: "served", totalAmount: "20.00" },
     ]);

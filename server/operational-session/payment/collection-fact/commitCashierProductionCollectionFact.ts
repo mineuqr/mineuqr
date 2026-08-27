@@ -18,7 +18,7 @@ import type {
   TaxBreakdown,
   TaxPolicySnapshot,
 } from "@shared/operational-session";
-import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
+import { isCashierFinalizableOrderingChannel } from "@shared/pos";
 import { getDb } from "../../../db";
 import { DiningSessionUnavailableError } from "../../../diningSession/sessionTypes";
 import { commitCollectionFact } from "./CollectionFactService";
@@ -64,10 +64,10 @@ export async function commitCashierProductionCollectionFact(
     actorType: input.actorType,
     actorUserId: input.actorUserId,
   });
-  if (input.freeze.orderingChannel !== ORDERING_CHANNEL_CASHIER_POS) {
+  if (!isCashierFinalizableOrderingChannel(input.freeze.orderingChannel)) {
     throw new CollectionFactError(
       "VALIDATION",
-      "Cashier production Collection Fact is limited to cashier_pos"
+      "Production Collection Fact may be committed only through Cashier Confirm"
     );
   }
   const result = await commitCollectionFact(

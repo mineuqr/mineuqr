@@ -256,6 +256,56 @@ describe("commitCollectionFact", () => {
     expect(result.fact.currencyCode).toBe("SAR");
   });
 
+  it("accepts zero collected amount when complimentary discount is positive", async () => {
+    const store = new InMemoryCollectionFactStore();
+    const result = await commit(
+      store,
+      command({
+        paymentIntentId: "intent-comp-1",
+        idempotencyKey: "idem-comp-0001",
+        amount: "0.00",
+        discountAmount: "100.00",
+        taxAmount: "0.00",
+        subtotal: "0.00",
+        tenders: [{ paymentMethod: "other", amount: "0.00" }],
+        taxBreakdown: { lines: [], totalTaxAmount: "0.00" },
+        composition: [
+          {
+            sequence: 1,
+            description: "Kabsa",
+            netAmount: "100.00",
+            taxAmount: "0.00",
+            originOrderId: 1001,
+          },
+        ],
+      })
+    );
+    expect(result.outcome).toBe("created");
+    expect(result.fact.amount).toBe("0.00");
+    expect(result.fact.discountAmount).toBe("100.00");
+    expect(store.snapshot()).toHaveLength(1);
+  });
+
+  it("rejects zero collected amount without a waived discount", async () => {
+    const store = new InMemoryCollectionFactStore();
+    await expect(
+      commit(
+        store,
+        command({
+          paymentIntentId: "intent-zero-1",
+          idempotencyKey: "idem-zero-0001",
+          amount: "0.00",
+          discountAmount: "0.00",
+          taxAmount: "0.00",
+          subtotal: "0.00",
+          tenders: [{ paymentMethod: "other", amount: "0.00" }],
+          taxBreakdown: { lines: [], totalTaxAmount: "0.00" },
+        })
+      )
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    expect(store.snapshot()).toHaveLength(0);
+  });
+
   it("does not mutate Check, PAID, Revenue, or Settlement through the writer", async () => {
     const store = new InMemoryCollectionFactStore();
     await commit(store);

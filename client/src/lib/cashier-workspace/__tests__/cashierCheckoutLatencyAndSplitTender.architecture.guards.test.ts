@@ -42,7 +42,7 @@ describe("CASHIER-CHECKOUT-LATENCY-AND-SPLIT-TENDER-1 architecture guards", () =
     expect(settle).toContain("confirmPayment");
     expect(
       read("server/operational-session/payment/PaymentConfirmService.ts")
-    ).toContain("settleCheckPaidByIdDetailed");
+    ).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(router).toContain("settlements: input.settlements");
     expect(router).not.toContain("tender");
     expect(schema).not.toMatch(

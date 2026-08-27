@@ -20,7 +20,7 @@ import {
   getOrderById,
   getRestaurantById,
 } from "../../db";
-import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
+import { isCashierFinalizableOrderingChannel, isComplimentaryCollectionFact } from "@shared/pos";
 import {
   findSessionById,
   updateSessionActiveCheckId,
@@ -68,6 +68,7 @@ import {
 } from "./checkMembershipService";
 import {
   findBlockingMembershipForOrder,
+  listActiveOrderIdsForCheck,
 } from "./checkOrderMembershipRepository";
 import {
   ensureOpenCheckChargeComposition,
@@ -148,6 +149,7 @@ import {
   CASHIER_CONFIRM_UNASSIGNED_CHECK_ID,
   freezeCashierPosPayableFromOrder,
 } from "../payment/cashierPosOrderFreeze";
+import { findProductionCollectionFactByOrderId } from "../payment/collection-fact/collectionFactRepository";
 import {
   createEmptyChargeInsertTiming,
   createEmptyEnsureCheckForOrderStageMs,
@@ -771,6 +773,35 @@ async function finalizeOpenCheckById(
     throw new CheckTransitionError(
       `Cannot finalize check from outcome ${check.outcome}`
     );
+  }
+
+  if (input.outcome === "paid" || input.outcome === "complimentary") {
+    const orderIds =
+      (await listActiveOrderIdsForCheck(
+        input.restaurantId,
+        input.checkId,
+        client
+      )) ?? [];
+    for (const orderId of orderIds) {
+      const order = await getOrderById(orderId, client);
+      if (!order) {
+        throw new DiningSessionValidationError(
+          "Financial settlement requires Cashier Confirm"
+        );
+      }
+      if (!isCashierFinalizableOrderingChannel(order.orderingChannel)) {
+        continue;
+      }
+      const fact = await findProductionCollectionFactByOrderId({
+        restaurantId: input.restaurantId,
+        orderId,
+      });
+      if (!fact) {
+        throw new DiningSessionValidationError(
+          "Financial settlement requires Cashier Confirm"
+        );
+      }
+    }
   }
 
   const orderDiscoveryStartedAt = Date.now();
@@ -1775,12 +1806,17 @@ export async function deliverCashierPosOperationalSettlementAfterPaid(input: {
     checkId: check.id,
     stages,
   });
+  const fact = await findProductionCollectionFactByOrderId({
+    restaurantId: input.restaurantId,
+    orderId: input.orderId,
+  });
   await completeCashierOperationalSettlementAfterCollectionFact({
     restaurantId: input.restaurantId,
     checkId: check.id,
     settlements: input.settlements,
     settlementContext: input.settlementContext,
     settlementContextHints: input.settlementContextHints,
+    complimentary: fact != null && isComplimentaryCollectionFact(fact),
   });
 }
 
@@ -1790,6 +1826,7 @@ export async function completeCashierOperationalSettlementAfterCollectionFact(in
   settlements?: readonly StaffSettlementLineInput[];
   settlementContext?: SettlementContext;
   settlementContextHints?: SettlementContextHints;
+  complimentary?: boolean;
 }): Promise<void> {
   const row = await findCheckById(input.checkId);
   if (!row || row.restaurantId !== input.restaurantId) {
@@ -1802,8 +1839,8 @@ export async function completeCashierOperationalSettlementAfterCollectionFact(in
     await finalizeOpenCheckById({
       restaurantId: input.restaurantId,
       checkId: input.checkId,
-      outcome: "paid",
-      settlements: input.settlements,
+      outcome: input.complimentary ? "complimentary" : "paid",
+      settlements: input.complimentary ? undefined : input.settlements,
       settlementContext: input.settlementContext,
       settlementContextHints: input.settlementContextHints,
       awaitAttribution: false,
@@ -1838,14 +1875,15 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
   productionCollectionCommit?: (
     freeze: CashierAuthoritativePaidFreeze
   ) => Promise<void>;
+  complimentary?: boolean;
 }): Promise<CheckFinancialMutationResult> {
   const order = await getOrderById(input.orderId);
   if (!order || order.restaurantId !== input.restaurantId) {
     throw new DiningSessionUnavailableError("Order not found");
   }
-  if (order.orderingChannel !== ORDERING_CHANNEL_CASHIER_POS) {
+  if (!isCashierFinalizableOrderingChannel(order.orderingChannel)) {
     throw new DiningSessionValidationError(
-      "Direct financial commit is limited to cashier_pos"
+      "Financial commit is limited to Cashier-finalizable ordering channels"
     );
   }
   if (order.status === "cancelled") {
@@ -1868,6 +1906,7 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
     billDiscountAmount,
     snapshots,
     settlements: input.settlements,
+    complimentary: input.complimentary === true,
   });
   const freeze = payable.freeze;
   const validationMs = elapsedSinceMs(freezeStartedAt);

@@ -4,6 +4,11 @@
  * (cash | card). Network maps to canonical card. Mixed is cash + card.
  */
 
-export const CASHIER_TENDER_MODES = ["cash", "network", "mixed"] as const;
+export const CASHIER_TENDER_MODES = [
+  "cash",
+  "network",
+  "mixed",
+  "complimentary",
+] as const;
 
 export type CashierTenderMode = (typeof CASHIER_TENDER_MODES)[number];

@@ -209,8 +209,7 @@ export async function findProductionCollectionFactByOrderId(
       and(
         eq(paymentCollectionFacts.restaurantId, input.restaurantId),
         eq(paymentCollectionFacts.orderId, input.orderId),
-        eq(paymentCollectionFacts.purpose, COLLECTION_FACT_PRODUCTION_PURPOSE),
-        eq(paymentCollectionFacts.orderingChannel, ORDERING_CHANNEL_CASHIER_POS)
+        eq(paymentCollectionFacts.purpose, COLLECTION_FACT_PRODUCTION_PURPOSE)
       )
     )
     .orderBy(asc(paymentCollectionFacts.committedAt))

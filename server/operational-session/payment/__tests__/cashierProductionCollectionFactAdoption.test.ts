@@ -326,7 +326,7 @@ describe("commitCashierProductionCollectionFact", () => {
       commitCashierProductionCollectionFact(
         {
           ...COMMIT,
-          freeze: { ...FREEZE, orderingChannel: "kiosk" },
+          freeze: { ...FREEZE, orderingChannel: "marketplace" },
         },
         store
       )

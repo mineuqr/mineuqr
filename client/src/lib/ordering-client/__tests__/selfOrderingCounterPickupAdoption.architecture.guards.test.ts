@@ -18,7 +18,7 @@ describe("SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1 Phase 4 guards", () => {
       "server/order/application/StaffCounterPickupSettlementService.ts"
     );
     expect(svc).toContain("SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1");
-    expect(svc).toContain("confirmPayment");
+    expect(svc).toContain("FINANCIAL_REQUIRES_CASHIER");
     expect(svc).not.toContain("settleCheckPaidByIdDetailed");
     expect(svc).toContain("voidCheckByIdDetailed");
     expect(svc).toContain("SHIFT_REQUIRED");

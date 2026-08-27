@@ -56,7 +56,7 @@ describe("ADR-ARCH-038 cashier direct financial commit", () => {
     expect(settle).toContain("awaitAttribution: false");
     expect(settle).toContain("requireResolvedContextForSettlement");
     expect(payment).toContain("settleCashierPosOrderPaidByIdDetailed");
-    expect(payment).toContain("await settleCheckPaidByIdDetailed({");
+    expect(payment).not.toContain("await settleCheckPaidByIdDetailed({");
     expect(check).toContain("export async function settleCashierPosOrderPaidByIdDetailed");
     expect(check).toContain("freezeCashierPosPayableFromOrder");
     expect(check).toContain("materializeOrLoadCashierPosOpenCheck");

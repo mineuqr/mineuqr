@@ -139,25 +139,16 @@ describe("StaffCounterPickupSettlementService", () => {
   });
 
   it("settles via confirmPayment when Register + Shift resolved", async () => {
-    const result = await settleCounterPickupPaid({
-      restaurantId: 1,
-      orderId: 42,
-      operatorUserId: 9,
-      registerId: "reg_1",
-      settlements: [{ paymentMethod: "cash" }],
-    });
-    expect(mocks.confirmPayment).toHaveBeenCalledWith(
-      expect.objectContaining({
+    await expect(
+      settleCounterPickupPaid({
         restaurantId: 1,
-        checkId: 7,
-        settlementContextHints: expect.objectContaining({
-          registerId: "reg_1",
-          operatorUserId: 9,
-        }),
+        orderId: 42,
+        operatorUserId: 9,
+        registerId: "reg_1",
+        settlements: [{ paymentMethod: "cash" }],
       })
-    );
-    expect(result.settlementRecordId).toBe("sr_1");
-    expect(result.alreadySettled).toBe(false);
+    ).rejects.toMatchObject({ code: "FINANCIAL_REQUIRES_CASHIER" });
+    expect(mocks.confirmPayment).not.toHaveBeenCalled();
   });
 
   it("rejects settle without open Financial Shift (CSA-03)", async () => {
@@ -176,7 +167,7 @@ describe("StaffCounterPickupSettlementService", () => {
         operatorUserId: 9,
         registerId: "reg_1",
       })
-    ).rejects.toMatchObject({ code: "SHIFT_REQUIRED" });
+    ).rejects.toMatchObject({ code: "FINANCIAL_REQUIRES_CASHIER" });
     expect(mocks.confirmPayment).not.toHaveBeenCalled();
   });
 
@@ -188,7 +179,7 @@ describe("StaffCounterPickupSettlementService", () => {
         operatorUserId: 9,
         registerId: "  ",
       })
-    ).rejects.toBeInstanceOf(StaffCounterPickupError);
+    ).rejects.toMatchObject({ code: "FINANCIAL_REQUIRES_CASHIER" });
   });
 
   it("cancels by voiding unpaid Check then cancelling Order", async () => {

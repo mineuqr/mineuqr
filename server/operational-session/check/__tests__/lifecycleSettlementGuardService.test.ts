@@ -4,18 +4,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getActiveCheckForSession: vi.fn(),
-  findBlockingMembershipForOrder: vi.fn(),
+  getOrdersBySessionId: vi.fn(),
+  findProductionCollectionFactByOrderId: vi.fn(),
 }));
 
-vi.mock("../CheckService", () => ({
-  getActiveCheckForSession: (...a: unknown[]) =>
-    mocks.getActiveCheckForSession(...a),
+vi.mock("../../../db", () => ({
+  getOrdersBySessionId: (...a: unknown[]) => mocks.getOrdersBySessionId(...a),
 }));
 
-vi.mock("../checkOrderMembershipRepository", () => ({
-  findBlockingMembershipForOrder: (...a: unknown[]) =>
-    mocks.findBlockingMembershipForOrder(...a),
+vi.mock("../../payment/collection-fact/collectionFactRepository", () => ({
+  findProductionCollectionFactByOrderId: (...a: unknown[]) =>
+    mocks.findProductionCollectionFactByOrderId(...a),
 }));
 
 import {
@@ -29,24 +28,40 @@ describe("lifecycleSettlementGuardService", () => {
     vi.clearAllMocks();
   });
 
-  it("assertSessionCloseable rejects open Check", async () => {
-    mocks.getActiveCheckForSession.mockResolvedValue({
-      id: 1,
-      outcome: "open",
-    });
+  it("assertSessionCloseable rejects when a session Order has no Collection Fact", async () => {
+    mocks.getOrdersBySessionId.mockResolvedValue([
+      { id: 2, status: "preparing" },
+    ]);
+    mocks.findProductionCollectionFactByOrderId.mockResolvedValue(null);
     await expect(
       assertSessionCloseable({ restaurantId: 1, sessionId: 9 })
     ).rejects.toBeInstanceOf(LifecycleSettlementGuardError);
   });
 
-  it("assertSessionCloseable accepts paid Check", async () => {
-    mocks.getActiveCheckForSession.mockResolvedValue({
-      id: 1,
-      outcome: "paid",
+  it("assertSessionCloseable treats complimentary Collection Fact as closable, not auto-closed", async () => {
+    mocks.getOrdersBySessionId.mockResolvedValue([
+      { id: 2, status: "preparing" },
+    ]);
+    mocks.findProductionCollectionFactByOrderId.mockResolvedValue({
+      collectionFactId: "pcf_comp",
+      amount: "0.00",
+      discountAmount: "20.00",
     });
     await expect(
       assertSessionCloseable({ restaurantId: 1, sessionId: 9 })
-    ).resolves.toEqual({ checkId: 1, outcome: "paid" });
+    ).resolves.toEqual({ checkId: 0, outcome: "complimentary" });
+  });
+
+  it("assertSessionCloseable accepts when every Order has a production Collection Fact", async () => {
+    mocks.getOrdersBySessionId.mockResolvedValue([
+      { id: 2, status: "preparing" },
+    ]);
+    mocks.findProductionCollectionFactByOrderId.mockResolvedValue({
+      collectionFactId: "pcf_1",
+    });
+    await expect(
+      assertSessionCloseable({ restaurantId: 1, sessionId: 9 })
+    ).resolves.toEqual({ checkId: 0, outcome: "paid" });
   });
 
   it("assertOrderCompletable skips Waiter sessioned orders", async () => {
@@ -55,13 +70,11 @@ describe("lifecycleSettlementGuardService", () => {
       orderId: 2,
       sessionId: 44,
     });
-    expect(mocks.findBlockingMembershipForOrder).not.toHaveBeenCalled();
+    expect(mocks.findProductionCollectionFactByOrderId).not.toHaveBeenCalled();
   });
 
   it("assertOrderCompletable blocks unpaid sessionless", async () => {
-    mocks.findBlockingMembershipForOrder.mockResolvedValue({
-      checkOutcome: "open",
-    });
+    mocks.findProductionCollectionFactByOrderId.mockResolvedValue(null);
     await expect(
       assertOrderCompletable({
         restaurantId: 1,
@@ -72,8 +85,8 @@ describe("lifecycleSettlementGuardService", () => {
   });
 
   it("assertOrderCompletable allows paid sessionless", async () => {
-    mocks.findBlockingMembershipForOrder.mockResolvedValue({
-      checkOutcome: "paid",
+    mocks.findProductionCollectionFactByOrderId.mockResolvedValue({
+      collectionFactId: "pcf_1",
     });
     await expect(
       assertOrderCompletable({

@@ -10,6 +10,7 @@
 
 import type { CollectionFactPurpose } from "../../operational-session/payment/collection-fact/collectionFactContract";
 import { COLLECTION_FACT_ISOLATED_PURPOSES } from "../../operational-session/payment/collection-fact/collectionFactContract";
+import { isComplimentaryCollectionFact } from "../../pos/cashierFinancialFinalization";
 import { parseReportingAmount } from "../reportingMoney";
 import type {
   CollectionFactEligibility,
@@ -208,6 +209,10 @@ export function resolveRevenueUnionSets(input: {
       saleOverlapProven,
       productionPublishedEligible,
     });
+    if (saleOverlapProven && fact && factId && !paidLegacy(legacy)) {
+      excludedLegacyIds.add(legacyId);
+      continue;
+    }
     if (authority === "PRODUCTION_OVERLAP" && fact && factId) {
       if (!moneyCompatible(legacy, fact)) {
         conflicts.push({
@@ -266,11 +271,13 @@ export function resolveRevenueUnionSets(input: {
       contributionId: id,
       saleKey: collectionSaleKey(fact),
       restaurantId: fact.restaurantId,
-      amount: fact.amount,
-      taxAmount: fact.taxAmount,
+      amount: isComplimentaryCollectionFact(fact)
+        ? fact.discountAmount
+        : fact.amount,
+      taxAmount: isComplimentaryCollectionFact(fact) ? "0.00" : fact.taxAmount,
       currencyCode: fact.currencyCode,
       businessDay: fact.businessDay,
-      outcome: "paid",
+      outcome: isComplimentaryCollectionFact(fact) ? "complimentary" : "paid",
     });
   }
 

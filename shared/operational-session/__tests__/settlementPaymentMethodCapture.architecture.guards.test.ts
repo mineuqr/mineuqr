@@ -9,17 +9,14 @@ function read(rel: string): string {
 }
 
 describe("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 architecture guards", () => {
-  it("Mark Paid UI captures tenders via MarkPaidSettlementDialog", () => {
+  it("Session UI sends payment and complimentary to Cashier", () => {
     const bar = read("client/src/components/dashboard/DiningSessionActionBar.tsx");
     const row = read("client/src/components/dashboard/SessionRowQuickActions.tsx");
-    const dialog = read(
-      "client/src/components/dashboard/MarkPaidSettlementDialog.tsx"
-    );
-    expect(bar).toContain("MarkPaidSettlementDialog");
-    expect(bar).toContain("settlements");
-    expect(row).toContain("MarkPaidSettlementDialog");
-    expect(dialog).toContain("listMonetaryPaymentMethodOptions");
-    expect(dialog).toContain("singleTenderSettlements");
+    expect(bar).toContain("sendToCashier");
+    expect(bar).toContain('section: "cashier"');
+    expect(bar).not.toContain("MarkPaidSettlementDialog");
+    expect(row).toContain("sendToCashier");
+    expect(row).not.toContain("MarkPaidSettlementDialog");
   });
 
   it("presentation uses canonical catalog + Product Semantics labels", () => {
@@ -30,11 +27,11 @@ describe("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 architecture guards", () => {
     expect(pres).not.toContain("mada");
   });
 
-  it("session service passes settlements into confirmPayment", () => {
+  it("session service no longer settles money; tenders remain Cashier Confirm input", () => {
     const svc = read("server/diningSession/sessionService.ts");
     expect(svc).toContain("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1");
-    expect(svc).toContain("input.settlements");
-    expect(svc).toMatch(/confirmPayment\(\{[\s\S]*settlements/);
+    expect(svc).toContain("settlements?: readonly StaffSettlementLineInput[]");
+    expect(svc).not.toContain("confirmPayment");
   });
 
   it("domain resolves staff lines; legacy other fallback preserved", () => {

@@ -45,8 +45,8 @@ describe("LIFECYCLE-SETTLEMENT-GUARDS-1 architecture guards", () => {
     expect(advance).toContain("LIFECYCLE-SETTLEMENT-GUARDS-1");
     expect(advance).toContain("assertOrderCompletable");
     expect(advance).toContain('targetStatus === "served"');
-    expect(guardSvc).toContain("getActiveCheckForSession");
-    expect(guardSvc).toContain("findBlockingMembershipForOrder");
+    expect(guardSvc).toContain("findProductionCollectionFactByOrderId");
+    expect(guardSvc).not.toContain("findBlockingMembershipForOrder");
   });
 
   it("does not redesign Settlement / Reporting / Register / Shift", () => {

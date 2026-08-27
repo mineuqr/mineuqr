@@ -180,8 +180,15 @@ export function assertCommitCollectionFactCommand(
   assertCopiedMoneyField("discountAmount", command.discountAmount);
   assertCopiedMoneyField("taxAmount", command.taxAmount);
   assertCopiedMoneyField("amount", command.amount);
-  if (parseChargeMoney(command.amount) <= 0) {
-    throw new CollectionFactError("VALIDATION", "amount must be greater than 0");
+  const collected = parseChargeMoney(command.amount);
+  if (collected < 0) {
+    throw new CollectionFactError("VALIDATION", "amount must not be negative");
+  }
+  if (collected === 0 && parseChargeMoney(command.discountAmount) <= 0) {
+    throw new CollectionFactError(
+      "VALIDATION",
+      "zero collection requires a complimentary waived discount"
+    );
   }
   if (command.composition.length < 1) {
     throw new CollectionFactError("VALIDATION", "composition is required");

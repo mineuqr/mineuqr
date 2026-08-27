@@ -40,6 +40,7 @@ vi.mock("../../../_core/opsLog", () => ({
 vi.mock("../../../db", () => ({
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
+  getOrderById: vi.fn(async () => null),
   getDb: (...a: unknown[]) => mocks.getDb(...a),
 }));
 

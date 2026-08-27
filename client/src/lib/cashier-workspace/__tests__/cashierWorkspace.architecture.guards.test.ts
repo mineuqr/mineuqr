@@ -46,7 +46,7 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
   it("Cashier consumes POS read façade and existing POS commands only", () => {
     const panel = read(PANEL);
     expect(panel).toContain("trpc.pos.read.catalog.listItems");
-    expect(panel).toContain("trpc.pos.read.orders.listActive");
+    expect(panel).toContain("trpc.pos.read.orders.listInvoiceIntents");
     expect(panel).toContain("trpc.pos.read.orders.getDetail");
     expect(panel).toContain("trpc.pos.read.orders.getTimeline");
     expect(panel).toContain("trpc.pos.read.orderSettlement.listByOrder");

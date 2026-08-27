@@ -2,7 +2,7 @@
  * TABLE-MANAGEMENT-1 D2 — dining session service (no router / order integration).
  * SETTLEMENT-ARCHITECTURE-1A — settlement foundation (markPaid / markComplimentary).
  */
-import { getRestaurantById, getTableById } from "../db";
+import { getDb, getRestaurantById, getTableById } from "../db";
 import {
   findActiveSession,
   findSessionById,
@@ -11,15 +11,8 @@ import {
   insertSessionEvent,
   updateSessionStatus,
 } from "./sessionRepository";
-import {
-  createOpenCheckForSession,
-  ensureOpenCheckForSession,
-  settleCheckComplimentaryByIdDetailed,
-} from "../operational-session/check/CheckService";
-import { confirmPayment } from "../operational-session/payment/PaymentConfirmService";
+import { createOpenCheckForSession } from "../operational-session/check/CheckService";
 import { assertSessionCloseable } from "../operational-session/check/lifecycleSettlementGuardService";
-import { getOrderSettlementProjectionStore } from "../operational-session/check/api/orderSettlementReadComposition";
-import { tryMaterializeOrderSettlementProjections } from "../operational-session/check/read/orderSettlementProjectionMaterializer";
 import { generateDiningSessionToken } from "./sessionToken";
 import {
   DiningSessionConflictError,
@@ -44,9 +37,7 @@ import {
   isMysqlDuplicateKeyError,
 } from "./sessionTypes";
 import type { SelectDiningSession } from "../../drizzle/schema";
-import { getDb } from "../db";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
-import type { SettlementContextHints } from "@shared/crmp";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<DiningSessionStatus, DiningSessionStatus[]> = {
   open: ["paid", "complimentary", "closed"],
@@ -160,153 +151,6 @@ async function applySessionTransition(
         tx
       );
     }
-  });
-}
-
-/** SETTLEMENT-ARCHITECTURE-1A — settlement records outcome then auto-closes session. */
-async function settleAndCloseSession(
-  session: SelectDiningSession,
-  settlement: DiningSessionSettlementOutcome,
-  metadata: Record<string, unknown>,
-  settlements?: readonly StaffSettlementLineInput[],
-  contextHints?: SettlementContextHints
-): Promise<void> {
-  if (session.status !== "open") {
-    throw new DiningSessionTransitionError(
-      "Only open sessions can be settled"
-    );
-  }
-
-  const now = formatDiningSessionTimestamp();
-  const settlementEventType =
-    settlement === "paid"
-      ? TABLE_EVENT_TYPES.SESSION_PAID
-      : TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY;
-
-  const db = await getDb();
-  if (!db) {
-    throw new DiningSessionUnavailableError();
-  }
-
-  // CHECK-GENERALIZATION-M5 — settle by Check id (Membership money); Session is visit context only.
-  let checkId = session.activeCheckId;
-  if (checkId == null) {
-    const ensured = await ensureOpenCheckForSession({
-      restaurantId: session.restaurantId,
-      sessionId: session.id,
-    });
-    checkId = ensured.id;
-  }
-
-  // SETTLEMENT-CONTEXT-ADOPTION-1 — operator from staff action; optional register/device.
-  const settlementContextHints: SettlementContextHints = {
-    operatorUserId:
-      typeof metadata.actorUserId === "number" ? metadata.actorUserId : null,
-    registerId: contextHints?.registerId,
-    deviceId: contextHints?.deviceId,
-    operationalScreenId: contextHints?.operationalScreenId,
-  };
-
-  // CHECK-MANAGEMENT-ARCHITECTURE-1 — finalize Check before Session settle/close.
-  // SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — pass operator tenders when provided.
-  // PAYMENT-CONFIRM-REMAINING-CALLERS-1 — paid Confirm enters Payment process.
-  // Complimentary is not Confirm Payment; it remains on Check complimentary settle.
-  const financial =
-    settlement === "paid"
-      ? await confirmPayment({
-          restaurantId: session.restaurantId,
-          checkId,
-          settlements,
-          settlementContextHints,
-        })
-      : await settleCheckComplimentaryByIdDetailed({
-          restaurantId: session.restaurantId,
-          checkId,
-          settlementContextHints,
-        });
-  const check = financial.check;
-
-  // ORDER-SETTLEMENT-PRESENTATION-ADOPTION-1 — post-commit Projection sync (isolated).
-  await tryMaterializeOrderSettlementProjections(
-    getOrderSettlementProjectionStore(),
-    {
-      committedSettlements: financial.orderSettlement.settlements,
-      events: financial.orderSettlementEvents,
-    }
-  );
-
-  const checkMetadata = {
-    ...metadata,
-    settlement,
-    tableNumber: session.tableNumber,
-    orderCount: session.totalOrders ?? 0,
-    // Check grandTotal is financial SSOT (not Session order rediscovery).
-    ordersTotalAmount: check.grandTotal,
-    totalAmount: check.grandTotal,
-    checkId: check.id,
-    checkGrandTotal: check.grandTotal,
-    checkTaxAmount: check.taxAmount,
-    // Operational context (non-financial) — never blocks settle.
-    settlementContextStatus: financial.settlementContext.status,
-    settlementContextRegisterId: financial.settlementContext.registerId,
-    settlementContextFinancialShiftId:
-      financial.settlementContext.financialShiftId,
-    settlementContextGaps: financial.settlementContext.gaps,
-    // SETTLEMENT-ATTRIBUTION-ADOPTION-1 — fail-open status only.
-    settlementAttributionOutcome: financial.settlementAttribution.outcome,
-    settlementAttributionId: financial.settlementAttribution.attributionId,
-    settlementAttributionGaps: financial.settlementAttribution.gaps,
-  };
-
-  await db.transaction(async (tx) => {
-    await updateSessionStatus(
-      {
-        restaurantId: session.restaurantId,
-        sessionId: session.id,
-        status: settlement,
-        settledAt: now,
-        settlementOutcome: settlement,
-      },
-      tx
-    );
-
-    await insertSessionEvent(
-      {
-        restaurantId: session.restaurantId,
-        tableId: session.tableId,
-        sessionId: session.id,
-        eventType: settlementEventType,
-        metadata: checkMetadata,
-      },
-      tx
-    );
-
-    await updateSessionStatus(
-      {
-        restaurantId: session.restaurantId,
-        sessionId: session.id,
-        status: "closed",
-        settledAt: now,
-        settlementOutcome: settlement,
-        closedAt: now,
-        openGuard: null,
-      },
-      tx
-    );
-
-    await insertSessionEvent(
-      {
-        restaurantId: session.restaurantId,
-        tableId: session.tableId,
-        sessionId: session.id,
-        eventType: TABLE_EVENT_TYPES.SESSION_CLOSED,
-        metadata: {
-          ...checkMetadata,
-          source: "settlement",
-        },
-      },
-      tx
-    );
   });
 }
 
@@ -557,47 +401,23 @@ export async function recordSessionEvent(
   return { eventId };
 }
 
-/** SETTLEMENT-ARCHITECTURE-1A — staff marks session paid (open → paid → closed). */
+/** UNIFIED-POS-FINANCIAL-AUTHORITY-1 — money is Cashier Confirm only. */
 export async function markPaid(input: MarkPaidInput): Promise<void> {
   assertValidSessionActionInput(input);
-  const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
-
-  await settleAndCloseSession(
-    session,
-    "paid",
-    {
-      source: "staff",
-      actorUserId: input.actorUserId,
-    },
-    input.settlements,
-    {
-      registerId: input.registerId,
-      deviceId: input.deviceId,
-      operationalScreenId: input.operationalScreenId,
-    }
+  await loadSessionForStaffAction(input.restaurantId, input.sessionId);
+  throw new DiningSessionValidationError(
+    "Financial settlement requires Cashier Confirm"
   );
 }
 
-/** SETTLEMENT-ARCHITECTURE-1A — staff marks session complimentary (open → complimentary → closed). */
+/** UNIFIED-POS-FINANCIAL-AUTHORITY-1 — complimentary money is Cashier Confirm only. */
 export async function markComplimentary(
   input: StaffSessionActionWithContextInput
 ): Promise<void> {
   assertValidSessionActionInput(input);
-  const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
-
-  await settleAndCloseSession(
-    session,
-    "complimentary",
-    {
-      source: "staff",
-      actorUserId: input.actorUserId,
-    },
-    undefined,
-    {
-      registerId: input.registerId,
-      deviceId: input.deviceId,
-      operationalScreenId: input.operationalScreenId,
-    }
+  await loadSessionForStaffAction(input.restaurantId, input.sessionId);
+  throw new DiningSessionValidationError(
+    "Financial settlement requires Cashier Confirm"
   );
 }
 

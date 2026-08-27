@@ -101,7 +101,7 @@ describe("CASHIER-PAYMENT-FLOW-IMPLEMENTATION-1 architecture", () => {
     expect(settle).toContain("confirmPayment");
     expect(
       read("server/operational-session/payment/PaymentConfirmService.ts")
-    ).toContain("settleCheckPaidByIdDetailed");
+    ).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(visibility).toContain("cashierPosPaidOperationalVisibilitySql");
     expect(visibility).toContain('"paid"');
     expect(visibility).toContain('"complimentary"');

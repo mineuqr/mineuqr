@@ -68,6 +68,44 @@ export class PosOrderReadService {
     return detail;
   }
 
+  async getInvoiceIntent(input: {
+    user: SelectUser;
+    command: PosOrderReadCommand & { orderId: number };
+  }) {
+    const context = await requirePosReadContext(this.access, this.grants, {
+      user: input.user,
+      restaurantId: input.command.restaurantId,
+      terminalId: input.command.terminalId,
+      procedure: "pos.read.orders.getInvoiceIntent",
+    });
+    const { buildInvoiceIntentForOrder } = await import("./InvoiceIntentService");
+    const intent = await buildInvoiceIntentForOrder({
+      restaurantId: context.restaurantId,
+      orderId: input.command.orderId,
+    });
+    if (!intent) {
+      throw new PosReadError("not_found", "Invoice Intent not found");
+    }
+    return intent;
+  }
+
+  async listInvoiceIntents(input: {
+    user: SelectUser;
+    command: PosOrderReadCommand & { limit?: number };
+  }) {
+    const context = await requirePosReadContext(this.access, this.grants, {
+      user: input.user,
+      restaurantId: input.command.restaurantId,
+      terminalId: input.command.terminalId,
+      procedure: "pos.read.orders.listInvoiceIntents",
+    });
+    const { listAwaitingInvoiceIntents } = await import("./InvoiceIntentService");
+    return listAwaitingInvoiceIntents({
+      restaurantId: context.restaurantId,
+      limit: input.command.limit,
+    });
+  }
+
   async getTimeline(input: {
     user: SelectUser;
     command: PosOrderReadCommand & { orderId: number };

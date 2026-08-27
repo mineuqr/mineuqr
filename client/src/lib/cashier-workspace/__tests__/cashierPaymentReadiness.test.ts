@@ -206,4 +206,28 @@ describe("ADR-ARCH-038 cashier payment readiness", () => {
     expect(view.confirmDisabled).toBe(false);
     expect(view).not.toHaveProperty("checkAvailable");
   });
+
+  it("enables complimentary Confirm without cash or card tender", () => {
+    const view = resolveCashierPaymentReadiness({
+      ...ready,
+      previewGrandTotal: "10.00",
+      cashTender: "",
+      cardTender: "",
+      complimentary: true,
+    });
+    expect(view.canConfirmPayment).toBe(true);
+    expect(view.confirmDisabled).toBe(false);
+    expect(view.remainingDisplay).toBe("0.00");
+  });
+
+  it("does not treat complimentary authorization as Confirm when the bill is empty", () => {
+    const view = resolveCashierPaymentReadiness({
+      ...ready,
+      previewGrandTotal: "0.00",
+      cashTender: "",
+      cardTender: "",
+      complimentary: true,
+    });
+    expect(view.canConfirmPayment).toBe(false);
+  });
 });

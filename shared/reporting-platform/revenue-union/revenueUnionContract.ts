@@ -35,9 +35,9 @@ export type RevenueAuthorityClass = (typeof REVENUE_AUTHORITY_CLASSES)[number];
 /**
  * Persistable Collection Fact purposes that may enter Published Revenue.
  * Production only. Isolated purposes must never be added here.
- * Compensating refund/void/complimentary Collection Fact kinds do not exist;
- * a production fact is a paid collection. Cashier must not write these facts
- * until a separate compensating-event program is certified.
+ * Compensating refund/void Collection Fact kinds do not exist.
+ * Complimentary is a production Collection Fact with collected amount 0
+ * (waived discount). Not a second fact kind.
  */
 export const PUBLISHED_COLLECTION_FACT_PURPOSES: readonly CollectionFactPurpose[] =
   [COLLECTION_FACT_PRODUCTION_PURPOSE];

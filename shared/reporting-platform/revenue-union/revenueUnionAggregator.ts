@@ -70,9 +70,14 @@ export function computeRevenueUnion(input: {
         voidedCount += 1;
       }
     } else {
-      collectionFactCount += 1;
-      collectionFactGross += parseReportingAmount(row.amount);
-      taxCollected += parseReportingAmount(row.taxAmount);
+      if (row.outcome === "complimentary") {
+        complimentaryCount += 1;
+        complimentaryAmount += parseReportingAmount(row.amount);
+      } else {
+        collectionFactCount += 1;
+        collectionFactGross += parseReportingAmount(row.amount);
+        taxCollected += parseReportingAmount(row.taxAmount);
+      }
     }
   }
 

@@ -70,6 +70,34 @@ export const posReadRouter = router({
           mapPosReadError(err);
         }
       }),
+    getInvoiceIntent: verifiedProcedure
+      .input(orderDetailInput)
+      .query(async ({ input, ctx }) => {
+        try {
+          return await getPosOrderReadService().getInvoiceIntent({
+            user: ctx.user,
+            command: input,
+          });
+        } catch (err) {
+          mapPosReadError(err);
+        }
+      }),
+    listInvoiceIntents: verifiedProcedure
+      .input(
+        terminalScopeInput.extend({
+          limit: z.number().int().positive().max(100).optional(),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        try {
+          return await getPosOrderReadService().listInvoiceIntents({
+            user: ctx.user,
+            command: input,
+          });
+        } catch (err) {
+          mapPosReadError(err);
+        }
+      }),
   }),
   check: router({
     getByOrder: verifiedProcedure

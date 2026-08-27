@@ -40,6 +40,7 @@ export type FinalizeCashierPreparedInvoiceInput = {
   items: readonly CashierPreparedInvoiceLineInput[];
   billDiscountAmount?: string;
   settlements?: readonly StaffSettlementLineInput[];
+  complimentary?: boolean;
   paymentIntentId: string;
   idempotencyKey: string;
   actorUserId: number;
@@ -116,6 +117,7 @@ export async function finalizeCashierPreparedInvoice(
               billDiscountAmount: input.billDiscountAmount ?? "0.00",
               snapshots,
               settlements: input.settlements,
+              complimentary: input.complimentary === true,
               client: tx as SessionDbClient,
             });
             freeze = payable.freeze;

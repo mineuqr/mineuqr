@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   insertSettlementTransactions: vi.fn(),
   getOrdersByIds: vi.fn(),
   getRestaurantById: vi.fn(),
+  getOrderById: vi.fn(),
   getDb: vi.fn(),
   listActiveOrderIdsForCheck: vi.fn(),
   findBlockingMembershipForOrder: vi.fn(),
@@ -42,6 +43,7 @@ vi.mock("../../../_core/opsLog", () => ({
 vi.mock("../../../db", () => ({
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
+  getOrderById: (...a: unknown[]) => mocks.getOrderById(...a),
   getDb: (...a: unknown[]) => mocks.getDb(...a),
 }));
 
@@ -168,6 +170,12 @@ describe("ORDER-SETTLEMENT-INTEGRATION-1 Check Aggregate", () => {
     mocks.ensureOpenCheckChargeComposition.mockResolvedValue(undefined);
     mocks.loadChargesSubtotal.mockResolvedValue("20.00");
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
+    mocks.getOrderById.mockResolvedValue({
+      id: 55,
+      restaurantId: 1,
+      orderingChannel: "marketplace",
+      status: "served",
+    });
     mocks.getOrdersByIds.mockResolvedValue([
       { id: 55, status: "served", totalAmount: "20.00" },
     ]);

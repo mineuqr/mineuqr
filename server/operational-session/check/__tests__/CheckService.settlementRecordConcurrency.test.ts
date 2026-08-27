@@ -272,6 +272,12 @@ vi.mock("../../../db", () => ({
     currencyCode: "SAR",
     currencySymbol: "ر.س",
   })),
+  getOrderById: vi.fn(async () => ({
+    id: 55,
+    restaurantId: 1,
+    orderingChannel: "marketplace",
+    status: "served",
+  })),
   getDb: vi.fn(async () => ({
     transaction: async (fn: (tx: { __tx: string }) => Promise<unknown>) => {
       const actor = harness.nextTxActor();

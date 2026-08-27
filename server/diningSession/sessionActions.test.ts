@@ -85,7 +85,7 @@ import {
   markComplimentary,
   markPaid,
 } from "./sessionService";
-import { DiningSessionTransitionError, TABLE_EVENT_TYPES } from "./sessionTypes";
+import { DiningSessionTransitionError, DiningSessionValidationError, TABLE_EVENT_TYPES } from "./sessionTypes";
 
 const baseSession: SelectDiningSession = {
   id: 10,
@@ -125,68 +125,23 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A / LIFECYCLE-SETTLEMENT-GU
     });
   });
 
-  it("markPaid confirms Payment then closes session", async () => {
-    await markPaid(actionInput);
-    expect(financialMocks.confirmPayment).toHaveBeenCalledWith({
-      restaurantId: 1,
-      checkId: 900,
-      settlements: undefined,
-      settlementContextHints: {
-        operatorUserId: 42,
-        registerId: undefined,
-        deviceId: undefined,
-        operationalScreenId: undefined,
-      },
-    });
-    expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "closed",
-        settlementOutcome: "paid",
-      }),
-      expect.anything()
+  it("markPaid does not create financial truth or close the session", async () => {
+    await expect(markPaid(actionInput)).rejects.toBeInstanceOf(
+      DiningSessionValidationError
     );
-    expect(repoMocks.insertSessionEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: TABLE_EVENT_TYPES.SESSION_PAID }),
-      expect.anything()
-    );
+    expect(financialMocks.confirmPayment).not.toHaveBeenCalled();
+    expect(repoMocks.updateSessionStatus).not.toHaveBeenCalled();
   });
 
-  it("markPaid forwards operator tenders into confirmPayment", async () => {
-    await markPaid({
-      ...actionInput,
-      settlements: [{ paymentMethod: "cash" }],
-      registerId: "reg_1",
-    });
-    expect(financialMocks.confirmPayment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        restaurantId: 1,
-        checkId: 900,
-        settlements: [{ paymentMethod: "cash" }],
-        settlementContextHints: expect.objectContaining({
-          operatorUserId: 42,
-          registerId: "reg_1",
-        }),
-      })
+  it("markComplimentary does not create financial truth or close the session", async () => {
+    await expect(markComplimentary(actionInput)).rejects.toBeInstanceOf(
+      DiningSessionValidationError
     );
-  });
-
-  it("markComplimentary settles Check then closes session", async () => {
-    await markComplimentary(actionInput);
     expect(
       financialMocks.settleCheckComplimentaryByIdDetailed
-    ).toHaveBeenCalled();
+    ).not.toHaveBeenCalled();
     expect(financialMocks.confirmPayment).not.toHaveBeenCalled();
-    expect(repoMocks.insertSessionEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY }),
-      expect.anything()
-    );
-    expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "closed",
-        settlementOutcome: "complimentary",
-      }),
-      expect.anything()
-    );
+    expect(repoMocks.updateSessionStatus).not.toHaveBeenCalled();
   });
 
   it("closeSession rejects unpaid session (SESSION_REQUIRES_SETTLEMENT)", async () => {

@@ -61,7 +61,7 @@ describe("CASHIER-POS-CHECK-READ-CONTRACT-1 architecture", () => {
     expect(settle).toContain("confirmPayment");
     expect(
       read("server/operational-session/payment/PaymentConfirmService.ts")
-    ).toContain("settleCheckPaidByIdDetailed");
+    ).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(settle).toContain("getCheckById");
     expect(panel).not.toContain("mada");
     expect(panel).not.toContain("apple_pay");

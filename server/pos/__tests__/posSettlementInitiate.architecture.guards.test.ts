@@ -30,7 +30,7 @@ describe("POS Settlement Initiation architecture guards", () => {
     expect(POS_PERMISSIONS).toContain("POS_ACCESS");
     expect(service).toContain("confirmPayment");
     expect(service).not.toContain("settleCheckPaidByIdDetailed");
-    expect(payment).toContain("settleCheckPaidByIdDetailed");
+    expect(payment).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(service).toContain('requiredPermission: "SETTLEMENT_INITIATE"');
     expect(service).toContain("resolvePosTerminalAccess");
     expect(service).toContain("ORDERING_CHANNEL_CASHIER_POS");

@@ -116,46 +116,28 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
   });
 
   it("confirms Payment and returns settlementRecordId", async () => {
-    const result = await settleOrderPaid({
-      restaurantId: 1,
-      orderId: 55,
-      trackingToken: "tok-abc",
-      settlements: [{ paymentMethod: "cash" }],
-    });
-
-    expect(mocks.confirmPayment).toHaveBeenCalledWith({
-      restaurantId: 1,
-      checkId: 100,
-      settlements: [{ paymentMethod: "cash" }],
-      settlementContextHints: {
-        registerId: undefined,
-        deviceId: undefined,
-        operatorUserId: undefined,
-        operationalScreenId: undefined,
-      },
-    });
-    expect(result.settlementRecordId).toBe("sr:1:100:settlement:1");
-    expect(result.alreadySettled).toBe(false);
-    expect(result.settlementContext.status).toBe("unavailable");
-    expect(mocks.tryMaterializeOrderSettlementProjections).toHaveBeenCalled();
+    await expect(
+      settleOrderPaid({
+        restaurantId: 1,
+        orderId: 55,
+        trackingToken: "tok-abc",
+        settlements: [{ paymentMethod: "cash" }],
+      })
+    ).rejects.toMatchObject({ code: "FINANCIAL_REQUIRES_CASHIER" });
+    expect(mocks.confirmPayment).not.toHaveBeenCalled();
   });
 
   it("passes station hints into settle without fabricating", async () => {
-    await settleOrderPaid({
-      restaurantId: 1,
-      orderId: 55,
-      trackingToken: "tok-abc",
-      registerId: "reg_1",
-      deviceId: "dev_1",
-    });
-    expect(mocks.confirmPayment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        settlementContextHints: expect.objectContaining({
-          registerId: "reg_1",
-          deviceId: "dev_1",
-        }),
+    await expect(
+      settleOrderPaid({
+        restaurantId: 1,
+        orderId: 55,
+        trackingToken: "tok-abc",
+        registerId: "reg_1",
+        deviceId: "dev_1",
       })
-    );
+    ).rejects.toMatchObject({ code: "FINANCIAL_REQUIRES_CASHIER" });
+    expect(mocks.confirmPayment).not.toHaveBeenCalled();
   });
 
   it("is idempotent when Check already paid", async () => {
@@ -163,26 +145,14 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
       membership: { checkId: 100, orderId: 55, active: 1 },
       checkOutcome: "paid",
     });
-    mocks.listSettlementRecordsForCheck.mockResolvedValue([
-      {
-        settlementRecordId: "sr:1:100:settlement:1",
-        grandTotal: "42.00",
-        settledAt: "2026-07-24T12:00:00.000Z",
-        createdAt: "2026-07-24T12:00:00.000Z",
-        currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
-        paymentSnapshot: [{ paymentMethod: "mada" }],
-      },
-    ]);
-
-    const result = await settleOrderPaid({
-      restaurantId: 1,
-      orderId: 55,
-      trackingToken: "tok-abc",
-    });
-
+    await expect(
+      settleOrderPaid({
+        restaurantId: 1,
+        orderId: 55,
+        trackingToken: "tok-abc",
+      })
+    ).rejects.toMatchObject({ code: "FINANCIAL_REQUIRES_CASHIER" });
     expect(mocks.confirmPayment).not.toHaveBeenCalled();
-    expect(result.alreadySettled).toBe(true);
-    expect(result.settlementRecordId).toBe("sr:1:100:settlement:1");
   });
 
   it("rejects tracking token mismatch", async () => {
@@ -197,24 +167,14 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
   });
 
   it("ensures Check when membership missing then settles", async () => {
-    mocks.findBlockingMembershipForOrder
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        membership: { checkId: 100, orderId: 55, active: 1 },
-        checkOutcome: "open",
-      });
-    mocks.ensureCheckForOrder.mockResolvedValue({ id: 100 });
-
-    await settleOrderPaid({
-      restaurantId: 1,
-      orderId: 55,
-      trackingToken: "tok-abc",
-    });
-
-    expect(mocks.ensureCheckForOrder).toHaveBeenCalledWith({
-      restaurantId: 1,
-      orderId: 55,
-    });
-    expect(mocks.confirmPayment).toHaveBeenCalled();
+    await expect(
+      settleOrderPaid({
+        restaurantId: 1,
+        orderId: 55,
+        trackingToken: "tok-abc",
+      })
+    ).rejects.toMatchObject({ code: "FINANCIAL_REQUIRES_CASHIER" });
+    expect(mocks.ensureCheckForOrder).not.toHaveBeenCalled();
+    expect(mocks.confirmPayment).not.toHaveBeenCalled();
   });
 });

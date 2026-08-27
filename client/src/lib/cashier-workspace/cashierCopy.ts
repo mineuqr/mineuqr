@@ -143,6 +143,11 @@ const COPY: Record<string, { ar: string; en: string }> = {
   tenderCash: { ar: "نقدًا", en: "Cash" },
   tenderNetwork: { ar: "شبكة", en: "Network" },
   tenderMixed: { ar: "تسوية", en: "Mixed" },
+  tenderComplimentary: { ar: "ضيافة", en: "Complimentary" },
+  complimentaryConfirmHint: {
+    ar: "تأكيد الضيافة من الكاشير يسجّل التحصيل صفراً. الجلسة لا تُغلق تلقائياً.",
+    en: "Cashier complimentary Confirm records zero collection. The session does not close automatically.",
+  },
   verifyingAmount: {
     ar: "جاري التحقق من المبلغ المستحق…",
     en: "Verifying amount due…",
@@ -211,6 +216,7 @@ const COPY: Record<string, { ar: string; en: string }> = {
   },
   showActiveOrders: { ar: "الطلبات النشطة", en: "Active orders" },
   hideActiveOrders: { ar: "إخفاء الطلبات النشطة", en: "Hide active orders" },
+  awaitingCashier: { ar: "بانتظار الكاشير", en: "Awaiting cashier" },
   cancelPayment: { ar: "إلغاء", en: "Cancel" },
   totalTendered: { ar: "إجمالي المدفوع", en: "Total tendered" },
   remainingAmount: { ar: "الباقي", en: "Remaining" },

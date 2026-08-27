@@ -43,14 +43,6 @@ const REFUND = "shared/operational-session/check/refund/refundBudget.ts";
 const SCHEMA = "drizzle/schema.ts";
 const JOURNAL = "drizzle/meta/_journal.json";
 
-function sliceSettleAndCloseSession(session: string): string {
-  const start = session.indexOf("async function settleAndCloseSession");
-  const end = session.indexOf("async function validateTableContext");
-  expect(start).toBeGreaterThan(-1);
-  expect(end).toBeGreaterThan(start);
-  return session.slice(start, end);
-}
-
 function sliceDefaultSettlePaid(pos: string): string {
   const start = pos.indexOf("async function defaultSettlePaid");
   const end = pos.indexOf("function unexplainedFinancialTxnGapMs");
@@ -60,22 +52,19 @@ function sliceDefaultSettlePaid(pos: string): string {
 }
 
 describe("PAYMENT-CONFIRM-REMAINING-CALLERS-1 architecture", () => {
-  it("routes Session markPaid, SettleOrderPaid, Counter Pickup, and Cashier through confirmPayment", () => {
+  it("does not let Session markPaid, QR settlePaid, or Counter Pickup create financial truth", () => {
     const session = read(SESSION);
     const settleOrder = read(SETTLE_ORDER);
     const counter = read(COUNTER);
     const pos = read(POS);
-    const paidSlice = sliceSettleAndCloseSession(session);
     expect(session).toContain("export async function markPaid");
-    expect(session).toContain("confirmPayment");
-    expect(paidSlice).toContain("settlement === \"paid\"");
-    expect(paidSlice).toContain("await confirmPayment({");
-    expect(session).not.toContain("await settleCheckPaidByIdDetailed");
-    expect(settleOrder).toContain("await confirmPayment({");
-    expect(settleOrder).not.toContain("await settleCheckPaidByIdDetailed");
-    expect(counter).toContain("export async function settleCounterPickupPaid");
-    expect(counter).toContain("await confirmPayment({");
-    expect(counter).not.toContain("await settleCheckPaidByIdDetailed");
+    expect(session).toContain("Financial settlement requires Cashier Confirm");
+    const paidFnStart = session.indexOf("export async function markPaid");
+    const paidFn = session.slice(paidFnStart, paidFnStart + 500);
+    expect(paidFn).not.toContain("await confirmPayment");
+    expect(settleOrder).toContain("FINANCIAL_REQUIRES_CASHIER");
+    expect(settleOrder).toContain("Financial settlement requires Cashier Confirm");
+    expect(counter).toContain("FINANCIAL_REQUIRES_CASHIER");
     expect(sliceDefaultSettlePaid(pos)).toContain("await confirmPayment({");
     expect(pos).not.toContain("await settleCheckPaidByIdDetailed");
   });
@@ -83,7 +72,8 @@ describe("PAYMENT-CONFIRM-REMAINING-CALLERS-1 architecture", () => {
   it("keeps confirmPayment as the single Payment process that delegates to certified settle", () => {
     const payment = read(PAYMENT);
     expect(payment).toContain("export async function confirmPayment");
-    expect(payment).toContain("await settleCheckPaidByIdDetailed({");
+    expect(payment).toContain("await settleCashierPosOrderPaidByIdDetailed({");
+    expect(payment).not.toContain("await settleCheckPaidByIdDetailed({");
     expect(payment).not.toContain("PaymentEngine");
     expect(payment).not.toContain("class PaymentConfirm");
     expect(payment).not.toContain("withCheckOwnedTransaction");
@@ -121,14 +111,10 @@ describe("PAYMENT-CONFIRM-REMAINING-CALLERS-1 architecture", () => {
   });
 
   it("does not wrap confirmPayment in a second financial transaction", () => {
-    const sessionSlice = sliceSettleAndCloseSession(read(SESSION));
     const settleOrder = read(SETTLE_ORDER);
     const counter = read(COUNTER);
     const settlePaid = sliceDefaultSettlePaid(read(POS));
-    const confirmAt = sessionSlice.indexOf("await confirmPayment({");
-    const sessionTxAt = sessionSlice.indexOf("await db.transaction(");
-    expect(confirmAt).toBeGreaterThan(-1);
-    expect(sessionTxAt).toBeGreaterThan(confirmAt);
+    expect(read(SESSION)).not.toContain("await confirmPayment({");
     expect(settleOrder).not.toContain("withCheckOwnedTransaction");
     expect(settleOrder).not.toContain("db.transaction");
     expect(counter).not.toContain("withCheckOwnedTransaction");
@@ -151,7 +137,8 @@ describe("PAYMENT-CONFIRM-REMAINING-CALLERS-1 architecture", () => {
     expect(settleOrder).not.toContain("insertOrder(");
     expect(settleOrder).not.toContain("createOrder(");
     expect(counter).toContain("voidCheckByIdDetailed");
-    expect(session).toContain("settleCheckComplimentaryByIdDetailed");
+    expect(session).not.toContain("settleCheckComplimentaryByIdDetailed");
+    expect(session).not.toContain("confirmPayment");
     expect(session).toContain("export async function markComplimentary");
     expect(refund).toContain("Settlement Record history only");
     expect(read(PAYMENT)).not.toContain("applyRefundOnCheck");
@@ -182,6 +169,6 @@ describe("PAYMENT-CONFIRM-REMAINING-CALLERS-1 architecture", () => {
       }
     }
     expect(unexpected).toEqual([]);
-    expect(read(PAYMENT)).toContain("await settleCheckPaidByIdDetailed({");
+    expect(read(PAYMENT)).not.toContain("await settleCheckPaidByIdDetailed({");
   });
 });

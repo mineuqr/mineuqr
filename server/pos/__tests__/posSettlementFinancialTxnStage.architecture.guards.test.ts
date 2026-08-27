@@ -69,7 +69,7 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     expect(pos).toContain("confirmPayment");
     expect(
       read("server/operational-session/payment/PaymentConfirmService.ts")
-    ).toContain("settleCheckPaidByIdDetailed");
+    ).toContain("settleCashierPosOrderPaidByIdDetailed");
     const settlePaid = pos.slice(
       pos.indexOf("async function defaultSettlePaid"),
       pos.indexOf("function unexplainedFinancialTxnGapMs")

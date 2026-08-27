@@ -63,7 +63,7 @@ describe("PAYMENT-COLLECTION-FACT-IMPLEMENTATION-1 non-adoption", () => {
     expect(finalize).toContain("commitCashierProductionCollectionFact");
     expect(finalize).not.toContain("insertCollectionFact");
     expect(confirm).toContain("settleCashierPosOrderPaidByIdDetailed");
-    expect(confirm).toContain("await settleCheckPaidByIdDetailed({");
+    expect(confirm).not.toContain("settleCheckPaidByIdDetailed");
     expect(settle).toContain("confirmPayment");
     expect(check).toContain("createSettlementRecordForCheckFinalize");
   });

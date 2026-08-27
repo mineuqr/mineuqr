@@ -45,6 +45,7 @@ describe("cashier presentation helpers", () => {
     expect(cashierUiLabel("tenderCash", "ar")).toBe("نقدًا");
     expect(cashierUiLabel("tenderNetwork", "ar")).toBe("شبكة");
     expect(cashierUiLabel("tenderMixed", "ar")).toBe("تسوية");
+    expect(cashierUiLabel("tenderComplimentary", "en")).toBe("Complimentary");
     expect(cashierUiLabel("applyDiscount", "ar")).toBe("خصم");
     expect(cashierUiLabel("remainingAmount", "ar")).toBe("الباقي");
     expect(cashierUiLabel("changeDue", "ar")).toBe("الباقي للعميل");

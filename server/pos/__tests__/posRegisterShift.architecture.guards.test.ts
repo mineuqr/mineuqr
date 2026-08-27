@@ -73,12 +73,12 @@ describe("POS Register/Shift wiring architecture guards", () => {
     expect(posRouter).not.toContain("FinancialShiftDomainService");
   });
 
-  it("leaves Check as financial authority and Settlement as settlement authority", () => {
+  it("uses Collection Fact as Cashier financial authority; Check is document compatibility", () => {
     const settle = read("server/pos/services/PosSettlementInitiateService.ts");
     expect(settle).toContain("confirmPayment");
     expect(
       read("server/operational-session/payment/PaymentConfirmService.ts")
-    ).toContain("settleCheckPaidByIdDetailed");
+    ).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(settle).toContain("settlementContextHints");
     expect(settle).toContain("requireResolvedContextForSettlement");
     expect(settle).not.toContain("StaffCounterPickupSettlementService");

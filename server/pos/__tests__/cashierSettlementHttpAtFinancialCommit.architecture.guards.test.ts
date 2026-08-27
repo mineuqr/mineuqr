@@ -42,7 +42,7 @@ describe("CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 architecture", () => {
     expect(settlePaid).toContain("confirmPayment");
     expect(
       read("server/operational-session/payment/PaymentConfirmService.ts")
-    ).toContain("settleCheckPaidByIdDetailed");
+    ).toContain("settleCashierPosOrderPaidByIdDetailed");
     expect(finalize).toContain("awaitAttribution !== false");
     expect(finalize).toContain("void adoptSettlementAttributionAfterFinalize(");
     const moneyEndAt = finalize.indexOf(
@@ -56,7 +56,7 @@ describe("CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 architecture", () => {
   it("still awaits Attribution for Session settle and never returns success before commit", () => {
     const session = read(SESSION);
     const finalize = sliceFinalizeOpenCheckById(read(CHECK));
-    expect(session).toContain("confirmPayment");
+    expect(session).not.toContain("confirmPayment");
     expect(session).not.toContain("awaitAttribution: false");
     expect(finalize).toContain("await adoptSettlementAttributionAfterFinalize(");
     const txAt = finalize.indexOf("await withCheckOwnedTransaction(");

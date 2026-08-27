@@ -56,11 +56,13 @@ const APPLICATION_TREES = [
 ];
 
 describe("PAYMENT-CONFIRM-COMPATIBILITY-CLEANUP-1 architecture", () => {
-  it("keeps the four Confirm callers on confirmPayment", () => {
+  it("keeps Cashier Confirm on confirmPayment; QR and Counter Pickup cannot settle", () => {
     expect(read(POS)).toContain("await confirmPayment({");
-    expect(read(SESSION)).toContain("await confirmPayment({");
-    expect(read(SETTLE_ORDER)).toContain("await confirmPayment({");
-    expect(read(COUNTER)).toContain("await confirmPayment({");
+    expect(read(SESSION)).not.toContain("await confirmPayment({");
+    expect(read(SETTLE_ORDER)).toContain("FINANCIAL_REQUIRES_CASHIER");
+    expect(read(SETTLE_ORDER)).not.toContain("await confirmPayment({");
+    expect(read(COUNTER)).toContain("FINANCIAL_REQUIRES_CASHIER");
+    expect(read(COUNTER)).not.toContain("await confirmPayment({");
   });
 
   it("does not re-export paid-confirm façades from public barrels", () => {
@@ -98,7 +100,7 @@ describe("PAYMENT-CONFIRM-COMPATIBILITY-CLEANUP-1 architecture", () => {
     expect(unexpectedDetailed).toEqual([]);
     expect(unexpectedPaidById).toEqual([]);
     expect(unexpectedFinalize).toEqual([]);
-    expect(read(PAYMENT)).toContain("await settleCheckPaidByIdDetailed({");
+    expect(read(PAYMENT)).not.toContain("await settleCheckPaidByIdDetailed({");
     expect(read(CHECK)).toContain("return finalizeOpenCheckById({");
   });
 
@@ -106,7 +108,8 @@ describe("PAYMENT-CONFIRM-COMPATIBILITY-CLEANUP-1 architecture", () => {
     const session = read(SESSION);
     const counter = read(COUNTER);
     const payment = read(PAYMENT);
-    expect(session).toContain("settleCheckComplimentaryByIdDetailed");
+    expect(session).not.toContain("settleCheckComplimentaryByIdDetailed");
+    expect(session).toContain("export async function markComplimentary");
     expect(counter).toContain("voidCheckByIdDetailed");
     expect(payment).not.toContain("settleCheckComplimentaryById");
     expect(payment).not.toContain("voidCheckById");

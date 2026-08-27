@@ -7,32 +7,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SemanticConfirmDialog } from "@/design-system/semantic-confirm-dialog";
-import { MarkPaidSettlementDialog } from "@/components/dashboard/MarkPaidSettlementDialog";
 import { SettlementSuccessDialog } from "@/components/settlement-record/SettlementSuccessDialog";
 import { SettlementDetailSheet } from "@/components/settlement-record/SettlementDetailSheet";
 import { SettlementReceiptDialog } from "@/components/settlement-record/SettlementReceiptDialog";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { sessionActionLabel } from "@/lib/diningSessionActionCopy";
 import { syncDashboardUrl } from "@/lib/dashboardUrl";
-import { readActiveRegister } from "@/lib/register-operations-presentation";
 import { useInvalidateSettlementRecordQueries } from "@/lib/settlement-record-presentation";
 import { trpc } from "@/lib/trpc";
 import { toastTrpcError } from "@/lib/trpcErrors";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
-import type { StaffSettlementLineInput } from "@shared/operational-session";
 import { Loader2, MoreHorizontal } from "lucide-react";
 import { restaurantDash } from "./restaurantDashStyles";
 
-type ConfirmKind = "close" | "complimentary" | null;
+type ConfirmKind = "close" | null;
 
 export function SessionRowQuickActions({
   restaurantId,
   sessionId,
   sessionStatus,
   isAr,
-  outstandingAmount = "0.00",
-  currencySymbol = "",
+  outstandingAmount: _outstandingAmount = "0.00",
+  currencySymbol: _currencySymbol = "",
   onOpenSession,
 }: {
   restaurantId: number;
@@ -48,20 +45,10 @@ export function SessionRowQuickActions({
   const utils = trpc.useUtils();
   const invalidateSettlements = useInvalidateSettlementRecordQueries();
   const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
-  const [paidOpen, setPaidOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [settlementRecordId, setSettlementRecordId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
-
-  const workspaceQuery = trpc.session.getOwnerWorkspace.useQuery(
-    { restaurantId, sessionId },
-    { enabled: paidOpen && restaurantId > 0 && sessionId > 0 }
-  );
-  const resolvedOutstanding =
-    outstandingAmount !== "0.00"
-      ? outstandingAmount
-      : (workspaceQuery.data?.ordersTotalAmount ?? outstandingAmount);
 
   const invalidateAfterAction = async () => {
     await Promise.all([
@@ -81,65 +68,26 @@ export function SessionRowQuickActions({
     onSuccess: () => {
       void invalidateAfterAction();
       setConfirmKind(null);
-      setPaidOpen(false);
     },
     onError: (err: unknown) => toastTrpcError(err, t),
   };
 
-  const markPaidMutation = trpc.session.markPaid.useMutation({
-    ...mutationOpts,
-    onSuccess: (data) => {
-      void invalidateAfterAction();
-      setConfirmKind(null);
-      setPaidOpen(false);
-      const id =
-        data && typeof data === "object" && "settlementRecordId" in data
-          ? (data.settlementRecordId as string | null)
-          : null;
-      setSettlementRecordId(id);
-      setSuccessOpen(true);
-    },
-  });
-  const markComplimentaryMutation = trpc.session.markComplimentary.useMutation(mutationOpts);
   const closeMutation = trpc.session.close.useMutation(mutationOpts);
 
-  const pending =
-    markPaidMutation.isPending ||
-    markComplimentaryMutation.isPending ||
-    closeMutation.isPending;
+  const pending = closeMutation.isPending;
 
   const runConfirmed = () => {
     const input = { restaurantId, sessionId };
     if (confirmKind === "close") {
       closeMutation.mutate(input);
-    } else if (confirmKind === "complimentary") {
-      markComplimentaryMutation.mutate(input);
     }
   };
 
-  const confirmPaid = (settlements: readonly StaffSettlementLineInput[]) => {
-    const registerId = readActiveRegister(restaurantId);
-    markPaidMutation.mutate({
-      restaurantId,
-      sessionId,
-      settlements: [...settlements],
-      ...(registerId ? { registerId } : {}),
-    });
-  };
-
   const confirmTitle =
-    confirmKind === "close"
-      ? sessionActionLabel("closeConfirmTitle", lang)
-      : confirmKind === "complimentary"
-        ? sessionActionLabel("complimentaryConfirmTitle", lang)
-        : "";
+    confirmKind === "close" ? sessionActionLabel("closeConfirmTitle", lang) : "";
 
   const confirmBody =
-    confirmKind === "close"
-      ? sessionActionLabel("closeConfirmBody", lang)
-      : confirmKind === "complimentary"
-        ? sessionActionLabel("complimentaryConfirmBody", lang)
-        : "";
+    confirmKind === "close" ? sessionActionLabel("closeConfirmBody", lang) : "";
 
   const showSettlementActions = sessionStatus === "open";
 
@@ -175,12 +123,19 @@ export function SessionRowQuickActions({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="border-slate-700/50 bg-slate-950">
-              <DropdownMenuItem disabled={pending} onClick={() => setPaidOpen(true)}>
-                {sessionActionLabel("markPaid", lang)}
+              <DropdownMenuItem
+                disabled={pending}
+                onClick={() =>
+                  syncDashboardUrl({ restaurantId, section: "cashier" })
+                }
+              >
+                {sessionActionLabel("sendToCashier", lang)}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={pending}
-                onClick={() => setConfirmKind("complimentary")}
+                onClick={() =>
+                  syncDashboardUrl({ restaurantId, section: "cashier" })
+                }
               >
                 {sessionActionLabel("markComplimentary", lang)}
               </DropdownMenuItem>
@@ -195,16 +150,6 @@ export function SessionRowQuickActions({
           </DropdownMenu>
         ) : null}
       </div>
-
-      <MarkPaidSettlementDialog
-        open={paidOpen}
-        language={lang}
-        pending={pending && markPaidMutation.isPending}
-        outstandingAmount={resolvedOutstanding}
-        currencySymbol={currencySymbol}
-        onOpenChange={setPaidOpen}
-        onConfirm={confirmPaid}
-      />
 
       <SettlementSuccessDialog
         open={successOpen}
@@ -257,8 +202,8 @@ export function SessionRowQuickActions({
       <SemanticConfirmDialog
         open={confirmKind != null}
         onOpenChange={(open) => !open && setConfirmKind(null)}
-        kind={confirmKind === "close" ? "destructive" : "warning"}
-        icon={confirmKind === "close" ? "close" : "warning"}
+        kind="destructive"
+        icon="close"
         title={confirmTitle}
         description={confirmBody}
         cancelLabel={isAr ? "إلغاء" : "Cancel"}

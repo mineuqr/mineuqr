@@ -43,11 +43,8 @@ describe("PAYMENT-CONFIRM-SERVICE-1 architecture", () => {
     expect(payment).toContain("PAYMENT-CONFIRM-SERVICE-1");
     expect(payment).toContain("I-PAY-01");
     expect(payment).toContain("I-PAY-14");
-    expect(payment).toContain("settleCheckPaidByIdDetailed");
-    expect(payment).toMatch(
-      /from ["']\.\.\/check\/CheckService["']/
-    );
-    expect(payment).toContain("await settleCheckPaidByIdDetailed({");
+    expect(payment).toContain("settleCashierPosOrderPaidByIdDetailed");
+    expect(payment).not.toContain("settleCheckPaidByIdDetailed");
   });
 
   it("does not create a payments table, PaymentEngine, or second financial SSOT", () => {
@@ -111,24 +108,37 @@ describe("PAYMENT-CONFIRM-SERVICE-1 architecture", () => {
     expect(settlePaid).not.toContain("db.transaction");
   });
 
-  it("migrates Confirm Payment callers onto confirmPayment; complimentary stays on CheckService", () => {
+  it("migrates Confirm Payment callers onto confirmPayment; complimentary money is Cashier Confirm", () => {
     const pos = read(POS);
     const router = read(ROUTER);
     const session = read(SESSION);
     const settleOrder = read(SETTLE_ORDER);
     const counter = read(COUNTER);
+    const markComplimentary = session.slice(
+      session.indexOf("export async function markComplimentary")
+    );
     expect(pos).toContain("confirmPayment");
     expect(pos).not.toContain("settleCheckPaidByIdDetailed");
     expect(router).toContain("getPosSettlementInitiateService()");
     expect(router).not.toContain("confirmPayment");
     expect(router).not.toContain("PaymentConfirmService");
-    expect(session).toContain("confirmPayment");
+    expect(session).not.toContain("confirmPayment");
     expect(session).not.toContain("settleCheckPaidByIdDetailed");
-    expect(session).toContain("settleCheckComplimentaryByIdDetailed");
-    expect(settleOrder).toContain("confirmPayment");
+    expect(markComplimentary.slice(0, 500)).toContain(
+      "Financial settlement requires Cashier Confirm"
+    );
+    expect(markComplimentary.slice(0, 500)).not.toContain(
+      "await settleCheckComplimentaryByIdDetailed"
+    );
+    expect(read(PAYMENT)).toContain("complimentary: command.complimentary === true");
+    expect(settleOrder).toContain("FINANCIAL_REQUIRES_CASHIER");
+    expect(settleOrder).not.toContain("confirmPayment");
     expect(settleOrder).not.toContain("settleCheckPaidByIdDetailed");
-    expect(counter).toContain("confirmPayment");
-    expect(counter).not.toContain("settleCheckPaidByIdDetailed");
+    const settleCounter = counter.slice(
+      counter.indexOf("export async function settleCounterPickupPaid")
+    );
+    expect(settleCounter.slice(0, 400)).toContain("FINANCIAL_REQUIRES_CASHIER");
+    expect(settleCounter.slice(0, 400)).not.toContain("await confirmPayment");
     expect(counter).toContain("voidCheckByIdDetailed");
   });
 });

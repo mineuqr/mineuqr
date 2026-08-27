@@ -66,10 +66,12 @@ import {
   buildPreparedCashierInvoiceView,
   cashierCatalogTicketMatchesInvoiceLines,
   cashierTicketMatchesSaleAttempt,
+  chargesSubtotalFromInvoiceLines,
   catalogTicketFromInvoiceLines,
   mapDraftTicketToPreparedInvoiceLines,
   projectPreparedCashierInvoiceMoney,
   toCashierSaleCreateMoney,
+  invoiceIntentLinesToCashierView,
   type CashierInvoiceLineView,
   type CashierSaleCreateMoney,
 } from "@/lib/cashier-workspace/cashierInvoiceView";
@@ -90,6 +92,7 @@ import { cn, resolveImageUrl } from "@/lib/utils";
 import type { CheckMoneyResult } from "@shared/operational-session";
 import type { SelectablePaymentMethod } from "@shared/operational-session";
 import { projectCashierSaleInvoiceMoney } from "@shared/operational-session";
+import type { InvoiceIntent } from "@shared/pos";
 import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -343,6 +346,10 @@ export function CashierWorkspacePanel({
     { restaurantId, terminalId: terminalId ?? "", status: "all-active", limit: 50 },
     { enabled: scoped && allowed && ordersOpen, staleTime: 0 }
   );
+  const invoiceIntentsQuery = trpc.pos.read.orders.listInvoiceIntents.useQuery(
+    { restaurantId, terminalId: terminalId ?? "", limit: 50 },
+    { enabled: scoped && allowed && ordersOpen, staleTime: 0 }
+  );
   const detailQuery = trpc.pos.read.orders.getDetail.useQuery(
     {
       restaurantId,
@@ -395,6 +402,8 @@ export function CashierWorkspacePanel({
 
   function invalidateOrderReads() {
     void utils.pos.read.orders.listActive.invalidate();
+    void utils.pos.read.orders.listInvoiceIntents.invalidate();
+    void utils.pos.read.orders.getInvoiceIntent.invalidate();
     void utils.pos.read.orders.getDetail.invalidate();
     void utils.pos.read.orders.getTimeline.invalidate();
     void utils.pos.read.orderSettlement.listByOrder.invalidate();
@@ -469,7 +478,60 @@ export function CashierWorkspacePanel({
     );
   }
 
-  function selectOrder(orderId: number) {
+  function reviewInvoiceIntent(intent: InvoiceIntent) {
+    if (intent.status !== "awaiting_cashier") return;
+    const lines = invoiceIntentLinesToCashierView(intent.items);
+    if (lines.length === 0) return;
+    const catalogSubtotal =
+      chargesSubtotalFromInvoiceLines(lines) ?? intent.expectedGrandTotal;
+    const discount = clampCashierDiscountAmount("0.00", catalogSubtotal);
+    setTicketDiscount(discount);
+    const preview = displayCashierTicketMoney({
+      catalogSubtotal,
+      billDiscountAmount: discount,
+      taxPolicySnapshot: cashierDisplayTaxPolicy({
+        taxEnabled,
+        taxMode,
+        taxPolicyJson,
+      }),
+    });
+    const sale: DirectSale = applyPreparedPayableDiscount(
+      {
+        orderId: intent.orderId,
+        orderNumber: intent.orderNumber,
+        displayReference: intent.orderNumber,
+        totalAmount: preview?.grandTotal ?? intent.expectedGrandTotal,
+        createdAt: "",
+        money: {
+          subtotal: preview?.subtotal ?? catalogSubtotal,
+          taxAmount: preview?.taxAmount ?? "0.00",
+          grandTotal: preview?.grandTotal ?? intent.expectedGrandTotal,
+          billDiscountAmount: discount,
+        },
+        lines,
+      },
+      discount
+    );
+    setTicket(catalogTicketFromInvoiceLines(lines));
+    setDirectSale(sale);
+    setSelectedOrderId(intent.orderId);
+    setOpenCheck(null);
+    setPaidCheckout(null);
+    setPaymentMethod(null);
+    setRegisterGap(null);
+    persistDirectSaleSnapshot({
+      sale,
+      phase: "payment",
+      checkId: null,
+      paid: null,
+      method: null,
+      received: "",
+      card: "",
+    });
+    setSalePhase("payment");
+  }
+
+  async function selectOrder(orderId: number) {
     if (directSale?.orderId === orderId && !paidCheckout) {
       setSelectedOrderId(orderId);
       const catalogSubtotal = displayTicketTotal(ticket);
@@ -483,6 +545,19 @@ export function CashierWorkspacePanel({
     setPaidCheckout(null);
     setPaymentMethod(null);
     setRegisterGap(null);
+    if (!terminalId) return;
+    try {
+      const intent = await utils.pos.read.orders.getInvoiceIntent.fetch({
+        restaurantId,
+        terminalId,
+        orderId,
+      });
+      if (intent.status === "awaiting_cashier") {
+        reviewInvoiceIntent(intent);
+      }
+    } catch {
+      // Settled or non-finalizable: browse only.
+    }
   }
 
   function persistDirectSaleSnapshot(next?: {
@@ -691,25 +766,43 @@ export function CashierWorkspacePanel({
         ? [{ menuItemId: line.menuItemId, quantity: line.quantity }]
         : []
     );
-    if (confirmItems.length === 0 || confirmItems.length !== directSale.lines.length) {
-      return;
+    const inboundOrderId = directSale.orderId > 0 ? directSale.orderId : null;
+    if (!inboundOrderId) {
+      if (confirmItems.length === 0 || confirmItems.length !== directSale.lines.length) {
+        return;
+      }
     }
     if (payInFlightRef.current || settleMutation.isPending) return;
+    const complimentarySale = tenderMode === "complimentary";
     if (tenderMode == null) return;
     const due = amountDue;
     if (!due) return;
-    const cashTender = tenderMode === "network" ? "" : cashReceived;
-    const cardTenderValue = tenderMode === "cash" ? "" : cardTender;
-    const plan = resolveCashierSettlementPlan({
-      amountDue: due,
-      cashTender,
-      cardTender: cardTenderValue,
-    });
-    if (!plan || !canConfirmCashierSettlement({
-      amountDue: due,
-      cashTender,
-      cardTender: cardTenderValue,
-    })) {
+    const cashTender = complimentarySale
+      ? ""
+      : tenderMode === "network"
+        ? ""
+        : cashReceived;
+    const cardTenderValue = complimentarySale
+      ? ""
+      : tenderMode === "cash"
+        ? ""
+        : cardTender;
+    const plan = complimentarySale
+      ? null
+      : resolveCashierSettlementPlan({
+          amountDue: due,
+          cashTender,
+          cardTender: cardTenderValue,
+        });
+    if (
+      !complimentarySale &&
+      (!plan ||
+        !canConfirmCashierSettlement({
+          amountDue: due,
+          cashTender,
+          cardTender: cardTenderValue,
+        }))
+    ) {
       return;
     }
     const pendingItems = saleAttemptItemsRef.current;
@@ -747,13 +840,20 @@ export function CashierWorkspacePanel({
       const result = await settleMutation.mutateAsync({
         restaurantId,
         terminalId,
-        items: confirmItems,
+        ...(inboundOrderId
+          ? { orderId: inboundOrderId }
+          : { items: confirmItems }),
         idempotencyKey: settleKeyRef.current,
         paymentIntentId: paymentIntentRef.current,
-        paymentMethod: plan.paymentMethod,
-        settlements: [...plan.settlements],
+        ...(complimentarySale
+          ? { complimentary: true }
+          : {
+              paymentMethod: plan!.paymentMethod,
+              settlements: [...plan!.settlements],
+            }),
         ...(directSale.money.billDiscountAmount &&
-        directSale.money.billDiscountAmount !== "0.00"
+        directSale.money.billDiscountAmount !== "0.00" &&
+        !complimentarySale
           ? { billDiscountAmount: directSale.money.billDiscountAmount }
           : {}),
       });
@@ -846,6 +946,7 @@ export function CashierWorkspacePanel({
       ? items
       : items.filter((item) => item.categoryId === categoryFilter);
   const orders = ordersQuery.data?.items ?? [];
+  const awaitingIntents = invoiceIntentsQuery.data ?? [];
   const ticketTotal = displayTicketTotal(ticket);
   const taxPolicySnapshot = useMemo(
     () => cashierDisplayTaxPolicy({ taxEnabled, taxMode, taxPolicyJson }),
@@ -894,9 +995,17 @@ export function CashierWorkspacePanel({
         terminalId,
       });
   const effectiveCashTender =
-    tenderMode === "network" || tenderMode == null ? "" : cashReceived;
+    tenderMode === "network" ||
+    tenderMode === "complimentary" ||
+    tenderMode == null
+      ? ""
+      : cashReceived;
   const effectiveCardTender =
-    tenderMode === "cash" || tenderMode == null ? "" : cardTender;
+    tenderMode === "cash" ||
+    tenderMode === "complimentary" ||
+    tenderMode == null
+      ? ""
+      : cardTender;
   const saleReady =
     salePhase === "payment" &&
     directSale != null &&
@@ -913,6 +1022,7 @@ export function CashierWorkspacePanel({
     cashTender: effectiveCashTender,
     cardTender: effectiveCardTender,
     paymentSubmitting: settleMutation.isPending || paymentBusy,
+    complimentary: tenderMode === "complimentary",
   });
   const amountDue = paymentReadiness.amountDue;
   const sheetMoney = invoiceView.money
@@ -940,6 +1050,11 @@ export function CashierWorkspacePanel({
 
   useEffect(() => {
     if (salePhase !== "payment" || paidCheckout || !amountDue) return;
+    if (tenderMode === "complimentary") {
+      setCashReceived("");
+      setCardTender("");
+      return;
+    }
     if (tenderMode === "cash") {
       setCashReceived((current) =>
         current === "" || current === directSale?.totalAmount ? amountDue : current
@@ -1477,33 +1592,62 @@ export function CashierWorkspacePanel({
               </button>
               {ordersOpen ? (
                 <div className="mt-3">
-                  {ordersQuery.isPending ? (
+                  {ordersQuery.isPending || invoiceIntentsQuery.isPending ? (
                     <AppLoadingState label={t("loading")} />
-                  ) : orders.length === 0 ? (
+                  ) : awaitingIntents.length === 0 && orders.length === 0 ? (
                     <p className="text-sm text-[#6b7280]">{t("noOrders")}</p>
                   ) : (
-                    <ul className="mb-3 flex flex-col gap-2">
-                      {orders.map((order) => (
-                        <li key={order.orderId}>
-                          <button
-                            type="button"
-                            className={
-                              selectedOrderId === order.orderId
-                                ? cashierPos.orderBtnActive
-                                : cashierPos.orderBtn
-                            }
-                            onClick={() => selectOrder(order.orderId)}
-                          >
-                            <span className="block font-medium text-[#111827]">
-                              {order.displayReference || order.orderNumber}
-                            </span>
-                            <span className="text-xs text-[#6b7280]">
-                              {order.status} · {order.totalAmount}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                    <>
+                      {awaitingIntents.length > 0 ? (
+                        <ul className="mb-3 flex flex-col gap-2">
+                          <li className="text-xs font-semibold text-[#6b7280]">
+                            {t("awaitingCashier")}
+                          </li>
+                          {awaitingIntents.map((intent) => (
+                            <li key={intent.invoiceIntentId}>
+                              <button
+                                type="button"
+                                className={
+                                  selectedOrderId === intent.orderId
+                                    ? cashierPos.orderBtnActive
+                                    : cashierPos.orderBtn
+                                }
+                                onClick={() => void selectOrder(intent.orderId)}
+                              >
+                                <span className="block font-medium text-[#111827]">
+                                  {intent.orderNumber}
+                                </span>
+                                <span className="text-xs text-[#6b7280]">
+                                  {intent.sourceChannel} · {intent.expectedGrandTotal}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      <ul className="mb-3 flex flex-col gap-2">
+                        {orders.map((order) => (
+                          <li key={order.orderId}>
+                            <button
+                              type="button"
+                              className={
+                                selectedOrderId === order.orderId
+                                  ? cashierPos.orderBtnActive
+                                  : cashierPos.orderBtn
+                              }
+                              onClick={() => void selectOrder(order.orderId)}
+                            >
+                              <span className="block font-medium text-[#111827]">
+                                {order.displayReference || order.orderNumber}
+                              </span>
+                              <span className="text-xs text-[#6b7280]">
+                                {order.status} · {order.totalAmount}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
                   )}
                   {selectedOrderId != null && detailQuery.data ? (
                     <>
@@ -1576,6 +1720,7 @@ export function CashierWorkspacePanel({
                       ["cash", "tenderCash"],
                       ["network", "tenderNetwork"],
                       ["mixed", "tenderMixed"],
+                      ["complimentary", "tenderComplimentary"],
                     ] as const
                   ).map(([mode, label]) => (
                     <button
@@ -1588,7 +1733,11 @@ export function CashierWorkspacePanel({
                       }
                       onClick={() => {
                         setTenderMode(mode);
-                        if (mode === "cash") {
+                        if (mode === "complimentary") {
+                          setPaymentMethod("cash");
+                          setCardTender("");
+                          setCashReceived("");
+                        } else if (mode === "cash") {
                           setPaymentMethod("cash");
                           setCardTender("");
                           setCashReceived(amountDue ?? sheetMoney?.grandTotal ?? "");
@@ -1607,6 +1756,11 @@ export function CashierWorkspacePanel({
                     </button>
                   ))}
                 </div>
+                {tenderMode === "complimentary" ? (
+                  <p className="mt-3 text-sm text-[#6b7280]">
+                    {t("complimentaryConfirmHint")}
+                  </p>
+                ) : null}
                 {tenderMode === "cash" || tenderMode === "mixed" ? (
                   <div className="mt-3">
                     <label className="text-sm font-medium" htmlFor="cashier-tender-cash">
@@ -1651,7 +1805,7 @@ export function CashierWorkspacePanel({
                     />
                   </div>
                 ) : null}
-                {tenderMode != null ? (
+                {tenderMode != null && tenderMode !== "complimentary" ? (
                   <>
                 <p className="mt-3 flex justify-between text-sm">
                   <span>{t("totalTendered")}</span>
@@ -1673,7 +1827,9 @@ export function CashierWorkspacePanel({
                     <span className="tabular-nums font-semibold">{money(cashChange)}</span>
                   </p>
                 ) : null}
-                {tenderPlan && tenderPlan.remainingCents > 0 ? (
+                {tenderMode !== "complimentary" &&
+                tenderPlan &&
+                tenderPlan.remainingCents > 0 ? (
                   <p className="mt-1 text-sm text-red-700">{t("underpayment")}</p>
                 ) : null}
                 {paymentReadiness.showCardOverTender ? (

@@ -64,8 +64,8 @@ const ACTIONS: Record<
 
 const SETTLE_SELF_ORDERING: OperationalAction = {
   id: "settle-self-ordering",
-  labelEn: "Settle",
-  labelAr: "تحصيل",
+  labelEn: "Send to Cashier",
+  labelAr: "إرسال للكاشير",
   variant: "primary",
 };
 

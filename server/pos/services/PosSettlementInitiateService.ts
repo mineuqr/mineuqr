@@ -10,6 +10,7 @@
 
 import { createHash } from "node:crypto";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
+import { isCashierFinalizableOrderingChannel, isComplimentaryCollectionFact } from "@shared/pos";
 import {
   type SelectablePaymentMethod,
   type StaffSettlementLineInput,
@@ -81,6 +82,8 @@ export type PosSettlementInitiateCommand = {
   settlements?: readonly StaffSettlementLineInput[];
   /** Discount intent. Server applies inside Confirm. Not browser authority. */
   billDiscountAmount?: string;
+  /** Cashier complimentary: zero collection CF. Not a second financial authority. */
+  complimentary?: boolean;
 };
 
 export type PosSettlementInitiateResult = {
@@ -187,6 +190,7 @@ export type PosSettlementSettlePaid = (input: {
   terminalId: string;
   actorUserId: number;
   actorDisplayName?: string | null;
+  complimentary?: boolean;
 }) => Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
@@ -243,6 +247,7 @@ function fingerprintOf(input: {
   paymentMethod?: SelectablePaymentMethod | null;
   settlements?: readonly StaffSettlementLineInput[];
   billDiscountAmount?: string | null;
+  complimentary?: boolean;
 }): string {
   const settlements = normalizeFingerprintSettlements(input.settlements);
   const singleMethodOnly =
@@ -262,6 +267,7 @@ function fingerprintOf(input: {
         paymentIntentId: input.paymentIntentId,
         paymentMethod: input.paymentMethod ?? null,
         billDiscountAmount: input.billDiscountAmount ?? null,
+        complimentary: input.complimentary === true,
         ...(settlements && !singleMethodOnly ? { settlements } : {}),
       })
     )
@@ -306,6 +312,9 @@ function cashierIntentMatchesExistingFact(input: {
     .sort()
     .join("|");
   if (preparedItemsKey(items) !== persistedKey) return false;
+  if (input.command.complimentary) {
+    return isComplimentaryCollectionFact(input.fact);
+  }
   if (moneyKey(input.command.billDiscountAmount) !== moneyKey(input.fact.discountAmount)) {
     return false;
   }
@@ -405,6 +414,7 @@ async function defaultSettlePaid(input: {
   terminalId: string;
   actorUserId: number;
   actorDisplayName?: string | null;
+  complimentary?: boolean;
 }): Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
@@ -428,6 +438,7 @@ async function defaultSettlePaid(input: {
     actorType: "staff_user",
     actorUserId: input.actorUserId,
     actorDisplayName: input.actorDisplayName,
+    complimentary: input.complimentary === true,
     // CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 — do not wait for Attribution.
     awaitAttribution: false,
   });
@@ -631,6 +642,16 @@ export class PosSettlementInitiateService {
       );
     }
     if (
+      input.command.complimentary === true &&
+      ((input.command.settlements?.length ?? 0) > 0 ||
+        input.command.paymentMethod != null)
+    ) {
+      throw new PosSettlementInitiateError(
+        "invalid_settlement",
+        "Complimentary Confirm cannot collect tender"
+      );
+    }
+    if (
       !input.command.paymentIntentId.trim() ||
       input.command.paymentIntentId.length > 128 ||
       input.command.paymentIntentId === input.command.idempotencyKey ||
@@ -692,10 +713,10 @@ export class PosSettlementInitiateService {
           "Order does not belong to this restaurant"
         );
       }
-      if (order.orderingChannel !== ORDERING_CHANNEL_CASHIER_POS) {
+      if (!isCashierFinalizableOrderingChannel(order.orderingChannel)) {
         throw new PosSettlementInitiateError(
           "order_not_eligible",
-          "Order is not a direct POS Sale"
+          "Order is not eligible for Cashier financial finalization"
         );
       }
       if (order.status === "cancelled") {
@@ -718,6 +739,7 @@ export class PosSettlementInitiateService {
       paymentMethod: input.command.paymentMethod ?? null,
       settlements: input.command.settlements,
       billDiscountAmount: input.command.billDiscountAmount ?? null,
+      complimentary: input.command.complimentary === true,
     });
     const idempotencyKey = {
       restaurantId: context.restaurantId,
@@ -864,6 +886,7 @@ export class PosSettlementInitiateService {
             items: preparedItems,
             billDiscountAmount: input.command.billDiscountAmount,
             settlements,
+            complimentary: input.command.complimentary === true,
             paymentIntentId: input.command.paymentIntentId,
             idempotencyKey: input.command.idempotencyKey,
             actorUserId: context.userId,
@@ -1003,7 +1026,12 @@ export class PosSettlementInitiateService {
           terminalId: context.terminalId,
           actorUserId: context.userId,
           actorDisplayName: input.user.name,
-          ...(settlements ? { settlements } : {}),
+          ...(input.command.complimentary === true
+            ? { complimentary: true }
+            : {}),
+          ...(settlements && !input.command.complimentary
+            ? { settlements }
+            : {}),
         });
         financialTxnMs = clock.since(txnStarted);
       } catch (err) {

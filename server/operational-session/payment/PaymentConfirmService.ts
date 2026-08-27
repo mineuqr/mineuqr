@@ -6,8 +6,8 @@
  * checkId Confirm still delegates to certified Check settlement.
  * Not an aggregate. Not a second money SSOT.
  *
- * Callers: Cashier POS, Session markPaid, SettleOrderPaid, Counter Pickup.
- * I-PAY-01 process owner · I-PAY-02 Check remains the aggregate · I-PAY-14
+ * Caller: Cashier POS Confirm (orderId). Session / QR / Counter cannot Confirm.
+ * I-PAY-01 process owner · I-PAY-14 Check may host post-CF document finalize.
  * CheckService may still host finalizeOpenCheckById.
  * ADR-ARCH-038 — cashier_pos may Confirm with orderId (no pre-existing Check).
  * Cashier orderId path consumes the certified Collection Fact writer.
@@ -24,7 +24,6 @@ import {
 } from "@shared/operational-session/payment/collection-fact";
 import {
   settleCashierPosOrderPaidByIdDetailed,
-  settleCheckPaidByIdDetailed,
   type CheckFinancialMutationResult,
 } from "../check/CheckService";
 import {
@@ -59,7 +58,7 @@ export type PaymentConfirmCommand = {
   actorType?: string;
   actorUserId?: number;
   actorDisplayName?: string | null;
-  /** Tests inject an in-memory store. Production uses the Drizzle store. */
+  complimentary?: boolean;
   collectionFactStore?: CollectionFactStore;
 };
 
@@ -83,72 +82,62 @@ function asCollectionTenders(
 }
 
 /**
- * Confirm a paid collection.
- * checkId path: existing OPEN Check (Session / kiosk / leftover OPEN).
- * orderId path: cashier_pos materializes the operational Check, freezes money,
- * commits Production Collection Fact (COMMITTED / PAID), then returns HTTP.
- * Check PAID / ST / OS / SR continue downstream and must not block HTTP success.
+ * Confirm a paid collection through Cashier orderId only.
+ * Check-id Confirm is not a financial path.
  */
 export async function confirmPayment(
   command: PaymentConfirmCommand
 ): Promise<CheckFinancialMutationResult> {
   const startedAt = Date.now();
-  if (command.orderId != null) {
-    assertCashierProductionPaymentIdentities({
-      paymentIntentId: command.paymentIntentId ?? "",
-      idempotencyKey: command.idempotencyKey ?? "",
-      orderId: command.orderId,
-      terminalId: command.terminalId ?? "",
-      actorType: command.actorType ?? "",
-      actorUserId: command.actorUserId ?? 0,
-    });
+  if (command.orderId == null) {
+    throw new CollectionFactError(
+      "VALIDATION",
+      "Financial settlement requires Cashier Confirm"
+    );
   }
+  assertCashierProductionPaymentIdentities({
+    paymentIntentId: command.paymentIntentId ?? "",
+    idempotencyKey: command.idempotencyKey ?? "",
+    orderId: command.orderId,
+    terminalId: command.terminalId ?? "",
+    actorType: command.actorType ?? "",
+    actorUserId: command.actorUserId ?? 0,
+  });
   let collectionFactOutcome: "created" | "replayed" | null = null;
-  const result =
-    command.orderId != null
-      ? await settleCashierPosOrderPaidByIdDetailed({
-          restaurantId: command.restaurantId,
-          orderId: command.orderId,
-          billDiscountAmount: command.billDiscountAmount,
-          settlements: command.settlements,
-          settlementContext: command.settlementContext,
-          settlementContextHints: command.settlementContextHints,
-          awaitAttribution: command.awaitAttribution,
-          deferOperationalSettlementAfterCollectionFact: true,
-          terminalId: command.terminalId,
-          actorUserId: command.actorUserId,
-          actorDisplayName: command.actorDisplayName,
-          productionCollectionCommit: async (freeze) => {
-            const payload = {
-              paymentIntentId: command.paymentIntentId as string,
-              idempotencyKey: command.idempotencyKey as string,
-              terminalId: command.terminalId as string,
-              actorType: command.actorType as string,
-              actorUserId: command.actorUserId as number,
-              freeze: {
-                ...freeze,
-                tenders: asCollectionTenders(freeze.tenders),
-              },
-            };
-            const committed = command.collectionFactStore
-              ? await commitCashierProductionCollectionFact(
-                  payload,
-                  command.collectionFactStore
-                )
-              : await commitCashierProductionCollectionFactInTransaction(
-                  payload
-                );
-            collectionFactOutcome = committed.outcome;
-          },
-        })
-      : await settleCheckPaidByIdDetailed({
-          restaurantId: command.restaurantId,
-          checkId: command.checkId as number,
-          settlements: command.settlements,
-          settlementContext: command.settlementContext,
-          settlementContextHints: command.settlementContextHints,
-          awaitAttribution: command.awaitAttribution,
-        });
+  const result = await settleCashierPosOrderPaidByIdDetailed({
+    restaurantId: command.restaurantId,
+    orderId: command.orderId,
+    billDiscountAmount: command.billDiscountAmount,
+    settlements: command.settlements,
+    settlementContext: command.settlementContext,
+    settlementContextHints: command.settlementContextHints,
+    awaitAttribution: command.awaitAttribution,
+    deferOperationalSettlementAfterCollectionFact: true,
+    terminalId: command.terminalId,
+    actorUserId: command.actorUserId,
+    actorDisplayName: command.actorDisplayName,
+    complimentary: command.complimentary === true,
+    productionCollectionCommit: async (freeze) => {
+      const payload = {
+        paymentIntentId: command.paymentIntentId as string,
+        idempotencyKey: command.idempotencyKey as string,
+        terminalId: command.terminalId as string,
+        actorType: command.actorType as string,
+        actorUserId: command.actorUserId as number,
+        freeze: {
+          ...freeze,
+          tenders: asCollectionTenders(freeze.tenders),
+        },
+      };
+      const committed = command.collectionFactStore
+        ? await commitCashierProductionCollectionFact(
+            payload,
+            command.collectionFactStore
+          )
+        : await commitCashierProductionCollectionFactInTransaction(payload);
+      collectionFactOutcome = committed.outcome;
+    },
+  });
   opsLog({
     type: OPS_EVENT.payment_confirm,
     category: "PAYMENT",

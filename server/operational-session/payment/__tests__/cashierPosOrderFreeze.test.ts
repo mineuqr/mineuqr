@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
+import { ORDERING_CHANNEL_CASHIER_POS, ORDERING_CHANNEL_TABLE_SESSION } from "@shared/ordering-platform/orderingChannelRegistry";
 
 const mocks = vi.hoisted(() => ({
   getOrderItemsByOrderId: vi.fn(),
@@ -60,15 +60,44 @@ describe("freezeCashierPosPayableFromOrder", () => {
         description: "Kabsa",
       }),
     ]);
-    expect(freeze.receiptInvoiceLines).toEqual([
-      {
-        nameAr: "Kabsa",
-        nameEn: "Kabsa",
-        quantity: 2,
-        unitPrice: "10.00",
-        lineTotal: "20.00",
-      },
+    expect(freeze.freeze.orderingChannel).toBe(ORDERING_CHANNEL_CASHIER_POS);
+  });
+
+  it("freezes a table_session Order through Cashier without rewriting channel", async () => {
+    const freeze = await freezeCashierPosPayableFromOrder({
+      restaurantId: 1,
+      order: { ...ORDER, orderingChannel: ORDERING_CHANNEL_TABLE_SESSION },
+      billDiscountAmount: "0.00",
+      snapshots: SNAPSHOTS,
+    });
+    expect(freeze.freeze.orderingChannel).toBe(ORDERING_CHANNEL_TABLE_SESSION);
+    expect(freeze.freeze.grandTotal).toBe("20.00");
+  });
+
+  it("freezes complimentary as zero collection with waived discount and other/0.00 tender", async () => {
+    const freeze = await freezeCashierPosPayableFromOrder({
+      restaurantId: 1,
+      order: ORDER,
+      billDiscountAmount: "0.00",
+      snapshots: SNAPSHOTS,
+      complimentary: true,
+    });
+    expect(freeze.freeze.grandTotal).toBe("0.00");
+    expect(freeze.freeze.discountAmount).toBe("20.00");
+    expect(freeze.freeze.tenders).toEqual([
+      { paymentMethod: "other", amount: "0.00" },
     ]);
+  });
+
+  it("rejects channels that are not Cashier-finalizable", async () => {
+    await expect(
+      freezeCashierPosPayableFromOrder({
+        restaurantId: 1,
+        order: { ...ORDER, orderingChannel: "marketplace" },
+        billDiscountAmount: "0.00",
+        snapshots: SNAPSHOTS,
+      })
+    ).rejects.toThrow(/Cashier-finalizable/);
   });
 
   it("rejects client tender totals that do not match the frozen Order amount", async () => {

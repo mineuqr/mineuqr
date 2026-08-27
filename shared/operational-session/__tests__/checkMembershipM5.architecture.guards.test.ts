@@ -15,8 +15,8 @@ function read(rel: string): string {
 describe("CHECK-GENERALIZATION-M5 architecture guards", () => {
   it("Dashboard Session settle uses Check-centric ById APIs", () => {
     const svc = read("server/diningSession/sessionService.ts");
-    expect(svc).toContain("confirmPayment");
-    expect(svc).toContain("settleCheckComplimentaryById");
+    expect(svc).toContain("Financial settlement requires Cashier Confirm");
+    expect(svc).not.toContain("settleCheckComplimentaryById");
     expect(svc).not.toMatch(/settleCheckPaid\(/);
     expect(svc).not.toMatch(/getOrdersBySessionId/);
   });

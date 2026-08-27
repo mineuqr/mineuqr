@@ -12,18 +12,13 @@ function read(rel: string): string {
 }
 
 describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 guards", () => {
-  it("Orders Workspace settles sessionless via staff façade + MarkPaidSettlementDialog", () => {
+  it("Orders Workspace sends sessionless payment to Cashier", () => {
     const panel = read(
       "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx"
     );
     expect(panel).toContain("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1");
-    expect(panel).toContain("MarkPaidSettlementDialog");
-    expect(panel).toContain("staffSettleCounterPickup");
-    expect(panel).toContain("staffCancelCounterPickup");
-    expect(panel).toContain("listUnpaidCounterPickup");
     expect(panel).toContain("settle-self-ordering");
-    expect(panel).toContain("readActiveRegister");
-    expect(panel).toContain("useFinancialShiftCurrent");
+    expect(panel).toContain('section: "cashier"');
     expect(panel).not.toContain("session.markPaid");
     expect(panel).not.toContain("ensureOpenCheckForSession");
   });
@@ -36,7 +31,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 guards", () => {
       "server/order/application/StaffCounterPickupSettlementService.ts"
     );
     expect(panel).not.toMatch(/createSession|openSession|fabricat/i);
-    expect(svc).toContain("confirmPayment");
+    expect(svc).toContain("FINANCIAL_REQUIRES_CASHIER");
     expect(svc).toContain("voidCheckByIdDetailed");
     expect(svc).toContain("SHIFT_REQUIRED");
     expect(svc).toContain("REGISTER_REQUIRED");

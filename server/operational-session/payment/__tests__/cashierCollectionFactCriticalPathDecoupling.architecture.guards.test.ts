@@ -59,12 +59,7 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1 architecture", () =
     const counter = read(
       "server/order/application/StaffCounterPickupSettlementService.ts"
     );
-    const checkIdCall = confirm.slice(
-      confirm.indexOf("await settleCheckPaidByIdDetailed({")
-    );
-    expect(checkIdCall).not.toContain(
-      "deferOperationalSettlementAfterCollectionFact: true"
-    );
+    expect(confirm).not.toContain("settleCheckPaidByIdDetailed");
     expect(session).not.toContain("deferOperationalSettlementAfterCollectionFact");
     expect(settleOrder).not.toContain("deferOperationalSettlementAfterCollectionFact");
     expect(counter).not.toContain("deferOperationalSettlementAfterCollectionFact");

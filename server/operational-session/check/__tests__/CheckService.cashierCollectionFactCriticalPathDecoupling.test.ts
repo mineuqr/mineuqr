@@ -115,6 +115,14 @@ vi.mock("../checkSettlementRecordIntegration", () => ({
     mocks.createSettlementRecordForCheckFinalize(...a),
 }));
 
+vi.mock("../../payment/collection-fact/collectionFactRepository", () => ({
+  findProductionCollectionFactByOrderId: vi.fn(async () => ({
+    collectionFactId: "pcf_1",
+    amount: "10.00",
+    discountAmount: "0.00",
+  })),
+}));
+
 vi.mock("../../payment/dispatchBestEffortDownstreamDelivery", () => ({
   dispatchBestEffortDownstreamDelivery: (input: {
     delivery: () => Promise<void>;

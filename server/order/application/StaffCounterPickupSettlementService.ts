@@ -27,7 +27,6 @@ import {
   findBlockingMembershipForOrder,
   voidCheckByIdDetailed,
 } from "../../operational-session/check";
-import { confirmPayment } from "../../operational-session/payment/PaymentConfirmService";
 import { listSettlementRecordsForCheck } from "../../operational-session/check/settlementRecordRepository";
 import { getOrderSettlementProjectionStore } from "../../operational-session/check/api/orderSettlementReadComposition";
 import { tryMaterializeOrderSettlementProjections } from "../../operational-session/check/read/orderSettlementProjectionMaterializer";
@@ -48,7 +47,8 @@ export class StaffCounterPickupError extends Error {
     | "ALREADY_SETTLED"
     | "REGISTER_REQUIRED"
     | "SHIFT_REQUIRED"
-    | "SETTLEMENT_RECORD_MISSING";
+    | "SETTLEMENT_RECORD_MISSING"
+    | "FINANCIAL_REQUIRES_CASHIER";
 
   constructor(code: StaffCounterPickupError["code"], message: string) {
     super(message);
@@ -255,169 +255,10 @@ export async function settleCounterPickupPaid(input: {
   deviceId?: string | null;
   operationalScreenId?: string | null;
 }): Promise<StaffSettleCounterPickupResult> {
-  const registerId = input.registerId.trim();
-  if (!registerId) {
-    throw new StaffCounterPickupError(
-      "REGISTER_REQUIRED",
-      "Active Register is required for Counter Pickup settle"
-    );
-  }
-
-  const { checkId, checkOutcome } = await requireOpenSessionlessMembership({
-    restaurantId: input.restaurantId,
-    orderId: input.orderId,
-  });
-
-  const unavailableCtx = () =>
-    unavailableSettlementContext(
-      input.restaurantId,
-      new Date().toISOString(),
-      ["already_settled_no_live_context"]
-    );
-
-  if (checkOutcome === "paid") {
-    const records = await listSettlementRecordsForCheck({
-      restaurantId: input.restaurantId,
-      checkId,
-    });
-    const settlementRecordId = newestSettlementRecordId(records);
-    if (!settlementRecordId) {
-      throw new StaffCounterPickupError(
-        "SETTLEMENT_RECORD_MISSING",
-        "Paid Check has no Settlement Record"
-      );
-    }
-    const record = records.find(
-      (r) => r.settlementRecordId === settlementRecordId
-    )!;
-    return {
-      orderId: input.orderId,
-      checkId,
-      settlementRecordId,
-      grandTotal: String(record.grandTotal),
-      currencyCode: record.currencySnapshot.currencyCode,
-      currencySymbol: record.currencySnapshot.currencySymbol,
-      paymentMethodSummary: paymentSummaryFromRecord(record),
-      alreadySettled: true,
-      settlementContext: unavailableCtx(),
-    };
-  }
-
-  if (checkOutcome !== "open") {
-    throw new StaffCounterPickupError(
-      "CHECK_NOT_SETTLEABLE",
-      `Check outcome ${checkOutcome} cannot be settled paid`
-    );
-  }
-
-  const settlementContextHints = {
-    registerId,
-    deviceId: input.deviceId,
-    operatorUserId: input.operatorUserId,
-    operationalScreenId: input.operationalScreenId,
-  };
-
-  const settlementContext = await resolveSettlementContextForSettle({
-    restaurantId: input.restaurantId,
-    ...settlementContextHints,
-  });
-
-  if (!settlementContext.registerId) {
-    throw new StaffCounterPickupError(
-      "REGISTER_REQUIRED",
-      "Could not resolve Register for settle"
-    );
-  }
-  if (!settlementContext.financialShiftId) {
-    throw new StaffCounterPickupError(
-      "SHIFT_REQUIRED",
-      "An open Financial Shift is required on the active Register"
-    );
-  }
-
-  let financial;
-  try {
-    financial = await confirmPayment({
-      restaurantId: input.restaurantId,
-      checkId,
-      settlements: input.settlements,
-      settlementContextHints,
-    });
-  } catch (err) {
-    if (err instanceof CheckTransitionError) {
-      const records = await listSettlementRecordsForCheck({
-        restaurantId: input.restaurantId,
-        checkId,
-      });
-      const settlementRecordId = newestSettlementRecordId(records);
-      if (settlementRecordId) {
-        const record = records.find(
-          (r) => r.settlementRecordId === settlementRecordId
-        )!;
-        return {
-          orderId: input.orderId,
-          checkId,
-          settlementRecordId,
-          grandTotal: String(record.grandTotal),
-          currencyCode: record.currencySnapshot.currencyCode,
-          currencySymbol: record.currencySnapshot.currencySymbol,
-          paymentMethodSummary: paymentSummaryFromRecord(record),
-          alreadySettled: true,
-          settlementContext: unavailableCtx(),
-        };
-      }
-    }
-    throw err;
-  }
-
-  await tryMaterializeOrderSettlementProjections(
-    getOrderSettlementProjectionStore(),
-    {
-      committedSettlements: financial.orderSettlement.settlements,
-      events: financial.orderSettlementEvents,
-    }
+  throw new StaffCounterPickupError(
+    "FINANCIAL_REQUIRES_CASHIER",
+    "Financial settlement requires Cashier Confirm"
   );
-
-  const record = financial.settlementRecord.record;
-  if (!record) {
-    const records = await listSettlementRecordsForCheck({
-      restaurantId: input.restaurantId,
-      checkId,
-    });
-    const settlementRecordId = newestSettlementRecordId(records);
-    if (!settlementRecordId) {
-      throw new StaffCounterPickupError(
-        "SETTLEMENT_RECORD_MISSING",
-        "Settle completed without Settlement Record"
-      );
-    }
-    const fallback = records.find(
-      (r) => r.settlementRecordId === settlementRecordId
-    )!;
-    return {
-      orderId: input.orderId,
-      checkId,
-      settlementRecordId,
-      grandTotal: String(fallback.grandTotal),
-      currencyCode: fallback.currencySnapshot.currencyCode,
-      currencySymbol: fallback.currencySnapshot.currencySymbol,
-      paymentMethodSummary: paymentSummaryFromRecord(fallback),
-      alreadySettled: financial.settlementRecord.outcome === "already_applied",
-      settlementContext: financial.settlementContext,
-    };
-  }
-
-  return {
-    orderId: input.orderId,
-    checkId,
-    settlementRecordId: record.settlementRecordId,
-    grandTotal: String(record.grandTotal),
-    currencyCode: record.currencySnapshot.currencyCode,
-    currencySymbol: record.currencySnapshot.currencySymbol,
-    paymentMethodSummary: paymentSummaryFromRecord(record),
-    alreadySettled: financial.settlementRecord.outcome === "already_applied",
-    settlementContext: financial.settlementContext,
-  };
 }
 
 /**

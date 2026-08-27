@@ -3,7 +3,7 @@ import { sessionActionLabel } from "./diningSessionActionCopy";
 
 describe("diningSessionActionCopy SETTLEMENT-ARCHITECTURE-1A", () => {
   it("provides Arabic settlement action labels", () => {
-    expect(sessionActionLabel("markPaid", "ar")).toBe("تسجيل الدفع");
+    expect(sessionActionLabel("sendToCashier", "ar")).toBe("إرسال للكاشير");
     expect(sessionActionLabel("markComplimentary", "ar")).toBe("ضيافة");
     expect(sessionActionLabel("closeSession", "ar")).toBe("إغلاق الجلسة");
   });
@@ -13,7 +13,12 @@ describe("diningSessionActionCopy SETTLEMENT-ARCHITECTURE-1A", () => {
     expect(sessionActionLabel("closeConfirmBody", "ar")).toContain("تحرير الطاولة");
   });
 
-  it("provides paid settlement confirmation copy", () => {
-    expect(sessionActionLabel("paidConfirmBody", "en")).toContain("settled and closed");
+  it("sends complimentary to Cashier without auto-close copy", () => {
+    expect(sessionActionLabel("complimentaryConfirmBody", "en")).toContain(
+      "does not close automatically"
+    );
+    expect(sessionActionLabel("complimentaryConfirmBody", "en")).not.toContain(
+      "closed automatically"
+    );
   });
 });

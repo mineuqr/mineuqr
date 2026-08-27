@@ -125,6 +125,27 @@ export function buildDraftCashierInvoiceView(input: {
   };
 }
 
+export function invoiceIntentLinesToCashierView(
+  items: ReadonlyArray<{
+    menuItemId: number | null;
+    nameAr: string;
+    nameEn: string | null;
+    quantity: number;
+    unitPrice: string;
+    lineTotal: string;
+  }>
+): CashierInvoiceLineView[] {
+  return items.map((item, index) => ({
+    key: `intent-${item.menuItemId ?? "x"}-${index}`,
+    nameAr: item.nameAr,
+    nameEn: item.nameEn?.trim() ? item.nameEn : item.nameAr,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    lineTotal: item.lineTotal,
+    menuItemId: item.menuItemId,
+  }));
+}
+
 export function catalogTicketFromInvoiceLines(
   lines: readonly CashierInvoiceLineView[]
 ): CashierDraftCatalogLine[] {
