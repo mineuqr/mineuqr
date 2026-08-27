@@ -25,7 +25,7 @@ function read(rel: string): string {
 }
 
 describe("ORDERING-CHANNEL-GOVERNANCE-1 registry", () => {
-  it("registers active channels including Table Session", () => {
+  it("registers all OrderingChannelIds including unused table_session", () => {
     const ids = ORDERING_CHANNEL_REGISTRY.map((e) => e.id);
     expect(ids).toContain(ORDERING_CHANNEL_TABLE_SESSION);
     expect(ids).toContain(ORDERING_CHANNEL_QR);

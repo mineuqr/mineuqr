@@ -33,7 +33,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
       unpaidSessionless: true,
     });
     expect(unpaid.map((a) => a.id)).toEqual([
-      "settle-self-ordering",
+      "send-to-cashier",
       "cancel-order",
     ]);
     expect(unpaid.some((a) => a.id === "serve-order")).toBe(false);
@@ -44,7 +44,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
     });
     expect(paid.map((a) => a.id)).toEqual(["serve-order"]);
     expect(paid.some((a) => a.id === "cancel-order")).toBe(false);
-    expect(paid.some((a) => a.id === "settle-self-ordering")).toBe(false);
+    expect(paid.some((a) => a.id === "send-to-cashier")).toBe(false);
   });
 
   it("POS cashier_pos exposes تم التقديم on operational lists and never Cancel", () => {
@@ -84,6 +84,6 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
       "accept-order",
       "cancel-order",
     ]);
-    expect(sessioned.some((a) => a.id === "settle-self-ordering")).toBe(false);
+    expect(sessioned.some((a) => a.id === "send-to-cashier")).toBe(false);
   });
 });

@@ -1,9 +1,15 @@
 /**
- * ORDERING-CHANNEL-GOVERNANCE-1 — Canonical Ordering Channel Registry.
+ * ORDERING-CHANNEL-GOVERNANCE-1 / CHANNEL-TAXONOMY-CLEANUP-1
  *
- * OrderingChannelId is the single source of truth for channel provenance.
+ * OrderingChannelId answers: how did this Order enter the operational system?
+ * It does not answer how it was paid (Cashier Confirm → Collection Fact → PAID).
+ * Session/table/fulfilment/actor are other dimensions — not this stamp.
+ *
+ * Live Place writers: qr, waiter_tablet, kiosk, cashier_pos.
+ * table_session is registered for compatibility/eligibility lists only — no Place writer.
+ * Reserved (no Place writer): mobile, marketplace, delivery_partner, call_center.
+ *
  * Reporting maps from this registry only — never from identityScope / UI / payments.
- * Future channels: register here; no reporting redesign required.
  */
 
 export const ORDERING_CHANNEL_TABLE_SESSION = "table_session" as const;
@@ -59,7 +65,8 @@ export type OrderingChannelRegistryEntry = Readonly<{
 export const ORDERING_CHANNEL_REGISTRY = [
   {
     id: ORDERING_CHANNEL_TABLE_SESSION,
-    lifecycle: "active",
+    /** No production Place writer. Table guest QR stamps `qr` + optional sessionId. */
+    lifecycle: "registered",
     displayName: { en: "Table Sessions", ar: "جلسات الطاولات" },
     reportingSalesChannelId: "table",
     reportingVisible: true,
@@ -123,7 +130,8 @@ export const ORDERING_CHANNEL_REGISTRY = [
   },
   {
     id: ORDERING_CHANNEL_CASHIER_POS,
-    lifecycle: "registered",
+    /** Live POS sale writer. Entry channel only — not Collection Fact / PAID. */
+    lifecycle: "active",
     displayName: { en: "Cashier POS", ar: "نقطة البيع" },
     reportingSalesChannelId: "cashier_pos",
     reportingVisible: false,

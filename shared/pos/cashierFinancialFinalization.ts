@@ -41,6 +41,8 @@ export function isCashierFinalizableOrderingChannel(
  * CASHIER-INCOMING-HANDOFF-MEMBERSHIP-1
  * Channels that may be explicitly handed off into the Cashier Incoming Queue.
  * cashier_pos is Cashier-finalizable but must not self-enqueue as Incoming.
+ * table_session remains eligible for compatibility if a historical stamp exists;
+ * production Table guest Orders stamp qr, not table_session.
  */
 export const CASHIER_HANDOFF_ELIGIBLE_ORDERING_CHANNELS = [
   ORDERING_CHANNEL_TABLE_SESSION,

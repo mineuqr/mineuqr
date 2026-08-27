@@ -39,7 +39,7 @@ describe("REGISTER-OPERATIONS-RESPONSIBILITY-CLEANUP-1 guards", () => {
     expect(orders).toContain("staffSettleCounterPickup");
     expect(orders).toContain("staffCancelCounterPickup");
     expect(orders).toContain("MarkPaidSettlementDialog");
-    expect(orders).toContain("settle-self-ordering");
+    expect(orders).toContain("send-to-cashier");
   });
 
   it("does not redesign Settlement / Register / Shift / Reporting", () => {

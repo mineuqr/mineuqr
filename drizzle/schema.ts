@@ -1187,8 +1187,11 @@ export const orders = mysqlTable("orders", {
 	/** KIOSK-PRESENTATION-ADOPTION-1 — TABLE | KIOSK sequence partition. */
 	identityScope: varchar({ length: 16 }),
 	/**
-	 * REPORTING-SALES-CHANNEL-ANALYTICS-1 — OrderingChannelId stamp at place
-	 * (qr | kiosk | mobile | waiter_tablet). Nullable for pre-program history.
+	 * CHANNEL-TAXONOMY-CLEANUP-1 — Order entry provenance (OrderingChannelId).
+	 * Live Place stamps: qr | waiter_tablet | kiosk | cashier_pos.
+	 * table_session has no production Place writer (table guests use qr).
+	 * Reserved: mobile | marketplace | delivery_partner | call_center.
+	 * Nullable for historical/pre-stamp rows. Not payment method. Not financial authority.
 	 */
 	orderingChannel: varchar("ordering_channel", { length: 32 }),
 	trackingToken: varchar({ length: 64 }),

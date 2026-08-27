@@ -17,7 +17,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 guards", () => {
       "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx"
     );
     expect(panel).toContain("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1");
-    expect(panel).toContain("settle-self-ordering");
+    expect(panel).toContain("send-to-cashier");
     expect(panel).toContain("order.sendToCashier");
     expect(panel).not.toContain('section: "cashier"');
     expect(panel).not.toContain("session.markPaid");
@@ -49,7 +49,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 guards", () => {
     const actions = read(
       "client/src/lib/operational-workspace/operationalActions.ts"
     );
-    expect(actions).toContain("settle-self-ordering");
+    expect(actions).toContain("send-to-cashier");
     expect(actions).toContain("getOrdersWorkspaceActions");
     expect(actions).toContain("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1");
     expect(actions).not.toContain("Sessions");

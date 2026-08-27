@@ -3,6 +3,8 @@
  *
  * Sales channel reporting vocabulary — derived from Ordering Channel Registry.
  * Reporting MUST consume OrderingChannelId only (no identityScope inference).
+ * Live Table QR (`qr`, including sessioned table guests) maps to reporting id `qr`,
+ * not the unused `table_session` → `table` bucket.
  */
 
 import {

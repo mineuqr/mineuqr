@@ -320,7 +320,7 @@ export function OrdersWorkspacePanel({
         ? settlementGateFor(order)
         : { sessionless: false, unpaidSessionless: false, orderingChannel: null };
 
-      if (actionId === "settle-self-ordering") {
+      if (actionId === "send-to-cashier") {
         setPendingActionOrderId(orderId);
         sendToCashierMutation.mutate({ restaurantId, orderId });
         return;

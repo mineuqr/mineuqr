@@ -32,7 +32,7 @@ const ACTION_MAP: Partial<
   "serve-order": { targetStatus: "served" },
   "cancel-order": { targetStatus: "cancelled" },
   "restore-order": { targetStatus: "pending" },
-  // settle-self-ordering — money path; not order.updateStatus
+  // send-to-cashier — operational handoff; not order.updateStatus
 };
 
 /**

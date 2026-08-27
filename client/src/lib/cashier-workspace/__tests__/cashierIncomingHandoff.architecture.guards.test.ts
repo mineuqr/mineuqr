@@ -26,7 +26,7 @@ describe("CASHIER-INCOMING-ORDER-HANDOFF-1", () => {
     expect(bar).toContain("session.sendToCashier");
     expect(row).toContain("session.sendToCashier");
     expect(orders).toContain("order.sendToCashier");
-    expect(orders).toContain("settle-self-ordering");
+    expect(orders).toContain("send-to-cashier");
     const sendBar = bar.slice(bar.indexOf("sendToCashier") - 200, bar.indexOf("sendToCashier") + 80);
     expect(sendBar).not.toContain('section: "cashier"');
   });

@@ -80,7 +80,7 @@ Register Ops Counter Pickup panel remains available; Orders is now the operation
 | Path | Role |
 |------|------|
 | `client/src/components/orders-workspace/OrdersWorkspacePanel.tsx` | Settle/Cancel adoption |
-| `client/src/lib/operational-workspace/operationalActions.ts` | `settle-self-ordering` + `getOrdersWorkspaceActions` |
+| `client/src/lib/operational-workspace/operationalActions.ts` | `send-to-cashier` + `getOrdersWorkspaceActions` |
 | `client/src/lib/orders-workspace/selfOrderingOrderSettlementPresentation.ts` | Sessionless / unpaid helpers |
 | `client/src/lib/order-presentation/mapOrderPresentation.ts` | Action override support |
 | `server/order/application/StaffCounterPickupSettlementService.ts` | Documented Orders caller |

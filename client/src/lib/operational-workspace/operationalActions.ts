@@ -8,8 +8,8 @@ export type OperationalActionId =
   | "serve-order"
   | "cancel-order"
   | "restore-order"
-  /** SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 — sessionless Check settle from Orders. */
-  | "settle-self-ordering";
+  /** CHANNEL-TAXONOMY-CLEANUP-1 — operational Cashier handoff, not money settle. */
+  | "send-to-cashier";
 
 export type OperationalAction = {
   id: OperationalActionId;
@@ -21,7 +21,7 @@ export type OperationalAction = {
 };
 
 const ACTIONS: Record<
-  Exclude<OperationalActionId, "settle-self-ordering">,
+  Exclude<OperationalActionId, "send-to-cashier">,
   Omit<OperationalAction, "id">
 > = {
   "accept-order": {
@@ -62,15 +62,15 @@ const ACTIONS: Record<
   },
 };
 
-const SETTLE_SELF_ORDERING: OperationalAction = {
-  id: "settle-self-ordering",
+const SEND_TO_CASHIER: OperationalAction = {
+  id: "send-to-cashier",
   labelEn: "Send to Cashier",
   labelAr: "إرسال للكاشير",
   variant: "primary",
 };
 
 export function getOperationalActionById(id: OperationalActionId): OperationalAction {
-  if (id === "settle-self-ordering") return SETTLE_SELF_ORDERING;
+  if (id === "send-to-cashier") return SEND_TO_CASHIER;
   return { id, ...ACTIONS[id] };
 }
 
@@ -162,7 +162,7 @@ export function getOrdersWorkspaceActions(
   const nonComplete = lifecycle.filter((a) => a.id !== "serve-order");
   return [
     ...nonComplete,
-    SETTLE_SELF_ORDERING,
+    SEND_TO_CASHIER,
     { id: "cancel-order", ...ACTIONS["cancel-order"] },
   ];
 }
