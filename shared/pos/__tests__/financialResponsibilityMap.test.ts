@@ -13,6 +13,9 @@ describe("UNIFIED-POS-FINANCIAL-AUTHORITY-1 responsibility maps", () => {
     expect(FINANCIAL_RESPONSIBILITY_MAP.complimentary).toContain(
       "isComplimentaryCollectionFact"
     );
+    expect(FINANCIAL_RESPONSIBILITY_MAP.paidSaleReceipt).toContain(
+      "Collection Fact / orderId"
+    );
     expect(ATTRIBUTION_RESPONSIBILITY_MAP.srRole).toContain("not financial SSOT");
     expect(ATTRIBUTION_RESPONSIBILITY_MAP.cfRole).toContain("Financial root");
   });

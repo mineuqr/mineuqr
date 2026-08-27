@@ -21,6 +21,18 @@ const idInput = restaurantInput.extend({
   settlementRecordId: z.string().min(1).max(128),
 });
 
+const receiptInput = restaurantInput
+  .extend({
+    settlementRecordId: z.string().min(1).max(128).optional().nullable(),
+    orderId: z.coerce.number().int().positive().optional().nullable(),
+  })
+  .refine(
+    (value) =>
+      Boolean(value.settlementRecordId?.trim()) ||
+      (value.orderId != null && value.orderId > 0),
+    { message: "settlementRecordId or orderId required" }
+  );
+
 const checkInput = restaurantInput.extend({
   checkId: z.coerce.number().int().positive(),
 });
@@ -45,7 +57,7 @@ const listInput = restaurantInput.extend({
  * - getByCheck
  * - listByRestaurant (history)
  * - listBySession
- * - getReceipt
+ * - getReceipt (SR id for historical/refund; orderId for current CF paid-sale)
  */
 export const settlementRecordReadRouter = router({
   getById: verifiedProcedure.input(idInput).query(async ({ input, ctx }) => {
@@ -105,7 +117,7 @@ export const settlementRecordReadRouter = router({
       );
     }),
 
-  getReceipt: verifiedProcedure.input(idInput).query(async ({ input, ctx }) => {
+  getReceipt: verifiedProcedure.input(receiptInput).query(async ({ input, ctx }) => {
     await assertRestaurantAccess(
       ctx,
       input.restaurantId,

@@ -23,7 +23,8 @@ import { Loader2, Printer } from "lucide-react";
 type SettlementReceiptDialogProps = {
   open: boolean;
   restaurantId: number;
-  settlementRecordId: string | null;
+  settlementRecordId?: string | null;
+  orderId?: number | null;
   language: SettlementRecordLang;
   restaurantName?: string;
   onOpenChange: (open: boolean) => void;
@@ -33,6 +34,7 @@ export function SettlementReceiptDialog({
   open,
   restaurantId,
   settlementRecordId,
+  orderId,
   language,
   restaurantName,
   onOpenChange,
@@ -40,9 +42,15 @@ export function SettlementReceiptDialog({
   const query = useSettlementRecordReceipt(
     {
       restaurantId,
-      settlementRecordId: settlementRecordId ?? "",
+      settlementRecordId: settlementRecordId ?? null,
+      orderId: orderId ?? null,
     },
-    { enabled: open && !!settlementRecordId }
+    {
+      enabled:
+        open &&
+        (Boolean(settlementRecordId?.trim()) ||
+          Boolean(orderId && orderId > 0)),
+    }
   );
 
   const vm = useMemo(

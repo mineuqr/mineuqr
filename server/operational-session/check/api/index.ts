@@ -9,6 +9,11 @@ export { settlementRecordReadRouter } from "./settlementRecordReadRouter";
 export { settlementRecordReadService } from "./settlementRecordReadService";
 export { SettlementRecordReadService } from "./settlementRecordReadService";
 export {
+  resolvePaidSaleReceiptFromCollectionFact,
+  PaidSaleReceiptIdentityError,
+  AmbiguousPaidSaleReceiptError,
+} from "./paidSaleReceiptResolution";
+export {
   toSettlementRecordHistoryItemDto,
   toSettlementRecordDetailDto,
   toSettlementRecordReceiptDto,

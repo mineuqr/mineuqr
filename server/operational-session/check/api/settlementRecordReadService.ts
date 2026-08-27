@@ -5,6 +5,10 @@
  *
  * Reads immutable Settlement Record documents only.
  * Optional order/item/attribution/RF identity enrichment is presentation — not money math.
+ *
+ * RECEIPT-SR-IDENTITY-1 — getReceipt may resolve a current Cashier paid-sale
+ * from Collection Fact / orderId. That path is read-only and does not write
+ * CF, PAID, or SR. Historical paid and refund receipts remain SR-keyed.
  */
 
 import {
@@ -39,6 +43,10 @@ import {
   toSettlementRecordReceiptDto,
   withSettlementRecordAttributionDisplay,
 } from "./settlementRecordApiMapper";
+import {
+  PaidSaleReceiptIdentityError,
+  resolvePaidSaleReceiptFromCollectionFact,
+} from "./paidSaleReceiptResolution";
 
 async function enrichOrders(
   restaurantId: number,
@@ -194,11 +202,28 @@ export class SettlementRecordReadService {
 
   async getReceipt(input: {
     restaurantId: number;
-    settlementRecordId: string;
+    settlementRecordId?: string | null;
+    orderId?: number | null;
   }): Promise<SettlementRecordReceiptDto | null> {
-    const detail = await this.getById(input);
-    if (!detail) return null;
-    return toSettlementRecordReceiptDto(detail);
+    const settlementRecordId = input.settlementRecordId?.trim() ?? "";
+    if (settlementRecordId.length > 0) {
+      const detail = await this.getById({
+        restaurantId: input.restaurantId,
+        settlementRecordId,
+      });
+      if (!detail) return null;
+      return toSettlementRecordReceiptDto(detail);
+    }
+    const orderId = input.orderId ?? null;
+    if (orderId != null && Number.isInteger(orderId) && orderId > 0) {
+      return resolvePaidSaleReceiptFromCollectionFact({
+        restaurantId: input.restaurantId,
+        orderId,
+      });
+    }
+    throw new PaidSaleReceiptIdentityError(
+      "RECEIPT-SR-IDENTITY-01: settlementRecordId or orderId required"
+    );
   }
 }
 

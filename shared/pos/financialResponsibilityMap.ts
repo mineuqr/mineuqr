@@ -21,6 +21,8 @@ export const FINANCIAL_RESPONSIBILITY_MAP = {
   refunded:
     "Original Cashier sale identity is Collection Fact; refund documents remain Check-owned compensating SR",
   financialStatus: "production CF present = PAID; absent = not financially finalized",
+  paidSaleReceipt:
+    "Current Cashier paid-sale receipt identity is Collection Fact / orderId; historical paid and refund receipts remain SR",
 } as const;
 
 export const ATTRIBUTION_RESPONSIBILITY_MAP = {

@@ -137,7 +137,11 @@ export type SettlementRecordDetailDto = Readonly<{
   }>;
 }>;
 
-/** Customer receipt payload — Settlement Record snapshot only for money. */
+/**
+ * Customer receipt payload.
+ * Historical paid and refund receipts: money from Settlement Record.
+ * Current Cashier paid-sale receipts: money from Collection Fact; settlementRecordId may be empty.
+ */
 export type SettlementRecordReceiptDto = Readonly<{
   settlementRecordId: string;
   settlementNumber: string;

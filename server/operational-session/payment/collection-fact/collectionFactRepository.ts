@@ -218,6 +218,28 @@ export async function findProductionCollectionFactByOrderId(
 }
 
 /**
+ * RECEIPT-SR-IDENTITY-1 — all production Collection Facts for one Order.
+ * No LIMIT. Isolated purposes are excluded. Caller fail-closes on more than one.
+ */
+export async function listProductionCollectionFactsByOrderId(
+  input: { restaurantId: number; orderId: number },
+  client?: SessionDbClient
+): Promise<CollectionFact[]> {
+  const db = await resolveDb(client);
+  const rows = await db
+    .select()
+    .from(paymentCollectionFacts)
+    .where(
+      and(
+        eq(paymentCollectionFacts.restaurantId, input.restaurantId),
+        eq(paymentCollectionFacts.orderId, input.orderId),
+        eq(paymentCollectionFacts.purpose, COLLECTION_FACT_PRODUCTION_PURPOSE)
+      )
+    );
+  return rows.map(mapRowToCollectionFact);
+}
+
+/**
  * REFUND-CF-ANCHOR-1 — all production Collection Facts that may anchor a Check refund.
  * No LIMIT. No channel filter. Caller fail-closes on more than one unique fact.
  */

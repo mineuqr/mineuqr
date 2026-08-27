@@ -4,10 +4,26 @@
 
 import { TRPCError } from "@trpc/server";
 import { SettlementRecordPersistenceError } from "../settlementRecordRepository";
+import {
+  AmbiguousPaidSaleReceiptError,
+  PaidSaleReceiptIdentityError,
+} from "./paidSaleReceiptResolution";
 
 export function throwSettlementRecordApiError(error: unknown): never {
   if (error instanceof TRPCError) {
     throw error;
+  }
+  if (error instanceof AmbiguousPaidSaleReceiptError) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "Paid sale receipt identity is ambiguous",
+    });
+  }
+  if (error instanceof PaidSaleReceiptIdentityError) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Paid sale receipt not found",
+    });
   }
   if (error instanceof SettlementRecordPersistenceError) {
     if (error.code === "NOT_FOUND") {

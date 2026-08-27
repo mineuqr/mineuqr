@@ -143,6 +143,7 @@ import {
   StaffCounterPickupError,
 } from "./order/application/StaffCounterPickupSettlementService";
 import { settlementRecordReadService } from "./operational-session/check/api/settlementRecordReadService";
+import { runSettlementRecordRead } from "./operational-session/check/api/mapSettlementRecordApiError";
 import { mapOrderDisplayIdentityFields } from "./order/read/presentation/mapOrderDisplayIdentity";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { operationalDeviceRouter } from "./operational-device/operationalDeviceRouter";
@@ -2475,8 +2476,11 @@ const orderRouter = router({
     }),
 
   /**
-   * SELF-ORDERING-SETTLEMENT-ADOPTION-1 — public receipt from Settlement Record.
-   * Tracking token + order ownership gate; money from certified SR read service.
+   * SELF-ORDERING-SETTLEMENT-ADOPTION-1 / RECEIPT-SR-IDENTITY-1
+   * Public receipt: tracking token + order ownership gate.
+   * Historical/refund: settlementRecordId → Settlement Record.
+   * Current Cashier paid-sale: omit settlementRecordId → Collection Fact / orderId.
+   * Existing URLs that send settlementRecordId stay valid.
    */
   getSettlementReceipt: publicProcedure
     .input(
@@ -2484,7 +2488,7 @@ const orderRouter = router({
         restaurantId: z.number().int().positive(),
         orderId: z.number().int().positive(),
         trackingToken: z.string().min(8).max(128),
-        settlementRecordId: z.string().min(1).max(128),
+        settlementRecordId: z.string().min(1).max(128).optional().nullable(),
       })
     )
     .query(async ({ input }) => {
@@ -2502,10 +2506,20 @@ const orderRouter = router({
           message: "Order tracking token mismatch",
         });
       }
-      const receipt = await settlementRecordReadService.getReceipt({
-        restaurantId: input.restaurantId,
-        settlementRecordId: input.settlementRecordId,
-      });
+      const settlementRecordId = input.settlementRecordId?.trim() ?? "";
+      const receipt = await runSettlementRecordRead(() =>
+        settlementRecordReadService.getReceipt(
+          settlementRecordId.length > 0
+            ? {
+                restaurantId: input.restaurantId,
+                settlementRecordId,
+              }
+            : {
+                restaurantId: input.restaurantId,
+                orderId: input.orderId,
+              }
+        )
+      );
       if (!receipt) {
         throw new TRPCError({
           code: "NOT_FOUND",

@@ -48,16 +48,32 @@ export function useSettlementRecordDetail(
 }
 
 export function useSettlementRecordReceipt(
-  input: { restaurantId: number; settlementRecordId: string },
+  input: {
+    restaurantId: number;
+    settlementRecordId?: string | null;
+    orderId?: number | null;
+  },
   options: Enabled = {}
 ) {
-  return trpc.settlementRecord.getReceipt.useQuery(input, {
-    enabled:
-      (options.enabled ?? true) &&
-      input.restaurantId > 0 &&
-      input.settlementRecordId.length > 0,
-    staleTime: 30_000,
-  });
+  const settlementRecordId = input.settlementRecordId?.trim() ?? "";
+  const orderId = input.orderId ?? null;
+  const hasIdentity =
+    settlementRecordId.length > 0 ||
+    (orderId != null && orderId > 0);
+  return trpc.settlementRecord.getReceipt.useQuery(
+    {
+      restaurantId: input.restaurantId,
+      settlementRecordId: settlementRecordId.length > 0 ? settlementRecordId : null,
+      orderId: settlementRecordId.length > 0 ? null : orderId,
+    },
+    {
+      enabled:
+        (options.enabled ?? true) &&
+        input.restaurantId > 0 &&
+        hasIdentity,
+      staleTime: 30_000,
+    }
+  );
 }
 
 export function useSettlementRecordsBySession(

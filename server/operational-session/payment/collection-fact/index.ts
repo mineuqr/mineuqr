@@ -13,6 +13,7 @@ export {
   findCollectionFactByFactId,
   findProductionCollectionFactByCheckId,
   findProductionCollectionFactByOrderId,
+  listProductionCollectionFactsByOrderId,
   listProductionCollectionFactsForRefundAnchor,
   listCollectionFactsByIds,
   updateCollectionFact,
