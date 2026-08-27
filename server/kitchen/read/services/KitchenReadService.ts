@@ -15,6 +15,7 @@ import {
   type OrderReadQueryPort,
 } from "../infrastructure/OrderReadQueryAdapter";
 import { KitchenTicketComposer, kitchenTicketComposer } from "./KitchenTicketComposer";
+import { catchUpOrderReadProjection } from "../../../order/read/catchUpOrderReadProjection";
 
 function partitionColumns(tickets: KitchenTicketDto[]): KitchenQueueColumns {
   const columns: KitchenQueueColumns = {
@@ -38,6 +39,7 @@ function countByStatus(tickets: KitchenTicketDto[]) {
 
 /**
  * Kitchen Operational Read Context (P-07 logical) — composes tickets from order read projections.
+ * Shared Order Read catch-up runs before querying order_read_orders (no Kitchen relay).
  */
 export class KitchenReadService {
   constructor(
@@ -52,6 +54,7 @@ export class KitchenReadService {
     const limit = clampKitchenQueueLimit(query.limit);
     const statusFilter = query.status ?? "all";
 
+    await catchUpOrderReadProjection();
     const orders = await this.orderReadPort.listPipelineOrders(query.restaurantId);
     const orderIds = orders.map((order) => order.orderId);
     const timelines = await this.orderReadPort.listTimelinesForOrders(

@@ -17,8 +17,11 @@ describe("KITCHEN-DISPLAY-1 architecture guards", () => {
   it("kitchen module has no kitchen_read tables or projection consumer", () => {
     const service = readFileSync(join(root, "services/KitchenReadService.ts"), "utf8");
     const router = readFileSync(join(root, "kitchenRouter.ts"), "utf8");
+    expect(service).toContain("catchUpOrderReadProjection");
     expect(service).not.toContain("KitchenQueueProjectionConsumer");
     expect(service).not.toContain("kitchen_read_");
+    expect(service).toContain("await catchUpOrderReadProjection()");
+    expect(service).not.toContain("runOrderEventRelayBatch");
     expect(router).toContain("kitchen.read.getQueue");
     expect(router).toContain("assertRestaurantAccess");
   });

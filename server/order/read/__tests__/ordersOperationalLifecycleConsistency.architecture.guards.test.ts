@@ -28,8 +28,13 @@ describe("ORDERS-OPERATIONAL-LIFECYCLE-CONSISTENCY-REPAIR-1 architecture", () =>
     expect(store).toContain("cashierPosPaidOperationalVisibilitySql()");
     expect(contracts).toContain("lifecycleStage=active");
     expect(catchUp).toContain("runOrderEventRelayBatch");
+    expect(catchUp).toContain("inflight");
     expect(catchUp).not.toContain("commitCollectionFact");
     expect(catchUp).not.toContain("placeOrderService");
+
+    const kitchen = read("server/kitchen/read/services/KitchenReadService.ts");
+    expect(kitchen).toContain("await catchUpOrderReadProjection()");
+    expect(kitchen).not.toContain("runOrderEventRelayBatch");
   });
 
   it("place and status HTTP keep deferred relay (no second persist path)", () => {

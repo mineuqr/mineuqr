@@ -7,7 +7,8 @@
  * - cashier_pos listed only after paid/complimentary Check or production Collection Fact
  * Served/cancelled leave this set when lifecycle becomes completed.
  * Catch-up drains deferred outbox before the projection query so create/serve
- * converge without awaitRelay on the mutation HTTP path.
+ * converge without awaitRelay on the mutation HTTP path. Kitchen/POS readers
+ * share the same single-flight drain.
  */
 import type {
   ActiveOrderListQuery,

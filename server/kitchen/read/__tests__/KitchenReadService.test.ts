@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { KitchenReadService } from "../services/KitchenReadService";
 import type { OrderReadQueryPort } from "../infrastructure/OrderReadQueryAdapter";
 import type { KitchenTicketDto } from "../contracts/kitchenQueryContracts";
+import { catchUpOrderReadProjection } from "../../../order/read/catchUpOrderReadProjection";
+
+vi.mock("../../../order/read/catchUpOrderReadProjection", () => ({
+  catchUpOrderReadProjection: vi.fn(async () => undefined),
+}));
 
 function sampleTicket(status: "pending" | "preparing" | "ready", orderId: number, createdAt: string): KitchenTicketDto {
   return {
@@ -90,7 +95,13 @@ describe("KitchenReadService", () => {
     };
 
     const service = new KitchenReadService(port);
+    vi.mocked(catchUpOrderReadProjection).mockClear();
     const result = await service.getQueue({ restaurantId: 5, status: "all" });
+
+    expect(catchUpOrderReadProjection).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(catchUpOrderReadProjection).mock.invocationCallOrder[0]).toBeLessThan(
+      (port.listPipelineOrders as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]
+    );
 
     expect(result.orderingPolicyId).toBe("fifo-by-created-at");
     expect(result.meta.counts.pending).toBe(1);
@@ -145,5 +156,8 @@ describe("KitchenReadService architecture", () => {
     );
     expect(source).not.toMatch(/getOrdersWithItems|getOrderById/);
     expect(source).toContain("OrderReadQueryPort");
+    expect(source).toContain("catchUpOrderReadProjection");
+    expect(source).not.toContain("runOrderEventRelayBatch");
+    expect(source).not.toContain("KitchenQueueProjectionConsumer");
   });
 });
