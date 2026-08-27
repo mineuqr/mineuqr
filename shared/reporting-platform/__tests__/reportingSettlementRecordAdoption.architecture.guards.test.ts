@@ -29,12 +29,13 @@ describe("SETTLEMENT-RECORD-REPORTING-ADOPTION-1 architecture guards", () => {
     expect(adapter).not.toMatch(/\bUPDATE\b|\bDELETE\b/);
   });
 
-  it("Payment analytics loads Settlement Record payment snapshots", () => {
+  it("Payment analytics captured tenders load Collection Fact; refunds stay SR", () => {
     const pay = read(
       "server/reporting-platform/PaymentMethodAnalyticsService.ts"
     );
-    expect(pay).toContain("listSettlementRecordPaymentLinesForReporting");
-    expect(pay).toContain("SETTLEMENT-RECORD-REPORTING-ADOPTION-1");
+    expect(pay).toContain("listProductionCollectionFactTenderLinesForReporting");
+    expect(pay).toContain("listRefundSettlementRecordPaymentLinesForReporting");
+    expect(pay).toContain("ST-TENDER-PROJECTION-CLEANUP-1");
   });
 
   it("Order Sales / Operational metrics remain Order Read owned", () => {

@@ -18,13 +18,13 @@ const PERIOD_SPECIFIC =
   /\b(daily|weekly|monthly|quarterly|annual|yearly|month|week|quarter|year)\b/i;
 
 describe("REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1 guards", () => {
-  it("keeps Check Revenue formula and Settlement Record payment publication path", () => {
+  it("keeps Check Revenue formula; captured tenders are Collection Fact", () => {
     expect(getKpiDefinition("revenue").formula).toContain("grandTotal");
     expect(getKpiDefinition("revenue").formula).toContain("settlement_records");
     const service = read(
       "server/reporting-platform/PaymentMethodAnalyticsService.ts"
     );
-    expect(service).toContain("listSettlementRecordPaymentLinesForReporting");
+    expect(service).toContain("listProductionCollectionFactTenderLinesForReporting");
     expect(service).toContain("REPORTING-PAYMENT-METHOD-ANALYTICS-1");
   });
 

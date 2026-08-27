@@ -1,11 +1,12 @@
 /**
  * SETTLEMENT-RECORD-REPORTING-ADOPTION-1 — financial publication source selection.
  *
- * Modes:
- * - settlement_record (default / cutover): Reporting reads Settlement Record only
- * - dual: compute Check/ST + SR, return SR when parity matches else SR still
- *   returned as canonical with parity attached for diagnostics
- * - check: legacy (tests / emergency rollback only)
+ * Modes (business metrics / dual diagnostics):
+ * - settlement_record (default): Business Metrics read Settlement Record / Union
+ * - dual: attach ST/SR vs published diagnostics; payment-method captured still CF∪ST
+ * - check: emergency business-metrics rollback only — not tender analytics SSOT
+ *
+ * Payment-method captured tenders: Collection Fact.tendersJson wins; ST historical.
  */
 
 export type FinancialReportingSourceMode =

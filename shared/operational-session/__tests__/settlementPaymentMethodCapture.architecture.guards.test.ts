@@ -46,11 +46,11 @@ describe("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 architecture guards", () => {
     expect(invariants).toContain("Multi-tender settlement lines require an amount");
   });
 
-  it("reporting PaymentMethodAnalyticsService consumes Settlement Record publication", () => {
+  it("reporting PaymentMethodAnalyticsService consumes Collection Fact captured tenders", () => {
     const analytics = read(
       "server/reporting-platform/PaymentMethodAnalyticsService.ts"
     );
-    expect(analytics).toContain("listSettlementRecordPaymentLinesForReporting");
+    expect(analytics).toContain("listProductionCollectionFactTenderLinesForReporting");
     expect(analytics).not.toContain("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1");
   });
 });

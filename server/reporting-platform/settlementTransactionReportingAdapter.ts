@@ -1,12 +1,12 @@
 /**
- * CHECK-SETTLEMENT-METHODS-1 — legacy Settlement Transaction tender read adapter.
+ * CHECK-SETTLEMENT-METHODS-1 — Check-owned Settlement Transaction read adapter.
  *
- * SETTLEMENT-RECORD-REPORTING-ADOPTION-1: Payment Method Analytics defaults to
- * Settlement Record payment snapshots. This adapter remains for dual-run parity
- * and REPORTING_FINANCIAL_SOURCE=check emergency rollback only.
+ * ST-TENDER-PROJECTION-CLEANUP-1: ST is a supporting tender projection and
+ * historical compatibility source. It is not payment-method analytics SSOT.
+ * Published captured tenders for new Cashier sales read Collection Fact.tendersJson.
  *
  * Does not change Revenue / Tax / Paid Checks formulas.
- * Canonical Revenue = SUM(paid Settlement Record grandTotal).
+ * Canonical Revenue remains Settlement Record / Revenue Union — not ST.
  */
 
 import {

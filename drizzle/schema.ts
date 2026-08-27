@@ -400,7 +400,10 @@ export type InsertOperationalCheck = typeof operationalChecks.$inferInsert;
 export type SelectOperationalCheck = typeof operationalChecks.$inferSelect;
 
 // ─── Check Settlement Transactions (CHECK-SETTLEMENT-METHODS-1) ──
-/** Tender lines owned by Check aggregate. Revenue SSOT remains Check.grandTotal. */
+/**
+	 * Tender lines owned by Check aggregate.
+	 * Supporting projection after Collection Fact PAID — not payment-method analytics SSOT.
+	 */
 export const checkSettlementTransactions = mysqlTable(
 	"check_settlement_transactions",
 	{

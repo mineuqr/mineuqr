@@ -2,11 +2,13 @@
  * REPORTING-PAYMENT-METHOD-ANALYTICS-1
  * SETTLEMENT-RECORD-REPORTING-ADOPTION-1
  * REFUND-REPORTING-ADOPTION-1
+ * ST-TENDER-PROJECTION-CLEANUP-1
  *
- * Payment-method analytics from Settlement Record payment snapshots (publication).
- * Does not replace Check Revenue (SUM paid published grandTotal).
- * Does not recalculate tender amounts.
- * Refund tender buckets are additive (status=refunded) — never mutate captured totals.
+ * Captured Cashier tenders: Collection Fact.tendersJson (financial SSOT).
+ * Historical pre-CF sales: ST compatibility when no production CF occupies the Check.
+ * Overlap: CF wins — never CF + ST as two sales.
+ * Refund tender buckets remain Settlement Record refund publications (unchanged).
+ * Does not replace Check Revenue. Does not recalculate tender amounts.
  */
 
 import {
@@ -32,20 +34,20 @@ import {
   listRefundSettlementRecordPaymentLinesForReporting,
   listSettlementRecordPaymentLinesForReporting,
 } from "./settlementRecordReportingAdapter";
+import { listProductionCollectionFactTenderLinesForReporting } from "./collectionFactTenderReportingAdapter";
+import {
+  mergeCapturedTenderLinesPreferringCollectionFact,
+  type PaymentMethodAnalyticsTenderLine,
+} from "./cashierTenderAnalyticsMerge";
 import { opsLog } from "../_core/opsLog";
+
+export type { PaymentMethodAnalyticsTenderLine };
 
 type Acc = {
   tenderAmount: number;
   transactionCount: number;
-  checkIds: Set<number>;
+  checkIds: Set<string>;
 };
-
-export type PaymentMethodAnalyticsTenderLine = Readonly<{
-  paymentMethod: string;
-  amount: string;
-  status: string;
-  checkId: number;
-}>;
 
 type TenderLine = PaymentMethodAnalyticsTenderLine;
 
@@ -122,7 +124,7 @@ function accumulateTenderLines(
     const acc = monetary.get(catalogKey) ?? emptyAcc();
     acc.tenderAmount += parseReportingAmount(row.amount);
     acc.transactionCount += 1;
-    acc.checkIds.add(row.checkId);
+    acc.checkIds.add(row.saleKey ?? String(row.checkId));
     monetary.set(catalogKey, acc);
   }
 
@@ -159,6 +161,34 @@ function buildPaymentMethodAnalyticsDto(
   };
 }
 
+async function loadCapturedCfUnionHistoricalSt(
+  input: ReportingPeriodInput
+): Promise<readonly TenderLine[]> {
+  const [cf, st] = await Promise.all([
+    listProductionCollectionFactTenderLinesForReporting({
+      restaurantId: input.restaurantId,
+      from: input.from,
+      to: input.to,
+    }),
+    listSettlementTransactionsForReporting({
+      restaurantId: input.restaurantId,
+      from: input.from,
+      to: input.to,
+    }),
+  ]);
+  return mergeCapturedTenderLinesPreferringCollectionFact({
+    collectionFactLines: cf.lines,
+    historicalStLines: st.map((row) => ({
+      paymentMethod: row.paymentMethod,
+      amount: row.amount,
+      status: row.status,
+      checkId: row.checkId,
+      saleKey: `st:${row.checkId}`,
+    })),
+    overlappingCheckIds: cf.occupiedCheckIds,
+  });
+}
+
 async function loadTenderLines(
   input: ReportingPeriodInput
 ): Promise<{
@@ -177,58 +207,25 @@ async function loadTenderLines(
     checkId: row.checkId,
   }));
 
+  const captured = await loadCapturedCfUnionHistoricalSt(input);
   const mode = resolveFinancialReportingSourceMode();
-  if (mode === "check") {
-    const st = await listSettlementTransactionsForReporting({
-      restaurantId: input.restaurantId,
-      from: input.from,
-      to: input.to,
-    });
-    return {
-      rows: st.map((row) => ({
-        paymentMethod: row.paymentMethod,
-        amount: row.amount,
-        status: row.status,
-        checkId: row.checkId,
-      })),
-      refundRows,
-    };
-  }
-
-  const srLines = await listSettlementRecordPaymentLinesForReporting({
-    restaurantId: input.restaurantId,
-    from: input.from,
-    to: input.to,
-  });
-  const srTenders = srLines.map((row) => ({
-    paymentMethod: row.paymentMethod,
-    amount: row.amount,
-    status: row.status,
-    checkId: row.checkId,
-  }));
 
   if (mode === "dual") {
-    const st = await listSettlementTransactionsForReporting({
+    const srLines = await listSettlementRecordPaymentLinesForReporting({
       restaurantId: input.restaurantId,
       from: input.from,
       to: input.to,
     });
-    const legacy = buildPaymentMethodAnalyticsDto(
-      input,
-      st.map((row) => ({
-        paymentMethod: row.paymentMethod,
-        amount: row.amount,
-        status: row.status,
-        checkId: row.checkId,
-      })),
-      refundRows
+    const srTenders = srLines.map((row) => ({
+      paymentMethod: row.paymentMethod,
+      amount: row.amount,
+      status: row.status,
+      checkId: row.checkId,
+    }));
+    const parity = comparePaymentMethodParity(
+      buildPaymentMethodAnalyticsDto(input, srTenders, refundRows),
+      buildPaymentMethodAnalyticsDto(input, captured, refundRows)
     );
-    const published = buildPaymentMethodAnalyticsDto(
-      input,
-      srTenders,
-      refundRows
-    );
-    const parity = comparePaymentMethodParity(legacy, published);
     if (!parity.matched) {
       opsLog({
         type: "reporting_payment_parity_mismatch",
@@ -240,18 +237,19 @@ async function loadTenderLines(
           from: input.from ?? null,
           to: input.to ?? null,
           deltas: parity.deltas,
+          publishedSource: "collection_fact_tenders",
         },
       });
     }
   }
 
-  return { rows: srTenders, refundRows };
+  return { rows: captured, refundRows };
 }
 
 /**
  * Build payment-method analytics for a restaurant period.
- * Source: Settlement Record paymentSnapshot (captured + refunded lines).
- * listSettlementRecordPaymentLinesForReporting is the publication read path.
+ * Captured: CF.tendersJson for production Cashier sales; ST only when no CF overlap.
+ * Refunds: Settlement Record refund payment snapshots (unchanged).
  */
 export async function getPaymentMethodAnalytics(
   input: ReportingPeriodInput
