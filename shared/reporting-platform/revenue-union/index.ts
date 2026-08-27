@@ -24,6 +24,7 @@ export {
   legacySaleKeys,
   collectionSaleKey,
   checkOverlapKey,
+  resolveLegacyOrderIdsForOverlap,
   provenEconomicSaleOverlap,
   unsafeEconomicIdentityCollision,
 } from "./revenueUnionIdentity";

@@ -38,8 +38,9 @@ import { opsLog } from "../_core/opsLog";
 import { listCollectionFactsForRevenueUnion } from "./revenue-union/collectionFactReportingAdapter";
 import {
   toRevenueUnionLegacyFact,
-  toRevenueUnionLegacyFromSettlement,
+  toRevenueUnionLegacyFromSettlementWithOverlapIdentity,
   toRevenueUnionRefundFact,
+  loadMembershipOrderIdsForEmptySettlementRefs,
 } from "./revenue-union/RevenueUnionService";
 import {
   businessMetricsSummaryFromUnion,
@@ -74,10 +75,16 @@ function isSettlementRecordFact(
   );
 }
 
-function toUnionLegacyRows(rows: readonly CheckReportingRow[]) {
+function toUnionLegacyRows(
+  rows: readonly CheckReportingRow[],
+  membershipByCheckId: ReadonlyMap<number, readonly number[]> = new Map()
+) {
   return rows.map((row) =>
     isSettlementRecordFact(row)
-      ? toRevenueUnionLegacyFromSettlement(row)
+      ? toRevenueUnionLegacyFromSettlementWithOverlapIdentity(
+          row,
+          membershipByCheckId.get(row.id) ?? []
+        )
       : toRevenueUnionLegacyFact(row)
   );
 }
@@ -238,16 +245,21 @@ async function loadPublishedUnionInputs(input: ReportingPeriodInput) {
       to: input.to,
     }),
   ]);
-  return { rows, refundRows, facts };
+  const membershipByCheckId = await loadMembershipOrderIdsForEmptySettlementRefs(
+    input.restaurantId,
+    rows
+  );
+  return { rows, refundRows, facts, membershipByCheckId };
 }
 
 function computePublishedUnion(
   rows: readonly CheckReportingRow[],
   refundRows: readonly CheckReportingRow[],
-  facts: readonly RevenueUnionCollectionFact[]
+  facts: readonly RevenueUnionCollectionFact[],
+  membershipByCheckId: ReadonlyMap<number, readonly number[]> = new Map()
 ) {
   return computeRevenueUnion({
-    legacy: toUnionLegacyRows(rows),
+    legacy: toUnionLegacyRows(rows, membershipByCheckId),
     facts,
     refunds: toUnionRefundRows(refundRows),
     eligibility: "published",
@@ -278,8 +290,14 @@ export async function getBusinessMetricsSummary(
     return applyRefundPublicationsToBusinessMetrics(gross, refundRows);
   }
 
-  const { rows, refundRows, facts } = await loadPublishedUnionInputs(input);
-  const union = computePublishedUnion(rows, refundRows, facts);
+  const { rows, refundRows, facts, membershipByCheckId } =
+    await loadPublishedUnionInputs(input);
+  const union = computePublishedUnion(
+    rows,
+    refundRows,
+    facts,
+    membershipByCheckId
+  );
   const published = businessMetricsSummaryFromUnion({
     restaurantId: input.restaurantId,
     from: input.from,
@@ -329,11 +347,17 @@ export async function getBusinessMetricsTrend(
     );
   }
 
-  const [{ rows, refundRows, facts }, workingHours] = await Promise.all([
-    loadPublishedUnionInputs(input),
-    loadRestaurantWorkingHoursForReporting(input.restaurantId),
-  ]);
-  const union = computePublishedUnion(rows, refundRows, facts);
+  const [{ rows, refundRows, facts, membershipByCheckId }, workingHours] =
+    await Promise.all([
+      loadPublishedUnionInputs(input),
+      loadRestaurantWorkingHoursForReporting(input.restaurantId),
+    ]);
+  const union = computePublishedUnion(
+    rows,
+    refundRows,
+    facts,
+    membershipByCheckId
+  );
   const publishedTrend = publishedTrendRowsFromUnion({
     rows,
     refundRows,

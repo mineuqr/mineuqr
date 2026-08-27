@@ -1,12 +1,13 @@
 /**
  * REVENUE-UNION-ADOPTION-1 / REVENUE-UNION-PUBLISHED-ADOPTION-1
+ * SR-OVERLAP-IDENTITY-HARDENING-1
  * Canonical union identity (ADR-ARCH-039 §7).
  *
  * No single identifier is sufficient. Contribution identity is composite:
  * - Legacy: `check:{restaurantId}:{checkId}`
  * - Collection Fact: `intent:{restaurantId}:{paymentIntentId}`
  * - Sale overlap: `sale:{restaurantId}:{orderingChannel}:{orderId}`
- * - Optional Check overlap: `checkref:{restaurantId}:{checkId}`
+ * - checkref keys exist for correlation only — checkId is not economic identity
  *
  * Persist-time uniqueness remains `(restaurantId, idempotencyKey)` and
  * `(restaurantId, paymentIntentId)`. Settlement ids are publication metadata,
@@ -73,10 +74,41 @@ function sameRestaurantOrderMention(
   return legacy.orderIds.includes(fact.orderId);
 }
 
+function uniquePositiveOrderIds(ids: readonly number[]): number[] {
+  const seen = new Set<number>();
+  const out: number[] = [];
+  for (const id of ids) {
+    if (!Number.isInteger(id) || id <= 0) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+/**
+ * SR-OVERLAP-IDENTITY-HARDENING-1 — order identity for Union overlap only.
+ * Frozen SR.orderRefs always win. Empty frozen refs may recover a singleton
+ * Check membership orderId (authoritative persisted ownership).
+ * Multi-order or empty membership fails closed (no ids → no overlap).
+ * checkId, timestamps, and LIMIT are not identity.
+ */
+export function resolveLegacyOrderIdsForOverlap(input: {
+  frozenOrderIds: readonly number[];
+  membershipOrderIds?: readonly number[];
+}): readonly number[] {
+  const frozen = uniquePositiveOrderIds(input.frozenOrderIds);
+  if (frozen.length > 0) return frozen;
+  const members = uniquePositiveOrderIds(input.membershipOrderIds ?? []);
+  if (members.length === 1) return members;
+  return [];
+}
+
 /**
  * Canonical economic overlap: exclusive restaurantId + singleton orderId.
  * orderingChannel is required when the legacy snapshot has one.
  * Empty legacy orderIds cannot prove overlap. checkId is not economic identity.
+ * Do not match on timestamps or row recency.
  */
 export function provenEconomicSaleOverlap(
   legacy: Pick<

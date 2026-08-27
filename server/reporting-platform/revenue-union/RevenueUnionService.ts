@@ -12,6 +12,7 @@ import type { SettlementRecordReportingFact } from "../settlementRecordReporting
 import {
   compareLegacyToUnion,
   computeRevenueUnion,
+  resolveLegacyOrderIdsForOverlap,
   type CollectionFactEligibility,
   type RevenueUnionCollectionFact,
   type RevenueUnionLegacyFact,
@@ -25,6 +26,7 @@ import {
   listSettlementRecordsForReporting,
 } from "../settlementRecordReportingAdapter";
 import type { CheckTerminalOutcome } from "@shared/operational-session";
+import { listActiveOrderIdsByCheckIds } from "../../operational-session/check/checkOrderMembershipRepository";
 
 function toPublishedCheckOutcome(
   outcome: CheckReportingRow["outcome"]
@@ -74,6 +76,49 @@ export function toRevenueUnionLegacyFromSettlement(
     businessDay: row.businessDay,
     orderingChannel: extras.orderingChannel ?? null,
     orderIds: extras.orderIds ?? fromRecord,
+  });
+}
+
+function isSettlementRecordReportingFact(
+  row: CheckReportingRow
+): row is SettlementRecordReportingFact {
+  return (
+    "publicationSource" in row &&
+    (row as SettlementRecordReportingFact).publicationSource ===
+      "settlement_record"
+  );
+}
+
+/**
+ * SR-OVERLAP-IDENTITY-HARDENING-1
+ * Read-only batch membership for SR rows whose frozen orderRefs are empty.
+ * Failure fails closed (empty map) so an independent sale is never suppressed.
+ */
+export async function loadMembershipOrderIdsForEmptySettlementRefs(
+  restaurantId: number,
+  rows: readonly CheckReportingRow[]
+): Promise<ReadonlyMap<number, readonly number[]>> {
+  const checkIds = rows
+    .filter(isSettlementRecordReportingFact)
+    .filter((row) => row.orderRefs.length === 0)
+    .map((row) => row.id);
+  if (checkIds.length === 0) return new Map();
+  try {
+    return await listActiveOrderIdsByCheckIds(restaurantId, checkIds);
+  } catch {
+    return new Map();
+  }
+}
+
+export function toRevenueUnionLegacyFromSettlementWithOverlapIdentity(
+  row: SettlementRecordReportingFact,
+  membershipOrderIds: readonly number[] = []
+): RevenueUnionLegacyFact {
+  return toRevenueUnionLegacyFromSettlement(row, {
+    orderIds: resolveLegacyOrderIdsForOverlap({
+      frozenOrderIds: row.orderRefs.map((ref) => ref.orderId),
+      membershipOrderIds,
+    }),
   });
 }
 
@@ -133,7 +178,16 @@ export async function comparePublishedLegacyToShadowUnion(input: {
       to: input.to,
     }),
   ]);
-  const legacy = srRows.map((row) => toRevenueUnionLegacyFromSettlement(row));
+  const membershipByCheckId = await loadMembershipOrderIdsForEmptySettlementRefs(
+    input.restaurantId,
+    srRows
+  );
+  const legacy = srRows.map((row) =>
+    toRevenueUnionLegacyFromSettlementWithOverlapIdentity(
+      row,
+      membershipByCheckId.get(row.id) ?? []
+    )
+  );
   const refunds = refundRows.map((row) =>
     toRevenueUnionRefundFact(row, {
       settlementRecordId: row.settlementRecordId,

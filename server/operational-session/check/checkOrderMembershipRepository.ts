@@ -127,6 +127,44 @@ export async function listActiveOrderIdsForCheck(
   return rows.map((r) => r.orderId);
 }
 
+/**
+ * Batch active membership orderIds for Revenue Union overlap recovery.
+ * Read-only. Does not mutate membership, SR, or Collection Facts.
+ */
+export async function listActiveOrderIdsByCheckIds(
+  restaurantId: number,
+  checkIds: readonly number[],
+  client?: SessionDbClient
+): Promise<ReadonlyMap<number, readonly number[]>> {
+  const uniqueCheckIds = [
+    ...new Set(
+      checkIds.filter((id) => Number.isInteger(id) && id > 0)
+    ),
+  ];
+  const grouped = new Map<number, number[]>();
+  if (uniqueCheckIds.length === 0) return grouped;
+  const db = await resolveDb(client);
+  const rows = await db
+    .select({
+      checkId: checkOrderMembership.checkId,
+      orderId: checkOrderMembership.orderId,
+    })
+    .from(checkOrderMembership)
+    .where(
+      and(
+        eq(checkOrderMembership.restaurantId, restaurantId),
+        inArray(checkOrderMembership.checkId, uniqueCheckIds),
+        eq(checkOrderMembership.active, 1)
+      )
+    );
+  for (const row of rows) {
+    const list = grouped.get(row.checkId) ?? [];
+    if (!list.includes(row.orderId)) list.push(row.orderId);
+    grouped.set(row.checkId, list);
+  }
+  return grouped;
+}
+
 export async function insertCheckOrderMembership(
   input: {
     restaurantId: number;

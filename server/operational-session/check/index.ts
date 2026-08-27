@@ -117,6 +117,7 @@ export {
 
 export {
   listActiveOrderIdsForCheck,
+  listActiveOrderIdsByCheckIds,
   findBlockingMembershipForOrder,
 } from "./checkOrderMembershipRepository";
 
