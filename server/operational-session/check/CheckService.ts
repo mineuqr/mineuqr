@@ -489,14 +489,41 @@ function emitEnsureCheckForOrderStages(input: {
   });
 }
 
-export async function captureSnapshotsFromBusinessSettings(restaurantId: number) {
-  const restaurant = await getRestaurantById(restaurantId);
+export type BusinessSettingsRestaurantRow = {
+  id?: number;
+  currencyCode?: string | null;
+  currencySymbol?: string | null;
+  taxEnabled?: boolean;
+  taxMode?: string;
+  taxPolicyJson?: string | null;
+};
+
+function isReusableBusinessSettingsRestaurant(
+  restaurantId: number,
+  restaurantRow: BusinessSettingsRestaurantRow | null | undefined
+): restaurantRow is BusinessSettingsRestaurantRow {
+  return (
+    restaurantRow != null &&
+    (restaurantRow.id == null || restaurantRow.id === restaurantId)
+  );
+}
+
+export async function captureSnapshotsFromBusinessSettings(
+  restaurantId: number,
+  restaurantRow?: BusinessSettingsRestaurantRow | null
+) {
+  const restaurant = isReusableBusinessSettingsRestaurant(
+    restaurantId,
+    restaurantRow
+  )
+    ? restaurantRow
+    : await getRestaurantById(restaurantId);
   if (!restaurant) {
     throw new DiningSessionValidationError("Restaurant not found");
   }
   const settings = businessTaxSettingsFromRestaurantRow({
-    currencyCode: restaurant.currencyCode,
-    currencySymbol: restaurant.currencySymbol,
+    currencyCode: restaurant.currencyCode ?? null,
+    currencySymbol: restaurant.currencySymbol ?? null,
     taxEnabled: (restaurant as { taxEnabled?: boolean }).taxEnabled,
     taxMode: (restaurant as { taxMode?: string }).taxMode,
     taxPolicyJson: (restaurant as { taxPolicyJson?: string | null }).taxPolicyJson,
@@ -510,62 +537,83 @@ export async function captureSnapshotsFromBusinessSettings(restaurantId: number)
 /**
  * Create an Open Check for a Session with immutable snapshots.
  * Check id is generated independently of sessionId.
+ *
+ * `skipEmptyBillPreparation` is for a brand-new Session that cannot yet have
+ * Orders: persist the Open Check row + `activeCheckId` only. Empty membership
+ * sync / charge ensure / money refresh / Order Settlement recalc run later on
+ * first Order enroll (`incrementSessionAggregatesForOrder`). Do not set this
+ * when the Session may already have Orders (legacy `activeCheckId` backfill).
+ *
+ * `newSessionInSameTransaction` skips Session/open-Check lookups that the
+ * caller already proved by inserting the Session in this transaction.
  */
 export async function createOpenCheckForSession(
   input: {
     restaurantId: number;
     sessionId: number;
+    skipEmptyBillPreparation?: boolean;
+    newSessionInSameTransaction?: boolean;
+    restaurantRow?: BusinessSettingsRestaurantRow | null;
   },
   client?: SessionDbClient
 ): Promise<OperationalCheck> {
-  const session = await findSessionById(input.sessionId, client);
-  if (!session || session.restaurantId !== input.restaurantId) {
-    throw new DiningSessionNotFoundError();
-  }
+  const skipProvenLookups =
+    input.skipEmptyBillPreparation === true &&
+    input.newSessionInSameTransaction === true;
 
-  const existing = await findOpenCheckBySessionId(
-    input.restaurantId,
-    input.sessionId,
-    client
-  );
-  if (existing) {
-    // Authoritative Membership sync (not dual-write gated).
-    await syncSessionOrdersToCheck(
-      {
-        restaurantId: input.restaurantId,
-        sessionId: input.sessionId,
-        checkId: existing.id,
-      },
+  if (!skipProvenLookups) {
+    const session = await findSessionById(input.sessionId, client);
+    if (!session || session.restaurantId !== input.restaurantId) {
+      throw new DiningSessionNotFoundError();
+    }
+
+    const existing = await findOpenCheckBySessionId(
+      input.restaurantId,
+      input.sessionId,
       client
     );
-    if (existing.outcome === "open") {
-      const mapped = mapRowToOperationalCheck(existing);
-      await refreshOpenCheckMoneyFromDiscovery(
+    if (existing) {
+      // Authoritative Membership sync (not dual-write gated).
+      await syncSessionOrdersToCheck(
         {
           restaurantId: input.restaurantId,
-          checkId: existing.id,
-          billDiscountAmount: mapped.billDiscountAmount,
-          taxPolicySnapshot: mapped.taxPolicySnapshot,
-        },
-        client
-      );
-      await recalculateOrderSettlementsForCheck(
-        {
-          restaurantId: input.restaurantId,
+          sessionId: input.sessionId,
           checkId: existing.id,
         },
         client
       );
-      const refreshed = await findCheckById(existing.id, client);
-      return refreshed
-        ? mapRowToOperationalCheck(refreshed)
-        : mapped;
+      if (existing.outcome === "open") {
+        const mapped = mapRowToOperationalCheck(existing);
+        await refreshOpenCheckMoneyFromDiscovery(
+          {
+            restaurantId: input.restaurantId,
+            checkId: existing.id,
+            billDiscountAmount: mapped.billDiscountAmount,
+            taxPolicySnapshot: mapped.taxPolicySnapshot,
+          },
+          client
+        );
+        await recalculateOrderSettlementsForCheck(
+          {
+            restaurantId: input.restaurantId,
+            checkId: existing.id,
+          },
+          client
+        );
+        const refreshed = await findCheckById(existing.id, client);
+        return refreshed
+          ? mapRowToOperationalCheck(refreshed)
+          : mapped;
+      }
+      return mapRowToOperationalCheck(existing);
     }
-    return mapRowToOperationalCheck(existing);
   }
 
   const { currencySnapshot, taxPolicySnapshot } =
-    await captureSnapshotsFromBusinessSettings(input.restaurantId);
+    await captureSnapshotsFromBusinessSettings(
+      input.restaurantId,
+      input.restaurantRow
+    );
   // Seed zeros; money authority comes from Charges after enroll/sync.
   const money = computeCheckMoney({
     chargesSubtotal: "0.00",
@@ -597,6 +645,32 @@ export async function createOpenCheckForSession(
     },
     client
   );
+
+  if (input.skipEmptyBillPreparation === true) {
+    // First Order enroll + `recalculateCheckMoneyForSession` is the legitimate
+    // trigger for membership/charge/OS work. Empty Check bill prep must not
+    // block QR `order.create`.
+    return {
+      id: checkId,
+      restaurantId: input.restaurantId,
+      sessionId: input.sessionId,
+      outcome: "open",
+      currencySnapshot,
+      taxPolicySnapshot,
+      serviceChargeSnapshot: null,
+      billDiscountAmount: "0.00",
+      subtotal: money.subtotal,
+      taxAmount: money.taxAmount,
+      taxBreakdown: money.taxBreakdown,
+      grandTotal: money.grandTotal,
+      snapshotsFrozenAt,
+      totalsFrozenAt: null,
+      settledAt: null,
+      voidedAt: null,
+      createdAt: snapshotsFrozenAt,
+      updatedAt: snapshotsFrozenAt,
+    };
+  }
 
   // Authoritative Membership ownership + Order Settlement create, then money refresh.
   await syncSessionOrdersToCheck(

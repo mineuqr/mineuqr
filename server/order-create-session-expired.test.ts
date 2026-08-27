@@ -140,11 +140,16 @@ describe("order.create expired session CUSTOMER-SESSION-LIFECYCLE-1F", () => {
       items: [{ menuItemId: 1, quantity: 1 }],
     });
 
-    expect(resolveSessionForOrderCreate).toHaveBeenCalledWith({
-      restaurantId: 1,
-      tableId: 7,
-      tableNumber: 3,
-      sessionToken: "open-token1234567890",
-    });
+    expect(resolveSessionForOrderCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: 1,
+        tableId: 7,
+        tableNumber: 3,
+        sessionToken: "open-token1234567890",
+        tableContext: expect.objectContaining({
+          table: expect.objectContaining({ id: 7, tableNumber: 3 }),
+        }),
+      })
+    );
   });
 });

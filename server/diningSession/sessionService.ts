@@ -154,12 +154,74 @@ async function applySessionTransition(
   });
 }
 
-async function validateTableContext(input: {
-  restaurantId: number;
-  tableId: number;
-  tableNumber: number;
-}): Promise<void> {
-  const restaurant = await getRestaurantById(input.restaurantId);
+/** Same-request restaurant/table already loaded by public ordering authorization. */
+export type DiningTableContextPreload = {
+  restaurant?: {
+    id: number;
+    isActive?: boolean | null;
+    userId?: number;
+    currencyCode?: string | null;
+    currencySymbol?: string | null;
+    taxEnabled?: boolean;
+    taxMode?: string;
+    taxPolicyJson?: string | null;
+  } | null;
+  table?: {
+    id: number;
+    restaurantId: number;
+    tableNumber: number;
+    isActive?: boolean | null;
+  } | null;
+};
+
+type ValidatedDiningTableContext = {
+  restaurant: NonNullable<DiningTableContextPreload["restaurant"]> & {
+    id: number;
+    isActive: boolean;
+  };
+  table: {
+    id: number;
+    restaurantId: number;
+    tableNumber: number;
+    isActive: boolean;
+  };
+};
+
+function isReusableRestaurantPreload(
+  restaurantId: number,
+  restaurant: DiningTableContextPreload["restaurant"]
+): restaurant is NonNullable<DiningTableContextPreload["restaurant"]> {
+  return (
+    restaurant != null &&
+    restaurant.id === restaurantId &&
+    restaurant.isActive != null
+  );
+}
+
+function isReusableTablePreload(
+  input: { restaurantId: number; tableId: number; tableNumber: number },
+  table: DiningTableContextPreload["table"]
+): table is NonNullable<DiningTableContextPreload["table"]> {
+  return (
+    table != null &&
+    table.id === input.tableId &&
+    table.restaurantId === input.restaurantId &&
+    table.tableNumber === input.tableNumber &&
+    table.isActive != null
+  );
+}
+
+async function validateTableContext(
+  input: {
+    restaurantId: number;
+    tableId: number;
+    tableNumber: number;
+  },
+  preload?: DiningTableContextPreload | null
+): Promise<ValidatedDiningTableContext> {
+  const restaurant = isReusableRestaurantPreload(input.restaurantId, preload?.restaurant)
+    ? preload.restaurant
+    : await getRestaurantById(input.restaurantId);
   if (!restaurant) {
     throw new DiningSessionValidationError("Restaurant not found");
   }
@@ -167,7 +229,9 @@ async function validateTableContext(input: {
     throw new DiningSessionValidationError("Restaurant is not active");
   }
 
-  const table = await getTableById(input.tableId);
+  const table = isReusableTablePreload(input, preload?.table)
+    ? preload.table
+    : await getTableById(input.tableId);
   if (!table) {
     throw new DiningSessionValidationError("Table not found");
   }
@@ -180,18 +244,43 @@ async function validateTableContext(input: {
   if (!table.isActive) {
     throw new DiningSessionValidationError("Table is not active");
   }
+
+  return {
+    restaurant: {
+      ...restaurant,
+      id: restaurant.id,
+      isActive: true,
+    },
+    table: {
+      id: table.id,
+      restaurantId: table.restaurantId,
+      tableNumber: table.tableNumber,
+      isActive: true,
+    },
+  };
 }
 
 function isAllowedEventType(eventType: string): eventType is TableEventType {
   return (TABLE_EVENT_TYPE_VALUES as readonly string[]).includes(eventType);
 }
 
+type CreateSessionOptions = {
+  tableContextAlreadyValidated?: boolean;
+  restaurantRow?: ValidatedDiningTableContext["restaurant"] | null;
+  preload?: DiningTableContextPreload | null;
+};
+
 /** Internal — not exported. Opens session + SESSION_OPENED in one transaction. */
-async function createSession(input: GetOrCreateSessionInput): Promise<{
+async function createSession(
+  input: GetOrCreateSessionInput,
+  options?: CreateSessionOptions
+): Promise<{
   session: SelectDiningSession;
   created: true;
 }> {
-  await validateTableContext(input);
+  if (!options?.tableContextAlreadyValidated) {
+    await validateTableContext(input, options?.preload);
+  }
 
   const db = await getDb();
   if (!db) {
@@ -202,7 +291,7 @@ async function createSession(input: GetOrCreateSessionInput): Promise<{
   const openedAt = formatDiningSessionTimestamp();
 
   try {
-    const sessionId = await db.transaction(async (tx) => {
+    const { sessionId, activeCheckId } = await db.transaction(async (tx) => {
       const id = await insertSession(
         {
           restaurantId: input.restaurantId,
@@ -228,21 +317,43 @@ async function createSession(input: GetOrCreateSessionInput): Promise<{
         tx
       );
 
-      // CHECK-MANAGEMENT-ARCHITECTURE-1 — create Open Check with frozen snapshots.
-      await createOpenCheckForSession(
-        { restaurantId: input.restaurantId, sessionId: id },
+      // CHECK-MANAGEMENT-ARCHITECTURE-1 — Open Check row + activeCheckId.
+      // Empty membership/charge/OS work is deferred to first Order enroll.
+      const check = await createOpenCheckForSession(
+        {
+          restaurantId: input.restaurantId,
+          sessionId: id,
+          skipEmptyBillPreparation: true,
+          newSessionInSameTransaction: true,
+          restaurantRow: options?.restaurantRow ?? null,
+        },
         tx
       );
 
-      return id;
+      return { sessionId: id, activeCheckId: check.id };
     });
 
-    const session = await findSessionById(sessionId);
-    if (!session) {
-      throw new DiningSessionUnavailableError("Session not found after creation");
-    }
-
-    return { session, created: true };
+    return {
+      session: {
+        id: sessionId,
+        restaurantId: input.restaurantId,
+        tableId: input.tableId,
+        tableNumber: input.tableNumber,
+        sessionToken,
+        status: "open",
+        openGuard: DINING_SESSION_ACTIVE_OPEN_GUARD,
+        openedAt,
+        settledAt: null,
+        settlementOutcome: null,
+        closedAt: null,
+        totalAmount: null,
+        totalOrders: 0,
+        activeCheckId,
+        createdAt: openedAt,
+        updatedAt: openedAt,
+      },
+      created: true,
+    };
   } catch (err) {
     if (isMysqlDuplicateKeyError(err)) {
       throw new DiningSessionConflictError();
@@ -271,12 +382,13 @@ export async function getOrCreateSession(
     throw new DiningSessionValidationError("Invalid tableNumber");
   }
 
-  await validateTableContext(input);
+  const validated = await validateTableContext(input);
 
   const existing = await findActiveSession(input.restaurantId, input.tableId);
   if (existing) {
     if (existing.activeCheckId == null) {
       try {
+        // Legacy session may already have Orders — keep full Check sync/money.
         await createOpenCheckForSession({
           restaurantId: input.restaurantId,
           sessionId: existing.id,
@@ -291,7 +403,10 @@ export async function getOrCreateSession(
   }
 
   try {
-    const created = await createSession(input);
+    const created = await createSession(input, {
+      tableContextAlreadyValidated: true,
+      restaurantRow: validated.restaurant,
+    });
     return { session: created.session, created: true };
   } catch (err) {
     if (
@@ -309,6 +424,7 @@ export async function getOrCreateSession(
 
 export type ResolveSessionForOrderInput = GetOrCreateSessionInput & {
   sessionToken?: string;
+  tableContext?: DiningTableContextPreload;
 };
 
 /**
@@ -322,13 +438,14 @@ export async function resolveSessionForOrderCreate(
     throw new DiningSessionValidationError("Invalid tableNumber");
   }
 
-  await validateTableContext(input);
+  const validated = await validateTableContext(input, input.tableContext);
 
   const active = await findActiveSession(input.restaurantId, input.tableId);
   if (active) {
     // CHECK-MANAGEMENT-ARCHITECTURE-1 — ensure legacy open sessions gain a Check.
     if (active.activeCheckId == null) {
       try {
+        // Legacy session may already have Orders — keep full Check sync/money.
         await createOpenCheckForSession({
           restaurantId: input.restaurantId,
           sessionId: active.id,
@@ -359,7 +476,23 @@ export async function resolveSessionForOrderCreate(
     }
   }
 
-  return getOrCreateSession(input);
+  try {
+    return await createSession(input, {
+      tableContextAlreadyValidated: true,
+      restaurantRow: validated.restaurant,
+    });
+  } catch (err) {
+    if (
+      err instanceof DiningSessionConflictError ||
+      isMysqlDuplicateKeyError(err)
+    ) {
+      const winner = await findActiveSession(input.restaurantId, input.tableId);
+      if (winner) {
+        return { session: winner, created: false };
+      }
+    }
+    throw err;
+  }
 }
 
 export async function recordSessionEvent(

@@ -160,4 +160,51 @@ describe("CHECK-GENERALIZATION-M5 createOpenCheckForSession", () => {
       undefined
     );
   });
+
+  it("skipEmptyBillPreparation persists the Check row without empty bill work", async () => {
+    const { recalculateOrderSettlementsForCheck } = await import(
+      "../checkOrderSettlementIntegration"
+    );
+
+    const check = await createOpenCheckForSession({
+      restaurantId: 1,
+      sessionId: 10,
+      skipEmptyBillPreparation: true,
+      newSessionInSameTransaction: true,
+      restaurantRow: {
+        id: 1,
+        currencyCode: "SAR",
+        currencySymbol: "ر.س",
+      },
+    });
+
+    expect(check).toEqual(
+      expect.objectContaining({
+        id: 100,
+        restaurantId: 1,
+        sessionId: 10,
+        outcome: "open",
+        subtotal: "0.00",
+        grandTotal: "0.00",
+      })
+    );
+    expect(mocks.insertOperationalCheck).toHaveBeenCalled();
+    expect(mocks.updateSessionActiveCheckId).toHaveBeenCalledWith(
+      {
+        restaurantId: 1,
+        sessionId: 10,
+        activeCheckId: 100,
+      },
+      undefined
+    );
+    expect(mocks.findSessionById).not.toHaveBeenCalled();
+    expect(mocks.findOpenCheckBySessionId).not.toHaveBeenCalled();
+    expect(mocks.getRestaurantById).not.toHaveBeenCalled();
+    expect(mocks.syncSessionOrdersToCheck).not.toHaveBeenCalled();
+    expect(mocks.loadChargesSubtotal).not.toHaveBeenCalled();
+    expect(mocks.ensureOpenCheckChargeComposition).not.toHaveBeenCalled();
+    expect(mocks.updateCheckMoney).not.toHaveBeenCalled();
+    expect(recalculateOrderSettlementsForCheck).not.toHaveBeenCalled();
+    expect(mocks.findCheckById).not.toHaveBeenCalled();
+  });
 });

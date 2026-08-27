@@ -47,6 +47,7 @@ describe("OPERATIONAL-SESSION-PLATFORM-1 resolveOperationalSession", () => {
       tableId: 7,
       tableNumber: 3,
       sessionToken: "hint",
+      tableContext: undefined,
     });
     expect(result.created).toBe(true);
     expect(result.persistence).toBe("persistent");

@@ -277,7 +277,11 @@ async function assertPublicOrderingRestaurant(restaurantId: number) {
       throw new TRPCError({ code: "FORBIDDEN", message: "المطعم مغلق حالياً" });
     }
   }
-  const { canOrder: allowsOrdering } = await resolveGuestOrderingAllowed(restaurantId);
+  const { canOrder: allowsOrdering } = await resolveGuestOrderingAllowed(
+    restaurantId,
+    new Date(),
+    restaurant
+  );
   if (!allowsOrdering) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -2817,7 +2821,7 @@ const orderRouter = router({
             "ORDER-SUBMISSION-LATENCY-INSTRUMENTATION-1"
           );
 
-          await timeOrderLifecyclePhase("auth_ms", () =>
+          const restaurant = await timeOrderLifecyclePhase("auth_ms", () =>
             assertPublicOrderingRestaurant(input.restaurantId)
           );
           markOrderLifecycleLatency("authz");
@@ -2843,6 +2847,7 @@ const orderRouter = router({
                     tableNumber: table.tableNumber,
                   }),
                   sessionToken: input.sessionToken,
+                  tableContext: { restaurant, table },
                 });
                 // Table specialization always returns a persistent session when successful.
                 if (!sessionResult.session) {

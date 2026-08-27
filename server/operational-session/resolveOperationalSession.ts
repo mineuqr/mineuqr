@@ -3,6 +3,7 @@ import {
   type ResolveOperationalSessionRequest,
   type ResolveOperationalSessionResult,
 } from "@shared/operational-session";
+import type { DiningTableContextPreload } from "../diningSession/sessionService";
 import {
   OperationalSessionAnchorNotActivatedError,
   OperationalSessionValidationError,
@@ -20,7 +21,9 @@ import { resolveTableOperationalSession } from "./tableSessionAdapter";
  * Channel-independent — no channel-specific branching.
  */
 export async function resolveOperationalSession(
-  request: ResolveOperationalSessionRequest
+  request: ResolveOperationalSessionRequest & {
+    tableContext?: DiningTableContextPreload;
+  }
 ): Promise<ResolveOperationalSessionResult> {
   if (!Number.isInteger(request.restaurantId) || request.restaurantId <= 0) {
     throw new OperationalSessionValidationError("Invalid restaurantId");
@@ -41,6 +44,7 @@ export async function resolveOperationalSession(
         restaurantId: request.restaurantId,
         anchor: request.anchor,
         sessionToken: request.sessionToken,
+        tableContext: request.tableContext,
       });
     case "station":
     case "pickup_point":

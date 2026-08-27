@@ -2,7 +2,10 @@ import type {
   ResolveOperationalSessionResult,
   TableSessionAnchor,
 } from "@shared/operational-session";
-import { resolveSessionForOrderCreate } from "../diningSession/sessionService";
+import {
+  resolveSessionForOrderCreate,
+  type DiningTableContextPreload,
+} from "../diningSession/sessionService";
 import { mapDiningSessionToOperational } from "./mapDiningSessionToOperational";
 import { OperationalSessionValidationError } from "./operationalSessionErrors";
 
@@ -15,6 +18,7 @@ export async function resolveTableOperationalSession(input: {
   restaurantId: number;
   anchor: TableSessionAnchor;
   sessionToken?: string;
+  tableContext?: DiningTableContextPreload;
 }): Promise<ResolveOperationalSessionResult> {
   if (!Number.isInteger(input.restaurantId) || input.restaurantId <= 0) {
     throw new OperationalSessionValidationError("Invalid restaurantId");
@@ -34,6 +38,7 @@ export async function resolveTableOperationalSession(input: {
     tableId: input.anchor.tableId,
     tableNumber: input.anchor.tableNumber,
     sessionToken: input.sessionToken,
+    tableContext: input.tableContext,
   });
 
   return {

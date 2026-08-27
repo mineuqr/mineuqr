@@ -58,4 +58,57 @@ describe("resolveGuestOrderingAllowed (ASN-5 Wave A)", () => {
     expect((await resolveGuestOrderingAllowed(999, FIXED_NOW)).canOrder).toBe(false);
     expect(hasFeature).not.toHaveBeenCalled();
   });
+
+  it("reuses a same-request restaurant and still enforces hasFeature", async () => {
+    (hasFeature as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+    const result = await resolveGuestOrderingAllowed(10, FIXED_NOW, {
+      id: 10,
+      userId: 5,
+    });
+
+    expect(result.canOrder).toBe(true);
+    expect(getRestaurantById).not.toHaveBeenCalled();
+    expect(hasFeature).toHaveBeenCalledWith(5, "ordering", FIXED_NOW);
+  });
+
+  it("reloads when the preloaded restaurant id does not match", async () => {
+    (getRestaurantById as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 10,
+      userId: 5,
+    });
+    (hasFeature as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+    const result = await resolveGuestOrderingAllowed(10, FIXED_NOW, {
+      id: 99,
+      userId: 5,
+    });
+
+    expect(result.canOrder).toBe(false);
+    expect(getRestaurantById).toHaveBeenCalledWith(10);
+    expect(hasFeature).toHaveBeenCalledWith(5, "ordering", FIXED_NOW);
+  });
+
+  it("reloads when the preloaded restaurant has no owner id", async () => {
+    (getRestaurantById as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 10,
+      userId: 5,
+    });
+    (hasFeature as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+    const result = await resolveGuestOrderingAllowed(10, FIXED_NOW, { id: 10 });
+
+    expect(result.canOrder).toBe(true);
+    expect(getRestaurantById).toHaveBeenCalledWith(10);
+    expect(hasFeature).toHaveBeenCalledWith(5, "ordering", FIXED_NOW);
+  });
+
+  it("denies when restaurant has no owner", async () => {
+    (getRestaurantById as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 10,
+    });
+
+    expect((await resolveGuestOrderingAllowed(10, FIXED_NOW)).canOrder).toBe(false);
+    expect(hasFeature).not.toHaveBeenCalled();
+  });
 });

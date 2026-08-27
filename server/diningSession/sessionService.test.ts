@@ -67,6 +67,7 @@ import {
   resolveSessionForOrderCreate,
   recordSessionEvent,
 } from "./sessionService";
+import { createOpenCheckForSession } from "../operational-session/check/CheckService";
 import {
   DiningSessionConflictError,
   DiningSessionExpiredError,
@@ -152,7 +153,19 @@ describe("sessionService TABLE-MANAGEMENT-1 D2", () => {
       });
 
       expect(result.created).toBe(true);
-      expect(result.session).toEqual(baseSession);
+      expect(result.session).toEqual(
+        expect.objectContaining({
+          id: 10,
+          restaurantId: 1,
+          tableId: 5,
+          tableNumber: 5,
+          sessionToken: "test-dining-session-token-abc",
+          status: "open",
+          openGuard: 1,
+          totalOrders: 0,
+          activeCheckId: 900,
+        })
+      );
       expect(repoMocks.insertSession).toHaveBeenCalledWith(
         expect.objectContaining({
           restaurantId: 1,
@@ -169,6 +182,18 @@ describe("sessionService TABLE-MANAGEMENT-1 D2", () => {
         }),
         expect.anything()
       );
+      expect(createOpenCheckForSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          restaurantId: 1,
+          sessionId: 10,
+          skipEmptyBillPreparation: true,
+          newSessionInSameTransaction: true,
+        }),
+        expect.anything()
+      );
+      expect(dbMocks.getRestaurantById).toHaveBeenCalledTimes(1);
+      expect(dbMocks.getTableById).toHaveBeenCalledTimes(1);
+      expect(repoMocks.findActiveSession).toHaveBeenCalledTimes(1);
     });
 
     it("reuses existing active session without creating", async () => {
@@ -182,6 +207,7 @@ describe("sessionService TABLE-MANAGEMENT-1 D2", () => {
 
       expect(result).toEqual({ session: baseSession, created: false });
       expect(repoMocks.insertSession).not.toHaveBeenCalled();
+      expect(createOpenCheckForSession).not.toHaveBeenCalled();
     });
 
     it("recovers from duplicate session race by returning winner session", async () => {
@@ -303,6 +329,8 @@ describe("sessionService TABLE-MANAGEMENT-1 D2", () => {
       expect(result.created).toBe(false);
       expect(result.session).toEqual(baseSession);
       expect(repoMocks.insertSession).not.toHaveBeenCalled();
+      expect(createOpenCheckForSession).not.toHaveBeenCalled();
+      expect(repoMocks.findActiveSession).toHaveBeenCalledTimes(1);
     });
 
     it("rejects terminal hinted session token", async () => {
@@ -324,11 +352,8 @@ describe("sessionService TABLE-MANAGEMENT-1 D2", () => {
     });
 
     it("creates session when no active session and no terminal hint", async () => {
-      repoMocks.findActiveSession
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null);
+      repoMocks.findActiveSession.mockResolvedValueOnce(null);
       repoMocks.insertSession.mockResolvedValue(10);
-      repoMocks.findSessionById.mockResolvedValue(baseSession);
 
       const result = await resolveSessionForOrderCreate({
         restaurantId: 1,
@@ -337,7 +362,115 @@ describe("sessionService TABLE-MANAGEMENT-1 D2", () => {
       });
 
       expect(result.created).toBe(true);
+      expect(result.session.id).toBe(10);
+      expect(result.session.sessionToken).toBe("test-dining-session-token-abc");
       expect(repoMocks.insertSession).toHaveBeenCalled();
+      expect(repoMocks.findActiveSession).toHaveBeenCalledTimes(1);
+      expect(dbMocks.getRestaurantById).toHaveBeenCalledTimes(1);
+      expect(dbMocks.getTableById).toHaveBeenCalledTimes(1);
+      expect(createOpenCheckForSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skipEmptyBillPreparation: true,
+          newSessionInSameTransaction: true,
+        }),
+        expect.anything()
+      );
+    });
+
+    it("reuses validated table context instead of querying table/restaurant again", async () => {
+      repoMocks.findActiveSession.mockResolvedValueOnce(null);
+
+      const result = await resolveSessionForOrderCreate({
+        restaurantId: 1,
+        tableId: 5,
+        tableNumber: 5,
+        tableContext: {
+          restaurant: { id: 1, isActive: true, userId: 9, currencyCode: "SAR" },
+          table: { id: 5, restaurantId: 1, tableNumber: 5, isActive: true },
+        },
+      });
+
+      expect(result.created).toBe(true);
+      expect(dbMocks.getRestaurantById).not.toHaveBeenCalled();
+      expect(dbMocks.getTableById).not.toHaveBeenCalled();
+      expect(createOpenCheckForSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          restaurantRow: expect.objectContaining({ id: 1, isActive: true }),
+        }),
+        expect.anything()
+      );
+    });
+
+    it("rejects inactive preloaded table without trusting the caller", async () => {
+      await expect(
+        resolveSessionForOrderCreate({
+          restaurantId: 1,
+          tableId: 5,
+          tableNumber: 5,
+          tableContext: {
+            restaurant: { id: 1, isActive: true },
+            table: { id: 5, restaurantId: 1, tableNumber: 5, isActive: false },
+          },
+        })
+      ).rejects.toBeInstanceOf(DiningSessionValidationError);
+      expect(repoMocks.insertSession).not.toHaveBeenCalled();
+    });
+
+    it("does not trust a mismatched table preload and re-validates from persistence", async () => {
+      repoMocks.findActiveSession.mockResolvedValue(baseSession);
+
+      await resolveSessionForOrderCreate({
+        restaurantId: 1,
+        tableId: 5,
+        tableNumber: 5,
+        tableContext: {
+          restaurant: { id: 1, isActive: true },
+          table: { id: 5, restaurantId: 99, tableNumber: 5, isActive: true },
+        },
+      });
+
+      expect(dbMocks.getTableById).toHaveBeenCalledWith(5);
+    });
+
+    it("rejects table ownership when persistence says the table belongs elsewhere", async () => {
+      dbMocks.getTableById.mockResolvedValue({
+        id: 5,
+        restaurantId: 99,
+        tableNumber: 5,
+        isActive: true,
+      });
+
+      await expect(
+        resolveSessionForOrderCreate({
+          restaurantId: 1,
+          tableId: 5,
+          tableNumber: 5,
+        })
+      ).rejects.toBeInstanceOf(DiningSessionValidationError);
+      expect(repoMocks.insertSession).not.toHaveBeenCalled();
+    });
+
+    it("backfills Check on a legacy session without skipping bill work", async () => {
+      repoMocks.findActiveSession.mockResolvedValue({
+        ...baseSession,
+        activeCheckId: null,
+      });
+      repoMocks.findSessionById.mockResolvedValue(baseSession);
+
+      const result = await resolveSessionForOrderCreate({
+        restaurantId: 1,
+        tableId: 5,
+        tableNumber: 5,
+      });
+
+      expect(result.created).toBe(false);
+      expect(createOpenCheckForSession).toHaveBeenCalledWith({
+        restaurantId: 1,
+        sessionId: 10,
+      });
+      expect(createOpenCheckForSession).not.toHaveBeenCalledWith(
+        expect.objectContaining({ skipEmptyBillPreparation: true })
+      );
     });
   });
 });

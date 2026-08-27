@@ -169,12 +169,18 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
       items: [{ menuItemId: 1, quantity: 2 }],
     });
 
-    expect(resolveSessionForOrderCreate).toHaveBeenCalledWith({
-      restaurantId: 1,
-      tableId: 7,
-      tableNumber: 3,
-      sessionToken: undefined,
-    });
+    expect(resolveSessionForOrderCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: 1,
+        tableId: 7,
+        tableNumber: 3,
+        sessionToken: undefined,
+        tableContext: expect.objectContaining({
+          restaurant: expect.objectContaining({ id: 1, isActive: true }),
+          table: expect.objectContaining({ id: 7, tableNumber: 3 }),
+        }),
+      })
+    );
     expect(vi.mocked(createOrder).mock.calls[0]?.[0]).toMatchObject({
       sessionId: 10,
     });
