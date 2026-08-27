@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0098 contiguously", () => {
+  it("journal contains canonical migrations 0000–0099 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -60,15 +60,14 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[97]?.tag).toBe(
       "0097_payment_collection_facts_production_purpose"
     );
-    expect(journal.entries[98]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[98]?.tag).toBe("0098_pos_sale_idempotency_open_check");
+    expect(journal.entries[99]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe(
-      "0098_pos_sale_idempotency_open_check"
-    );
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(99);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0099_cashier_order_handoffs");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(100);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -117,6 +116,7 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(verify).toContain("check_split_payments");
     expect(verify).toContain("check_charges");
     expect(verify).toContain("payment_collection_facts");
+    expect(verify).toContain("cashier_order_handoffs");
   });
 
   it("vercel build runs governance guard before compile", () => {
@@ -277,6 +277,24 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(hashMigrationSql("0098_pos_sale_idempotency_open_check")).toBe(
       "021e88b6bab788b5043ab98425870d0c662bd3ac33cb3d76b1de58983c34469e"
     );
+  });
+
+  it("0099 is additive non-financial Cashier Handoff membership and is not a financial rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0099_cashier_order_handoffs.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE `cashier_order_handoffs`");
+    expect(sql).toContain("PRIMARY KEY(`restaurantId`,`orderId`)");
+    expect(sql).not.toMatch(/CREATE TABLE `payments`/);
+    expect(sql).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+    expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
+    expect(sql).not.toMatch(/ALTER TABLE `pos_sale_idempotency`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/^\s*UPDATE\b/im);
+    expect(sql).not.toMatch(/^\s*DELETE\b/im);
+    expect(sql).not.toMatch(/DROP\s+/i);
   });
 
   it("0093 is additive POS sale idempotency map and is not a POS Order table", () => {

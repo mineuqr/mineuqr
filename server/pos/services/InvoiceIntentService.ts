@@ -1,11 +1,21 @@
 /**
- * UNIFIED-POS-FINANCIAL-AUTHORITY-1
+ * UNIFIED-POS-FINANCIAL-AUTHORITY-1 / CASHIER-INCOMING-HANDOFF-MEMBERSHIP-1
  * Builds Invoice Intent from operational Order. Does not write Collection Fact.
+ * Awaiting Cashier membership requires an explicit Cashier Handoff.
  */
-import { getOrderById, getOrderItemsByOrderId, getOrdersByRestaurant } from "../../db";
+import { getOrderById, getOrderItemsByOrderId } from "../../db";
 import { findProductionCollectionFactByOrderId } from "../../operational-session/payment/collection-fact/collectionFactRepository";
-import type { InvoiceIntent, InvoiceIntentLine } from "@shared/pos";
-import { isCashierFinalizableOrderingChannel } from "@shared/pos";
+import {
+  isCashierFinalizableOrderingChannel,
+  isCashierHandoffEligibleOrderingChannel,
+  type InvoiceIntent,
+  type InvoiceIntentLine,
+} from "@shared/pos";
+import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
+import {
+  hasCashierHandoff,
+  listCashierHandoffsByRestaurant,
+} from "../cashier-handoff/cashierHandoffRepository";
 
 export function invoiceIntentIdForOrder(
   restaurantId: number,
@@ -44,6 +54,7 @@ function mapIntentLines(
 export async function buildInvoiceIntentForOrder(input: {
   restaurantId: number;
   orderId: number;
+  handedOff?: boolean;
 }): Promise<InvoiceIntent | null> {
   const order = await getOrderById(input.orderId);
   if (!order || order.restaurantId !== input.restaurantId) return null;
@@ -53,6 +64,20 @@ export async function buildInvoiceIntentForOrder(input: {
     restaurantId: input.restaurantId,
     orderId: input.orderId,
   });
+  const handedOff =
+    input.handedOff ??
+    (await hasCashierHandoff({
+      restaurantId: input.restaurantId,
+      orderId: input.orderId,
+    }));
+  if (!fact && !handedOff) return null;
+  if (
+    !fact &&
+    (order.orderingChannel === ORDERING_CHANNEL_CASHIER_POS ||
+      !isCashierHandoffEligibleOrderingChannel(order.orderingChannel))
+  ) {
+    return null;
+  }
   const items = mapIntentLines(await getOrderItemsByOrderId(input.orderId));
   const total = String(order.totalAmount ?? "0.00");
   return {
@@ -70,26 +95,20 @@ export async function buildInvoiceIntentForOrder(input: {
   };
 }
 
-/** Awaiting Cashier only. Not Collection Fact. Not PAID. */
+/** Awaiting Cashier only. Membership is Cashier Handoff, not missing Collection Fact. */
 export async function listAwaitingInvoiceIntents(input: {
   restaurantId: number;
   limit?: number;
 }): Promise<InvoiceIntent[]> {
   const cap = Math.min(Math.max(input.limit ?? 50, 1), 100);
-  const orders = await getOrdersByRestaurant(input.restaurantId);
+  const handoffs = await listCashierHandoffsByRestaurant(input.restaurantId);
   const awaiting: InvoiceIntent[] = [];
-  for (const order of orders) {
+  for (const handoff of handoffs) {
     if (awaiting.length >= cap) break;
-    if (order.status === "cancelled") continue;
-    if (!isCashierFinalizableOrderingChannel(order.orderingChannel)) continue;
-    const fact = await findProductionCollectionFactByOrderId({
-      restaurantId: input.restaurantId,
-      orderId: order.id,
-    });
-    if (fact) continue;
     const intent = await buildInvoiceIntentForOrder({
       restaurantId: input.restaurantId,
-      orderId: order.id,
+      orderId: handoff.orderId,
+      handedOff: true,
     });
     if (intent?.status === "awaiting_cashier") awaiting.push(intent);
   }

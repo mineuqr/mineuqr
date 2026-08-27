@@ -6,19 +6,40 @@ vi.mock("./restaurantAccess", () => ({
   assertRestaurantAccess: vi.fn(),
 }));
 
+vi.mock("./subscription-runtime/requireRestaurantPlanFeature", () => ({
+  requireRestaurantPlanFeature: vi.fn(),
+}));
+
 vi.mock("./diningSession/sessionService", () => ({
   markPaid: vi.fn(),
   markComplimentary: vi.fn(),
   closeSession: vi.fn(),
 }));
 
+vi.mock("./pos/cashier-handoff/CashierHandoffService", () => ({
+  activateCashierHandoffForSession: vi.fn(),
+  activateCashierHandoffForOrder: vi.fn(),
+}));
+
 vi.mock("./diningSession/sessionOwnerWorkspace", () => ({
   getOwnerSessionWorkspace: vi.fn(),
 }));
 
+vi.mock("./operational-session/check/settlementRecordRepository", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("./operational-session/check/settlementRecordRepository")
+  >();
+  return {
+    ...actual,
+    listSettlementRecordsForSession: vi.fn().mockResolvedValue([]),
+  };
+});
+
 import { appRouter } from "./routers";
 import { assertRestaurantAccess } from "./restaurantAccess";
+import { requireRestaurantPlanFeature } from "./subscription-runtime/requireRestaurantPlanFeature";
 import { markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
+import { activateCashierHandoffForSession } from "./pos/cashier-handoff/CashierHandoffService";
 import { getOwnerSessionWorkspace } from "./diningSession/sessionOwnerWorkspace";
 
 const workspacePayload = {
@@ -53,6 +74,7 @@ describe("session settlement mutations SETTLEMENT-ARCHITECTURE-1A", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(assertRestaurantAccess).mockResolvedValue(undefined);
+    vi.mocked(requireRestaurantPlanFeature).mockResolvedValue(undefined);
     vi.mocked(getOwnerSessionWorkspace).mockResolvedValue(workspacePayload);
   });
 
@@ -110,5 +132,25 @@ describe("session settlement mutations SETTLEMENT-ARCHITECTURE-1A", () => {
       actorUserId: 7,
     });
     expect(result.status).toBe("closed");
+  });
+
+  it("sendToCashier activates a durable non-financial handoff", async () => {
+    vi.mocked(activateCashierHandoffForSession).mockResolvedValue({
+      restaurantId: 10,
+      sessionId: 1,
+      orderIds: [44],
+    });
+    const caller = createVerifiedCaller();
+    const result = await caller.session.sendToCashier({
+      restaurantId: 10,
+      sessionId: 1,
+    });
+    expect(activateCashierHandoffForSession).toHaveBeenCalledWith({
+      restaurantId: 10,
+      sessionId: 1,
+    });
+    expect(result).toEqual({ restaurantId: 10, sessionId: 1, orderIds: [44] });
+    expect(markPaid).not.toHaveBeenCalled();
+    expect(closeSession).not.toHaveBeenCalled();
   });
 });

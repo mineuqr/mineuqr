@@ -247,6 +247,19 @@ const REQUIRED = {
     ["payment_collection_facts", "purpose", "production"],
     ["payment_collection_facts", "kind", "collection"],
   ],
+  /** CASHIER-INCOMING-HANDOFF-MEMBERSHIP-1 — non-financial Incoming Queue membership. */
+  cashierHandoffTables: ["cashier_order_handoffs"],
+  cashierHandoffColumns: [
+    ["cashier_order_handoffs", "restaurantId"],
+    ["cashier_order_handoffs", "orderId"],
+    ["cashier_order_handoffs", "sourceChannel"],
+    ["cashier_order_handoffs", "sessionId"],
+    ["cashier_order_handoffs", "handedOffAt"],
+  ],
+  cashierHandoffIndexes: [
+    ["cashier_order_handoffs", "cashier_order_handoffs_pk"],
+    ["cashier_order_handoffs", "cashier_order_handoffs_restaurant_handed_off"],
+  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -454,10 +467,25 @@ async function main() {
         missing.push(`enum:${table}.${column}.${member}`);
       }
     }
+    for (const table of REQUIRED.cashierHandoffTables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.cashierHandoffColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+    for (const [table, indexName] of REQUIRED.cashierHandoffIndexes) {
+      if (!(await indexExists(conn, table, indexName))) {
+        missing.push(`index:${table}.${indexName}`);
+      }
+    }
 
     if (missing.length === 0) {
       console.log(
-        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements, check-charges, payment-collection-facts)."
+        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements, check-charges, payment-collection-facts, cashier-order-handoffs)."
       );
       return;
     }

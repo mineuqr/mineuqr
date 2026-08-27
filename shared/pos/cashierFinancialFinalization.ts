@@ -37,6 +37,32 @@ export function isCashierFinalizableOrderingChannel(
   );
 }
 
+/**
+ * CASHIER-INCOMING-HANDOFF-MEMBERSHIP-1
+ * Channels that may be explicitly handed off into the Cashier Incoming Queue.
+ * cashier_pos is Cashier-finalizable but must not self-enqueue as Incoming.
+ */
+export const CASHIER_HANDOFF_ELIGIBLE_ORDERING_CHANNELS = [
+  ORDERING_CHANNEL_TABLE_SESSION,
+  ORDERING_CHANNEL_WAITER_TABLET,
+  ORDERING_CHANNEL_QR,
+  ORDERING_CHANNEL_KIOSK,
+] as const;
+
+export type CashierHandoffEligibleOrderingChannel =
+  (typeof CASHIER_HANDOFF_ELIGIBLE_ORDERING_CHANNELS)[number];
+
+export function isCashierHandoffEligibleOrderingChannel(
+  value: string | null | undefined
+): value is CashierHandoffEligibleOrderingChannel {
+  return (
+    typeof value === "string" &&
+    (CASHIER_HANDOFF_ELIGIBLE_ORDERING_CHANNELS as readonly string[]).includes(
+      value
+    )
+  );
+}
+
 export type InvoiceIntentStatus = "awaiting_cashier" | "financially_settled";
 
 export type InvoiceIntentLine = Readonly<{

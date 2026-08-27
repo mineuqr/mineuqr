@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { LifecycleSettlementGuardError } from "@shared/operational-session";
+import { CashierHandoffError } from "../pos/cashier-handoff/cashierHandoffErrors";
 import {
   OperationalSessionAnchorNotActivatedError,
   OperationalSessionValidationError,
@@ -15,6 +16,9 @@ import {
 
 /** Map dining / operational session domain errors to tRPC errors. */
 export function throwSessionServiceTrpcError(err: unknown): never {
+  if (err instanceof CashierHandoffError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+  }
   if (err instanceof LifecycleSettlementGuardError) {
     throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
   }

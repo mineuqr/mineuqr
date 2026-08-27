@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   CASHIER_FINALIZABLE_ORDERING_CHANNELS,
+  CASHIER_HANDOFF_ELIGIBLE_ORDERING_CHANNELS,
   COMPLIMENTARY_COLLECTION_TENDER,
   isCashierFinalizableOrderingChannel,
+  isCashierHandoffEligibleOrderingChannel,
   isComplimentaryCollectionFact,
 } from "../cashierFinancialFinalization";
 import { refundAnchorFromCollectionFact } from "../financialResponsibilityMap";
@@ -16,6 +18,9 @@ describe("UNIFIED-POS-FINANCIAL-AUTHORITY-1 cashier finalizable channels", () =>
     expect(CASHIER_FINALIZABLE_ORDERING_CHANNELS).toContain("kiosk");
     expect(isCashierFinalizableOrderingChannel("qr")).toBe(true);
     expect(isCashierFinalizableOrderingChannel("marketplace")).toBe(false);
+    expect(CASHIER_HANDOFF_ELIGIBLE_ORDERING_CHANNELS).not.toContain("cashier_pos");
+    expect(isCashierHandoffEligibleOrderingChannel("table_session")).toBe(true);
+    expect(isCashierHandoffEligibleOrderingChannel("cashier_pos")).toBe(false);
   });
 
   it("treats zero collected amount plus waived discount as complimentary Collection Fact", () => {

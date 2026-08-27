@@ -30,9 +30,8 @@ describe("CASHIER-PASS-2-CONFIRM-FINALIZATION-1", () => {
     expect(router).toContain("items: input.items");
   });
 
-  it("does not require a new schema or 0098 change", () => {
+  it("does not require a 0098 change", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0098_pos_sale_idempotency_open_check");
-    expect(journal).not.toContain("0099_");
   });
 });

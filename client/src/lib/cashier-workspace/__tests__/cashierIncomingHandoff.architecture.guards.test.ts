@@ -23,9 +23,9 @@ describe("CASHIER-INCOMING-ORDER-HANDOFF-1", () => {
     expect(handoff).toContain("listInvoiceIntents.invalidate");
     expect(handoff).not.toContain("syncDashboardUrl");
     expect(handoff).not.toContain("commitCollectionFact");
-    expect(bar).toContain("handoffOperationalOrderToCashier");
-    expect(row).toContain("handoffOperationalOrderToCashier");
-    expect(orders).toContain("handoffOperationalOrderToCashier");
+    expect(bar).toContain("session.sendToCashier");
+    expect(row).toContain("session.sendToCashier");
+    expect(orders).toContain("order.sendToCashier");
     expect(orders).toContain("settle-self-ordering");
     const sendBar = bar.slice(bar.indexOf("sendToCashier") - 200, bar.indexOf("sendToCashier") + 80);
     expect(sendBar).not.toContain('section: "cashier"');

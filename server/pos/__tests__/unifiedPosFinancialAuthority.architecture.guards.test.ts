@@ -89,10 +89,10 @@ describe("UNIFIED-POS-FINANCIAL-AUTHORITY-1 architecture", () => {
     expect(check).toContain("if (!order)");
   });
 
-  it("does not add schema, 0099, or a second financial entity", () => {
+  it("does not change 0098 and keeps 0099 as non-financial Cashier Handoff", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0098_pos_sale_idempotency_open_check");
-    expect(journal).not.toContain("0099_");
+    expect(journal).toContain("0099_cashier_order_handoffs");
   });
 
   it("keeps ST/OS/SR as supporting writers, not Collection Fact authority", () => {

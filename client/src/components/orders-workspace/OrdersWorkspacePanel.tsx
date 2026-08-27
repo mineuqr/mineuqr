@@ -151,6 +151,20 @@ export function OrdersWorkspacePanel({
     ]);
   }, [restaurantId, utils]);
 
+  const sendToCashierMutation = trpc.order.sendToCashier.useMutation({
+    onSuccess: () => {
+      handoffOperationalOrderToCashier({
+        utils,
+        language: settleLang,
+      });
+      setPendingActionOrderId(null);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setPendingActionOrderId(null);
+    },
+  });
+
   const settleMutation = trpc.order.staffSettleCounterPickup.useMutation({
     onSuccess: async () => {
       toast.success(isAr ? "تم التحصيل" : "Settled");
@@ -305,10 +319,8 @@ export function OrdersWorkspacePanel({
         : { sessionless: false, unpaidSessionless: false, orderingChannel: null };
 
       if (actionId === "settle-self-ordering") {
-        handoffOperationalOrderToCashier({
-          utils,
-          language: settleLang,
-        });
+        setPendingActionOrderId(orderId);
+        sendToCashierMutation.mutate({ restaurantId, orderId });
         return;
       }
 
@@ -362,8 +374,7 @@ export function OrdersWorkspacePanel({
       cancelSessionlessMutation,
       restaurantId,
       activeRegisterId,
-      utils,
-      settleLang,
+      sendToCashierMutation,
     ]
   );
 

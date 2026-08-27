@@ -100,6 +100,10 @@ import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
+import {
+  activateCashierHandoffForOrder,
+  activateCashierHandoffForSession,
+} from "./pos/cashier-handoff/CashierHandoffService";
 import { resolveOperationalSession } from "./operational-session";
 import {
   findActiveSession,
@@ -2277,6 +2281,25 @@ const sessionRouter = router({
         throwSessionServiceTrpcError(err);
       }
     }),
+  sendToCashier: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number(),
+        sessionId: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "session.sendToCashier");
+      await requireRestaurantPlanFeature(input.restaurantId, "sessionTableManagement");
+      try {
+        return await activateCashierHandoffForSession({
+          restaurantId: input.restaurantId,
+          sessionId: input.sessionId,
+        });
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
+    }),
 });
 
 // ─── Order Router ────────────────────────────────────────────
@@ -2917,6 +2940,24 @@ const orderRouter = router({
       await assertRestaurantAccess(ctx, order.restaurantId);
       const items = await getOrderItemsByOrderId(input.id);
       return { ...order, items };
+    }),
+  sendToCashier: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number().int().positive(),
+        orderId: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "order.sendToCashier");
+      try {
+        return await activateCashierHandoffForOrder({
+          restaurantId: input.restaurantId,
+          orderId: input.orderId,
+        });
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
     }),
   updateStatus: verifiedProcedure
     .input(z.object({

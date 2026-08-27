@@ -1,7 +1,6 @@
 /**
- * CASHIER-INCOMING-ORDER-HANDOFF-1
- * Presentation handoff: operational order is already Invoice Intent.
- * Send notifies the operator and refreshes the Cashier incoming read.
+ * CASHIER-INCOMING-HANDOFF-MEMBERSHIP-1
+ * After durable Send, notify the operator and refresh Incoming Queue.
  * Does not navigate, persist money, or create a second Order.
  */
 import { toast } from "sonner";
@@ -10,6 +9,8 @@ import { trpc } from "@/lib/trpc";
 
 export const CASHIER_INCOMING_ORDER_HANDOFF_PROGRAM_ID =
   "CASHIER-INCOMING-ORDER-HANDOFF-1" as const;
+export const CASHIER_INCOMING_HANDOFF_MEMBERSHIP_PROGRAM_ID =
+  "CASHIER-INCOMING-HANDOFF-MEMBERSHIP-1" as const;
 
 type TrpcUtils = ReturnType<typeof trpc.useUtils>;
 

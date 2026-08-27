@@ -74,8 +74,14 @@ export function SessionRowQuickActions({
   };
 
   const closeMutation = trpc.session.close.useMutation(mutationOpts);
+  const sendToCashierMutation = trpc.session.sendToCashier.useMutation({
+    onSuccess: () => {
+      handoffOperationalOrderToCashier({ utils, language: lang });
+    },
+    onError: (err: unknown) => toastTrpcError(err, t),
+  });
 
-  const pending = closeMutation.isPending;
+  const pending = closeMutation.isPending || sendToCashierMutation.isPending;
 
   const runConfirmed = () => {
     const input = { restaurantId, sessionId };
@@ -127,7 +133,7 @@ export function SessionRowQuickActions({
               <DropdownMenuItem
                 disabled={pending}
                 onClick={() =>
-                  handoffOperationalOrderToCashier({ utils, language: lang })
+                  sendToCashierMutation.mutate({ restaurantId, sessionId })
                 }
               >
                 {sessionActionLabel("sendToCashier", lang)}
@@ -135,7 +141,7 @@ export function SessionRowQuickActions({
               <DropdownMenuItem
                 disabled={pending}
                 onClick={() =>
-                  handoffOperationalOrderToCashier({ utils, language: lang })
+                  sendToCashierMutation.mutate({ restaurantId, sessionId })
                 }
               >
                 {sessionActionLabel("markComplimentary", lang)}

@@ -1207,6 +1207,35 @@ export const orders = mysqlTable("orders", {
 	uniqueIndex("orders_tracking_token_unique").on(table.trackingToken),
 ]);
 
+/**
+ * CASHIER-INCOMING-HANDOFF-MEMBERSHIP-1
+ * Non-financial membership: operational Order explicitly sent to Cashier.
+ * Not Collection Fact, PAID, Check, invoice ledger, or a second Order.
+ */
+export const cashierOrderHandoffs = mysqlTable(
+	"cashier_order_handoffs",
+	{
+		restaurantId: int().notNull(),
+		orderId: int().notNull(),
+		sourceChannel: varchar({ length: 32 }).notNull(),
+		sessionId: int(),
+		handedOffAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.restaurantId, table.orderId],
+			name: "cashier_order_handoffs_pk",
+		}),
+		index("cashier_order_handoffs_restaurant_handed_off").on(
+			table.restaurantId,
+			table.handedOffAt
+		),
+	]
+);
+
+export type InsertCashierOrderHandoff = typeof cashierOrderHandoffs.$inferInsert;
+export type SelectCashierOrderHandoff = typeof cashierOrderHandoffs.$inferSelect;
+
 // ─── Customer Push Subscriptions (BACKGROUND-NOTIFICATIONS-1A) ───
 export const customerPushSubscriptions = mysqlTable("customer_push_subscriptions", {
 	id: int().autoincrement().notNull(),
