@@ -21,6 +21,8 @@ import { getRestaurantById } from "../../../db";
 import {
   getCheckRefundBudget,
 } from "../CheckService";
+import { findCheckById } from "../checkRepository";
+import { mapRowToOperationalCheck } from "../checkMapper";
 import { listSettlementRecordsForCheck } from "../settlementRecordRepository";
 import { toSettlementRecordHistoryItemDto } from "./settlementRecordApiMapper";
 import { resolveRefundOriginalSaleAnchorForCheck } from "../checkRefundOriginalSaleResolution";
@@ -30,7 +32,11 @@ export type CheckRefundLookupDto = Readonly<{
   contractVersion: 2;
   restaurantId: number;
   settlementNumber: string;
-  settlementRecordId: string;
+  /**
+   * Origin settlement document when gen=1 SR exists.
+   * Null for CF-backed sales that have no primary settlement document yet.
+   */
+  settlementRecordId: string | null;
   checkId: number;
   sessionId: number | null;
   businessDay: string;
@@ -112,7 +118,21 @@ export async function lookupCheckRefundBySettlementNumber(input: {
     ? originalSale
     : null;
 
-  if (!primary) {
+  const checkRow = await findCheckById(parsed.checkId);
+  const check =
+    checkRow && checkRow.restaurantId === input.restaurantId
+      ? mapRowToOperationalCheck(checkRow)
+      : null;
+
+  // ST- is Check identity. Gen=1 SR is a document, not original-sale identity.
+  // CF-backed paid/complimentary Checks may be looked up without a primary SR.
+  if (!primary && !cfAnchor) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Unknown settlement number",
+    });
+  }
+  if (!primary && !check) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "Unknown settlement number",
@@ -120,14 +140,14 @@ export async function lookupCheckRefundBySettlementNumber(input: {
   }
 
   // Prefer requested generation when it is the primary settlement publication.
-  const target =
-    records.find(
-      (r) =>
-        r.recordKind === "settlement" &&
-        r.recordGeneration === parsed.recordGeneration
-    ) ?? primary;
+  const target = primary
+    ? records.find(
+        (r) =>
+          r.recordKind === "settlement" &&
+          r.recordGeneration === parsed.recordGeneration
+      ) ?? primary
+    : null;
 
-  const historyItem = toSettlementRecordHistoryItemDto(target);
   const budget = await getCheckRefundBudget({
     restaurantId: input.restaurantId,
     checkId: parsed.checkId,
@@ -135,15 +155,19 @@ export async function lookupCheckRefundBySettlementNumber(input: {
   const refundable = parseRefundMoney(budget.refundableBalance);
   const settlementAt = cfAnchor
     ? cfAnchor.committedAt
-    : (primary.settledAt ?? primary.createdAt);
+    : (primary?.settledAt ?? primary?.createdAt ?? check?.settledAt ?? "");
   const window = evaluateRefundWindow({
     settlementAt,
     windowHours: policy.windowHours,
   });
 
-  const paidOk = cfAnchor
-    ? true
-    : target.outcome === "paid" || target.outcome === "complimentary";
+  const checkRefundable =
+    check?.outcome === "paid" || check?.outcome === "complimentary";
+  const paidOk = target
+    ? cfAnchor
+      ? true
+      : target.outcome === "paid" || target.outcome === "complimentary"
+    : checkRefundable;
   let rejectionCode: CheckRefundLookupDto["rejectionCode"] = null;
   if (!policy.refundEnabled) {
     rejectionCode = REFUND_POLICY_DISABLED_CODE;
@@ -155,36 +179,54 @@ export async function lookupCheckRefundBySettlementNumber(input: {
     rejectionCode = "NOT_ELIGIBLE";
   }
 
+  const checkId = target?.checkId ?? check?.id;
+  if (checkId == null) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Unknown settlement number",
+    });
+  }
+  const currencySnapshot =
+    target?.currencySnapshot ?? check?.currencySnapshot;
+  if (!currencySnapshot) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Unknown settlement number",
+    });
+  }
   const settlementNumber = resolveSettlementOperationalIdentity({
-    checkId: target.checkId,
-    settlementRecordId: target.settlementRecordId,
-    recordGeneration: target.recordGeneration,
+    checkId,
+    settlementRecordId: target?.settlementRecordId ?? null,
+    recordGeneration: target?.recordGeneration ?? 1,
   });
 
+  const historyItem = target
+    ? toSettlementRecordHistoryItemDto(target)
+    : null;
   const paymentMethodSummary = cfAnchor
     ? paymentMethodSummaryFromTenders(cfAnchor.tenders)
-    : historyItem.paymentMethodSummary ||
-      paymentMethodSummaryFromTenders(target.paymentSnapshot);
+    : historyItem?.paymentMethodSummary ||
+      paymentMethodSummaryFromTenders(target?.paymentSnapshot ?? []);
 
   return {
     contractId: "REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2",
     contractVersion: 2,
     restaurantId: input.restaurantId,
     settlementNumber,
-    settlementRecordId: target.settlementRecordId,
-    checkId: target.checkId,
-    sessionId: target.sessionId,
-    businessDay: cfAnchor?.businessDay ?? target.businessDay,
-    settledAt: cfAnchor?.committedAt ?? target.settledAt,
+    settlementRecordId: target?.settlementRecordId ?? null,
+    checkId,
+    sessionId: target?.sessionId ?? check?.sessionId ?? null,
+    businessDay: cfAnchor?.businessDay ?? target?.businessDay ?? "",
+    settledAt: cfAnchor?.committedAt ?? target?.settledAt ?? check?.settledAt ?? null,
     paymentMethodSummary,
     originalAmount: budget.settledValue,
     previouslyRefunded: budget.appliedRefundTotal,
     refundableBalance: budget.refundableBalance,
-    currencyCode: target.currencySnapshot.currencyCode,
-    currencySymbol: target.currencySnapshot.currencySymbol,
-    outcome: target.outcome,
-    recordKind: target.recordKind,
-    recordGeneration: target.recordGeneration,
+    currencyCode: currencySnapshot.currencyCode,
+    currencySymbol: currencySnapshot.currencySymbol,
+    outcome: target?.outcome ?? check?.outcome ?? "paid",
+    recordKind: target?.recordKind ?? "settlement",
+    recordGeneration: target?.recordGeneration ?? 1,
     eligible: rejectionCode == null && refundable > 0,
     customer: null,
     policy,

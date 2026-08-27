@@ -162,6 +162,7 @@ describe("REFUND-SETTLEMENT-RECORD-ADOPTION-1", () => {
       orderIds: [55],
     }).record;
     expect(isRefundSettlementRecord(refund)).toBe(true);
+    expect(isCompensatingSettlementRecord(refund)).toBe(true);
     expect(refund.priorSettlementRecordId).toBeNull();
     assertSettlementRecordChainIntegrity([refund]);
   });

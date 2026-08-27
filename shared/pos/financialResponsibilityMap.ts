@@ -62,7 +62,8 @@ export const CHECK_ST_OS_SR_CLASSIFICATION = {
   },
   sr: {
     financial: false,
-    target: "attribution/reporting projection + refund compensating document",
+    target:
+      "refund document/history + RF identity + historical compatibility; not current sale identity",
   },
 } as const;
 

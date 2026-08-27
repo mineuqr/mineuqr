@@ -27,5 +27,8 @@ describe("UNIFIED-POS-FINANCIAL-AUTHORITY-1 responsibility maps", () => {
     expect(REFUND_RESPONSIBILITY_MAP.currentEngine).toContain("applyRefundOnCheck");
     expect(CHECK_ST_OS_SR_CLASSIFICATION.check.independentSettlement).toBe(false);
     expect(CHECK_ST_OS_SR_CLASSIFICATION.sr.financial).toBe(false);
+    expect(CHECK_ST_OS_SR_CLASSIFICATION.sr.target).toContain(
+      "refund document/history"
+    );
   });
 });

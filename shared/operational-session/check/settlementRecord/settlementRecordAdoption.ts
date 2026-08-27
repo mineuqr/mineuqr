@@ -33,6 +33,9 @@ export function isCompensatingSettlementRecordKind(
 export function isCompensatingSettlementRecord(
   record: Pick<SettlementRecord, "recordKind" | "priorSettlementRecordId">
 ): boolean {
+  // Refund documents remain compensating even when the first CF-backed
+  // refund has no priorSettlementRecordId (original sale identity is CF).
+  if (isRefundSettlementRecord(record)) return true;
   return (
     isCompensatingSettlementRecordKind(record.recordKind) &&
     record.priorSettlementRecordId != null
