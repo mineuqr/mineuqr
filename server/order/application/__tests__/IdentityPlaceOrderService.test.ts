@@ -1,8 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createStationFulfilmentAnchor } from "@shared/ordering-platform/orderingIdentityContract";
-import { LEGACY_NON_TABLE_TABLE_ID } from "@shared/ordering-platform/orderingIdentityContract";
-import { IdentityPlaceOrderService } from "../IdentityPlaceOrderService";
-import type { PlaceOrderService } from "../PlaceOrderService";
+import {
+  createStationFulfilmentAnchor,
+  createTableFulfilmentAnchor,
+  LEGACY_NON_TABLE_TABLE_ID,
+} from "@shared/ordering-platform/orderingIdentityContract";
+import {
+  IdentityPlaceOrderService,
+} from "../IdentityPlaceOrderService";
+import {
+  PlaceOrderValidationError,
+  type PlaceOrderService,
+} from "../PlaceOrderService";
 import * as operationalSession from "../../../operational-session";
 
 vi.mock("../../../operational-session", () => ({
@@ -115,6 +123,52 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       restaurantId: 1,
       orderId: 99,
     });
+  });
+
+  it("does not resolve a Dining Session for cashier_pos", async () => {
+    await service.execute(
+      {
+        restaurantId: 1,
+        serviceMode: "counter",
+        fulfilmentAnchor: createStationFulfilmentAnchor({
+          stationId: "pos-1",
+          fulfilmentLabel: "POS 1",
+        }),
+        orderingChannel: "cashier_pos",
+        items: [{ menuItemId: 1, quantity: 1 }],
+      },
+      { enrollCheck: false }
+    );
+    expect(operationalSession.resolveOperationalSession).not.toHaveBeenCalled();
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderingChannel: "cashier_pos",
+        sessionId: null,
+        tableId: undefined,
+        tableNumber: undefined,
+        identity: expect.objectContaining({
+          operationalSession: expect.objectContaining({ sessionId: null }),
+        }),
+      }),
+      expect.anything()
+    );
+  });
+
+  it("fails closed when cashier_pos is given a table fulfilment anchor", async () => {
+    await expect(
+      service.execute({
+        restaurantId: 1,
+        serviceMode: "table_service",
+        fulfilmentAnchor: createTableFulfilmentAnchor({
+          tableId: 7,
+          tableNumber: 3,
+        }),
+        orderingChannel: "cashier_pos",
+        items: [{ menuItemId: 1, quantity: 1 }],
+      })
+    ).rejects.toBeInstanceOf(PlaceOrderValidationError);
+    expect(operationalSession.resolveOperationalSession).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it("does not await Check enrollment when enrollCheck is false", async () => {

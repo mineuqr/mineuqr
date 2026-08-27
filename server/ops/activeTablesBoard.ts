@@ -2,12 +2,13 @@
  * OPS-DASHBOARD-2C.1 — active tables board operational read model.
  * SETTLEMENT-ARCHITECTURE-1A — board status simplified to available/occupied.
  */
-import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { diningSessions, orders, restaurantTables } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { computeSessionDurationMs } from "../diningSession/sessionOwnerWorkspace";
 import { activeDiningSessionStateConditions } from "./activeSessionQuery";
 import { formatOpsTableName } from "./tableDisplayName";
+import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 
 export type ActiveTableBoardStatus = "available" | "occupied";
 
@@ -68,7 +69,11 @@ async function resolvePendingOrdersBySessionId(
       and(
         eq(orders.restaurantId, restaurantId),
         isNotNull(orders.sessionId),
-        inArray(orders.status, [...PENDING_ORDER_STATUSES])
+        inArray(orders.status, [...PENDING_ORDER_STATUSES]),
+        or(
+          isNull(orders.orderingChannel),
+          ne(orders.orderingChannel, ORDERING_CHANNEL_CASHIER_POS)
+        )
       )
     )
     .groupBy(orders.sessionId);

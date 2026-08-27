@@ -1,11 +1,13 @@
 /**
- * CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1
- * Cashier POS Orders exist before payment (Check enrollment). They are not
- * operationally listed until a Paid/Complimentary Check exists.
+ * CASHIER-ORDER-OPERATIONAL-ISOLATION-1
+ * Dining operational membership excludes cashier_pos entirely.
+ * Kitchen / Cashier workspace still list cashier_pos after a Paid/Complimentary
+ * Check or production Collection Fact (CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1).
  * Not a second Order. Not a frontend hide.
  */
 
 import { and, eq, exists, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import type { Column } from "drizzle-orm";
 import { QueryBuilder } from "drizzle-orm/mysql-core";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 import { COLLECTION_FACT_PRODUCTION_PURPOSE } from "@shared/operational-session/payment/collection-fact";
@@ -18,6 +20,26 @@ import {
 import { isCashierPosOrderingChannel } from "../application/cashierPosOrderLifecycle";
 
 export { isCashierPosOrderingChannel };
+
+export type CashierPosListMembership = "exclude" | "paid-visible";
+
+/** Dining / Sessions operational surfaces never include cashier_pos. */
+export function isDiningOperationallyListed(
+  orderingChannel?: string | null
+): boolean {
+  return !isCashierPosOrderingChannel(orderingChannel);
+}
+
+export function excludeCashierPosOrderingChannelSql(channelColumn: Column) {
+  return or(
+    isNull(channelColumn),
+    ne(channelColumn, ORDERING_CHANNEL_CASHIER_POS)
+  );
+}
+
+export function diningOperationalExcludeCashierPosSql() {
+  return excludeCashierPosOrderingChannelSql(orderReadOrders.orderingChannel);
+}
 
 export function isCashierPosOperationallyListed(input: {
   orderingChannel?: string | null;

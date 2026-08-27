@@ -28,6 +28,7 @@ describe("CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 architecture guards", () =
     expect(visibility).not.toMatch(/\bcheck_id\b/);
     expect(visibility).not.toMatch(/\border_id\b/);
     expect(visibility).not.toMatch(/\brestaurant_id\b/);
+    expect(list).toContain("diningOperationalExcludeCashierPosSql");
     expect(list).toContain("cashierPosPaidOperationalVisibilitySql");
     expect(kitchen).toContain("cashierPosPaidOperationalVisibilitySql");
     expect(list).not.toContain("pos_orders");

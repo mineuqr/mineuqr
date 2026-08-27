@@ -427,21 +427,21 @@ describe("POS Sale → canonical Order", () => {
           idempotencyKey: "sale-key-session-b",
         },
       })
-    ).rejects.toMatchObject({ code: "invalid_session" });
+    ).rejects.toMatchObject({ code: "cashier_pos_session_forbidden" });
 
-    const result = await sale.create({
-      user: user(STAFF_A),
-      command: {
-        restaurantId: RESTAURANT_A,
-        terminalId: TERMINAL_A,
-        items: validItems,
-        sessionId: 77,
-        idempotencyKey: "sale-key-session-a",
-      },
-    });
-    expect(result.orderId).toBeGreaterThan(0);
-    expect(place.execute.mock.calls[0][0]).not.toHaveProperty("sessionId");
-    expect(place.execute.mock.calls[0][0]).not.toHaveProperty("sessionToken");
+    await expect(
+      sale.create({
+        user: user(STAFF_A),
+        command: {
+          restaurantId: RESTAURANT_A,
+          terminalId: TERMINAL_A,
+          items: validItems,
+          sessionId: 77,
+          idempotencyKey: "sale-key-session-a",
+        },
+      })
+    ).rejects.toMatchObject({ code: "cashier_pos_session_forbidden" });
+    expect(place.execute).not.toHaveBeenCalled();
   });
 
   it("validates items, quantities, and modifiers after authorization", async () => {

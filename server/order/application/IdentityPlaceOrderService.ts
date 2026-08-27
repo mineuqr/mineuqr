@@ -17,6 +17,7 @@ import {
   type OrderingServiceMode,
 } from "@shared/ordering-platform/orderingIdentityContract";
 import { sessionAnchorFromFulfilmentAnchor } from "@shared/operational-session";
+import { isCashierPosOrderingChannel } from "./cashierPosOrderLifecycle";
 import {
   ensureCheckForOrder,
   resolveOperationalSession,
@@ -25,6 +26,7 @@ import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import {
   PlaceOrderService,
+  PlaceOrderValidationError,
   type PlaceOrderResult,
 } from "./PlaceOrderService";
 import type { SaveOrderOptions } from "../repositories/OrderRepository";
@@ -85,14 +87,24 @@ export class IdentityPlaceOrderService {
     });
     assertPlatformOrderIdentity(draftIdentity);
 
-    const sessionAnchor = sessionAnchorFromFulfilmentAnchor(
-      command.fulfilmentAnchor
-    );
-    const sessionResult = await resolveOperationalSession({
-      restaurantId: command.restaurantId,
-      anchor: sessionAnchor,
-      sessionToken: command.sessionToken,
-    });
+    const cashierPos = isCashierPosOrderingChannel(command.orderingChannel);
+    if (cashierPos && command.fulfilmentAnchor.anchorType === "table") {
+      throw new PlaceOrderValidationError(
+        "CASHIER_POS_TABLE_FORBIDDEN",
+        "Cashier POS orders cannot join a Dining Session or table"
+      );
+    }
+    const sessionResult = cashierPos
+      ? {
+          session: null,
+          created: false,
+          persistence: "ephemeral" as const,
+        }
+      : await resolveOperationalSession({
+          restaurantId: command.restaurantId,
+          anchor: sessionAnchorFromFulfilmentAnchor(command.fulfilmentAnchor),
+          sessionToken: command.sessionToken,
+        });
 
     const identity = createOrderIdentity({
       serviceMode: command.serviceMode,

@@ -41,6 +41,7 @@ describe("OrderReadWorkspaceService", () => {
       restaurantId: 10,
       status: undefined,
       limit: 2,
+      cashierPosMembership: "exclude",
     });
     expect(vi.mocked(catchUpOrderReadProjection).mock.invocationCallOrder[0]).toBeLessThan(
       store.listActiveOrders.mock.invocationCallOrder[0]

@@ -1,4 +1,4 @@
-import { eq, and, asc, desc, sql, inArray, isNull } from "drizzle-orm";
+import { eq, and, asc, desc, sql, inArray, isNull, ne, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool, type Pool, type PoolOptions } from "mysql2";
 import {
@@ -37,6 +37,7 @@ import {
   formatBusinessYearMonthLabel,
 } from "@shared/utils/timezone";
 import { pickCanonicalSubscription } from "./subscriptionResolver";
+import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 import { userHasSubscriptionEntitlement } from "./subscriptionEntitlement";
 import {
   requireRestaurantRowForUpdate,
@@ -1091,7 +1092,14 @@ export async function getOrdersBySessionId(
       createdAt: orders.createdAt,
     })
     .from(orders)
-    .where(and(eq(orders.restaurantId, restaurantId), eq(orders.sessionId, sessionId)))
+    .where(and(
+      eq(orders.restaurantId, restaurantId),
+      eq(orders.sessionId, sessionId),
+      or(
+        isNull(orders.orderingChannel),
+        ne(orders.orderingChannel, ORDERING_CHANNEL_CASHIER_POS)
+      )
+    ))
     .orderBy(desc(orders.createdAt));
 }
 
@@ -1256,7 +1264,11 @@ export async function getActiveOrdersCount(restaurantId: number): Promise<number
   const [result] = await db.select({ count: sql<number>`COUNT(*)` }).from(orders)
     .where(and(
       eq(orders.restaurantId, restaurantId),
-      inArray(orders.status, ['pending', 'preparing', 'ready'])
+      inArray(orders.status, ['pending', 'preparing', 'ready']),
+      or(
+        isNull(orders.orderingChannel),
+        ne(orders.orderingChannel, ORDERING_CHANNEL_CASHIER_POS)
+      )
     ));
   return result?.count || 0;
 }

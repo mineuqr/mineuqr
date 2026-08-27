@@ -319,8 +319,10 @@ export class PosSaleService {
     private readonly access: PosAccessService,
     private readonly placeOrder: IdentityPlaceOrderService,
     private readonly idempotency: PosSaleIdempotencyStore,
-    private readonly sessionLookup: PosSaleSessionLookup = findSessionById
-  ) {}
+    _sessionLookup: PosSaleSessionLookup = findSessionById
+  ) {
+    void _sessionLookup;
+  }
 
   async create(input: {
     user: SelectUser;
@@ -377,13 +379,10 @@ export class PosSaleService {
     assertSaleItems(input.command.items);
 
     if (input.command.sessionId != null) {
-      const session = await this.sessionLookup(input.command.sessionId);
-      if (!session || session.restaurantId !== context.restaurantId) {
-        throw new PosSaleError(
-          "invalid_session",
-          "Session does not belong to this restaurant"
-        );
-      }
+      throw new PosSaleError(
+        "cashier_pos_session_forbidden",
+        "Cashier POS orders cannot join a Dining Session"
+      );
     }
 
     const fingerprint = fingerprintOf({

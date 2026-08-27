@@ -10,7 +10,11 @@ import type { OrderDetailQuery } from "../domain/contracts/queryContracts";
 import { mapActiveOrderItemDto } from "../presentation/mapActiveOrderItemDto";
 import { mapStoredOrderReadLineItem } from "./persistence/mapStoredOrderReadLineItem";
 import { operationalLifecycleFilter } from "../projections/materializers/projectionLifecycle";
-import { cashierPosPaidOperationalVisibilitySql } from "../cashierPosOperationalVisibility";
+import {
+  diningOperationalExcludeCashierPosSql,
+  cashierPosPaidOperationalVisibilitySql,
+  type CashierPosListMembership,
+} from "../cashierPosOperationalVisibility";
 
 type OrderRow = typeof orderReadOrders.$inferSelect;
 type LineItemRow = typeof orderReadOrderLineItems.$inferSelect;
@@ -46,7 +50,8 @@ function mapOrder(row: OrderRow, lineItems: LineItemRow[]): ActiveOrderItemDto {
 
 /**
  * Q-01 / Q-03 / Q-04 read store — order_read_* projections only.
- * listActive membership: restaurant + lifecycleStage active (+ optional status).
+ * listActive dining membership: restaurant + lifecycleStage active, cashier_pos excluded.
+ * Cashier workspace passes paid-visible so cashier_pos remains after CF/Paid Check.
  * Catch-up runs in OrderReadWorkspaceService before this query.
  */
 export class DrizzleOrderOperationalReadStore {
@@ -54,14 +59,20 @@ export class DrizzleOrderOperationalReadStore {
     restaurantId: number;
     status?: "pending" | "preparing" | "ready";
     limit: number;
+    cashierPosMembership?: CashierPosListMembership;
   }): Promise<ActiveOrderItemDto[]> {
     const db = await getDb();
     if (!db) return [];
 
+    const cashierPosMembership =
+      input.cashierPosMembership === "paid-visible"
+        ? cashierPosPaidOperationalVisibilitySql()
+        : diningOperationalExcludeCashierPosSql();
+
     const conditions = [
       eq(orderReadOrders.restaurantId, input.restaurantId),
       eq(orderReadOrders.lifecycleStage, operationalLifecycleFilter()),
-      cashierPosPaidOperationalVisibilitySql(),
+      cashierPosMembership,
     ];
     if (input.status) {
       conditions.push(eq(orderReadOrders.status, input.status));

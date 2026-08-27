@@ -142,4 +142,84 @@ describe("PlaceOrderService cashier_pos inbound acceptance", () => {
       false
     );
   });
+
+  it("fails closed when cashier_pos would persist a Dining Session", async () => {
+    const repo: OrderRepository = {
+      findById: vi.fn(),
+      save: vi.fn(),
+    };
+    const service = new PlaceOrderService(
+      repo,
+      {
+        resolveLines: async () => ({
+          lines: [
+            {
+              menuItemId: 1,
+              nameAr: "شاي",
+              nameEn: "Tea",
+              price: "5.00",
+              quantity: 1,
+              notes: null,
+              modifiers: null,
+            },
+          ],
+          totalAmount: "5.00",
+        }),
+      },
+      { allocate: async () => "1010" },
+      { issue: () => "track-pos-session" }
+    );
+
+    await expect(
+      service.execute({
+        restaurantId: 1,
+        tableId: 0,
+        tableNumber: 0,
+        sessionId: 44,
+        orderingChannel: "cashier_pos",
+        items: [{ menuItemId: 1, quantity: 1 }],
+      })
+    ).rejects.toMatchObject({ code: "CASHIER_POS_SESSION_FORBIDDEN" });
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when cashier_pos would persist a real table", async () => {
+    const repo: OrderRepository = {
+      findById: vi.fn(),
+      save: vi.fn(),
+    };
+    const service = new PlaceOrderService(
+      repo,
+      {
+        resolveLines: async () => ({
+          lines: [
+            {
+              menuItemId: 1,
+              nameAr: "شاي",
+              nameEn: "Tea",
+              price: "5.00",
+              quantity: 1,
+              notes: null,
+              modifiers: null,
+            },
+          ],
+          totalAmount: "5.00",
+        }),
+      },
+      { allocate: async () => "1011" },
+      { issue: () => "track-pos-table" }
+    );
+
+    await expect(
+      service.execute({
+        restaurantId: 1,
+        tableId: 7,
+        tableNumber: 3,
+        sessionId: null,
+        orderingChannel: "cashier_pos",
+        items: [{ menuItemId: 1, quantity: 1 }],
+      })
+    ).rejects.toMatchObject({ code: "CASHIER_POS_TABLE_FORBIDDEN" });
+    expect(repo.save).not.toHaveBeenCalled();
+  });
 });

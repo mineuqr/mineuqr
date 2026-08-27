@@ -21,6 +21,8 @@ import {
   assertPlatformOrderIdentity,
   resolvePlaceOrderPersistFields,
   resolvePlaceOrderSessionId,
+  LEGACY_NON_TABLE_TABLE_ID,
+  LEGACY_NON_TABLE_TABLE_NUMBER,
 } from "@shared/ordering-platform/orderingIdentityContract";
 import {
   assertOrderingChannelId,
@@ -96,6 +98,16 @@ export class PlaceOrderNotesValidationError extends Error {
   }
 }
 
+export class PlaceOrderValidationError extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "PlaceOrderValidationError";
+    this.code = code;
+  }
+}
+
 export class PlaceOrderService {
   constructor(
     private readonly repository: OrderRepository,
@@ -167,6 +179,23 @@ export class PlaceOrderService {
       identity: command.identity,
       sessionId: command.sessionId,
     });
+    if (orderingChannel === ORDERING_CHANNEL_CASHIER_POS) {
+      if (sessionId != null) {
+        throw new PlaceOrderValidationError(
+          "CASHIER_POS_SESSION_FORBIDDEN",
+          "Cashier POS orders cannot join a Dining Session"
+        );
+      }
+      if (
+        tableFields.tableId !== LEGACY_NON_TABLE_TABLE_ID ||
+        tableFields.tableNumber !== LEGACY_NON_TABLE_TABLE_NUMBER
+      ) {
+        throw new PlaceOrderValidationError(
+          "CASHIER_POS_TABLE_FORBIDDEN",
+          "Cashier POS orders cannot join a table"
+        );
+      }
+    }
 
     // OPERATIONAL-FULFILMENT-PROJECTION-1 — stamp fulfilment facts for Order Read Model.
     // No PlaceOrder business-rule change; dual-write only.

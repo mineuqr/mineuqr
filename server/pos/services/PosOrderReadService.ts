@@ -40,12 +40,15 @@ export class PosOrderReadService {
       terminalId: input.command.terminalId,
       procedure: "pos.read.orders.listActive",
     });
-    return this.orders.listActive({
-      restaurantId: context.restaurantId,
-      status: input.command.status,
-      limit: input.command.limit,
-      cursor: input.command.cursor,
-    });
+    return this.orders.listActive(
+      {
+        restaurantId: context.restaurantId,
+        status: input.command.status,
+        limit: input.command.limit,
+        cursor: input.command.cursor,
+      },
+      { cashierPosMembership: "paid-visible" }
+    );
   }
 
   async getDetail(input: {

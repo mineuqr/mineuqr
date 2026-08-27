@@ -1,10 +1,11 @@
 /**
  * ORDERS-OPERATIONAL-LIFECYCLE-CONSISTENCY-REPAIR-1
- * Q-01 listActive membership (authoritative read model):
+ * Q-01 listActive membership (authoritative dining read model):
  * - order_read_orders only (not the write-model orders table)
  * - lifecycleStage = active
  * - optional status pending | preparing | ready
- * - cashier_pos listed only after paid/complimentary Check or production Collection Fact
+ * - cashier_pos excluded from Dining operational membership
+ * Cashier workspace listActive uses paid-visible membership separately.
  * Served/cancelled leave this set when lifecycle becomes completed.
  * Catch-up drains deferred outbox before the projection query so create/serve
  * converge without awaitRelay on the mutation HTTP path. Kitchen/POS readers
@@ -16,6 +17,7 @@ import type {
   OrderDetailQuery,
   OrderTimelineResult,
 } from "../domain/contracts/queryContracts";
+import type { CashierPosListMembership } from "../cashierPosOperationalVisibility";
 import {
   buildReadResultMeta,
   clampActiveOrderLimit,
@@ -27,7 +29,10 @@ import { DrizzleOrderOperationalReadStore } from "../infrastructure/DrizzleOrder
 export class OrderReadWorkspaceService {
   constructor(private readonly store = new DrizzleOrderOperationalReadStore()) {}
 
-  async listActive(query: ActiveOrderListQuery): Promise<ActiveOrderListResult> {
+  async listActive(
+    query: ActiveOrderListQuery,
+    options?: { cashierPosMembership?: CashierPosListMembership }
+  ): Promise<ActiveOrderListResult> {
     await catchUpOrderReadProjection();
     const limit = clampActiveOrderLimit(query.limit);
     const status = query.status === "all-active" ? undefined : query.status;
@@ -35,6 +40,7 @@ export class OrderReadWorkspaceService {
       restaurantId: query.restaurantId,
       status,
       limit: limit + 1,
+      cashierPosMembership: options?.cashierPosMembership ?? "exclude",
     });
     const hasMore = items.length > limit;
     const pageItems = hasMore ? items.slice(0, limit) : items;

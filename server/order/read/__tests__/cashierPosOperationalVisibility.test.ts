@@ -4,11 +4,18 @@ import { describe, expect, it } from "vitest";
 import { orderReadOrders } from "../../../../drizzle/schema";
 import {
   cashierPosPaidOperationalVisibilitySql,
+  diningOperationalExcludeCashierPosSql,
   isCashierPosOperationallyListed,
+  isDiningOperationallyListed,
 } from "../cashierPosOperationalVisibility";
 import { operationalLifecycleFilter } from "../projections/materializers/projectionLifecycle";
 
-function compileListActiveVisibilitySql() {
+function compileListActiveSql(
+  membership: ReturnType<
+    | typeof cashierPosPaidOperationalVisibilitySql
+    | typeof diningOperationalExcludeCashierPosSql
+  >
+) {
   const db = drizzle.mock();
   return db
     .select()
@@ -17,12 +24,16 @@ function compileListActiveVisibilitySql() {
       and(
         eq(orderReadOrders.restaurantId, 720007),
         eq(orderReadOrders.lifecycleStage, operationalLifecycleFilter()),
-        cashierPosPaidOperationalVisibilitySql()
+        membership
       )
     )
     .orderBy(asc(orderReadOrders.createdAt))
     .limit(101)
     .toSQL();
+}
+
+function compileListActiveVisibilitySql() {
+  return compileListActiveSql(cashierPosPaidOperationalVisibilitySql());
 }
 
 describe("CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 operational listing", () => {
@@ -55,6 +66,20 @@ describe("CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 operational listing", () =
         productionCollectionFact: true,
       })
     ).toBe(true);
+  });
+
+  it("excludes cashier_pos from Dining operational membership even when paid", () => {
+    expect(isDiningOperationallyListed("cashier_pos")).toBe(false);
+    expect(isDiningOperationallyListed("qr")).toBe(true);
+    expect(isDiningOperationallyListed("waiter_tablet")).toBe(true);
+    expect(isDiningOperationallyListed("kiosk")).toBe(true);
+    expect(isDiningOperationallyListed(null)).toBe(true);
+    const { sql, params } = compileListActiveSql(
+      diningOperationalExcludeCashierPosSql()
+    );
+    expect(params).toContain("cashier_pos");
+    expect(sql).not.toContain("`check_order_membership`");
+    expect(sql).not.toContain("`payment_collection_facts`");
   });
 
   it("compiles membership and Check columns from Drizzle schema objects", () => {

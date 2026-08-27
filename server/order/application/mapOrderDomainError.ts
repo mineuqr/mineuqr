@@ -1,6 +1,6 @@
 import { LifecycleSettlementGuardError } from "@shared/operational-session";
 import { OrderDomainError } from "../domain/errors/OrderDomainErrors";
-import { PlaceOrderNotesValidationError } from "./PlaceOrderService";
+import { PlaceOrderNotesValidationError, PlaceOrderValidationError } from "./PlaceOrderService";
 import { TRPCError } from "@trpc/server";
 import {
   markOrderLifecycleLatency,
@@ -19,6 +19,9 @@ export function mapOrderDomainErrorToTrpc(error: unknown): never {
     });
   }
   if (error instanceof PlaceOrderNotesValidationError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+  }
+  if (error instanceof PlaceOrderValidationError) {
     throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
   }
   if (error instanceof OrderDomainError) {

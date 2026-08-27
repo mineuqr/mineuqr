@@ -25,7 +25,8 @@ describe("ORDERS-OPERATIONAL-LIFECYCLE-CONSISTENCY-REPAIR-1 architecture", () =>
     expect(store).toContain("orderReadOrders");
     expect(store).toContain("lifecycleStage");
     expect(store).toContain("operationalLifecycleFilter()");
-    expect(store).toContain("cashierPosPaidOperationalVisibilitySql()");
+    expect(store).toContain("diningOperationalExcludeCashierPosSql()");
+    expect(store).toContain('cashierPosMembership === "paid-visible"');
     expect(contracts).toContain("lifecycleStage=active");
     expect(catchUp).toContain("runOrderEventRelayBatch");
     expect(catchUp).toContain("inflight");
