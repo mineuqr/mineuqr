@@ -91,7 +91,8 @@ describe("PAYMENT-CONFIRM-SERVICE-1 architecture", () => {
     expect(payment).not.toContain("refundableBalance");
     expect(payment).not.toContain("createRefund");
     expect(payment).not.toContain("applyRefundOnCheck");
-    expect(refund).toContain("Settlement Record history only");
+    expect(refund).toContain("production Collection Fact.amount");
+    expect(refund).toContain("Applied refunds remain the existing refund SR chain");
   });
 
   it("preserves CheckService compatibility and the existing transaction boundary", () => {

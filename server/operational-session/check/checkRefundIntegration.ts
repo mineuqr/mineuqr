@@ -20,6 +20,7 @@ import {
   type Refund,
   type RefundAllocation,
   type RefundDomainEvent,
+  type RefundOriginalSaleAnchor,
   type SettlementRecord,
   type SettlementRecordDomainEvent,
 } from "@shared/operational-session";
@@ -36,6 +37,7 @@ import {
   SettlementRecordPersistenceError,
 } from "./settlementRecordRepository";
 import { allocateRefundDocumentNumber } from "./refundDocumentNumberRepository";
+import { resolveRefundOriginalSaleAnchorForCheck } from "./checkRefundOriginalSaleResolution";
 
 export type CheckRefundMutationResult = Readonly<{
   outcome: ExecuteRefundOnCheckResult["outcome"];
@@ -105,6 +107,10 @@ export async function applyRefundOnCheck(
     { restaurantId: input.restaurantId, checkId: input.checkId },
     client
   );
+  const originalSaleAnchor = await resolveRefundOriginalSaleAnchorForCheck(
+    { restaurantId: input.restaurantId, checkId: input.checkId },
+    client
+  );
 
   // Peek next generation candidate for idempotency lookup
   const maxGeneration = settlementRecords.reduce(
@@ -133,6 +139,7 @@ export async function applyRefundOnCheck(
     refundId: input.refundId,
     at,
     existingRefundRecord,
+    originalSaleAnchor,
   });
 
   if (domainResult.outcome === "already_applied") {
@@ -261,12 +268,19 @@ export async function getRefundBudgetForCheck(
   refundableBalance: string;
   priorSettlementRecordId: string;
   nextRecordGeneration: number;
+  originalSaleKind: RefundOriginalSaleAnchor["kind"];
+  collectionFactId: string | null;
 }> {
   const settlementRecords = await listSettlementRecordsForCheck(input, client);
+  const originalSaleAnchor = await resolveRefundOriginalSaleAnchorForCheck(
+    input,
+    client
+  );
   const budget = calculateRefundBudget({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
     settlementRecords,
+    originalSale: originalSaleAnchor,
   });
   return {
     settledValue: budget.settledValue,
@@ -274,5 +288,7 @@ export async function getRefundBudgetForCheck(
     refundableBalance: budget.refundableBalance,
     priorSettlementRecordId: budget.priorSettlementRecordId,
     nextRecordGeneration: budget.nextRecordGeneration,
+    originalSaleKind: budget.originalSaleKind,
+    collectionFactId: budget.collectionFactId,
   };
 }

@@ -369,5 +369,158 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
     expect(budget.appliedRefundTotal).toBe("0.00");
     expect(budget.refundableBalance).toBe("115.00");
     expect(budget.nextRecordGeneration).toBe(2);
+    expect(budget.originalSaleKind).toBe("legacy_settlement_record");
+  });
+
+  it("CF-backed original amount comes from Collection Fact, not gen=1 SR", () => {
+    const check = makeCheck();
+    const primary = makePrimarySettlement(check);
+    const originalSale = {
+      kind: "collection_fact" as const,
+      collectionFactId: "cf-1",
+      paymentIntentId: "pi-1",
+      orderId: 55,
+      restaurantId: 1,
+      checkId: 100,
+      originalCollectedAmount: "90.00",
+      currencyCode: "SAR",
+      tenders: [{ paymentMethod: "card", amount: "90.00" }],
+      committedAt: AT,
+      businessDay: "2026-07-26",
+      actorId: "7",
+      terminalId: "term-1",
+      orderingChannel: "qr",
+    };
+    const budget = calculateRefundBudget({
+      restaurantId: 1,
+      checkId: 100,
+      settlementRecords: [primary],
+      originalSale,
+    });
+    expect(budget.settledValue).toBe("90.00");
+    expect(budget.originalSaleKind).toBe("collection_fact");
+    expect(budget.collectionFactId).toBe("cf-1");
+    expect(budget.priorSettlementRecordId).toBe(primary.settlementRecordId);
+
+    const result = executeRefundOnCheck({
+      check,
+      amount: "90.00",
+      settlementRecords: [primary],
+      orderSettlements: [makeSettledOs(55)],
+      at: AT,
+      originalSaleAnchor: originalSale,
+    });
+    expect(result.remainingBudget).toBe("0.00");
+    expect(result.settlementRecordResult?.record.recordKind).toBe("refund");
+    expect(result.settlementRecordResult?.record.grandTotal).toBe("90.00");
+
+    expect(() =>
+      executeRefundOnCheck({
+        check,
+        amount: "115.00",
+        settlementRecords: [primary],
+        orderSettlements: [makeSettledOs(55)],
+        at: AT,
+        originalSaleAnchor: originalSale,
+      })
+    ).toThrow(RefundBudgetExceededError);
+  });
+
+  it("complimentary Collection Fact amount 0 is not refundable from waived discount", () => {
+    const check = makeCheck({
+      outcome: "complimentary",
+      grandTotal: "20.00",
+      billDiscountAmount: "20.00",
+    });
+    const primary = createSettlementRecord({
+      check,
+      outcome: "complimentary",
+      createdAt: "2026-07-26 13:00:00",
+      orderIds: [55],
+      paymentSnapshotOverride: [
+        {
+          settlementTransactionId: null,
+          paymentMethod: "other",
+          amount: "0.00",
+          currencyCode: "SAR",
+          status: "captured",
+          businessTimestamp: "2026-07-26 13:00:00",
+          reference: null,
+          externalReference: null,
+        },
+      ],
+    }).record;
+    const originalSale = {
+      kind: "collection_fact" as const,
+      collectionFactId: "cf-comp",
+      paymentIntentId: "pi-comp",
+      orderId: 55,
+      restaurantId: 1,
+      checkId: 100,
+      originalCollectedAmount: "0.00",
+      currencyCode: "SAR",
+      tenders: [{ paymentMethod: "other", amount: "0.00" }],
+      committedAt: AT,
+      businessDay: "2026-07-26",
+      actorId: "7",
+      terminalId: "term-1",
+      orderingChannel: "qr",
+    };
+    const budget = calculateRefundBudget({
+      restaurantId: 1,
+      checkId: 100,
+      settlementRecords: [primary],
+      originalSale,
+    });
+    expect(budget.settledValue).toBe("0.00");
+    expect(budget.refundableBalance).toBe("0.00");
+    expect(() =>
+      executeRefundOnCheck({
+        check,
+        amount: "10.00",
+        settlementRecords: [primary],
+        orderSettlements: [makeSettledOs(55, "20.00")],
+        at: AT,
+        originalSaleAnchor: originalSale,
+      })
+    ).toThrow(AlreadyRefundedError);
+  });
+
+  it("CF-backed budget works without gen=1 SR; execute still requires the refund document chain", () => {
+    const check = makeCheck();
+    const originalSale = {
+      kind: "collection_fact" as const,
+      collectionFactId: "cf-1",
+      paymentIntentId: "pi-1",
+      orderId: 55,
+      restaurantId: 1,
+      checkId: 100,
+      originalCollectedAmount: "90.00",
+      currencyCode: "SAR",
+      tenders: [{ paymentMethod: "cash", amount: "90.00" }],
+      committedAt: AT,
+      businessDay: "2026-07-26",
+      actorId: "7",
+      terminalId: "term-1",
+      orderingChannel: "qr",
+    };
+    const budget = calculateRefundBudget({
+      restaurantId: 1,
+      checkId: 100,
+      settlementRecords: [],
+      originalSale,
+    });
+    expect(budget.settledValue).toBe("90.00");
+    expect(budget.priorSettlementRecordId).toBe("");
+    expect(() =>
+      executeRefundOnCheck({
+        check,
+        amount: "10.00",
+        settlementRecords: [],
+        orderSettlements: [makeSettledOs(55)],
+        at: AT,
+        originalSaleAnchor: originalSale,
+      })
+    ).toThrow(NoPriorSettlementError);
   });
 });

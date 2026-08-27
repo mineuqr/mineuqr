@@ -6,6 +6,7 @@
 import { TRPCError } from "@trpc/server";
 import {
   evaluateRefundWindow,
+  isCollectionFactRefundAnchor,
   parseBusinessRefundPolicyJson,
   parseRefundMoney,
   REFUND_POLICY_DISABLED_CODE,
@@ -22,6 +23,7 @@ import {
 } from "../CheckService";
 import { listSettlementRecordsForCheck } from "../settlementRecordRepository";
 import { toSettlementRecordHistoryItemDto } from "./settlementRecordApiMapper";
+import { resolveRefundOriginalSaleAnchorForCheck } from "../checkRefundOriginalSaleResolution";
 
 export type CheckRefundLookupDto = Readonly<{
   contractId: "REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2";
@@ -61,14 +63,11 @@ export type CheckRefundLookupDto = Readonly<{
     | null;
 }>;
 
-function paymentMethodSummaryOf(record: {
-  paymentSnapshot: readonly { paymentMethod: string }[];
-  outcome: string;
-}): string {
-  const methods = record.paymentSnapshot.map((p) => String(p.paymentMethod));
-  if (methods.length === 0) {
-    return record.outcome === "complimentary" ? "complimentary" : "none";
-  }
+function paymentMethodSummaryFromTenders(
+  tenders: readonly { paymentMethod: string }[]
+): string {
+  const methods = tenders.map((t) => String(t.paymentMethod));
+  if (methods.length === 0) return "none";
   return Array.from(new Set(methods)).join(", ");
 }
 
@@ -105,6 +104,14 @@ export async function lookupCheckRefundBySettlementNumber(input: {
       )
       .sort((a, b) => a.recordGeneration - b.recordGeneration)[0] ?? null;
 
+  const originalSale = await resolveRefundOriginalSaleAnchorForCheck({
+    restaurantId: input.restaurantId,
+    checkId: parsed.checkId,
+  });
+  const cfAnchor = isCollectionFactRefundAnchor(originalSale)
+    ? originalSale
+    : null;
+
   if (!primary) {
     throw new TRPCError({
       code: "NOT_FOUND",
@@ -126,13 +133,17 @@ export async function lookupCheckRefundBySettlementNumber(input: {
     checkId: parsed.checkId,
   });
   const refundable = parseRefundMoney(budget.refundableBalance);
+  const settlementAt = cfAnchor
+    ? cfAnchor.committedAt
+    : (primary.settledAt ?? primary.createdAt);
   const window = evaluateRefundWindow({
-    settlementAt: primary.settledAt ?? primary.createdAt,
+    settlementAt,
     windowHours: policy.windowHours,
   });
 
-  const paidOk =
-    target.outcome === "paid" || target.outcome === "complimentary";
+  const paidOk = cfAnchor
+    ? true
+    : target.outcome === "paid" || target.outcome === "complimentary";
   let rejectionCode: CheckRefundLookupDto["rejectionCode"] = null;
   if (!policy.refundEnabled) {
     rejectionCode = REFUND_POLICY_DISABLED_CODE;
@@ -150,6 +161,11 @@ export async function lookupCheckRefundBySettlementNumber(input: {
     recordGeneration: target.recordGeneration,
   });
 
+  const paymentMethodSummary = cfAnchor
+    ? paymentMethodSummaryFromTenders(cfAnchor.tenders)
+    : historyItem.paymentMethodSummary ||
+      paymentMethodSummaryFromTenders(target.paymentSnapshot);
+
   return {
     contractId: "REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2",
     contractVersion: 2,
@@ -158,10 +174,9 @@ export async function lookupCheckRefundBySettlementNumber(input: {
     settlementRecordId: target.settlementRecordId,
     checkId: target.checkId,
     sessionId: target.sessionId,
-    businessDay: target.businessDay,
-    settledAt: target.settledAt,
-    paymentMethodSummary:
-      historyItem.paymentMethodSummary || paymentMethodSummaryOf(target),
+    businessDay: cfAnchor?.businessDay ?? target.businessDay,
+    settledAt: cfAnchor?.committedAt ?? target.settledAt,
+    paymentMethodSummary,
     originalAmount: budget.settledValue,
     previouslyRefunded: budget.appliedRefundTotal,
     refundableBalance: budget.refundableBalance,
@@ -217,15 +232,25 @@ export async function assertRefundPolicyAllowsApply(input: {
         (r.outcome === "paid" || r.outcome === "complimentary")
     )
     .sort((a, b) => a.recordGeneration - b.recordGeneration)[0];
-  if (!primary) {
+  const originalSale = await resolveRefundOriginalSaleAnchorForCheck({
+    restaurantId: input.restaurantId,
+    checkId: input.checkId,
+  });
+  const cfAnchor = isCollectionFactRefundAnchor(originalSale)
+    ? originalSale
+    : null;
+  if (!primary && !cfAnchor) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "CHECK_NOT_REFUNDABLE",
     });
   }
 
+  const settlementAt = cfAnchor
+    ? cfAnchor.committedAt
+    : (primary?.settledAt ?? primary?.createdAt ?? "");
   const window = evaluateRefundWindow({
-    settlementAt: primary.settledAt ?? primary.createdAt,
+    settlementAt,
     windowHours: policy.windowHours,
   });
   if (window.expired) {

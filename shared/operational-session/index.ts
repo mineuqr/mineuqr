@@ -397,6 +397,10 @@ export {
   executeRefundOnCheck,
   calculateRefundBudget,
   buildRefundReverseSnapshot,
+  REFUND_CF_ANCHOR_PROGRAM_ID,
+  resolveRefundOriginalSaleAnchor,
+  isCollectionFactRefundAnchor,
+  AmbiguousRefundOriginalSaleError,
   buildRefundId,
   buildRefundReference,
   buildRefundEventClaimKey,
@@ -419,4 +423,6 @@ export {
   type ExecuteRefundOnCheckCommand,
   type ExecuteRefundOnCheckResult,
   type RefundDomainEvent,
+  type RefundOriginalSaleAnchor,
+  type RefundProductionFactCandidate,
 } from "./check";

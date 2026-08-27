@@ -19,7 +19,7 @@ export const FINANCIAL_RESPONSIBILITY_MAP = {
   vat: "Collection Fact.taxAmount + taxBreakdown",
   complimentary: "isComplimentaryCollectionFact(CF)",
   refunded:
-    "Refund remains Check-owned compensating SR; financial root of the original sale is Collection Fact (orderId / paymentIntentId)",
+    "Original Cashier sale identity is Collection Fact; refund documents remain Check-owned compensating SR",
   financialStatus: "production CF present = PAID; absent = not financially finalized",
 } as const;
 
@@ -37,11 +37,13 @@ export const ATTRIBUTION_RESPONSIBILITY_MAP = {
 } as const;
 
 export const REFUND_RESPONSIBILITY_MAP = {
-  currentFinancialIdentity: "RefundIdentity.checkId + prior Settlement Record",
-  currentEngine: "applyRefundOnCheck (Check-owned; not a new engine this phase)",
+  currentFinancialIdentity:
+    "CF-backed: production Collection Fact (collectionFactId / paymentIntentId / orderId). Legacy: checkId + prior Settlement Record",
+  currentEngine: "applyRefundOnCheck (Check-owned persist; original amount from CF when production CF exists)",
   targetFinancialIdentity:
     "original Collection Fact (collectionFactId / paymentIntentId / orderId)",
-  remainingLegacy: "Refund persistence and budget remain Check/SR until a CF compensating event program",
+  remainingLegacy:
+    "Refund persistence, chain, and RF- documents remain Check/SR; non-CF sales keep the SR original-amount path",
 } as const;
 
 export const CHECK_ST_OS_SR_CLASSIFICATION = {

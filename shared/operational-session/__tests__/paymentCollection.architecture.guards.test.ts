@@ -68,7 +68,8 @@ describe("PAYMENT-COLLECTION-ARCHITECTURE-1 architecture guards", () => {
     const refund = read(
       "shared/operational-session/check/refund/refundBudget.ts"
     );
-    expect(refund).toContain("Settlement Record history only");
+    expect(refund).toContain("production Collection Fact.amount");
+    expect(refund).toContain("Applied refunds remain the existing refund SR chain");
   });
 
   it("Order Settlement is not Bill amount authority", () => {

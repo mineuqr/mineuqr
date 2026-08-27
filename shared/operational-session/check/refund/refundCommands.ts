@@ -44,6 +44,7 @@ import {
   InvalidRefundStateError,
   NoPriorSettlementError,
 } from "./refundErrors";
+import type { RefundOriginalSaleAnchor } from "./refundOriginalSaleAnchor";
 import {
   assertRefundId,
   assertTenantMatch,
@@ -469,6 +470,12 @@ export type ExecuteRefundOnCheckCommand = Readonly<{
    */
   existingRefund?: Refund | null;
   existingRefundRecord?: SettlementRecord | null;
+  /**
+   * REFUND-CF-ANCHOR-1 — original Cashier sale identity.
+   * When collection_fact, original collected amount is CF.amount.
+   * Omitted / legacy_settlement_record keeps gen=1 SR as the original amount.
+   */
+  originalSaleAnchor?: RefundOriginalSaleAnchor;
 }>;
 
 /**
@@ -494,7 +501,13 @@ export function executeRefundOnCheck(
     restaurantId: check.restaurantId,
     checkId: check.id,
     settlementRecords: cmd.settlementRecords,
+    originalSale: cmd.originalSaleAnchor,
   });
+  if (!budget.priorSettlementRecordId) {
+    throw new NoPriorSettlementError(
+      `RF-INV-P02: Refund document chain requires a published Settlement Record for check=${check.id}`
+    );
+  }
 
   const refundId =
     cmd.refundId ??

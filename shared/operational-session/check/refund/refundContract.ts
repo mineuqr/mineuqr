@@ -99,7 +99,9 @@ export type Refund = Readonly<{
 }>;
 
 /**
- * Derived refundable budget from immutable Settlement Record history.
+ * Derived refundable budget.
+ * CF-backed original collected amount comes from production Collection Fact.
+ * Already-refunded remains the existing refund SR chain (document persistence).
  * Never UI-invented (RF-BUDGET-02).
  */
 export type RefundBudget = Readonly<{
@@ -110,4 +112,6 @@ export type RefundBudget = Readonly<{
   refundableBalance: string;
   priorSettlementRecordId: string;
   nextRecordGeneration: number;
+  originalSaleKind: "collection_fact" | "legacy_settlement_record";
+  collectionFactId: string | null;
 }>;

@@ -1,10 +1,12 @@
 /**
- * ADR-ARCH-032 / REFUND-DOMAIN-IMPLEMENTATION-1 — Refund Budget Law.
+ * ADR-ARCH-032 / REFUND-DOMAIN-IMPLEMENTATION-1 / REFUND-CF-ANCHOR-1
  *
  * RefundableBudget(scope) =
- *   SettledCollectibleValue(scope) − Sum(AppliedRefunds(scope))
+ *   OriginalCollectedValue(scope) − Sum(AppliedRefunds(scope))
  *
- * Derived from immutable Settlement Record history only (RF-BUDGET-02).
+ * CF-backed: OriginalCollectedValue = production Collection Fact.amount
+ * Legacy: OriginalCollectedValue = gen=1 paid|complimentary Settlement Record
+ * Applied refunds remain the existing refund SR chain (RF-BUDGET-02 history).
  */
 
 import type { SettlementRecord } from "../settlementRecord/settlementRecordContract";
@@ -13,6 +15,7 @@ import {
   NoPriorSettlementError,
   RefundBudgetNegativeError,
 } from "./refundErrors";
+import type { RefundOriginalSaleAnchor } from "./refundOriginalSaleAnchor";
 import {
   formatRefundMoney,
   parseRefundMoney,
@@ -28,12 +31,15 @@ function isPrimarySettlementPublication(record: SettlementRecord): boolean {
 }
 
 /**
- * Calculate refundable budget from append-only Settlement Record history.
+ * Calculate refundable budget.
+ * Original collected amount is CF when a production Collection Fact anchor is supplied.
+ * Gen=1 SR is not the original Cashier sale SSOT in that path.
  */
 export function calculateRefundBudget(input: {
   restaurantId: number;
   checkId: number;
   settlementRecords: readonly SettlementRecord[];
+  originalSale?: RefundOriginalSaleAnchor;
 }): RefundBudget {
   const scoped = input.settlementRecords.filter(
     (r) =>
@@ -44,13 +50,18 @@ export function calculateRefundBudget(input: {
     .filter(isPrimarySettlementPublication)
     .sort((a, b) => a.recordGeneration - b.recordGeneration)[0];
 
-  if (!primary) {
+  const originalSale = input.originalSale;
+  const cfBacked = originalSale?.kind === "collection_fact";
+  if (!cfBacked && !primary) {
     throw new NoPriorSettlementError(
       `RF-INV-L01: No paid|complimentary Settlement Record for check=${input.checkId}`
     );
   }
 
-  const settledValue = formatRefundMoney(parseRefundMoney(primary.grandTotal));
+  const settledValue =
+    originalSale?.kind === "collection_fact"
+      ? formatRefundMoney(parseRefundMoney(originalSale.originalCollectedAmount))
+      : formatRefundMoney(parseRefundMoney(primary!.grandTotal));
 
   let appliedRefundTotal = "0.00";
   for (const record of scoped) {
@@ -81,8 +92,16 @@ export function calculateRefundBudget(input: {
     settledValue,
     appliedRefundTotal,
     refundableBalance,
-    priorSettlementRecordId: primary.settlementRecordId,
+    priorSettlementRecordId: primary?.settlementRecordId ?? "",
     nextRecordGeneration: maxGeneration + 1,
+    originalSaleKind:
+      originalSale?.kind === "collection_fact"
+        ? "collection_fact"
+        : "legacy_settlement_record",
+    collectionFactId:
+      originalSale?.kind === "collection_fact"
+        ? originalSale.collectionFactId
+        : null,
   };
 }
 

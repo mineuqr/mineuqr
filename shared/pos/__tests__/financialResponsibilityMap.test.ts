@@ -18,6 +18,9 @@ describe("UNIFIED-POS-FINANCIAL-AUTHORITY-1 responsibility maps", () => {
   });
 
   it("keeps refund identity on the original Collection Fact while Check refund stays compatibility", () => {
+    expect(REFUND_RESPONSIBILITY_MAP.currentFinancialIdentity).toContain(
+      "Collection Fact"
+    );
     expect(REFUND_RESPONSIBILITY_MAP.targetFinancialIdentity).toContain(
       "Collection Fact"
     );

@@ -140,7 +140,8 @@ describe("PAYMENT-CONFIRM-REMAINING-CALLERS-1 architecture", () => {
     expect(session).not.toContain("settleCheckComplimentaryByIdDetailed");
     expect(session).not.toContain("confirmPayment");
     expect(session).toContain("export async function markComplimentary");
-    expect(refund).toContain("Settlement Record history only");
+    expect(refund).toContain("production Collection Fact.amount");
+    expect(refund).toContain("Applied refunds remain the existing refund SR chain");
     expect(read(PAYMENT)).not.toContain("applyRefundOnCheck");
     expect(read(PAYMENT)).not.toContain("createRefund");
   });

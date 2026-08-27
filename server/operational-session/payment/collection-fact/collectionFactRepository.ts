@@ -3,7 +3,7 @@
  * Drizzle Collection Fact repository. Insert + retrieve only. No money UPDATE.
  */
 
-import { and, asc, eq, inArray, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, notExists, or, sql } from "drizzle-orm";
 import {
   checkOrderMembership,
   operationalChecks,
@@ -215,6 +215,39 @@ export async function findProductionCollectionFactByOrderId(
     .orderBy(asc(paymentCollectionFacts.committedAt))
     .limit(1);
   return row ? mapRowToCollectionFact(row) : null;
+}
+
+/**
+ * REFUND-CF-ANCHOR-1 — all production Collection Facts that may anchor a Check refund.
+ * No LIMIT. No channel filter. Caller fail-closes on more than one unique fact.
+ */
+export async function listProductionCollectionFactsForRefundAnchor(
+  input: {
+    restaurantId: number;
+    checkId: number;
+    orderIds: readonly number[];
+  },
+  client?: SessionDbClient
+): Promise<CollectionFact[]> {
+  const db = await resolveDb(client);
+  const orderClause =
+    input.orderIds.length > 0
+      ? inArray(paymentCollectionFacts.orderId, [...input.orderIds])
+      : undefined;
+  const saleClause = orderClause
+    ? or(orderClause, eq(paymentCollectionFacts.checkId, input.checkId))
+    : eq(paymentCollectionFacts.checkId, input.checkId);
+  const rows = await db
+    .select()
+    .from(paymentCollectionFacts)
+    .where(
+      and(
+        eq(paymentCollectionFacts.restaurantId, input.restaurantId),
+        eq(paymentCollectionFacts.purpose, COLLECTION_FACT_PRODUCTION_PURPOSE),
+        saleClause
+      )
+    );
+  return rows.map(mapRowToCollectionFact);
 }
 
 /** Production Cashier CFs whose Order has no paid/complimentary Check yet. */

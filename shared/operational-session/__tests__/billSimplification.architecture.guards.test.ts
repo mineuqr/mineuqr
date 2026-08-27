@@ -100,7 +100,8 @@ describe("BILL-SIMPLIFICATION-1 architecture guards", () => {
     const refund = read(
       "shared/operational-session/check/refund/refundBudget.ts"
     );
-    expect(refund).toContain("Settlement Record history only");
+    expect(refund).toContain("production Collection Fact.amount");
+    expect(refund).toContain("Applied refunds remain the existing refund SR chain");
 
     const sr = read(
       "server/operational-session/check/checkSettlementRecordIntegration.ts"

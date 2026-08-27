@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   insertSettlementRecord: vi.fn(),
   updateOrderSettlement: vi.fn(),
   allocateRefundDocumentNumber: vi.fn(),
+  listActiveOrderIdsForCheck: vi.fn(),
+  listProductionCollectionFactsForRefundAnchor: vi.fn(),
 }));
 
 vi.mock("../checkRepository", () => ({
@@ -47,6 +49,16 @@ vi.mock("../orderSettlementRepository", () => ({
 vi.mock("../refundDocumentNumberRepository", () => ({
   allocateRefundDocumentNumber: (...a: unknown[]) =>
     mocks.allocateRefundDocumentNumber(...a),
+}));
+
+vi.mock("../checkOrderMembershipRepository", () => ({
+  listActiveOrderIdsForCheck: (...a: unknown[]) =>
+    mocks.listActiveOrderIdsForCheck(...a),
+}));
+
+vi.mock("../../payment/collection-fact/collectionFactRepository", () => ({
+  listProductionCollectionFactsForRefundAnchor: (...a: unknown[]) =>
+    mocks.listProductionCollectionFactsForRefundAnchor(...a),
 }));
 
 import { applyRefundOnCheck } from "../checkRefundIntegration";
@@ -141,6 +153,8 @@ describe("checkRefundIntegration", () => {
     mocks.insertSettlementRecord.mockResolvedValue(1);
     mocks.allocateRefundDocumentNumber.mockResolvedValue(1);
     mocks.updateOrderSettlement.mockResolvedValue(undefined);
+    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
+    mocks.listProductionCollectionFactsForRefundAnchor.mockResolvedValue([]);
   });
 
   it("applies full refund atomically: OS update + SR insert", async () => {
@@ -216,5 +230,45 @@ describe("checkRefundIntegration", () => {
         amount: "10.00",
       })
     ).rejects.toThrow(/Check not found/);
+  });
+
+  it("CF-backed apply uses Collection Fact amount, not gen=1 SR grandTotal", async () => {
+    mocks.listProductionCollectionFactsForRefundAnchor.mockResolvedValue([
+      {
+        collectionFactId: "cf-1",
+        restaurantId: 1,
+        orderId: 55,
+        paymentIntentId: "pi-1",
+        purpose: "production",
+        amount: "90.00",
+        discountAmount: "0.00",
+        currencyCode: "SAR",
+        tenders: [{ paymentMethod: "card", amount: "90.00" }],
+        checkId: 100,
+        committedAt: AT,
+        businessDay: "2026-07-26",
+        actorId: "7",
+        terminalId: "term-1",
+        orderingChannel: "qr",
+      },
+    ]);
+
+    const over = applyRefundOnCheck({
+      restaurantId: 1,
+      checkId: 100,
+      amount: "115.00",
+    });
+    await expect(over).rejects.toThrow(/RF-BUDGET-01|exceeds refundable/);
+
+    const result = await applyRefundOnCheck({
+      restaurantId: 1,
+      checkId: 100,
+      amount: "90.00",
+    });
+    expect(result.outcome).toBe("applied");
+    expect(result.remainingBudget).toBe("0.00");
+    expect(result.settledValue).toBe("90.00");
+    expect(result.settlementRecord?.recordKind).toBe("refund");
+    expect(mocks.insertSettlementRecord).toHaveBeenCalled();
   });
 });

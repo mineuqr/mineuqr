@@ -2514,6 +2514,8 @@ export async function getCheckRefundBudget(input: {
   refundableBalance: string;
   priorSettlementRecordId: string;
   nextRecordGeneration: number;
+  originalSaleKind: "collection_fact" | "legacy_settlement_record";
+  collectionFactId: string | null;
 }> {
   return getRefundBudgetForCheck(input);
 }

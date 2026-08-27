@@ -81,6 +81,18 @@ export {
 } from "./refundBudget";
 
 export {
+  REFUND_CF_ANCHOR_PROGRAM_ID,
+  resolveRefundOriginalSaleAnchor,
+  isCollectionFactRefundAnchor,
+  AmbiguousRefundOriginalSaleError,
+  type RefundOriginalSaleAnchorKind,
+  type RefundProductionFactCandidate,
+  type CollectionFactRefundAnchor,
+  type LegacySettlementRefundAnchor,
+  type RefundOriginalSaleAnchor,
+} from "./refundOriginalSaleAnchor";
+
+export {
   REFUND_DOMAIN_EVENT_TYPES,
   buildRefundRequestedEvent,
   buildRefundValidatedEvent,
