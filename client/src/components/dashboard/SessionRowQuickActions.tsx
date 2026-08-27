@@ -13,6 +13,7 @@ import { SettlementReceiptDialog } from "@/components/settlement-record/Settleme
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { sessionActionLabel } from "@/lib/diningSessionActionCopy";
 import { syncDashboardUrl } from "@/lib/dashboardUrl";
+import { handoffOperationalOrderToCashier } from "@/lib/cashier-workspace/cashierIncomingHandoff";
 import { useInvalidateSettlementRecordQueries } from "@/lib/settlement-record-presentation";
 import { trpc } from "@/lib/trpc";
 import { toastTrpcError } from "@/lib/trpcErrors";
@@ -126,7 +127,7 @@ export function SessionRowQuickActions({
               <DropdownMenuItem
                 disabled={pending}
                 onClick={() =>
-                  syncDashboardUrl({ restaurantId, section: "cashier" })
+                  handoffOperationalOrderToCashier({ utils, language: lang })
                 }
               >
                 {sessionActionLabel("sendToCashier", lang)}
@@ -134,7 +135,7 @@ export function SessionRowQuickActions({
               <DropdownMenuItem
                 disabled={pending}
                 onClick={() =>
-                  syncDashboardUrl({ restaurantId, section: "cashier" })
+                  handoffOperationalOrderToCashier({ utils, language: lang })
                 }
               >
                 {sessionActionLabel("markComplimentary", lang)}

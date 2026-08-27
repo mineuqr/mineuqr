@@ -348,7 +348,7 @@ export function CashierWorkspacePanel({
   );
   const invoiceIntentsQuery = trpc.pos.read.orders.listInvoiceIntents.useQuery(
     { restaurantId, terminalId: terminalId ?? "", limit: 50 },
-    { enabled: scoped && allowed && ordersOpen, staleTime: 0 }
+    { enabled: scoped && allowed, staleTime: 0 }
   );
   const detailQuery = trpc.pos.read.orders.getDetail.useQuery(
     {
@@ -481,7 +481,6 @@ export function CashierWorkspacePanel({
   function reviewInvoiceIntent(intent: InvoiceIntent) {
     if (intent.status !== "awaiting_cashier") return;
     const lines = invoiceIntentLinesToCashierView(intent.items);
-    if (lines.length === 0) return;
     const catalogSubtotal =
       chargesSubtotalFromInvoiceLines(lines) ?? intent.expectedGrandTotal;
     const discount = clampCashierDiscountAmount("0.00", catalogSubtotal);
@@ -1583,6 +1582,42 @@ export function CashierWorkspacePanel({
             </div>
 
             <div className={cashierPos.checkout}>
+              <p className="mb-2 text-xs font-semibold text-[#6b7280]">
+                {t("incomingOrders")}
+              </p>
+              {invoiceIntentsQuery.isPending ? (
+                <AppLoadingState label={t("loading")} />
+              ) : awaitingIntents.length === 0 ? (
+                <p className="text-sm text-[#6b7280]">{t("noIncomingOrders")}</p>
+              ) : (
+                <ul className="mb-3 flex flex-col gap-2">
+                  {awaitingIntents.map((intent) => (
+                    <li key={intent.invoiceIntentId}>
+                      <button
+                        type="button"
+                        className={
+                          selectedOrderId === intent.orderId
+                            ? cashierPos.orderBtnActive
+                            : cashierPos.orderBtn
+                        }
+                        onClick={() => void selectOrder(intent.orderId)}
+                      >
+                        <span className="block font-medium text-[#111827]">
+                          {intent.orderNumber}
+                        </span>
+                        <span className="text-xs text-[#6b7280]">
+                          {intent.sourceChannel}
+                          {intent.sessionId != null
+                            ? ` · session ${intent.sessionId}`
+                            : ""}{" "}
+                          · {intent.items.length} {t("incomingOrderItems")} ·{" "}
+                          {intent.expectedGrandTotal}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <button
                 type="button"
                 className={cashierPos.headerBtn}
@@ -1592,39 +1627,12 @@ export function CashierWorkspacePanel({
               </button>
               {ordersOpen ? (
                 <div className="mt-3">
-                  {ordersQuery.isPending || invoiceIntentsQuery.isPending ? (
+                  {ordersQuery.isPending ? (
                     <AppLoadingState label={t("loading")} />
-                  ) : awaitingIntents.length === 0 && orders.length === 0 ? (
+                  ) : orders.length === 0 ? (
                     <p className="text-sm text-[#6b7280]">{t("noOrders")}</p>
                   ) : (
                     <>
-                      {awaitingIntents.length > 0 ? (
-                        <ul className="mb-3 flex flex-col gap-2">
-                          <li className="text-xs font-semibold text-[#6b7280]">
-                            {t("awaitingCashier")}
-                          </li>
-                          {awaitingIntents.map((intent) => (
-                            <li key={intent.invoiceIntentId}>
-                              <button
-                                type="button"
-                                className={
-                                  selectedOrderId === intent.orderId
-                                    ? cashierPos.orderBtnActive
-                                    : cashierPos.orderBtn
-                                }
-                                onClick={() => void selectOrder(intent.orderId)}
-                              >
-                                <span className="block font-medium text-[#111827]">
-                                  {intent.orderNumber}
-                                </span>
-                                <span className="text-xs text-[#6b7280]">
-                                  {intent.sourceChannel} · {intent.expectedGrandTotal}
-                                </span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
                       <ul className="mb-3 flex flex-col gap-2">
                         {orders.map((order) => (
                           <li key={order.orderId}>

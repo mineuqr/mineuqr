@@ -13,9 +13,10 @@ describe("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 architecture guards", () => {
     const bar = read("client/src/components/dashboard/DiningSessionActionBar.tsx");
     const row = read("client/src/components/dashboard/SessionRowQuickActions.tsx");
     expect(bar).toContain("sendToCashier");
-    expect(bar).toContain('section: "cashier"');
+    expect(bar).toContain("handoffOperationalOrderToCashier");
     expect(bar).not.toContain("MarkPaidSettlementDialog");
     expect(row).toContain("sendToCashier");
+    expect(row).toContain("handoffOperationalOrderToCashier");
     expect(row).not.toContain("MarkPaidSettlementDialog");
   });
 

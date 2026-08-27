@@ -47,7 +47,7 @@ import {
 import { subscribeOrderLifecycleUpdates } from "@/lib/order-lifecycle-latency/orderLifecycleBroadcast";
 import { scheduleOrdersListActiveInvalidation } from "@/lib/orders-workspace/ordersListActiveInvalidationCoordinator";
 import { useOrdersWorkspaceRealtime } from "@/lib/orders-workspace/useOrdersWorkspaceRealtime";
-import { syncDashboardUrl } from "@/lib/dashboardUrl";
+import { handoffOperationalOrderToCashier } from "@/lib/cashier-workspace/cashierIncomingHandoff";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
@@ -305,7 +305,10 @@ export function OrdersWorkspacePanel({
         : { sessionless: false, unpaidSessionless: false, orderingChannel: null };
 
       if (actionId === "settle-self-ordering") {
-        syncDashboardUrl({ restaurantId, section: "cashier" });
+        handoffOperationalOrderToCashier({
+          utils,
+          language: settleLang,
+        });
         return;
       }
 
@@ -359,6 +362,8 @@ export function OrdersWorkspacePanel({
       cancelSessionlessMutation,
       restaurantId,
       activeRegisterId,
+      utils,
+      settleLang,
     ]
   );
 

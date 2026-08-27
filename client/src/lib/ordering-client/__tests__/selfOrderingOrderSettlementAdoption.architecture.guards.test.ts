@@ -18,7 +18,8 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 guards", () => {
     );
     expect(panel).toContain("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1");
     expect(panel).toContain("settle-self-ordering");
-    expect(panel).toContain('section: "cashier"');
+    expect(panel).toContain("handoffOperationalOrderToCashier");
+    expect(panel).not.toContain('section: "cashier"');
     expect(panel).not.toContain("session.markPaid");
     expect(panel).not.toContain("ensureOpenCheckForSession");
   });

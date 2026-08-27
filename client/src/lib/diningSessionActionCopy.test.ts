@@ -4,6 +4,7 @@ import { sessionActionLabel } from "./diningSessionActionCopy";
 describe("diningSessionActionCopy SETTLEMENT-ARCHITECTURE-1A", () => {
   it("provides Arabic settlement action labels", () => {
     expect(sessionActionLabel("sendToCashier", "ar")).toBe("إرسال للكاشير");
+    expect(sessionActionLabel("sentToCashier", "en")).toContain("Stay here");
     expect(sessionActionLabel("markComplimentary", "ar")).toBe("ضيافة");
     expect(sessionActionLabel("closeSession", "ar")).toBe("إغلاق الجلسة");
   });

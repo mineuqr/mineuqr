@@ -8,6 +8,10 @@ type Lang = "ar" | "en";
 export const sessionActionLabels = {
   markPaid: { ar: "تسجيل الدفع", en: "Register Payment" },
   sendToCashier: { ar: "إرسال للكاشير", en: "Send to Cashier" },
+  sentToCashier: {
+    ar: "أُرسل الطلب للكاشير. يبقى هنا — الكاشير يراه في الوارد.",
+    en: "Order sent to Cashier. Stay here — Cashier sees it in Incoming Orders.",
+  },
   markComplimentary: { ar: "ضيافة", en: "Mark Complimentary" },
   closeSession: { ar: "إغلاق الجلسة", en: "Close Session" },
   closeConfirmTitle: { ar: "إغلاق الجلسة؟", en: "Close session?" },

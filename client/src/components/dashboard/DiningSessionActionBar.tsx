@@ -8,6 +8,7 @@ import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { sessionActionLabel } from "@/lib/diningSessionActionCopy";
 import { useInvalidateSettlementRecordQueries } from "@/lib/settlement-record-presentation";
 import { syncDashboardUrl } from "@/lib/dashboardUrl";
+import { handoffOperationalOrderToCashier } from "@/lib/cashier-workspace/cashierIncomingHandoff";
 import { trpc } from "@/lib/trpc";
 import { toastTrpcError } from "@/lib/trpcErrors";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -141,7 +142,7 @@ export function DiningSessionActionBar({
               className="w-full sm:w-auto"
               disabled={pending}
               onClick={() =>
-                syncDashboardUrl({ restaurantId, section: "cashier" })
+                handoffOperationalOrderToCashier({ utils, language: lang })
               }
             >
               {sessionActionLabel("sendToCashier", lang)}
@@ -152,7 +153,7 @@ export function DiningSessionActionBar({
               className="w-full sm:w-auto"
               disabled={pending}
               onClick={() =>
-                syncDashboardUrl({ restaurantId, section: "cashier" })
+                handoffOperationalOrderToCashier({ utils, language: lang })
               }
             >
               {sessionActionLabel("markComplimentary", lang)}

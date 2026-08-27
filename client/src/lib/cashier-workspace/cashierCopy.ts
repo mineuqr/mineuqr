@@ -10,8 +10,8 @@ export type CashierLang = "ar" | "en";
 const COPY: Record<string, { ar: string; en: string }> = {
   title: { ar: "الكاشير", en: "Cashier" },
   subtitle: {
-    ar: "بيع مباشر عبر نقطة البيع. الصندوق المالي يبقى في عمليات الصندوق.",
-    en: "Direct POS selling. Financial register work stays in Register Ops.",
+    ar: "بيع مباشر أو مراجعة طلب وارد. الصندوق المالي يبقى في عمليات الصندوق.",
+    en: "Direct sale or incoming order review. Financial register work stays in Register Ops.",
   },
   terminal: { ar: "الجهاز", en: "Terminal" },
   selectTerminal: { ar: "اختر جهاز نقطة البيع", en: "Select a POS terminal" },
@@ -217,6 +217,12 @@ const COPY: Record<string, { ar: string; en: string }> = {
   showActiveOrders: { ar: "الطلبات النشطة", en: "Active orders" },
   hideActiveOrders: { ar: "إخفاء الطلبات النشطة", en: "Hide active orders" },
   awaitingCashier: { ar: "بانتظار الكاشير", en: "Awaiting cashier" },
+  incomingOrders: { ar: "طلبات واردة", en: "Incoming orders" },
+  noIncomingOrders: {
+    ar: "لا توجد طلبات بانتظار الدفع.",
+    en: "No orders awaiting payment.",
+  },
+  incomingOrderItems: { ar: "صنف", en: "items" },
   cancelPayment: { ar: "إلغاء", en: "Cancel" },
   totalTendered: { ar: "إجمالي المدفوع", en: "Total tendered" },
   remainingAmount: { ar: "الباقي", en: "Remaining" },
