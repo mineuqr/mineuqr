@@ -47,6 +47,7 @@ export type CheckoutPlaceOrderResult = Readonly<{
   /** Server-resolved Business Display Identity (e.g. "T #001" / "K #001"). */
   displayReference?: string;
   sessionToken?: string;
+  sessionId?: number;
   tableNumber?: number;
   fulfilmentLabel?: string;
   totalAmount?: string;

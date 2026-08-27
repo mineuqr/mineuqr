@@ -2929,6 +2929,9 @@ const orderRouter = router({
             ...(ENV.tableSessionDualWrite && sessionToken
               ? { sessionToken }
               : {}),
+            ...(ENV.tableSessionDualWrite && sessionId != null
+              ? { sessionId }
+              : {}),
           };
         }
       );

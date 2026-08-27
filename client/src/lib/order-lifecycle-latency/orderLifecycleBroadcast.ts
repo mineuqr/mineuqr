@@ -17,6 +17,16 @@ export type OrderLifecycleBroadcastMessage = {
   publisherId?: string;
 };
 
+/** Same-origin Session owner refresh after QR/table order.create. */
+export type SessionOrderCreatedBroadcastMessage = {
+  type: "session_order_created";
+  restaurantId: number;
+  sessionId: number;
+  orderId: number;
+  at: number;
+  publisherId?: string;
+};
+
 const CHANNEL = "mineuqr:order-lifecycle";
 
 let localPublisherId: string | null = null;
@@ -65,6 +75,56 @@ export function subscribeOrderLifecycleUpdates(
       if (!data || data.type !== "order_status_changed") return;
       if (data.restaurantId !== restaurantId) return;
       if (ignoreSelf && data.publisherId && data.publisherId === selfId) return;
+      onMessage(data);
+    };
+    return () => {
+      try {
+        channel.close();
+      } catch {
+        /* ignore */
+      }
+    };
+  } catch {
+    return () => {};
+  }
+}
+
+export function publishSessionOrderCreated(
+  message: Omit<SessionOrderCreatedBroadcastMessage, "type" | "at" | "publisherId"> & {
+    publisherId?: string;
+    at?: number;
+  }
+): void {
+  if (typeof BroadcastChannel === "undefined") return;
+  try {
+    const channel = new BroadcastChannel(CHANNEL);
+    channel.postMessage({
+      type: "session_order_created",
+      restaurantId: message.restaurantId,
+      sessionId: message.sessionId,
+      orderId: message.orderId,
+      at: message.at ?? Date.now(),
+      publisherId: message.publisherId ?? getLocalPublisherId(),
+    } satisfies SessionOrderCreatedBroadcastMessage);
+    channel.close();
+  } catch {
+    /* private mode / unsupported */
+  }
+}
+
+export function subscribeSessionOrderCreated(
+  restaurantId: number,
+  onMessage: (message: SessionOrderCreatedBroadcastMessage) => void
+): () => void {
+  if (typeof BroadcastChannel === "undefined") return () => {};
+  try {
+    const channel = new BroadcastChannel(CHANNEL);
+    channel.onmessage = (
+      event: MessageEvent<SessionOrderCreatedBroadcastMessage>
+    ) => {
+      const data = event.data;
+      if (!data || data.type !== "session_order_created") return;
+      if (data.restaurantId !== restaurantId) return;
       onMessage(data);
     };
     return () => {

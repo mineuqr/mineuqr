@@ -23,6 +23,7 @@ import {
   endOrderLifecycleClientTrace,
   markOrderLifecycleClient,
 } from "@/lib/order-lifecycle-latency";
+import { notifyOwnerSessionOrderCreated } from "@/lib/dining-session/notifyOwnerSessionOrderCreated";
 import { trpc } from "@/lib/trpc";
 import { useOrderingCart } from "../cart/OrderingCartProvider";
 import { useOptionalOrderingClientRuntime } from "../context/OrderingClientProvider";
@@ -285,6 +286,10 @@ export function OrderingCheckoutProvider({
           trackingToken: result.trackingToken,
           displayReference,
           sessionToken: result.sessionToken ?? undefined,
+          sessionId:
+            "sessionId" in result && typeof result.sessionId === "number"
+              ? result.sessionId
+              : undefined,
           tableNumber: result.tableNumber,
           fulfilmentLabel:
             "fulfilmentLabel" in result
@@ -294,6 +299,12 @@ export function OrderingCheckoutProvider({
           itemCount: result.itemCount,
           createdAt: result.createdAt,
         };
+
+        notifyOwnerSessionOrderCreated({
+          restaurantId: request.restaurantId,
+          sessionId: placed.sessionId,
+          orderId: placed.orderId,
+        });
 
         if (displayReference) {
           saveConfirmationDisplayIdentity(result.trackingToken, {

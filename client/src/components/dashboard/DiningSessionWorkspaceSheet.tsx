@@ -31,6 +31,8 @@ import {
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { restaurantDash } from "./restaurantDashStyles";
+import { subscribeSessionOrderCreated } from "@/lib/order-lifecycle-latency/orderLifecycleBroadcast";
+import { isOwnerSessionRefreshTarget } from "@/lib/dining-session/notifyOwnerSessionOrderCreated";
 
 type DiningSessionWorkspaceSheetProps = {
   open: boolean;
@@ -51,6 +53,7 @@ export function DiningSessionWorkspaceSheet({
 }: DiningSessionWorkspaceSheetProps) {
   const { language } = useLanguage();
   const { isAuthenticated, authPending } = useAuth();
+  const utils = trpc.useUtils();
   const lang = language === "ar" ? "ar" : "en";
   const sym = currencySymbol || "ر.س";
   const [workspaceSettlementId, setWorkspaceSettlementId] = useState<string | null>(null);
@@ -92,6 +95,31 @@ export function DiningSessionWorkspaceSheet({
       enabled: workspaceEnabled,
     }
   );
+
+  useEffect(() => {
+    if (!workspaceEnabled || sessionId == null || sessionId <= 0) return;
+    return subscribeSessionOrderCreated(restaurantId, (message) => {
+      if (
+        !isOwnerSessionRefreshTarget({
+          restaurantId,
+          openSessionId: sessionId,
+          messageRestaurantId: message.restaurantId,
+          messageSessionId: message.sessionId,
+        })
+      ) {
+        return;
+      }
+      void utils.session.getOwnerWorkspace.invalidate({
+        restaurantId,
+        sessionId: message.sessionId,
+      });
+    });
+  }, [
+    workspaceEnabled,
+    restaurantId,
+    sessionId,
+    utils.session.getOwnerWorkspace,
+  ]);
 
   const { data: restaurantOrders } = trpc.order.list.useQuery(
     { restaurantId },

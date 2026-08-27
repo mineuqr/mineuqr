@@ -152,6 +152,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     });
 
     expect(result).not.toHaveProperty("sessionToken");
+    expect(result).not.toHaveProperty("sessionId");
   });
 
   it("flag ON — new session attaches sessionId (post-commit session via consumer)", async () => {
@@ -191,6 +192,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     );
     expect(result.orderId).toBe(55);
     expect(result.sessionToken).toBe("sess-tok");
+    expect(result.sessionId).toBe(10);
   });
 
   it("flag ON — reuses existing session and logs session_reused", async () => {
