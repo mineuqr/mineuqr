@@ -23,6 +23,7 @@
     "db:verify-schema": "node scripts/verify-schema-deployment.cjs",
     "db:recovery:preflight": "node scripts/recovery/migration-0054-0057-preflight.mjs",
     "db:recovery:execute": "node scripts/recovery/migration-0054-0057-phased-execute.mjs",
+    "db:order-create:coverage": "node scripts/order-create-submission-coverage-readonly.mjs",
     "db:order-read:verify-schema": "node scripts/order-read-projection-staging.mjs --verify-schema",
     "db:order-read:discover": "node scripts/order-read-projection-staging.mjs --discover",
     "db:order-read:validate": "node scripts/order-read-projection-staging.mjs --validate",
