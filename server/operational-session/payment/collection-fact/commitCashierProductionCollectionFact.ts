@@ -18,13 +18,18 @@ import type {
   TaxBreakdown,
   TaxPolicySnapshot,
 } from "@shared/operational-session";
+import { and, eq } from "drizzle-orm";
 import { isCashierFinalizableOrderingChannel } from "@shared/pos";
+import { orders } from "../../../../drizzle/schema";
 import { getDb } from "../../../db";
 import { DiningSessionUnavailableError } from "../../../diningSession/sessionTypes";
 import type { SessionDbClient } from "../../../diningSession/sessionRepository";
 import { allocateCashierInvoiceForOrder } from "../../../pos/cashier-invoice/cashierInvoiceRepository";
 import { commitCollectionFact } from "./CollectionFactService";
-import { createDrizzleCollectionFactStore } from "./collectionFactRepository";
+import {
+  createDrizzleCollectionFactStore,
+  findProductionCollectionFactByOrderId,
+} from "./collectionFactRepository";
 import type { CollectionFactStore } from "./collectionFactStore";
 
 export type CashierPaidMoneyFreeze = Readonly<{
@@ -114,9 +119,72 @@ export async function commitCashierProductionCollectionFact(
 }
 
 /**
- * One financial transaction: bind Cashier invoice identity, then Collection Fact.
+ * INCOMING-CONFIRM-ORDER-LOCK-HARDENING-1
+ * Serialize Incoming Confirm on (restaurantId, orderId) before the CF decision.
+ * SELECT FOR UPDATE is a current read; the following CF lookup in this
+ * transaction therefore observes a collection committed by the previous holder.
+ * Does not lock the restaurant, terminal, or other Orders.
+ * Direct Cashier Place does not enter this function.
+ */
+export async function lockOrderRowForIncomingConfirm(
+  tx: SessionDbClient,
+  input: { restaurantId: number; orderId: number }
+): Promise<{ id: number; restaurantId: number } | null> {
+  const [row] = await tx
+    .select({
+      id: orders.id,
+      restaurantId: orders.restaurantId,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.restaurantId, input.restaurantId),
+        eq(orders.id, input.orderId)
+      )
+    )
+    .limit(1)
+    .for("update");
+  return row ?? null;
+}
+
+/**
+ * One financial transaction: lock Order, replay existing production CF, else
+ * bind Cashier invoice identity and insert Collection Fact.
  * Invoice identity is not a ledger. Check is not a participant.
- * Replay of the same orderId returns the same invoice number.
+ */
+export async function runIncomingCashierCollectionFactTransaction(
+  tx: SessionDbClient,
+  input: CashierProductionCollectionCommitInput
+): Promise<CommitCollectionFactResult> {
+  const restaurantId = input.freeze.restaurantId;
+  const orderId = input.freeze.orderId;
+  const locked = await lockOrderRowForIncomingConfirm(tx, {
+    restaurantId,
+    orderId,
+  });
+  if (!locked) {
+    throw new CollectionFactError("STORAGE", "Order not found");
+  }
+  const existing = await findProductionCollectionFactByOrderId(
+    { restaurantId, orderId },
+    tx
+  );
+  if (existing) {
+    return { outcome: "replayed", fact: existing };
+  }
+  await allocateCashierInvoiceForOrder({ restaurantId, orderId }, tx);
+  return commitCashierProductionCollectionFact(
+    input,
+    createDrizzleCollectionFactStore(tx)
+  );
+}
+
+/**
+ * Incoming Confirm Invoice + CF commit. Direct Cashier Place uses a different
+ * persist transaction and does not enter this function.
+ * A concurrent Confirm with a different idempotency key waits on the Order
+ * row, then replays the committed production CF. A failed attempt retries
+ * through the same CF-by-order path rather than inserting a second collection.
  */
 export async function commitCashierProductionCollectionFactInTransaction(
   input: CashierProductionCollectionCommitInput
@@ -125,17 +193,7 @@ export async function commitCashierProductionCollectionFactInTransaction(
   if (!db) {
     throw new DiningSessionUnavailableError();
   }
-  return db.transaction(async (tx) => {
-    await allocateCashierInvoiceForOrder(
-      {
-        restaurantId: input.freeze.restaurantId,
-        orderId: input.freeze.orderId,
-      },
-      tx as SessionDbClient
-    );
-    return commitCashierProductionCollectionFact(
-      input,
-      createDrizzleCollectionFactStore(tx)
-    );
-  });
+  return db.transaction(async (tx) =>
+    runIncomingCashierCollectionFactTransaction(tx as SessionDbClient, input)
+  );
 }
