@@ -23,6 +23,7 @@ import {
   type CollectionFactTender,
 } from "@shared/operational-session/payment/collection-fact";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
+import { CASHIER_FINALIZABLE_ORDERING_CHANNELS } from "@shared/pos";
 import { freezeCollectionFact } from "./collectionFactImmutability";
 import type { CollectionFactStore } from "./collectionFactStore";
 import type { CurrencySnapshot, TaxBreakdown, TaxPolicySnapshot } from "@shared/operational-session";
@@ -298,7 +299,13 @@ export async function listCollectionFactsByIds(
   return rows.map(mapRowToCollectionFact);
 }
 
-/** Production Cashier CFs whose Order has no paid/complimentary Check yet. */
+/**
+ * POST-PAYMENT-INCOMING-CHECK-RECOVERY-HARDENING-1
+ * Production CFs on Cashier-finalizable channels whose Order has no
+ * paid/complimentary Check yet. Direct cashier_pos stays eligible.
+ * Incoming qr / waiter_tablet / kiosk / table_session use the same Check
+ * finalizer already invoked on Confirm. Discovery is the CF row, not handoff.
+ */
 export async function listCashierPosProductionFactsAwaitingDownstreamSettlement(
   limit: number
 ): Promise<Array<{ restaurantId: number; orderId: number }>> {
@@ -333,9 +340,9 @@ export async function listCashierPosProductionFactsAwaitingDownstreamSettlement(
     .where(
       and(
         eq(paymentCollectionFacts.purpose, COLLECTION_FACT_PRODUCTION_PURPOSE),
-        eq(
+        inArray(
           paymentCollectionFacts.orderingChannel,
-          ORDERING_CHANNEL_CASHIER_POS
+          CASHIER_FINALIZABLE_ORDERING_CHANNELS
         ),
         notExists(completeMembership)
       )

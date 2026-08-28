@@ -1,7 +1,9 @@
 /**
  * POST-CONFIRM OPERATIONAL RECOVERY
  * Durable retry for Check / ST / OS / SR after Collection Fact PAID.
- * Does not write Collection Facts. Does not gate HTTP Confirm.
+ * Direct cashier_pos and Incoming finalizable channels share this sweeper.
+ * Does not write Collection Facts, Invoices, or Orders. Does not gate HTTP Confirm.
+ * Does not Confirm, close Session, or enter Incoming.
  */
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
