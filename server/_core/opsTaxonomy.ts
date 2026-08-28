@@ -172,6 +172,9 @@ export const OPS_EVENT = {
   business_identity_unique_constraint_retry: "business_identity_unique_constraint_retry",
   business_identity_failed: "business_identity_failed",
 
+  // ORDER-CREATE-LEGACY-FALLBACK-OUTBOX-SAFETY-1
+  order_create_persistence_failed: "order_create_persistence_failed",
+
   // SESSION-AGGREGATES-1 Phase A
   session_aggregate_drift_detected: "session_aggregate_drift_detected",
   session_aggregate_update_failed: "session_aggregate_update_failed",

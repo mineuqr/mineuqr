@@ -7,6 +7,8 @@ import {
   TABLE_EVENT_TYPES,
 } from "./diningSession/sessionTypes";
 
+const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
+
 vi.mock("./orderTrackingToken", () => ({
   generateOrderTrackingToken: vi.fn(() => "test-tracking-token-d3"),
 }));
@@ -38,6 +40,7 @@ vi.mock("./order/eventInfrastructureComposition", async (importOriginal) => {
 });
 
 vi.mock("./db", () => ({
+  getDb: mocks.getDb,
   getMenuItemById: vi.fn(async (id: number) =>
     id === 1
       ? {
@@ -80,6 +83,7 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 
 import { appRouter } from "./routers";
 import { createOrder } from "./db";
+import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
 import { resolveSessionForOrderCreate, recordSessionEvent } from "./diningSession/sessionService";
 import { incrementSessionAggregatesForOrder } from "./diningSession/sessionAggregateWriters";
 import { opsLog } from "./_core/opsLog";
@@ -102,6 +106,8 @@ const baseSession = {
   updatedAt: "2026-06-18 12:00:00",
 };
 
+const dbFake = createTransactionalOrderDbFake({ insertId: 55 });
+
 function createCaller() {
   return appRouter.createCaller({
     user: null,
@@ -113,6 +119,8 @@ function createCaller() {
 describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dbFake.reset();
+    mocks.getDb.mockImplementation(dbFake.getDb);
     ENV.tableSessionDualWrite = false;
     vi.mocked(resolveSessionForOrderCreate).mockResolvedValue({
       session: baseSession,
@@ -139,7 +147,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     expect(resolveSessionForOrderCreate).not.toHaveBeenCalled();
     expect(recordSessionEvent).not.toHaveBeenCalled();
     expect(incrementSessionAggregatesForOrder).not.toHaveBeenCalled();
-    expect(vi.mocked(createOrder).mock.calls[0]?.[0]).not.toHaveProperty("sessionId");
+    expect(dbFake.orderRow()).not.toHaveProperty("sessionId");
   });
 
   it("flag OFF — response omits sessionToken", async () => {
@@ -182,9 +190,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
         }),
       })
     );
-    expect(vi.mocked(createOrder).mock.calls[0]?.[0]).toMatchObject({
-      sessionId: 10,
-    });
+    expect(dbFake.orderRow()).toMatchObject({ sessionId: 10 });
     expect(recordSessionEvent).not.toHaveBeenCalled();
     expect(incrementSessionAggregatesForOrder).not.toHaveBeenCalled();
     expect(opsLog).toHaveBeenCalledWith(
@@ -232,6 +238,8 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
       })
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
 
+    expect(dbFake.inserted.orders).toHaveLength(0);
+    expect(dbFake.inserted.outbox).toHaveLength(0);
     expect(createOrder).not.toHaveBeenCalled();
   });
 

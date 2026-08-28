@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import { ENV } from "./_core/env";
 
+const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
+
 vi.mock("./orderTrackingToken", () => ({
   generateOrderTrackingToken: vi.fn(() => "test-tracking-token-d3"),
 }));
@@ -38,6 +40,7 @@ vi.mock("./order/eventInfrastructureComposition", async (importOriginal) => {
 });
 
 vi.mock("./db", () => ({
+  getDb: mocks.getDb,
   getMenuItemById: vi.fn(async (id: number) =>
     id === 1
       ? {
@@ -84,6 +87,7 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 
 import { appRouter } from "./routers";
 import { createNotification } from "./db";
+import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
 import { resolveSessionForOrderCreate, recordSessionEvent } from "./diningSession/sessionService";
 import { incrementSessionAggregatesForOrder } from "./diningSession/sessionAggregateWriters";
 import { sendReadyPushForOrder } from "./customerPush/sendReadyPush";
@@ -117,8 +121,13 @@ function createCaller() {
 }
 
 describe("order router cleanup ORDER-EVENTS-1B", () => {
+  const dbFake = createTransactionalOrderDbFake({ insertId: 55 });
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Only the create path is transaction-only; updateStatus keeps its own path.
+    mocks.getDb.mockReset();
+    dbFake.reset();
     ENV.tableSessionDualWrite = true;
     vi.mocked(resolveSessionForOrderCreate).mockResolvedValue({
       session: baseSession,
@@ -131,6 +140,7 @@ describe("order router cleanup ORDER-EVENTS-1B", () => {
   });
 
   it("order.create does not invoke operational side-effects inline", async () => {
+    mocks.getDb.mockImplementation(dbFake.getDb);
     const caller = createCaller();
     await caller.order.create({
       restaurantId: 1,

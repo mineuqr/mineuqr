@@ -1,11 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
+
+const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
 
 vi.mock("./orderTrackingToken", () => ({
   generateOrderTrackingToken: vi.fn(() => "test-tracking-token-abc"),
 }));
 
 vi.mock("./db", () => ({
+  getDb: mocks.getDb,
   getMenuItemById: vi.fn(async (id: number) =>
     id === 1
       ? {
@@ -47,9 +50,17 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 }));
 
 import { appRouter } from "./routers";
-import { createOrder } from "./db";
+import { createOrder, createOrderItems } from "./db";
+import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
+
+const dbFake = createTransactionalOrderDbFake({ insertId: 42 });
 
 describe("order.create tracking token PR-CUX-1A", () => {
+  beforeEach(() => {
+    dbFake.reset();
+    mocks.getDb.mockImplementation(dbFake.getDb);
+  });
+
   it("persists trackingToken and returns confirmation payload", async () => {
     const caller = appRouter.createCaller({
       user: null,
@@ -64,10 +75,16 @@ describe("order.create tracking token PR-CUX-1A", () => {
       items: [{ menuItemId: 1, quantity: 2 }],
     });
 
-    expect(vi.mocked(createOrder).mock.calls[0]?.[0]).toMatchObject({
+    expect(dbFake.orderRow()).toMatchObject({
       trackingToken: "test-tracking-token-abc",
       orderNumber: "ORD-0007",
     });
+    // ORDER-CREATE-LEGACY-FALLBACK-OUTBOX-SAFETY-1 — Order + Items + Outbox
+    // commit in one transaction; the non-transactional path is gone.
+    expect(dbFake.inserted.orderItems).toHaveLength(1);
+    expect(dbFake.inserted.outbox).toHaveLength(1);
+    expect(vi.mocked(createOrder)).not.toHaveBeenCalled();
+    expect(vi.mocked(createOrderItems)).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       orderId: 42,
       orderNumber: "ORD-0007",

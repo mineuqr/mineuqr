@@ -1,9 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 const OFFER_CART_ID = 1_000_000_000 + 55;
 
+const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
+
 vi.mock("./db", () => ({
+  getDb: mocks.getDb,
   getMenuItemById: vi.fn(),
   getOfferById: vi.fn(async (id: number) =>
     id === 55
@@ -46,9 +49,17 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 }));
 
 import { appRouter } from "./routers";
-import { createOrderItems } from "./db";
+import { createOrder, createOrderItems } from "./db";
+import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
+
+const dbFake = createTransactionalOrderDbFake({ insertId: 88 });
 
 describe("order.create offer lines PR-CUX-1B-POLISH-3", () => {
+  beforeEach(() => {
+    dbFake.reset();
+    mocks.getDb.mockImplementation(dbFake.getDb);
+  });
+
   it("resolves active offer price from DB via synthetic cart id", async () => {
     const caller = appRouter.createCaller({
       user: null,
@@ -63,12 +74,15 @@ describe("order.create offer lines PR-CUX-1B-POLISH-3", () => {
       items: [{ menuItemId: OFFER_CART_ID, quantity: 2 }],
     });
 
-    const line = vi.mocked(createOrderItems).mock.calls[0]?.[0][0];
-    expect(line).toMatchObject({
+    expect(dbFake.inserted.orderItems[0]).toMatchObject({
       menuItemId: 0,
       nameAr: "عرض خاص",
       price: "35.00",
       quantity: 2,
     });
+    // ORDER-CREATE-LEGACY-FALLBACK-OUTBOX-SAFETY-1 — transaction-only create.
+    expect(dbFake.inserted.outbox).toHaveLength(1);
+    expect(vi.mocked(createOrder)).not.toHaveBeenCalled();
+    expect(vi.mocked(createOrderItems)).not.toHaveBeenCalled();
   });
 });

@@ -68,11 +68,14 @@ describe("ORDER-BUSINESS-IDENTITY-HARDENING-1 architecture guards", () => {
     expect(taxonomy).toContain("business_identity_failed");
   });
 
-  it("retries infrastructure failures in order repository before legacy fallback", () => {
+  it("retries infrastructure failures in order repository, then fails the create closed", () => {
     const repository = read("server/order/infrastructure/persistence/DrizzleOrderRepository.ts");
     expect(repository).toContain("BUSINESS_IDENTITY_RETRY_POLICY");
     expect(repository).toContain("isRetryableBusinessIdentityInfrastructureError");
-    expect(repository).toContain("insertLegacy");
+    // ORDER-CREATE-LEGACY-FALLBACK-OUTBOX-SAFETY-1 — exhausted retries must not
+    // commit an Order without its OrderCreated Outbox event.
+    expect(repository).not.toContain("insertLegacy");
+    expect(repository).toContain("logOrderCreatePersistenceFailed");
   });
 
   it("BUSINESS-IDENTITY-LATENCY-REMEDIATION-1 stamps identity on INSERT and keeps LAST_INSERT_ID", () => {

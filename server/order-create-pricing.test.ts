@@ -1,7 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
+const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
+
 vi.mock("./db", () => ({
+  getDb: mocks.getDb,
   getMenuItemById: vi.fn(async (id: number) =>
     id === 1
       ? {
@@ -52,8 +55,16 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 
 import { appRouter } from "./routers";
 import { createOrder, createOrderItems } from "./db";
+import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
+
+const dbFake = createTransactionalOrderDbFake({ insertId: 99 });
 
 describe("order.create authoritative pricing", () => {
+  beforeEach(() => {
+    dbFake.reset();
+    mocks.getDb.mockImplementation(dbFake.getDb);
+  });
+
   it("persists DB total when client sends a manipulated low price", async () => {
     const caller = appRouter.createCaller({
       user: null,
@@ -68,8 +79,12 @@ describe("order.create authoritative pricing", () => {
       items: [{ menuItemId: 1, quantity: 2, price: "0.01", nameAr: "fake" }],
     });
 
-    expect(vi.mocked(createOrder).mock.calls[0]?.[0].totalAmount).toBe("20.00");
-    expect(vi.mocked(createOrderItems).mock.calls[0]?.[0][0]?.price).toBe("10.00");
-    expect(vi.mocked(createOrderItems).mock.calls[0]?.[0][0]?.nameAr).toBe("حمص");
+    expect(dbFake.orderRow()?.totalAmount).toBe("20.00");
+    expect(dbFake.inserted.orderItems[0]?.price).toBe("10.00");
+    expect(dbFake.inserted.orderItems[0]?.nameAr).toBe("حمص");
+    // ORDER-CREATE-LEGACY-FALLBACK-OUTBOX-SAFETY-1 — transaction-only create.
+    expect(dbFake.inserted.outbox).toHaveLength(1);
+    expect(vi.mocked(createOrder)).not.toHaveBeenCalled();
+    expect(vi.mocked(createOrderItems)).not.toHaveBeenCalled();
   });
 });

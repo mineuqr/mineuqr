@@ -3,6 +3,8 @@ import type { TrpcContext } from "./_core/context";
 import { ENV } from "./_core/env";
 import { DiningSessionExpiredError } from "./diningSession/sessionTypes";
 
+const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
+
 vi.mock("./orderTrackingToken", () => ({
   generateOrderTrackingToken: vi.fn(() => "test-tracking-token-1f"),
 }));
@@ -24,6 +26,7 @@ vi.mock("./_core/opsLog", () => ({
 }));
 
 vi.mock("./db", () => ({
+  getDb: mocks.getDb,
   getMenuItemById: vi.fn(async (id: number) =>
     id === 1
       ? {
@@ -66,7 +69,10 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 
 import { appRouter } from "./routers";
 import { createOrder } from "./db";
+import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
 import { resolveSessionForOrderCreate } from "./diningSession/sessionService";
+
+const dbFake = createTransactionalOrderDbFake({ insertId: 55 });
 
 function createCaller() {
   return appRouter.createCaller({
@@ -79,6 +85,8 @@ function createCaller() {
 describe("order.create expired session CUSTOMER-SESSION-LIFECYCLE-1F", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dbFake.reset();
+    mocks.getDb.mockImplementation(dbFake.getDb);
     ENV.tableSessionDualWrite = true;
   });
 
@@ -106,6 +114,8 @@ describe("order.create expired session CUSTOMER-SESSION-LIFECYCLE-1F", () => {
       message: "انتهت جلسة الطاولة",
     });
 
+    expect(dbFake.inserted.orders).toHaveLength(0);
+    expect(dbFake.inserted.outbox).toHaveLength(0);
     expect(createOrder).not.toHaveBeenCalled();
   });
 

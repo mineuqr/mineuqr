@@ -13,8 +13,6 @@ import type {
 } from "../../repositories/OrderRepository";
 import { mapOrderRowToAggregate } from "./OrderMapper";
 import {
-  createOrder,
-  createOrderItems,
   getOrderById,
   getOrderItemsByOrderId,
   markOrderReadyAtIfFirstTransition,
@@ -42,6 +40,7 @@ import {
   noteOrderLifecyclePhase,
   timeOrderLifecyclePhase,
 } from "../../observability/orderLifecycleLatency";
+import { logOrderCreatePersistenceFailed } from "../../observability/orderCreatePersistenceObservability";
 import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
 
 export class DrizzleOrderRepository implements OrderRepository {
@@ -66,27 +65,30 @@ export class DrizzleOrderRepository implements OrderRepository {
     }
 
     const requireSameTransactionCompanion = options?.afterPersistInTransaction != null;
+    // ORDER-CREATE-LEGACY-FALLBACK-OUTBOX-SAFETY-1 — a create commits Order +
+    // Order Items + OrderCreated Outbox in one transaction, or nothing. There is
+    // no non-transactional create path, so a failed create must fail closed.
+    const isNewOrder = order.isNew();
 
     if (db) {
       const { maxAttempts } = BUSINESS_IDENTITY_RETRY_POLICY;
       const attempts = requireSameTransactionCompanion ? 1 : maxAttempts;
       for (let attempt = 1; attempt <= attempts; attempt++) {
         try {
-          const isNew = order.isNew();
           let commitStarted = 0;
           const result = await db.transaction(async (tx) => {
-            const saved = isNew
+            const saved = isNewOrder
               ? await this.insertTransactional(tx, order, options)
               : await this.updateTransactional(tx, order, options);
             if (options?.afterPersistInTransaction) {
               await options.afterPersistInTransaction(tx, saved);
             }
-            if (isNew) {
+            if (isNewOrder) {
               commitStarted = orderLifecycleNowMs();
             }
             return saved;
           });
-          if (isNew && commitStarted > 0) {
+          if (isNewOrder && commitStarted > 0) {
             noteOrderLifecyclePhase(
               "commit_ms",
               orderLifecycleNowMs() - commitStarted
@@ -135,6 +137,17 @@ export class DrizzleOrderRepository implements OrderRepository {
             await sleepMs(computeBusinessIdentityRetryDelayMs(attempt));
             continue;
           }
+          if (isNewOrder) {
+            logOrderCreatePersistenceFailed({
+              restaurantId: order.restaurantId,
+              orderingChannel: options?.orderingChannel ?? undefined,
+              correlationId: options?.correlationId ?? undefined,
+              reason: "transaction_failed",
+              attempts: attempt,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            throw error;
+          }
           console.warn("[OrderRepository] Transactional save failed, falling back:", error);
           break;
         }
@@ -143,9 +156,16 @@ export class DrizzleOrderRepository implements OrderRepository {
     if (requireSameTransactionCompanion) {
       throw new Error("database_unavailable");
     }
-    return order.isNew()
-      ? this.insertLegacy(order, options)
-      : this.updateLegacy(order, options);
+    if (isNewOrder) {
+      logOrderCreatePersistenceFailed({
+        restaurantId: order.restaurantId,
+        orderingChannel: options?.orderingChannel ?? undefined,
+        correlationId: options?.correlationId ?? undefined,
+        reason: "database_unavailable",
+      });
+      throw new Error("database_unavailable");
+    }
+    return this.updateLegacy(order, options);
   }
 
   private async insertTransactional(
@@ -346,81 +366,6 @@ export class DrizzleOrderRepository implements OrderRepository {
       }),
       outboxEventIds: outboxInputs.map((m) => m.envelope.eventId),
     };
-  }
-
-  private async insertLegacy(
-    order: Order,
-    options?: SaveOrderOptions
-  ): Promise<SaveOrderResult> {
-    const props = order.snapshotForCreate();
-    const result = await createOrder({
-      restaurantId: props.restaurantId,
-      tableId: props.tableId,
-      tableNumber: props.tableNumber,
-      ...(props.sessionId != null ? { sessionId: props.sessionId } : {}),
-      serviceMode: props.serviceMode,
-      fulfilmentAnchorType: props.fulfilmentAnchorType,
-      fulfilmentLabel: props.fulfilmentLabel,
-      customerName: props.customerName,
-      customerPhone: props.customerPhone,
-      notes: props.notes,
-      totalAmount: props.totalAmount,
-      orderNumber: props.orderNumber,
-      trackingToken: props.trackingToken,
-      status: props.status,
-      ...(options?.orderingChannel != null
-        ? { orderingChannel: options.orderingChannel }
-        : {}),
-    });
-
-    if (!result?.id) {
-      throw new Error("Failed to persist order");
-    }
-
-    await createOrderItems(
-      props.lines.map((line) => ({
-        orderId: result.id,
-        menuItemId: line.menuItemId,
-        nameAr: line.nameAr,
-        nameEn: line.nameEn,
-        price: line.unitPrice,
-        quantity: line.quantity,
-        notes: line.notes,
-        modifiers: [...(line.modifiers ?? [])],
-      }))
-    );
-
-    const snapshot = order.snapshotForCreate();
-    const persisted = Order.reconstitute({
-      id: result.id,
-      restaurantId: snapshot.restaurantId,
-      tableId: snapshot.tableId,
-      tableNumber: snapshot.tableNumber,
-      sessionId: snapshot.sessionId,
-      serviceMode: snapshot.serviceMode,
-      fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
-      fulfilmentLabel: snapshot.fulfilmentLabel,
-      customerName: snapshot.customerName,
-      customerPhone: snapshot.customerPhone,
-      notes: snapshot.notes,
-      totalAmount: snapshot.totalAmount,
-      orderNumber: snapshot.orderNumber,
-      trackingToken: snapshot.trackingToken,
-      createdAt: order.createdAt,
-      updatedAt: order.createdAt,
-      status: snapshot.status,
-      lifecycleStage: snapshot.lifecycleStage,
-      readyAt: null,
-      lines: snapshot.lines,
-    });
-
-    options?.onPersisted?.(persisted);
-
-    if (persisted.status !== snapshot.status && persisted.id != null) {
-      await updateOrderStatus(persisted.id, persisted.status);
-    }
-
-    return { order: persisted, outboxEventIds: [] };
   }
 
   private async updateLegacy(
