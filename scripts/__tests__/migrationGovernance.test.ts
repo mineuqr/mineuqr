@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0101 contiguously", () => {
+  it("journal contains canonical migrations 0000–0102 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -65,13 +65,14 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[100]?.tag).toBe(
       "0100_crmp_collection_fact_attribution"
     );
-    expect(journal.entries[101]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[101]?.tag).toBe("0101_cashier_invoices");
+    expect(journal.entries[102]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0101_cashier_invoices");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(102);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0102_order_create_idempotency");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(103);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -123,6 +124,7 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(verify).toContain("cashier_order_handoffs");
     expect(verify).toContain("cashier_invoice_sequences");
     expect(verify).toContain("cashier_invoices");
+    expect(verify).toContain("order_create_idempotency");
   });
 
   it("vercel build runs governance guard before compile", () => {
@@ -345,6 +347,27 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/^\s*UPDATE\b/im);
     expect(sql).not.toMatch(/^\s*DELETE\b/im);
     expect(sql).not.toMatch(/DROP\s+/i);
+  });
+
+  it("0102 is additive order.create submission idempotency and is not a financial rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0102_order_create_idempotency.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `order_create_idempotency`");
+    expect(sql).toContain("PRIMARY KEY (`restaurantId`, `submissionId`)");
+    expect(sql).toContain("KEY `order_create_idempotency_order` (`orderId`)");
+    expect(sql).not.toMatch(/CREATE TABLE `payments`/);
+    expect(sql).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+    expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
+    expect(sql).not.toMatch(/ALTER TABLE `cashier_invoices`/);
+    expect(sql).not.toMatch(/ALTER TABLE `pos_sale_idempotency`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/^\s*UPDATE\b/im);
+    expect(sql).not.toMatch(/^\s*DELETE\b/im);
+    expect(sql).not.toMatch(/DROP\s+/i);
+    expect(sql).not.toMatch(/FOREIGN KEY/i);
   });
 
   it("0093 is additive POS sale idempotency map and is not a POS Order table", () => {

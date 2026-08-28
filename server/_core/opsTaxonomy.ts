@@ -110,6 +110,9 @@ export const OPS_EVENT = {
   session_created: "session_created",
   session_reused: "session_reused",
   order_created_event_failed: "order_created_event_failed",
+  order_create_new: "order_create_new",
+  order_create_replayed: "order_create_replayed",
+  order_create_idempotency_conflict: "order_create_idempotency_conflict",
 
   // ORDER-EVENTS-1A — domain outbox infrastructure
   order_outbox_published: "order_outbox_published",

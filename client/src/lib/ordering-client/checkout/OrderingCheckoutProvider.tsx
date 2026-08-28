@@ -12,6 +12,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -31,6 +32,7 @@ import {
   buildOrderSummaryLines,
   mapCheckoutSubmitError,
   presentOrderNoteError,
+  retainOrderCreateSubmissionId,
   validateCheckoutNotes,
 } from "./checkoutSubmission";
 import {
@@ -89,6 +91,7 @@ export function OrderingCheckoutProvider({
   const [submissionStatus, setSubmissionStatus] =
     useState<CheckoutSubmissionStatus>("idle");
   const [lastError, setLastError] = useState<CheckoutSubmitError | null>(null);
+  const tableSubmissionIdRef = useRef<string | null>(null);
 
   const items = cart.items;
   const totalAmount = cart.totalAmount;
@@ -246,6 +249,9 @@ export function OrderingCheckoutProvider({
             surface: "order.create",
           });
           markOrderLifecycleClient(tableTrace, "mutation_start");
+          tableSubmissionIdRef.current = retainOrderCreateSubmissionId(
+            tableSubmissionIdRef.current
+          );
           result = await createOrderMutation.mutateAsync(
             {
               restaurantId: request.restaurantId,
@@ -256,6 +262,7 @@ export function OrderingCheckoutProvider({
               customerPhone: customerPhone || undefined,
               notes: validated.orderNotes ?? undefined,
               items: linePayload,
+              submissionId: tableSubmissionIdRef.current,
             },
             {
               trpc: { context: { lifecycleTraceId: traceId } },
@@ -322,6 +329,7 @@ export function OrderingCheckoutProvider({
           resetForm();
         }
         setSubmissionStatus("success");
+        tableSubmissionIdRef.current = null;
         markOrderLifecycleClient(tableTrace, "visible_update");
         endOrderLifecycleClientTrace(tableTrace, "ok");
 

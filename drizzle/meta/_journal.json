@@ -715,6 +715,13 @@
       "when": 1785500000000,
       "tag": "0101_cashier_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "5",
+      "when": 1785600000000,
+      "tag": "0102_order_create_idempotency",
+      "breakpoints": true
     }
   ]
 }

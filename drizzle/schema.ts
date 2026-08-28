@@ -1214,6 +1214,32 @@ export const orders = mysqlTable("orders", {
 ]);
 
 /**
+ * ORDER-CREATE-SUBMISSION-IDEMPOTENCY-SCHEMA-AND-HARDENING-1
+ * Durable Table/QR order.create submission map. Not financial SSOT.
+ * Not Session identity. One (restaurantId, submissionId) → one Order.
+ */
+export const orderCreateIdempotency = mysqlTable(
+	"order_create_idempotency",
+	{
+		restaurantId: int().notNull(),
+		submissionId: varchar({ length: 36 }).notNull(),
+		fingerprint: varchar({ length: 64 }).notNull(),
+		orderId: int().notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.restaurantId, table.submissionId],
+			name: "order_create_idempotency_pk",
+		}),
+		index("order_create_idempotency_order").on(table.orderId),
+	]
+);
+
+export type InsertOrderCreateIdempotency = typeof orderCreateIdempotency.$inferInsert;
+export type SelectOrderCreateIdempotency = typeof orderCreateIdempotency.$inferSelect;
+
+/**
  * CASHIER-INCOMING-HANDOFF-MEMBERSHIP-1
  * Non-financial membership: operational Order explicitly sent to Cashier.
  * Not Collection Fact, PAID, Check, invoice ledger, or a second Order.

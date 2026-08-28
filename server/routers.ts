@@ -167,6 +167,13 @@ import {
   placeOrderService,
 } from "./order/placeOrderComposition";
 import { runOrderCommand } from "./order/application/mapOrderDomainError";
+import {
+  computePublicOrderCreateFingerprint,
+  createPublicOrderCreateIdempotencyPersistHook,
+  logOrderCreateIdempotencyEvent,
+  replayAfterOrderCreateUniqueCollision,
+  replayPublicTableOrderCreate,
+} from "./order/application/publicTableOrderCreateIdempotency";
 import { isCashierPosOrderingChannel } from "./order/application/cashierPosOrderLifecycle";
 import { resolveOrderActorFromUser } from "./order/application/resolveOrderActor";
 import {
@@ -2788,6 +2795,11 @@ const orderRouter = router({
       customerPhone: z.string().nullish(),
       notes: z.string().nullish(),
       items: z.array(placeOrderItemInput).min(1),
+      /**
+       * Client-generated UUID for one logical Submit.
+       * Optional for legacy clients; omitted requests are not idempotent.
+       */
+      submissionId: z.string().uuid().optional(),
       sessionToken: z
         .string()
         .min(16)
@@ -2831,6 +2843,38 @@ const orderRouter = router({
           );
           if (!table) {
             throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
+          }
+
+          const submissionId = input.submissionId;
+          const createFingerprint = submissionId
+            ? computePublicOrderCreateFingerprint({
+                restaurantId: input.restaurantId,
+                tableId: table.id,
+                tableNumber: table.tableNumber,
+                customerName: input.customerName,
+                customerPhone: input.customerPhone,
+                notes: input.notes,
+                items: input.items,
+              })
+            : null;
+          if (submissionId && createFingerprint) {
+            const replayed = await replayPublicTableOrderCreate({
+              restaurantId: input.restaurantId,
+              submissionId,
+              fingerprint: createFingerprint,
+              tableId: table.id,
+              tableNumber: table.tableNumber,
+            });
+            if (replayed) {
+              logOrderCreateIdempotencyEvent({
+                type: OPS_EVENT.order_create_replayed,
+                restaurantId: input.restaurantId,
+                submissionId,
+                orderId: replayed.orderId,
+                correlationId: ctx.correlationId,
+              });
+              return replayed;
+            }
           }
 
           let sessionId: number | undefined;
@@ -2887,29 +2931,78 @@ const orderRouter = router({
               ENV.tableSessionDualWrite && sessionToken != null ? sessionToken : null,
           });
 
-          const placeResult = await runOrderCommand(
-            () =>
-              placeOrderService.execute({
+          const placePersist =
+            submissionId && createFingerprint
+              ? {
+                  afterPersistInTransaction:
+                    createPublicOrderCreateIdempotencyPersistHook({
+                      restaurantId: input.restaurantId,
+                      submissionId,
+                      fingerprint: createFingerprint,
+                    }),
+                }
+              : undefined;
+
+          const placeCommand = {
+            restaurantId: input.restaurantId,
+            identity: orderIdentity,
+            tableId: table.id,
+            tableNumber: table.tableNumber,
+            ...(ENV.tableSessionDualWrite && sessionId != null
+              ? { sessionId }
+              : {}),
+            orderingChannel: ORDERING_CHANNEL_QR,
+            customerName: input.customerName,
+            customerPhone: input.customerPhone,
+            notes: input.notes,
+            items: input.items.map((item) => ({
+              menuItemId: item.menuItemId,
+              quantity: item.quantity,
+              notes: item.notes,
+              modifiers: item.modifiers,
+            })),
+          };
+
+          let placeResult;
+          try {
+            placeResult = await runOrderCommand(
+              () =>
+                placePersist
+                  ? placeOrderService.execute(placeCommand, placePersist)
+                  : placeOrderService.execute(placeCommand),
+              { awaitRelay: false }
+            );
+          } catch (error) {
+            if (submissionId && createFingerprint) {
+              const replayed = await replayAfterOrderCreateUniqueCollision({
                 restaurantId: input.restaurantId,
-                identity: orderIdentity,
+                submissionId,
+                fingerprint: createFingerprint,
                 tableId: table.id,
                 tableNumber: table.tableNumber,
-                ...(ENV.tableSessionDualWrite && sessionId != null
-                  ? { sessionId }
-                  : {}),
-                orderingChannel: ORDERING_CHANNEL_QR,
-                customerName: input.customerName,
-                customerPhone: input.customerPhone,
-                notes: input.notes,
-                items: input.items.map((item) => ({
-                  menuItemId: item.menuItemId,
-                  quantity: item.quantity,
-                  notes: item.notes,
-                  modifiers: item.modifiers,
-                })),
-              }),
-            { awaitRelay: false }
-          );
+                error,
+              });
+              logOrderCreateIdempotencyEvent({
+                type: OPS_EVENT.order_create_replayed,
+                restaurantId: input.restaurantId,
+                submissionId,
+                orderId: replayed.orderId,
+                correlationId: ctx.correlationId,
+              });
+              return replayed;
+            }
+            throw error;
+          }
+
+          if (submissionId) {
+            logOrderCreateIdempotencyEvent({
+              type: OPS_EVENT.order_create_new,
+              restaurantId: input.restaurantId,
+              submissionId,
+              orderId: placeResult.order.id,
+              correlationId: ctx.correlationId,
+            });
+          }
 
           const latency = getOrderLifecycleLatencyContext();
           if (latency && placeResult.order.id != null) {
