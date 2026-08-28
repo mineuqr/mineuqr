@@ -18,7 +18,8 @@ describe("ORDERING-CLIENT-CHECKOUT-1 architecture guards", () => {
     );
     expect(provider).toContain("order.create");
     expect(provider).toContain("submissionId: tableSubmissionIdRef.current");
-    expect(provider).toContain("retainOrderCreateSubmissionId");
+    expect(provider).toContain("beginTableOrderCreateSubmission");
+    expect(provider).toContain("clearTableOrderCreateSubmission");
     expect(provider).toContain("placeWithIdentity");
     expect(provider).toContain("placeAsWaiter");
     expect(provider).toContain("validateCheckoutNotes");
@@ -27,7 +28,13 @@ describe("ORDERING-CLIENT-CHECKOUT-1 architecture guards", () => {
     expect(helpers).toContain("validateOrderNote");
     expect(helpers).toContain("validateItemNote");
     expect(helpers).toContain("mapCheckoutSubmitError");
-    expect(helpers).toContain("retainOrderCreateSubmissionId");
+    const storage = read(
+      "client/src/lib/ordering-client/checkout/orderCreateSubmissionStorage.ts"
+    );
+    expect(storage).toContain("sessionStorage");
+    expect(storage).toContain("ORDER_CREATE_SUBMISSION_TTL_MS");
+    expect(storage).not.toContain("localStorage");
+    expect(storage).not.toMatch(/\bsessionToken\b/);
   });
 
   it("QR host mounts OrderingCheckoutProvider", () => {

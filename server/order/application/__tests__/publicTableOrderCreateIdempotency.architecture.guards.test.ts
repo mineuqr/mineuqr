@@ -39,7 +39,8 @@ describe("order.create submission idempotency architecture", () => {
 
   it("wires order.create to look up, persist in the Order TX, and replay on unique collision", () => {
     const createFn = orderCreateMutation();
-    expect(createFn).toContain("submissionId");
+    expect(createFn).toContain("submissionId: z.string().uuid().optional()");
+    expect(createFn).toContain("order_create_legacy_missing_submission_id");
     expect(createFn).toContain("replayPublicTableOrderCreate");
     expect(createFn).toContain("afterPersistInTransaction");
     expect(createFn).toContain("replayAfterOrderCreateUniqueCollision");
@@ -65,13 +66,19 @@ describe("order.create submission idempotency architecture", () => {
     expect(fingerprint).not.toMatch(/\bprice\b/);
   });
 
-  it("Table checkout reuses one submissionId for retries of the same Submit", () => {
+  it("Table checkout reuses one submissionId across retry and refresh via sessionStorage", () => {
     const provider = read(
       "client/src/lib/ordering-client/checkout/OrderingCheckoutProvider.tsx"
     );
-    expect(provider).toContain("retainOrderCreateSubmissionId");
+    expect(provider).toContain("beginTableOrderCreateSubmission");
+    expect(provider).toContain("clearTableOrderCreateSubmission");
     expect(provider).toContain("submissionId: tableSubmissionIdRef.current");
     expect(provider).toContain("tableSubmissionIdRef.current = null");
+    const storage = read(
+      "client/src/lib/ordering-client/checkout/orderCreateSubmissionStorage.ts"
+    );
+    expect(storage).toContain("sessionStorage");
+    expect(storage).not.toContain("localStorage");
   });
 
   it("keeps Cashier financial writers on the approved Confirm path only", () => {

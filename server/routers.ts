@@ -2797,7 +2797,9 @@ const orderRouter = router({
       items: z.array(placeOrderItemInput).min(1),
       /**
        * Client-generated UUID for one logical Submit.
-       * Optional for legacy clients; omitted requests are not idempotent.
+       * Optional only for cached pre-0102 bundles. Omission is logged as
+       * order_create_legacy_missing_submission_id and is not durable.
+       * Current Table/QR checkout always sends this field.
        */
       submissionId: z.string().uuid().optional(),
       sessionToken: z
@@ -2846,6 +2848,20 @@ const orderRouter = router({
           }
 
           const submissionId = input.submissionId;
+          if (!submissionId) {
+            opsLog({
+              type: OPS_EVENT.order_create_legacy_missing_submission_id,
+              category: "ORDER",
+              severity: "info",
+              ts: new Date().toISOString(),
+              restaurantId: input.restaurantId,
+              procedure: "order.create",
+              metadata: {
+                tableNumber: table.tableNumber,
+                correlationId: ctx.correlationId,
+              },
+            });
+          }
           const createFingerprint = submissionId
             ? computePublicOrderCreateFingerprint({
                 restaurantId: input.restaurantId,

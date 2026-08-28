@@ -32,9 +32,13 @@ import {
   buildOrderSummaryLines,
   mapCheckoutSubmitError,
   presentOrderNoteError,
-  retainOrderCreateSubmissionId,
   validateCheckoutNotes,
 } from "./checkoutSubmission";
+import {
+  beginTableOrderCreateSubmission,
+  clearTableOrderCreateSubmission,
+  digestTableOrderCreatePayload,
+} from "./orderCreateSubmissionStorage";
 import {
   isCheckoutIdentitySubmit,
   type CheckoutDraftSnapshot,
@@ -249,9 +253,18 @@ export function OrderingCheckoutProvider({
             surface: "order.create",
           });
           markOrderLifecycleClient(tableTrace, "mutation_start");
-          tableSubmissionIdRef.current = retainOrderCreateSubmissionId(
-            tableSubmissionIdRef.current
-          );
+          tableSubmissionIdRef.current = beginTableOrderCreateSubmission({
+            restaurantId: request.restaurantId,
+            tableNumber: request.tableNumber,
+            payloadDigest: digestTableOrderCreatePayload({
+              restaurantId: request.restaurantId,
+              tableNumber: request.tableNumber,
+              customerName,
+              customerPhone,
+              notes: validated.orderNotes,
+              items: linePayload,
+            }),
+          });
           result = await createOrderMutation.mutateAsync(
             {
               restaurantId: request.restaurantId,
@@ -330,6 +343,10 @@ export function OrderingCheckoutProvider({
         }
         setSubmissionStatus("success");
         tableSubmissionIdRef.current = null;
+        const tableNumber = request.tableNumber;
+        if (typeof tableNumber === "number") {
+          clearTableOrderCreateSubmission(request.restaurantId, tableNumber);
+        }
         markOrderLifecycleClient(tableTrace, "visible_update");
         endOrderLifecycleClientTrace(tableTrace, "ok");
 

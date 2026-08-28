@@ -87,11 +87,6 @@ export function validateCheckoutNotes(input: {
   };
 }
 
-/** Stable UUID for one logical Table/QR Submit. Retry reuses the same value. */
-export function retainOrderCreateSubmissionId(current: string | null): string {
-  return current ?? crypto.randomUUID();
-}
-
 export function mapCheckoutSubmitError(
   error: unknown,
   language: "ar" | "en"
