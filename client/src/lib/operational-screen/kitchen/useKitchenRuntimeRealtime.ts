@@ -86,6 +86,24 @@ export function useKitchenRuntimeRealtime(input: {
 
         platform.connect({
           sseUrl,
+          expiresAt: ticket.expiresAt,
+          refreshCredential: async () => {
+            const next = await mintRef.current({
+              channels: ["kitchen"],
+              clientCapabilities: {
+                ...DEFAULT_CLIENT_CAPABILITIES,
+                protocolVersion: 1,
+              },
+            });
+            return {
+              sseUrl: buildRealtimeSseUrl({
+                ssePath: next.ssePath,
+                token: next.token,
+                channels: ["kitchen"],
+              }),
+              expiresAt: next.expiresAt,
+            };
+          },
           channels: ["kitchen"],
           clientCapabilities: DEFAULT_CLIENT_CAPABILITIES,
           handlers: {

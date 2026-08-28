@@ -35,7 +35,7 @@ import {
   revokeOpaqueRealtimeTicket,
 } from "./tickets/RealtimeOpaqueTicketRegistry";
 import { isRealtimePlatformEnabled, getRealtimeSseGateway } from "./composition";
-import { getRealtimeMetrics } from "./observability/realtimeMetrics";
+import { getRealtimeMetrics, incRealtimeMetric } from "./observability/realtimeMetrics";
 import { buildRealtimeObservabilityDashboard } from "./observability/realtimeDashboard";
 import { REALTIME_METRICS_CATALOG } from "./observability/realtimeMetricsCatalog";
 import { evaluateRealtimeHealth } from "./observability/realtimeHealth";
@@ -215,7 +215,7 @@ export const realtimePlatformRouter = router({
       );
 
       revokeRealtimeTicket(verified.claims.jti);
-      return mintRealtimeTicket({
+      const renewed = mintRealtimeTicket({
         restaurantId: verified.claims.restaurantId,
         authMode: "staff_session",
         sub: verified.claims.sub,
@@ -227,6 +227,8 @@ export const realtimePlatformRouter = router({
         deviceId: verified.claims.deviceId,
         orderId: verified.claims.orderId,
       });
+      incRealtimeMetric("ticketsRenewed");
+      return renewed;
     }),
 
   revokeTicket: protectedProcedure

@@ -109,6 +109,7 @@ describe("REALTIME-ORDERS-ADOPTION-1 architecture", () => {
     );
     expect(hook).toContain("getRealtimePlatform");
     expect(hook).toContain('channels: ["orders"]');
+    expect(hook).toContain("refreshCredential");
     expect(hook).not.toContain("new EventSource");
   });
 

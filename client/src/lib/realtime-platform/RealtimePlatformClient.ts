@@ -40,12 +40,34 @@ export type RealtimePlatformHandlers = {
 export type RealtimeConnectOptions = {
   /** Absolute or relative SSE URL including ticket query (built by helper). */
   sseUrl: string;
+  /** ISO-8601 expiry from the mint/refresh result. Unix seconds on the wire. */
+  expiresAt?: string;
+  /**
+   * Discard the current ticket and mint a replacement.
+   * Required so reconnect never reuses an expired credential.
+   */
+  refreshCredential?: () => Promise<{ sseUrl: string; expiresAt: string }>;
   channels: RealtimeChannel[];
   clientCapabilities?: Partial<RealtimeClientCapabilities>;
   handlers?: RealtimePlatformHandlers;
   /** Max reconnect attempts before poll_only. */
   maxReconnectAttempts?: number;
 };
+
+/** Renew this many ms before `expiresAt` so the next open is never already expired. */
+export const REALTIME_TICKET_RENEWAL_SKEW_MS = 60_000;
+
+/** Client uses the server ISO expiry; server validates Unix seconds. Same instant. */
+export function realtimeTicketNeedsRefresh(
+  expiresAtIso: string | undefined,
+  nowMs: number = Date.now(),
+  skewMs: number = REALTIME_TICKET_RENEWAL_SKEW_MS
+): boolean {
+  if (!expiresAtIso) return false;
+  const expiresAtMs = Date.parse(expiresAtIso);
+  if (!Number.isFinite(expiresAtMs)) return true;
+  return nowMs >= expiresAtMs - skewMs;
+}
 
 function emitState(
   handlers: RealtimePlatformHandlers | undefined,
@@ -63,7 +85,10 @@ export class RealtimePlatformClient {
   private seq = new RealtimeSequenceTracker();
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private renewalTimer: ReturnType<typeof setTimeout> | null = null;
   private options: RealtimeConnectOptions | null = null;
+  private everLive = false;
+  private refreshInFlight = false;
   private readonly boundVisibility = () => this.onVisibility();
   /** Dedup window for public customer hints (no seq). */
   private readonly recentPublicHintKeys = new Set<string>();
@@ -75,9 +100,12 @@ export class RealtimePlatformClient {
   connect(options: RealtimeConnectOptions): void {
     this.disconnect();
     this.options = options;
+    this.everLive = false;
+    this.reconnectAttempts = 0;
     if (typeof document !== "undefined") {
       document.addEventListener("visibilitychange", this.boundVisibility);
     }
+    this.scheduleProactiveRenewal();
     this.openSource();
   }
 
@@ -109,6 +137,10 @@ export class RealtimePlatformClient {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    if (this.renewalTimer) {
+      clearTimeout(this.renewalTimer);
+      this.renewalTimer = null;
+    }
     if (typeof document !== "undefined") {
       document.removeEventListener("visibilitychange", this.boundVisibility);
     }
@@ -118,6 +150,8 @@ export class RealtimePlatformClient {
     }
     this.seq.clear();
     this.recentPublicHintKeys.clear();
+    this.everLive = false;
+    this.refreshInFlight = false;
     this.state = "closed";
     emitState(this.options?.handlers, "closed");
   }
@@ -148,6 +182,7 @@ export class RealtimePlatformClient {
 
     source.addEventListener("platform.ready", () => {
       this.reconnectAttempts = 0;
+      this.everLive = true;
       noteRealtimeClientReconnectSuccess();
       this.setState("live");
     });
@@ -247,7 +282,76 @@ export class RealtimePlatformClient {
       500 * 2 ** Math.min(this.reconnectAttempts, 6)
     );
     this.setState("reconnecting");
-    this.reconnectTimer = setTimeout(() => this.openSource(), delay);
+    this.reconnectTimer = setTimeout(() => {
+      void this.openSourceAfterCredentialRefresh();
+    }, delay);
+  }
+
+  private async openSourceAfterCredentialRefresh(): Promise<void> {
+    if (!this.options) return;
+    const needsRefresh =
+      realtimeTicketNeedsRefresh(this.options.expiresAt) || !this.everLive;
+    if (needsRefresh) {
+      if (!this.options.refreshCredential) {
+        this.activateFallback("ticket_expired");
+        return;
+      }
+      const refreshed = await this.replaceCredential("required");
+      if (!refreshed) return;
+    }
+    this.scheduleProactiveRenewal();
+    this.openSource();
+  }
+
+  private async replaceCredential(
+    mode: "required" | "best_effort"
+  ): Promise<boolean> {
+    if (!this.options?.refreshCredential || this.refreshInFlight) return false;
+    this.refreshInFlight = true;
+    try {
+      const fresh = await this.options.refreshCredential();
+      if (!this.options) return false;
+      this.options.sseUrl = fresh.sseUrl;
+      this.options.expiresAt = fresh.expiresAt;
+      return true;
+    } catch {
+      if (mode === "required") {
+        this.activateFallback("credential_refresh_failed");
+      }
+      return false;
+    } finally {
+      this.refreshInFlight = false;
+    }
+  }
+
+  private scheduleProactiveRenewal(): void {
+    if (this.renewalTimer) {
+      clearTimeout(this.renewalTimer);
+      this.renewalTimer = null;
+    }
+    if (!this.options?.expiresAt || !this.options.refreshCredential) return;
+    const expiresAtMs = Date.parse(this.options.expiresAt);
+    if (!Number.isFinite(expiresAtMs)) return;
+    const delay = expiresAtMs - Date.now() - REALTIME_TICKET_RENEWAL_SKEW_MS;
+    if (delay <= 0) return;
+    this.renewalTimer = setTimeout(() => {
+      void this.renewWhileLive();
+    }, delay);
+  }
+
+  private async renewWhileLive(): Promise<void> {
+    if (!this.options || this.state === "closed" || this.state === "poll_only") {
+      return;
+    }
+    const refreshed = await this.replaceCredential("best_effort");
+    if (!refreshed) return;
+    if (this.source) {
+      this.source.close();
+      this.source = null;
+    }
+    this.reconnectAttempts = 0;
+    this.scheduleProactiveRenewal();
+    this.openSource();
   }
 
   private activateFallback(reason: string): void {
@@ -268,7 +372,7 @@ export class RealtimePlatformClient {
     if (typeof document === "undefined" || !this.options) return;
     if (document.visibilityState === "visible" && this.state === "poll_only") {
       this.reconnectAttempts = 0;
-      this.openSource();
+      void this.openSourceAfterCredentialRefresh();
     }
   }
 }

@@ -86,6 +86,24 @@ export function useExpoRuntimeRealtime(input: {
 
         platform.connect({
           sseUrl,
+          expiresAt: ticket.expiresAt,
+          refreshCredential: async () => {
+            const next = await mintRef.current({
+              channels: ["expo"],
+              clientCapabilities: {
+                ...DEFAULT_CLIENT_CAPABILITIES,
+                protocolVersion: 1,
+              },
+            });
+            return {
+              sseUrl: buildRealtimeSseUrl({
+                ssePath: next.ssePath,
+                token: next.token,
+                channels: ["expo"],
+              }),
+              expiresAt: next.expiresAt,
+            };
+          },
           channels: ["expo"],
           clientCapabilities: DEFAULT_CLIENT_CAPABILITIES,
           handlers: {

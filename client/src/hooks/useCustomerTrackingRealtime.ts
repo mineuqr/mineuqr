@@ -92,6 +92,25 @@ export function useCustomerTrackingRealtime(
 
         platform.connect({
           sseUrl,
+          expiresAt: ticket.expiresAt,
+          refreshCredential: async () => {
+            const next = await mintRef.current({
+              trackingToken,
+              slug,
+              clientCapabilities: {
+                ...DEFAULT_CLIENT_CAPABILITIES,
+                protocolVersion: 1,
+              },
+            });
+            return {
+              sseUrl: buildRealtimeSseUrl({
+                ssePath: next.ssePath,
+                token: next.token,
+                channels: ["customer"],
+              }),
+              expiresAt: next.expiresAt,
+            };
+          },
           channels: ["customer"],
           clientCapabilities: DEFAULT_CLIENT_CAPABILITIES,
           handlers: {

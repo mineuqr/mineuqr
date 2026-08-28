@@ -75,6 +75,25 @@ export function useOrdersWorkspaceRealtime(
 
         platform.connect({
           sseUrl,
+          expiresAt: ticket.expiresAt,
+          refreshCredential: async () => {
+            const next = await mintRef.current({
+              restaurantId,
+              channels: ["orders"],
+              clientCapabilities: {
+                ...DEFAULT_CLIENT_CAPABILITIES,
+                protocolVersion: 1,
+              },
+            });
+            return {
+              sseUrl: buildRealtimeSseUrl({
+                ssePath: next.ssePath,
+                token: next.token,
+                channels: ["orders"],
+              }),
+              expiresAt: next.expiresAt,
+            };
+          },
           channels: ["orders"],
           clientCapabilities: DEFAULT_CLIENT_CAPABILITIES,
           handlers: {

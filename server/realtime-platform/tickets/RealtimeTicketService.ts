@@ -5,6 +5,7 @@
 
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { ENV } from "../../_core/env";
+import { incRealtimeMetric } from "../observability/realtimeMetrics";
 import {
   DEFAULT_SERVER_CAPABILITIES,
   getRealtimeChannelDefinition,
@@ -112,6 +113,7 @@ export function mintRealtimeTicket(
 
   const payload = b64urlJson(claims);
   const token = `${payload}.${sign(payload)}`;
+  incRealtimeMetric("ticketsIssued");
 
   return {
     token,

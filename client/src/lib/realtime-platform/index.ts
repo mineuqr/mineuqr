@@ -9,6 +9,8 @@ export {
   buildRealtimeSseUrl,
   getRealtimePlatform,
   __resetRealtimePlatformForTests,
+  realtimeTicketNeedsRefresh,
+  REALTIME_TICKET_RENEWAL_SKEW_MS,
   type RealtimeConnectionState,
   type RealtimeConnectOptions,
   type RealtimeHintHandler,

@@ -1,7 +1,7 @@
 /**
  * REALTIME-PLATFORM-FOUNDATION-1 — unit tests.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   assertHintIsMetadataOnly,
   createRealtimeHint,
@@ -117,6 +117,29 @@ describe("tickets", () => {
     expect(verified.ok).toBe(true);
     if (!verified.ok) return;
     expect(verified.claims.restaurantId).toBe(9);
+  });
+
+  it("rejects an actually expired HMAC ticket using Unix seconds", () => {
+    vi.useFakeTimers({ now: 1_700_000_000_000 });
+    try {
+      const minted = mintRealtimeTicket({
+        restaurantId: 1,
+        authMode: "staff_session",
+        sub: "user:1",
+        channels: ["orders"],
+        ttlSeconds: 5,
+      });
+      expect(minted.claims.iat).toBe(1_700_000_000);
+      expect(minted.claims.exp).toBe(1_700_000_005);
+      expect(verifyRealtimeTicket(minted.token).ok).toBe(true);
+      vi.setSystemTime(1_700_000_006_000);
+      const expired = verifyRealtimeTicket(minted.token);
+      expect(expired.ok).toBe(false);
+      if (expired.ok) return;
+      expect(expired.code).toBe("expired");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("rejects bad signatures and supports revocation", () => {
@@ -239,6 +262,36 @@ describe("SSE gateway", () => {
     expect(body).not.toContain('"restaurantId":999');
 
     await gateway.shutdown();
+  });
+
+  it("rejects an actually expired HMAC ticket before opening a connection", () => {
+    vi.useFakeTimers({ now: 1_700_000_000_000 });
+    try {
+      const gateway = new RealtimeSseGateway(new InMemoryRealtimePubSub());
+      const minted = mintRealtimeTicket({
+        restaurantId: 3,
+        authMode: "staff_session",
+        sub: "user:9",
+        channels: ["kitchen"],
+        ttlSeconds: 1,
+      });
+      vi.setSystemTime(1_700_000_002_000);
+      const res = mockRes();
+      const opened = gateway.open({
+        connectionId: "c-expired",
+        token: minted.token,
+        res,
+      });
+      expect(opened.ok).toBe(false);
+      if (opened.ok) return;
+      expect(opened.status).toBe(401);
+      expect(opened.message).toContain("expired");
+      expect(gateway.connectionCount).toBe(0);
+      expect(getRealtimeMetrics().authFailures).toBeGreaterThanOrEqual(1);
+      expect(getRealtimeMetrics().connections).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("rejects missing/invalid tickets", () => {
