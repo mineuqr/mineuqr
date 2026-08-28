@@ -12,7 +12,6 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -34,11 +33,6 @@ import {
   presentOrderNoteError,
   validateCheckoutNotes,
 } from "./checkoutSubmission";
-import {
-  beginTableOrderCreateSubmission,
-  clearTableOrderCreateSubmission,
-  digestTableOrderCreatePayload,
-} from "./orderCreateSubmissionStorage";
 import {
   isCheckoutIdentitySubmit,
   type CheckoutDraftSnapshot,
@@ -95,7 +89,6 @@ export function OrderingCheckoutProvider({
   const [submissionStatus, setSubmissionStatus] =
     useState<CheckoutSubmissionStatus>("idle");
   const [lastError, setLastError] = useState<CheckoutSubmitError | null>(null);
-  const tableSubmissionIdRef = useRef<string | null>(null);
 
   const items = cart.items;
   const totalAmount = cart.totalAmount;
@@ -253,18 +246,6 @@ export function OrderingCheckoutProvider({
             surface: "order.create",
           });
           markOrderLifecycleClient(tableTrace, "mutation_start");
-          tableSubmissionIdRef.current = beginTableOrderCreateSubmission({
-            restaurantId: request.restaurantId,
-            tableNumber: request.tableNumber,
-            payloadDigest: digestTableOrderCreatePayload({
-              restaurantId: request.restaurantId,
-              tableNumber: request.tableNumber,
-              customerName,
-              customerPhone,
-              notes: validated.orderNotes,
-              items: linePayload,
-            }),
-          });
           result = await createOrderMutation.mutateAsync(
             {
               restaurantId: request.restaurantId,
@@ -275,7 +256,6 @@ export function OrderingCheckoutProvider({
               customerPhone: customerPhone || undefined,
               notes: validated.orderNotes ?? undefined,
               items: linePayload,
-              submissionId: tableSubmissionIdRef.current,
             },
             {
               trpc: { context: { lifecycleTraceId: traceId } },
@@ -342,11 +322,6 @@ export function OrderingCheckoutProvider({
           resetForm();
         }
         setSubmissionStatus("success");
-        tableSubmissionIdRef.current = null;
-        const tableNumber = request.tableNumber;
-        if (typeof tableNumber === "number") {
-          clearTableOrderCreateSubmission(request.restaurantId, tableNumber);
-        }
         markOrderLifecycleClient(tableTrace, "visible_update");
         endOrderLifecycleClientTrace(tableTrace, "ok");
 

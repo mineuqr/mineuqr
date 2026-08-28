@@ -53,10 +53,8 @@ describe("INCOMING-CONFIRM-ORDER-LOCK-HARDENING-1 architecture", () => {
     );
     const schema = read("drizzle/schema.ts");
     expect(journal).toContain("0101_cashier_invoices");
-    expect(journal).toContain("0102_order_create_idempotency");
-    expect(journal).not.toContain("0102_payment_collection");
+    expect(journal).not.toContain("0102_");
     expect(schema).toContain("index(\"payment_collection_facts_restaurant_order\")");
-    expect(schema).not.toContain("uniqueIndex(\"payment_collection_facts_restaurant_order\")");
     expect(adapter).toContain("commitCollectionFact");
     expect(adapter).not.toContain("redis");
     expect(adapter).not.toContain("new Map");

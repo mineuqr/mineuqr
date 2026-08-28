@@ -126,7 +126,7 @@ describe("POST-PAYMENT-INCOMING-CHECK-RECOVERY-HARDENING-1 architecture", () => 
     expect(vercel).not.toContain('"crons"');
     expect(vercel).not.toContain("cashier-downstream-recovery");
     expect(journal).toContain("0101_cashier_invoices");
-    expect(journal).toContain("0102_order_create_idempotency");
+    expect(journal).not.toContain("0102_");
     expect(existsSync(join(repoRoot, "drizzle/0102.sql"))).toBe(false);
     expect(
       existsSync(

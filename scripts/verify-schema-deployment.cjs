@@ -273,19 +273,6 @@ const REQUIRED = {
   cashierInvoiceIndexes: [
     ["cashier_invoices", "cashier_invoices_restaurant_sequence_unique"],
   ],
-  /** ORDER-CREATE-SUBMISSION-IDEMPOTENCY-SCHEMA-AND-HARDENING-1 */
-  orderCreateIdempotencyTables: ["order_create_idempotency"],
-  orderCreateIdempotencyColumns: [
-    ["order_create_idempotency", "restaurantId"],
-    ["order_create_idempotency", "submissionId"],
-    ["order_create_idempotency", "fingerprint"],
-    ["order_create_idempotency", "orderId"],
-    ["order_create_idempotency", "createdAt"],
-  ],
-  orderCreateIdempotencyIndexes: [
-    ["order_create_idempotency", "PRIMARY"],
-    ["order_create_idempotency", "order_create_idempotency_order"],
-  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -523,25 +510,10 @@ async function main() {
         missing.push(`index:${table}.${indexName}`);
       }
     }
-    for (const table of REQUIRED.orderCreateIdempotencyTables) {
-      if (!(await tableExists(conn, table))) {
-        missing.push(`table:${table}`);
-      }
-    }
-    for (const [table, column] of REQUIRED.orderCreateIdempotencyColumns) {
-      if (!(await columnExists(conn, table, column))) {
-        missing.push(`${table}.${column}`);
-      }
-    }
-    for (const [table, indexName] of REQUIRED.orderCreateIdempotencyIndexes) {
-      if (!(await indexExists(conn, table, indexName))) {
-        missing.push(`index:${table}.${indexName}`);
-      }
-    }
 
     if (missing.length === 0) {
       console.log(
-        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements, check-charges, payment-collection-facts, cashier-order-handoffs, cashier-invoices, order-create-idempotency)."
+        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements, check-charges, payment-collection-facts, cashier-order-handoffs, cashier-invoices)."
       );
       return;
     }
