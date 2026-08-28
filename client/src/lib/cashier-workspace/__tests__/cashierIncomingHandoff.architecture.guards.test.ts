@@ -21,6 +21,8 @@ describe("CASHIER-INCOMING-ORDER-HANDOFF-1", () => {
     );
     expect(handoff).toContain("CASHIER-INCOMING-ORDER-HANDOFF-1");
     expect(handoff).toContain("listInvoiceIntents.invalidate");
+    expect(handoff).toContain("getInvoiceIntent.invalidate");
+    expect(handoff).not.toContain("orderSettlement");
     expect(handoff).not.toContain("syncDashboardUrl");
     expect(handoff).not.toContain("commitCollectionFact");
     expect(bar).toContain("session.sendToCashier");

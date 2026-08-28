@@ -546,6 +546,8 @@ export function CashierWorkspacePanel({
     setRegisterGap(null);
     if (!terminalId) return;
     try {
+      // Revalidate on click: list Intent can be stale (paid/cancelled/revoked
+      // handoff). Do not hydrate the ticket from the list card alone.
       const intent = await utils.pos.read.orders.getInvoiceIntent.fetch({
         restaurantId,
         terminalId,

@@ -1065,13 +1065,29 @@ export async function getOrdersByRestaurant(restaurantId: number, status?: strin
 
 export type SessionLinkedOrderRow = {
   id: number;
+  restaurantId: number;
   orderNumber: string;
   businessDay: string | null;
   dailyDisplayNumber: number | null;
   status: string;
   totalAmount: string;
   createdAt: string;
+  orderingChannel: string | null;
+  sessionId: number | null;
 };
+
+const sessionLinkedOrderColumns = {
+  id: orders.id,
+  restaurantId: orders.restaurantId,
+  orderNumber: orders.orderNumber,
+  businessDay: orders.businessDay,
+  dailyDisplayNumber: orders.dailyDisplayNumber,
+  status: orders.status,
+  totalAmount: orders.totalAmount,
+  createdAt: orders.createdAt,
+  orderingChannel: orders.orderingChannel,
+  sessionId: orders.sessionId,
+} as const;
 
 /** TABLE-MANAGEMENT-1 UX-1B — orders linked to a dining session (no items). */
 export async function getOrdersBySessionId(
@@ -1082,15 +1098,7 @@ export async function getOrdersBySessionId(
   if (!db) return [];
 
   return db
-    .select({
-      id: orders.id,
-      orderNumber: orders.orderNumber,
-      businessDay: orders.businessDay,
-      dailyDisplayNumber: orders.dailyDisplayNumber,
-      status: orders.status,
-      totalAmount: orders.totalAmount,
-      createdAt: orders.createdAt,
-    })
+    .select(sessionLinkedOrderColumns)
     .from(orders)
     .where(and(
       eq(orders.restaurantId, restaurantId),
@@ -1114,15 +1122,7 @@ export async function getOrdersByIds(
   if (!db || orderIds.length === 0) return [];
 
   return db
-    .select({
-      id: orders.id,
-      orderNumber: orders.orderNumber,
-      businessDay: orders.businessDay,
-      dailyDisplayNumber: orders.dailyDisplayNumber,
-      status: orders.status,
-      totalAmount: orders.totalAmount,
-      createdAt: orders.createdAt,
-    })
+    .select(sessionLinkedOrderColumns)
     .from(orders)
     .where(
       and(eq(orders.restaurantId, restaurantId), inArray(orders.id, [...orderIds]))

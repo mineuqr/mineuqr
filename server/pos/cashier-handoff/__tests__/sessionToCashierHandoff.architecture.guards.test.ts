@@ -25,6 +25,10 @@ describe("SESSION-TO-CASHIER-HANDOFF-1 architecture", () => {
     expect(row).not.toContain("markComplimentary");
     expect(service).toContain("insertCashierHandoffIgnoreDuplicate");
     expect(service).toContain("getOrdersBySessionId");
+    const sessionSend = service.slice(
+      service.indexOf("export async function activateCashierHandoffForSession")
+    );
+    expect(sessionSend).not.toContain("getOrderById");
     expect(service).not.toContain("commitCollectionFact");
     expect(service).not.toContain("confirmPayment");
     expect(service).not.toContain("closeSession");
@@ -48,6 +52,7 @@ describe("SESSION-TO-CASHIER-HANDOFF-1 architecture", () => {
     expect(intent).not.toContain("DrizzleBusinessIdentityAllocator");
     expect(intent).not.toContain("allocateCashierInvoiceForOrder");
     expect(panel).toContain("reviewInvoiceIntent");
+    expect(panel).toContain("getInvoiceIntent.fetch");
     expect(panel).toContain("intent.displayReference || intent.orderNumber");
     expect(panel).toContain("incomingOperationalOrder");
     expect(panel).toContain("? { orderId: inboundOrderId }");
@@ -81,5 +86,36 @@ describe("SESSION-TO-CASHIER-HANDOFF-1 architecture", () => {
     expect(initiate).toContain("this.settlePaid");
     expect(close).toContain('source: "manual_close"');
     expect(close).not.toContain("settleAndCloseSession");
+  });
+
+  it("Session Send does not invalidate settlement queries and Incoming click revalidates", () => {
+    const bar = read("client/src/components/dashboard/DiningSessionActionBar.tsx");
+    const row = read("client/src/components/dashboard/SessionRowQuickActions.tsx");
+    const panel = read(
+      "client/src/components/cashier-workspace/CashierWorkspacePanel.tsx"
+    );
+    const sendBar = bar.slice(
+      bar.indexOf("sendToCashierMutation"),
+      bar.indexOf("const pending")
+    );
+    const sendRow = row.slice(
+      row.indexOf("sendToCashierMutation"),
+      row.indexOf("const pending")
+    );
+    const selectOrder = panel.slice(
+      panel.indexOf("async function selectOrder"),
+      panel.indexOf("function persistDirectSaleSnapshot")
+    );
+    expect(sendBar).toContain("handoffOperationalOrderToCashier");
+    expect(sendBar).toContain("invalidateAfterSend");
+    expect(sendBar).not.toContain("orderSettlement");
+    expect(sendBar).not.toContain("invalidateSettlements");
+    expect(sendRow).toContain("invalidateAfterSend");
+    expect(sendRow).not.toContain("orderSettlement");
+    expect(sendRow).not.toContain("getActiveTablesBoard");
+    expect(selectOrder).toContain("getInvoiceIntent.fetch");
+    expect(selectOrder).toContain("reviewInvoiceIntent(intent)");
+    expect(selectOrder).not.toContain("awaitingIntents.find");
+    expect(panel).toContain("onClick={() => void selectOrder(intent.orderId)}");
   });
 });

@@ -51,7 +51,7 @@ export function SessionRowQuickActions({
   const [detailOpen, setDetailOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
 
-  const invalidateAfterAction = async () => {
+  const invalidateAfterClose = async () => {
     await Promise.all([
       utils.session.getOwnerWorkspace.invalidate({ restaurantId, sessionId }),
       utils.order.list.invalidate({ restaurantId }),
@@ -65,19 +65,24 @@ export function SessionRowQuickActions({
     ]);
   };
 
-  const mutationOpts = {
+  const invalidateAfterSend = async () => {
+    await Promise.all([
+      utils.session.getOwnerWorkspace.invalidate({ restaurantId, sessionId }),
+      utils.order.list.invalidate({ restaurantId }),
+    ]);
+  };
+
+  const closeMutation = trpc.session.close.useMutation({
     onSuccess: () => {
-      void invalidateAfterAction();
+      void invalidateAfterClose();
       setConfirmKind(null);
     },
     onError: (err: unknown) => toastTrpcError(err, t),
-  };
-
-  const closeMutation = trpc.session.close.useMutation(mutationOpts);
+  });
   const sendToCashierMutation = trpc.session.sendToCashier.useMutation({
     onSuccess: () => {
       handoffOperationalOrderToCashier({ utils, language: lang });
-      void invalidateAfterAction();
+      void invalidateAfterSend();
     },
     onError: (err: unknown) => toastTrpcError(err, t),
   });

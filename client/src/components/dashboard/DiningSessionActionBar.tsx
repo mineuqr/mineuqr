@@ -44,7 +44,7 @@ export function DiningSessionActionBar({
   const [detailOpen, setDetailOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
 
-  const invalidateAfterAction = async () => {
+  const invalidateAfterClose = async () => {
     await utils.session.getOwnerWorkspace.invalidate({ restaurantId, sessionId });
     await utils.order.list.invalidate({ restaurantId });
     await utils.orderSettlement.listByCheck.invalidate();
@@ -54,19 +54,23 @@ export function DiningSessionActionBar({
     onWorkspaceUpdated?.();
   };
 
-  const mutationOpts = {
+  const invalidateAfterSend = async () => {
+    await utils.session.getOwnerWorkspace.invalidate({ restaurantId, sessionId });
+    await utils.order.list.invalidate({ restaurantId });
+    onWorkspaceUpdated?.();
+  };
+
+  const closeMutation = trpc.session.close.useMutation({
     onSuccess: () => {
-      void invalidateAfterAction();
+      void invalidateAfterClose();
       setConfirmKind(null);
     },
     onError: (err: unknown) => toastTrpcError(err, t),
-  };
-
-  const closeMutation = trpc.session.close.useMutation(mutationOpts);
+  });
   const sendToCashierMutation = trpc.session.sendToCashier.useMutation({
     onSuccess: () => {
       handoffOperationalOrderToCashier({ utils, language: lang });
-      void invalidateAfterAction();
+      void invalidateAfterSend();
     },
     onError: (err: unknown) => toastTrpcError(err, t),
   });

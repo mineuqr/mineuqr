@@ -119,12 +119,11 @@ describe("CashierHandoffService", () => {
       restaurantId: 1,
       status: "open",
     });
-    mocks.getOrdersBySessionId.mockResolvedValue([{ id: 44 }, { id: 45 }, { id: 46 }]);
-    mocks.getOrderById.mockImplementation(async (id: number) => {
-      if (id === 44) return TABLE_ORDER;
-      if (id === 45) return { ...TABLE_ORDER, id: 45, status: "cancelled" };
-      return { ...TABLE_ORDER, id: 46, orderingChannel: "waiter_tablet" };
-    });
+    mocks.getOrdersBySessionId.mockResolvedValue([
+      TABLE_ORDER,
+      { ...TABLE_ORDER, id: 45, status: "cancelled" },
+      { ...TABLE_ORDER, id: 46, orderingChannel: "waiter_tablet" },
+    ]);
     mocks.findProductionCollectionFactByOrderId.mockImplementation(
       async (input: { orderId: number }) =>
         input.orderId === 46 ? { collectionFactId: "pcf_1" } : null
@@ -136,6 +135,7 @@ describe("CashierHandoffService", () => {
     });
     expect(result.orderIds).toEqual([44]);
     expect(mocks.insertCashierHandoffIgnoreDuplicate).toHaveBeenCalledTimes(1);
+    expect(mocks.getOrderById).not.toHaveBeenCalled();
   });
 
   it("session Send hands off every eligible Order on the same session without a second Order", async () => {
@@ -144,16 +144,17 @@ describe("CashierHandoffService", () => {
       restaurantId: 1,
       status: "open",
     });
-    mocks.getOrdersBySessionId.mockResolvedValue([{ id: 44 }, { id: 45 }, { id: 46 }]);
-    mocks.getOrderById.mockImplementation(async (id: number) => ({
-      ...TABLE_ORDER,
-      id,
-    }));
+    mocks.getOrdersBySessionId.mockResolvedValue([
+      { ...TABLE_ORDER, id: 44 },
+      { ...TABLE_ORDER, id: 45 },
+      { ...TABLE_ORDER, id: 46 },
+    ]);
     const result = await activateCashierHandoffForSession({
       restaurantId: 1,
       sessionId: 9,
     });
     expect(result.orderIds).toEqual([44, 45, 46]);
+    expect(mocks.getOrderById).not.toHaveBeenCalled();
     expect(mocks.insertCashierHandoffIgnoreDuplicate).toHaveBeenCalledTimes(3);
     expect(
       mocks.insertCashierHandoffIgnoreDuplicate.mock.calls.map(
@@ -173,13 +174,14 @@ describe("CashierHandoffService", () => {
       activateCashierHandoffForSession({ restaurantId: 1, sessionId: 9 })
     ).rejects.toThrow("No eligible orders to send to Cashier");
 
-    mocks.getOrdersBySessionId.mockResolvedValue([{ id: 44 }]);
-    mocks.getOrderById.mockResolvedValue({ ...TABLE_ORDER, status: "cancelled" });
+    mocks.getOrdersBySessionId.mockResolvedValue([
+      { ...TABLE_ORDER, status: "cancelled" },
+    ]);
     await expect(
       activateCashierHandoffForSession({ restaurantId: 1, sessionId: 9 })
     ).rejects.toThrow("No eligible orders to send to Cashier");
 
-    mocks.getOrderById.mockResolvedValue(TABLE_ORDER);
+    mocks.getOrdersBySessionId.mockResolvedValue([TABLE_ORDER]);
     mocks.findProductionCollectionFactByOrderId.mockResolvedValue({
       collectionFactId: "pcf_1",
     });

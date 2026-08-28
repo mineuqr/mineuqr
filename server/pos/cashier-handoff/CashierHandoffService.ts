@@ -92,9 +92,10 @@ export async function activateCashierHandoffForSession(input: {
   }
   const linked = await getOrdersBySessionId(input.restaurantId, input.sessionId);
   const orderIds: number[] = [];
-  for (const row of linked) {
-    const order = await getOrderById(row.id);
-    if (!order || order.restaurantId !== input.restaurantId) continue;
+  // Eligibility fields come from the session membership query. Production CF
+  // remains a separate required read (not present on `orders`).
+  for (const order of linked) {
+    if (order.restaurantId !== input.restaurantId) continue;
     if (order.status === "cancelled") continue;
     if (order.orderingChannel === ORDERING_CHANNEL_CASHIER_POS) continue;
     if (!isCashierHandoffEligibleOrderingChannel(order.orderingChannel)) continue;
@@ -106,7 +107,7 @@ export async function activateCashierHandoffForSession(input: {
     await insertCashierHandoffIgnoreDuplicate({
       restaurantId: input.restaurantId,
       orderId: order.id,
-      sourceChannel: order.orderingChannel ?? "unspecified",
+      sourceChannel: order.orderingChannel || "unspecified",
       sessionId: order.sessionId ?? input.sessionId,
     });
     orderIds.push(order.id);

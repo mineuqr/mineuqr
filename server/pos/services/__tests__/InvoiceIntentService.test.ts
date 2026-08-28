@@ -158,6 +158,8 @@ describe("InvoiceIntentService Cashier Handoff membership", () => {
         lineTotal: "25.00",
       },
     ]);
+    expect(intent).not.toHaveProperty("invoiceNumber");
+    expect(intent).not.toHaveProperty("sequenceNumber");
     expect(mocks.findProductionCollectionFactByOrderId).toHaveBeenCalled();
   });
 });
