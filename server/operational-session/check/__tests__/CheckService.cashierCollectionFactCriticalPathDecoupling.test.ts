@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   listCheckCharges: vi.fn(),
   opsLog: vi.fn(),
   dispatchDownstream: { current: true },
+  adoptSettlementAttributionAfterFinalize: vi.fn(),
 }));
 
 const fakeTx = { __tx: true };
@@ -125,6 +126,12 @@ vi.mock("../../payment/collection-fact/collectionFactRepository", () => ({
   listCollectionFactsByIds: vi.fn(async () => []),
 }));
 
+vi.mock("../checkSettlementAttributionAdoption", () => ({
+  adoptSettlementAttributionAfterFinalize: (...a: unknown[]) =>
+    mocks.adoptSettlementAttributionAfterFinalize(...a),
+  adoptRefundAttributionAfterFinalize: vi.fn(),
+}));
+
 vi.mock("../../payment/dispatchBestEffortDownstreamDelivery", () => ({
   dispatchBestEffortDownstreamDelivery: (input: {
     delivery: () => Promise<void>;
@@ -219,6 +226,21 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1", () => {
     mocks.listCheckCharges.mockResolvedValue([]);
     mocks.finalizeCheckOutcome.mockResolvedValue(1);
     mocks.insertSettlementTransactions.mockResolvedValue(undefined);
+    mocks.adoptSettlementAttributionAfterFinalize.mockResolvedValue({
+      attribution: {
+        outcome: "created",
+        attributionId: "attr_test",
+        settlementRecordId: null,
+        collectionFactId: "pcf_1",
+        registerId: "reg_1",
+        financialShiftId: "fsh_1",
+        operatorUserId: 10,
+        cashTenderAmount: "10.00",
+        gaps: [],
+        reason: null,
+      },
+      events: [],
+    });
   });
 
   it("returns after Collection Fact without waiting for a hanging ST write", async () => {
@@ -388,5 +410,54 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1", () => {
     expect(mocks.finalizeCheckOutcome).not.toHaveBeenCalled();
     expect(mocks.insertOperationalCheck).not.toHaveBeenCalled();
     expect(mocks.insertSettlementTransactions).not.toHaveBeenCalled();
+  });
+
+  it("does not attribute CRMP immediately after Collection Fact", async () => {
+    mocks.dispatchDownstream.current = false;
+    const fact = {
+      collectionFactId: "pcf_incoming",
+      restaurantId: 1,
+      orderId: 55,
+      paymentIntentId: "pi_1",
+      purpose: "production",
+      amount: "10.00",
+      discountAmount: "0.00",
+      currencyCode: "SAR",
+      tenders: [{ paymentMethod: "cash" as const, amount: "10.00" }],
+      checkId: null,
+      committedAt: "2026-08-28T00:00:00.000Z",
+      businessDay: "2026-08-28",
+      actorId: "10",
+      terminalId: "term_1",
+      orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+    };
+
+    const result = await settleCashierPosOrderPaidByIdDetailed({
+      restaurantId: 1,
+      orderId: 55,
+      awaitAttribution: true,
+      deferOperationalSettlementAfterCollectionFact: true,
+      productionCollectionCommit: async () => ({ fact }),
+    });
+
+    expect(result.check.id).toBe(0);
+    expect(result.settlementAttribution.outcome).toBe("skipped");
+    expect(result.settlementAttribution.gaps).toContain("deferred_post_commit");
+    expect(mocks.adoptSettlementAttributionAfterFinalize).not.toHaveBeenCalled();
+  });
+
+  it("reaches canonical CRMP once through Check finalization", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(openCheck)
+      .mockResolvedValueOnce(openCheck)
+      .mockResolvedValueOnce({ ...openCheck, outcome: "paid" });
+
+    await completeCashierOperationalSettlementAfterCollectionFact({
+      restaurantId: 1,
+      checkId: 200,
+    });
+
+    expect(mocks.finalizeCheckOutcome).toHaveBeenCalled();
+    expect(mocks.adoptSettlementAttributionAfterFinalize).toHaveBeenCalledTimes(1);
   });
 });
