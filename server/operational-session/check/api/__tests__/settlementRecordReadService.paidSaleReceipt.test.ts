@@ -81,8 +81,8 @@ function cfReceipt(
 ): SettlementRecordReceiptDto {
   return {
     settlementRecordId: "",
-    settlementNumber: "ORD-0055",
-    documentNumber: "ORD-0055",
+    settlementNumber: "",
+    documentNumber: "",
     documentType: "settlement",
     refundNumber: null,
     originSettlementNumber: null,

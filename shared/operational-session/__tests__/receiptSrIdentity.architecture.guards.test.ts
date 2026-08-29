@@ -128,6 +128,33 @@ describe("RECEIPT-SR-IDENTITY-1 architecture", () => {
     expect(listFn).toContain("COLLECTION_FACT_PRODUCTION_PURPOSE");
   });
 
+  it("CF-only receipt does not alias Invoice serial as Settlement number", () => {
+    const resolver = read(
+      "server/operational-session/check/api/paidSaleReceiptResolution.ts"
+    );
+    expect(resolver).toContain("RECEIPT-HISTORICAL-FIDELITY-AND-INVOICE-IDENTITY-1");
+    expect(resolver).toContain('settlementNumber: ""');
+    expect(resolver).toContain('documentNumber: ""');
+    expect(resolver).toContain("receiptItemsFromCollectionFactComposition");
+    expect(resolver).not.toContain("getOrderItemsByOrderId");
+    expect(resolver).not.toMatch(/settlementNumber:\s*documentNumber/);
+  });
+
+  it("SR-keyed receipt prefers frozen CF composition over live Order items", () => {
+    const service = read(
+      "server/operational-session/check/api/settlementRecordReadService.ts"
+    );
+    expect(service).toContain("receiptItemsFromCollectionFactComposition");
+    expect(service).toContain("listProductionCollectionFactsByOrderId");
+    expect(service).toContain("enrichLiveOrderItems");
+    const dialog = read(
+      "client/src/components/settlement-record/SettlementReceiptDialog.tsx"
+    );
+    expect(dialog).toContain("window.print()");
+    expect(dialog).toContain("toSettlementReceiptViewModel");
+    expect(dialog).toContain("vm.documentNumber ?");
+  });
+
   it("staff getReceipt accepts orderId without requiring settlementRecordId", () => {
     const router = read(
       "server/operational-session/check/api/settlementRecordReadRouter.ts"

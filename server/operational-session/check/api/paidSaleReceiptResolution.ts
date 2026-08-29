@@ -1,14 +1,19 @@
 /**
  * RECEIPT-SR-IDENTITY-1 — current Cashier paid-sale receipt from Collection Fact.
+ * RECEIPT-HISTORICAL-FIDELITY-AND-INVOICE-IDENTITY-1
  * Read-only. Not a ledger. Does not write CF, PAID, or SR.
  *
  * Unique production CF → paid-sale receipt.
  * Zero production CFs → null (caller may use historical SR).
  * Multiple production CFs / wrong restaurant → fail closed.
  * Query failure must propagate (not legacy).
+ *
+ * Invoice serial and Settlement number stay separate.
+ * No Settlement Record yet → settlementNumber is empty (do not alias Invoice).
+ * Receipt lines come from frozen CF composition, not live Order items.
  */
 
-import { getOrderById, getOrderItemsByOrderId } from "../../../db";
+import { getOrderById } from "../../../db";
 import { mapOrderDisplayIdentityFields } from "../../../order/read/presentation/mapOrderDisplayIdentity";
 import {
   COLLECTION_FACT_PRODUCTION_PURPOSE,
@@ -17,6 +22,7 @@ import {
 import { listProductionCollectionFactsByOrderId } from "../../payment/collection-fact/collectionFactRepository";
 import { cashierInvoiceNumberForOrder } from "../../../pos/cashier-invoice/cashierInvoiceRepository";
 import type { SettlementRecordReceiptDto } from "./settlementRecordApiDtos";
+import { receiptItemsFromCollectionFactComposition } from "./receiptItemsFromCollectionFactComposition";
 import { settlementSourceChannelFromOrderingChannel } from "./settlementSourceChannel";
 
 export class PaidSaleReceiptIdentityError extends Error {
@@ -48,14 +54,11 @@ function toReceiptFromCollectionFact(input: {
   const { fact } = input;
   const complimentary = parseAmount(fact.amount) === 0;
   const outcome = complimentary ? "complimentary" : "paid";
-  const documentNumber =
-    input.invoiceNumber?.trim() ||
-    input.displayReference ||
-    String(fact.orderId);
   return {
     settlementRecordId: "",
-    settlementNumber: documentNumber,
-    documentNumber,
+    // No Settlement Record yet — do not fabricate ST-… or alias Invoice serial.
+    settlementNumber: "",
+    documentNumber: "",
     documentType: "settlement",
     refundNumber: null,
     originSettlementNumber: null,
@@ -171,14 +174,6 @@ export async function resolvePaidSaleReceiptFromCollectionFact(input: {
     fulfilmentAnchorType: order.fulfilmentAnchorType ?? null,
     serviceMode: order.serviceMode ?? null,
   });
-  const items = await getOrderItemsByOrderId(input.orderId);
-  const itemsSnapshot = items.map((item) => ({
-    orderId: input.orderId,
-    name: String(item.nameEn || item.nameAr || "Item"),
-    quantity: Number(item.quantity ?? 0),
-    unitPrice: item.price != null ? String(item.price) : null,
-    lineTotal: null,
-  }));
   const invoiceNumber = await cashierInvoiceNumberForOrder({
     restaurantId: input.restaurantId,
     orderId: input.orderId,
@@ -191,6 +186,6 @@ export async function resolvePaidSaleReceiptFromCollectionFact(input: {
     sourceChannel: settlementSourceChannelFromOrderingChannel(
       order.orderingChannel
     ),
-    itemsSnapshot,
+    itemsSnapshot: receiptItemsFromCollectionFactComposition(fact),
   });
 }

@@ -1,19 +1,17 @@
 /**
- * RECEIPT-SR-IDENTITY-1 — current Cashier paid-sale receipt from Collection Fact.
+ * RECEIPT-SR-IDENTITY-1 / RECEIPT-HISTORICAL-FIDELITY-AND-INVOICE-IDENTITY-1
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CollectionFact } from "@shared/operational-session/payment/collection-fact";
 
 const mocks = vi.hoisted(() => ({
   getOrderById: vi.fn(),
-  getOrderItemsByOrderId: vi.fn(),
   listProductionCollectionFactsByOrderId: vi.fn(),
   cashierInvoiceNumberForOrder: vi.fn(),
 }));
 
 vi.mock("../../../../db", () => ({
   getOrderById: (...a: unknown[]) => mocks.getOrderById(...a),
-  getOrderItemsByOrderId: (...a: unknown[]) => mocks.getOrderItemsByOrderId(...a),
 }));
 
 vi.mock("../../../payment/collection-fact/collectionFactRepository", () => ({
@@ -65,7 +63,15 @@ function fact(overrides: Partial<CollectionFact> = {}): CollectionFact {
         },
       ],
     },
-    composition: [],
+    composition: [
+      {
+        sequence: 1,
+        description: "Kabsa",
+        netAmount: "80.00",
+        taxAmount: "11.25",
+        originOrderId: 55,
+      },
+    ],
     tenders: [{ paymentMethod: "cash", amount: "86.25" }],
     checkId: 10,
     actorType: "user",
@@ -94,13 +100,9 @@ function order(overrides: Record<string, unknown> = {}) {
 describe("resolvePaidSaleReceiptFromCollectionFact", () => {
   beforeEach(() => {
     mocks.getOrderById.mockReset();
-    mocks.getOrderItemsByOrderId.mockReset();
     mocks.listProductionCollectionFactsByOrderId.mockReset();
     mocks.cashierInvoiceNumberForOrder.mockReset();
     mocks.getOrderById.mockResolvedValue(order());
-    mocks.getOrderItemsByOrderId.mockResolvedValue([
-      { nameEn: "Kabsa", nameAr: "", quantity: 2, price: "40.00" },
-    ]);
     mocks.listProductionCollectionFactsByOrderId.mockResolvedValue([fact()]);
     mocks.cashierInvoiceNumberForOrder.mockResolvedValue(null);
   });
@@ -128,6 +130,9 @@ describe("resolvePaidSaleReceiptFromCollectionFact", () => {
     expect(receipt?.orders[0]?.orderId).toBe(55);
     expect(receipt?.businessDay).toBe("2026-08-27");
     expect(receipt?.itemsSnapshot[0]?.name).toBe("Kabsa");
+    expect(receipt?.itemsSnapshot[0]?.unitPrice).toBe("80.00");
+    expect(receipt?.settlementNumber).toBe("");
+    expect(receipt?.documentNumber).toBe("");
     expect(receipt?.outcome).toBe("paid");
   });
 
@@ -146,6 +151,8 @@ describe("resolvePaidSaleReceiptFromCollectionFact", () => {
       orderId: 55,
     });
     expect(receipt?.invoiceNumber).toBe("000042");
+    expect(receipt?.settlementNumber).toBe("");
+    expect(receipt?.settlementNumber).not.toBe("000042");
     expect(receipt?.orders[0]?.displayReference).toBe("K #005");
     expect(receipt?.orders[0]?.displayReference).not.toBe("T #005");
     expect(receipt?.sourceChannel).toBe("self_order");
@@ -183,17 +190,66 @@ describe("resolvePaidSaleReceiptFromCollectionFact", () => {
     expect(pos?.sourceChannel).toBe("counter");
   });
 
-  it("uses Cashier invoice number as document identity without replacing Order displayReference", async () => {
+  it("does not default Table Orders to another channel", async () => {
+    mocks.getOrderById.mockResolvedValue(
+      order({
+        identityScope: "TABLE",
+        dailyDisplayNumber: 5,
+        businessDay: "2026-08-27",
+        orderingChannel: "table_session",
+      })
+    );
+    const receipt = await resolvePaidSaleReceiptFromCollectionFact({
+      restaurantId: 1,
+      orderId: 55,
+    });
+    expect(receipt?.orders[0]?.displayReference).toBe("T #005");
+    expect(receipt?.sourceChannel).toBe("table_order");
+  });
+
+  it("keeps Invoice serial separate from Settlement number and Order reference", async () => {
     mocks.cashierInvoiceNumberForOrder.mockResolvedValue("000126");
     const receipt = await resolvePaidSaleReceiptFromCollectionFact({
       restaurantId: 1,
       orderId: 55,
     });
-    expect(receipt?.documentNumber).toBe("000126");
-    expect(receipt?.settlementNumber).toBe("000126");
+    expect(receipt?.invoiceNumber).toBe("000126");
+    expect(receipt?.settlementNumber).toBe("");
+    expect(receipt?.documentNumber).toBe("");
+    expect(receipt?.settlementNumber).not.toBe(receipt?.invoiceNumber);
     expect(receipt?.orders[0]?.orderId).toBe(55);
     expect(receipt?.orders[0]?.displayReference).not.toBe("000126");
     expect(receipt?.orders[0]?.displayReference).toBeTruthy();
+  });
+
+  it("does not change receipt items when live Order items would have changed", async () => {
+    mocks.listProductionCollectionFactsByOrderId.mockResolvedValue([
+      fact({
+        composition: [
+          {
+            sequence: 1,
+            description: "Kabsa",
+            netAmount: "80.00",
+            taxAmount: "11.25",
+            originOrderId: 55,
+          },
+        ],
+      }),
+    ]);
+    const receipt = await resolvePaidSaleReceiptFromCollectionFact({
+      restaurantId: 1,
+      orderId: 55,
+    });
+    expect(receipt?.itemsSnapshot).toEqual([
+      {
+        orderId: 55,
+        name: "Kabsa",
+        quantity: 1,
+        unitPrice: "80.00",
+        lineTotal: "80.00",
+      },
+    ]);
+    expect(receipt?.grandTotal).toBe("86.25");
   });
 
   it("maps a zero-amount Collection Fact as complimentary", async () => {

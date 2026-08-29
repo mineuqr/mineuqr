@@ -104,9 +104,11 @@ export function SettlementReceiptDialog({
                   {vm.invoiceNumber}
                 </p>
               ) : null}
-              <p className="text-lg font-semibold tabular-nums tracking-wide">
-                {vm.documentNumber}
-              </p>
+              {vm.documentNumber ? (
+                <p className="text-lg font-semibold tabular-nums tracking-wide">
+                  {vm.documentNumber}
+                </p>
+              ) : null}
               {vm.originSettlementNumber ? (
                 <p className="text-muted-foreground">
                   {settlementRecordUiLabel("originSettlementNumber", language)}{" "}

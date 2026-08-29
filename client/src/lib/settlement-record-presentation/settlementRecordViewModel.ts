@@ -332,6 +332,7 @@ export function toSettlementReceiptViewModel(
   receipt: SettlementRecordReceiptApiDto,
   language: SettlementRecordLang
 ): SettlementReceiptViewModel {
+  const hasSettlementRecord = receipt.settlementRecordId.trim().length > 0;
   const checkIdFromId = Number(receipt.settlementRecordId.split(":")[2] ?? 0);
   const detailLike: SettlementRecordDetailApiDto = {
     settlementRecordId: receipt.settlementRecordId,
@@ -368,9 +369,12 @@ export function toSettlementReceiptViewModel(
     },
   };
   const detail = toSettlementDetailViewModel(detailLike, language);
+  const settlementIdentity = hasSettlementRecord
+    ? detail.documentNumber
+    : receipt.settlementNumber.trim() || receipt.documentNumber.trim() || "";
   return {
-    settlementNumber: detail.documentNumber,
-    documentNumber: detail.documentNumber,
+    settlementNumber: settlementIdentity,
+    documentNumber: settlementIdentity,
     documentType: detail.documentType,
     isRefundReceipt: detail.documentType === "refund",
     originSettlementNumber: detail.originSettlementNumber,

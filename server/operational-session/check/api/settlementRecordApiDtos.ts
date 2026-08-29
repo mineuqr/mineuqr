@@ -147,6 +147,8 @@ export type SettlementRecordDetailDto = Readonly<{
  * Customer receipt payload.
  * Historical paid and refund receipts: money from Settlement Record.
  * Current Cashier paid-sale receipts: money from Collection Fact; settlementRecordId may be empty.
+ * CF-only (no Settlement yet): settlementNumber / documentNumber are empty —
+ * do not alias Invoice serial as the Settlement number.
  */
 export type SettlementRecordReceiptDto = Readonly<{
   settlementRecordId: string;
