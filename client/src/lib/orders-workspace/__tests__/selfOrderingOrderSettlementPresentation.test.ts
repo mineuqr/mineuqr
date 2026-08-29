@@ -35,6 +35,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
     });
     expect(pending.map((a) => a.id)).toEqual([
       "accept-order",
+      "print-order",
       "send-to-cashier",
       "cancel-order",
     ]);
@@ -52,14 +53,14 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
       sessionless: true,
       unpaidSessionless: true,
     });
-    expect(unpaid.map((a) => a.id)).toEqual(["send-to-cashier"]);
+    expect(unpaid.map((a) => a.id)).toEqual(["print-order", "send-to-cashier"]);
     expect(unpaid.some((a) => a.id === "serve-order")).toBe(false);
 
     const paid = getOrdersWorkspaceActions("ready", {
       sessionless: true,
       unpaidSessionless: false,
     });
-    expect(paid.map((a) => a.id)).toEqual(["serve-order"]);
+    expect(paid.map((a) => a.id)).toEqual(["serve-order", "print-order"]);
     expect(paid.some((a) => a.id === "cancel-order")).toBe(false);
     expect(paid.some((a) => a.id === "send-to-cashier")).toBe(false);
   });
@@ -70,7 +71,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
       unpaidSessionless: false,
       orderingChannel: "cashier_pos",
     });
-    expect(paidPending.map((a) => a.id)).toEqual(["serve-order"]);
+    expect(paidPending.map((a) => a.id)).toEqual(["serve-order", "print-order"]);
     expect(paidPending[0]?.labelAr).toBe("تم التقديم");
     expect(paidPending.some((a) => a.id === "accept-order")).toBe(false);
 
@@ -79,7 +80,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
       unpaidSessionless: true,
       orderingChannel: "cashier_pos",
     });
-    expect(unpaid.map((a) => a.id)).toEqual(["serve-order"]);
+    expect(unpaid.map((a) => a.id)).toEqual(["serve-order", "print-order"]);
     expect(unpaid[0]?.labelAr).toBe("تم التقديم");
     expect(unpaid.some((a) => a.id === "accept-order")).toBe(false);
     expect(unpaid.some((a) => a.id === "cancel-order")).toBe(false);
@@ -89,7 +90,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
       unpaidSessionless: false,
       orderingChannel: "cashier_pos",
     });
-    expect(paidServed.map((a) => a.id)).toEqual([]);
+    expect(paidServed.map((a) => a.id)).toEqual(["print-order"]);
   });
 
   it("keeps Waiter / Table QR sessioned cancel unchanged", () => {
@@ -99,6 +100,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
     });
     expect(sessioned.map((a) => a.id)).toEqual([
       "accept-order",
+      "print-order",
       "cancel-order",
     ]);
     expect(sessioned.some((a) => a.id === "send-to-cashier")).toBe(false);

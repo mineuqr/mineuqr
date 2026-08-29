@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import type {
   CancelPrintCommand,
   MarkPrintedCommand,
@@ -11,6 +11,41 @@ import type {
 export type PrintWorkspaceActionHandle = PrintWorkspaceActionPort & {
   isBusy: boolean;
 };
+
+/**
+ * ORDER-CARD-PRINT-ACTION-1 — restaurant-scoped reuse of printWorkspace.commands.printOrder.
+ * Does not mutate Order status, Invoice, CF, PAID, Settlement, Drawer, or Reports.
+ */
+export function usePrintOrderCommand() {
+  const utils = trpc.useUtils();
+  const printOrderMutation = trpc.printWorkspace.commands.printOrder.useMutation();
+
+  const printOrder = useCallback(
+    async (command: PrintOrderCommand) => {
+      await printOrderMutation.mutateAsync({
+        restaurantId: command.restaurantId,
+        orderId: command.orderId,
+        orderNumber: command.orderNumber,
+      });
+      await utils.printWorkspace.read.getOrderDetail.invalidate({
+        restaurantId: command.restaurantId,
+        orderId: command.orderId,
+      });
+      await utils.printWorkspace.read.listOrders.invalidate({
+        restaurantId: command.restaurantId,
+      });
+    },
+    [printOrderMutation, utils]
+  );
+
+  return useMemo(
+    () => ({
+      isPending: printOrderMutation.isPending,
+      printOrder,
+    }),
+    [printOrderMutation.isPending, printOrder]
+  );
+}
 
 export function usePrintWorkspaceActionPort(
   restaurantId: number,

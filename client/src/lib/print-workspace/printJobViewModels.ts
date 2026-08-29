@@ -132,6 +132,20 @@ export function operatorPrintErrorMessage(
   return error;
 }
 
+/** Existing Print Workspace error copy — never order lifecycle / money errors. */
+export function formatPrintOrderCommandError(
+  error: unknown,
+  language: string
+): string {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  return (
+    operatorPrintErrorMessage(raw, language) ??
+    (language.startsWith("ar")
+      ? "تعذّرت الطباعة. أعد المحاولة."
+      : "Printing failed. Try again.")
+  );
+}
+
 export type PrintJobTimelineStep = {
   id: "queued" | "printing" | "done";
   label: string;

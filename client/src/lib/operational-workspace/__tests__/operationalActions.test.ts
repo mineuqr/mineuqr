@@ -7,16 +7,23 @@ import {
 describe("operationalActions", () => {
   it("exposes action-first labels for pending orders", () => {
     const actions = getOrderWorkspaceActions("pending");
-    expect(actions.map((a) => a.id)).toEqual(["accept-order", "cancel-order"]);
+    expect(actions.map((a) => a.id)).toEqual([
+      "accept-order",
+      "print-order",
+      "cancel-order",
+    ]);
     expect(actions[0]?.labelEn).toBe("Accept Order");
+    expect(actions[1]?.labelAr).toBe("طباعة");
   });
 
-  it("hides Cancel after acceptance", () => {
+  it("hides Cancel after acceptance and keeps Print", () => {
     expect(getOrderWorkspaceActions("preparing").map((a) => a.id)).toEqual([
       "mark-ready",
+      "print-order",
     ]);
     expect(getOrderWorkspaceActions("ready").map((a) => a.id)).toEqual([
       "serve-order",
+      "print-order",
     ]);
   });
 
@@ -42,7 +49,7 @@ describe("operationalActions", () => {
   it("does not expose restore when domain has no transition", () => {
     const served = getOrderWorkspaceActions("served");
     const cancelled = getOrderWorkspaceActions("cancelled");
-    expect(served).toEqual([]);
+    expect(served.map((a) => a.id)).toEqual(["print-order"]);
     expect(cancelled).toEqual([]);
     expect(served.some((a) => a.id === "restore-order")).toBe(false);
   });
@@ -54,7 +61,10 @@ describe("operationalActions", () => {
         unpaidSessionless: true,
         orderingChannel: "cashier_pos",
       });
-      expect(actions.map((a) => a.id), status).toEqual(["serve-order"]);
+      expect(actions.map((a) => a.id), status).toEqual([
+        "serve-order",
+        "print-order",
+      ]);
       expect(actions[0]?.labelAr).toBe("تم التقديم");
     }
     expect(
@@ -62,8 +72,8 @@ describe("operationalActions", () => {
         sessionless: true,
         unpaidSessionless: false,
         orderingChannel: "cashier_pos",
-      })
-    ).toEqual([]);
+      }).map((a) => a.id)
+    ).toEqual(["print-order"]);
     expect(
       getOrdersWorkspaceActions("cancelled", {
         sessionless: true,

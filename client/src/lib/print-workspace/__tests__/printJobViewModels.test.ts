@@ -5,6 +5,7 @@ import {
   canRetryPrint,
   derivePrintJobTimeline,
   hasActivePrintJob,
+  formatPrintOrderCommandError,
   operatorPrintErrorMessage,
   printJobLiveStatusLabel,
   printJobStatusLabel,
@@ -47,6 +48,10 @@ describe("print job view models", () => {
       "MineuQR Connector"
     );
     expect(operatorPrintErrorMessage("paper out", "en")).toContain("Paper");
+    expect(formatPrintOrderCommandError(new Error("paper out"), "en")).toContain("Paper");
+    expect(formatPrintOrderCommandError("offline", "en")).not.toMatch(
+      /cancel|accept|settlement/i
+    );
   });
 
   it("derives timeline for failed jobs", () => {

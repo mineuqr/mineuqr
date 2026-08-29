@@ -9,7 +9,9 @@ export type OperationalActionId =
   | "cancel-order"
   | "restore-order"
   /** CHANNEL-TAXONOMY-CLEANUP-1 — operational Cashier handoff, not money settle. */
-  | "send-to-cashier";
+  | "send-to-cashier"
+  /** ORDER-CARD-PRINT-ACTION-1 — read/print only; not a lifecycle or money action. */
+  | "print-order";
 
 export type OperationalAction = {
   id: OperationalActionId;
@@ -21,7 +23,7 @@ export type OperationalAction = {
 };
 
 const ACTIONS: Record<
-  Exclude<OperationalActionId, "send-to-cashier">,
+  Exclude<OperationalActionId, "send-to-cashier" | "print-order">,
   Omit<OperationalAction, "id">
 > = {
   "accept-order": {
@@ -69,24 +71,67 @@ const SEND_TO_CASHIER: OperationalAction = {
   variant: "primary",
 };
 
+const PRINT_ORDER: OperationalAction = {
+  id: "print-order",
+  labelEn: "Print",
+  labelAr: "طباعة",
+  variant: "secondary",
+};
+
+export function isPrintOrderAction(id: OperationalActionId): boolean {
+  return id === "print-order";
+}
+
 export function getOperationalActionById(id: OperationalActionId): OperationalAction {
   if (id === "send-to-cashier") return SEND_TO_CASHIER;
+  if (id === "print-order") return PRINT_ORDER;
   return { id, ...ACTIONS[id] };
+}
+
+/**
+ * ORDER-CARD-PRINT-ACTION-1 — Print is independent of Cancel visibility.
+ * Pending: Accept, Print, Cancel. After accept: Print remains; Cancel does not.
+ */
+function withPrintAction(
+  actions: OperationalAction[],
+  status: OrderLifecycleStatus
+): OperationalAction[] {
+  if (status === "cancelled") return actions;
+  if (actions.some((action) => action.id === "print-order")) return actions;
+  const acceptIdx = actions.findIndex((action) => action.id === "accept-order");
+  if (acceptIdx >= 0) {
+    return [
+      ...actions.slice(0, acceptIdx + 1),
+      PRINT_ORDER,
+      ...actions.slice(acceptIdx + 1),
+    ];
+  }
+  return [...actions, PRINT_ORDER];
 }
 
 /** Order lifecycle actions — Orders Workspace is sole owner. */
 export function getOrderWorkspaceActions(status: OrderLifecycleStatus): OperationalAction[] {
   switch (status) {
     case "pending":
-      return [
-        { id: "accept-order", ...ACTIONS["accept-order"] },
-        { id: "cancel-order", ...ACTIONS["cancel-order"] },
-      ];
+      return withPrintAction(
+        [
+          { id: "accept-order", ...ACTIONS["accept-order"] },
+          { id: "cancel-order", ...ACTIONS["cancel-order"] },
+        ],
+        status
+      );
     case "preparing":
-      return [{ id: "mark-ready", ...ACTIONS["mark-ready"] }];
+      return withPrintAction(
+        [{ id: "mark-ready", ...ACTIONS["mark-ready"] }],
+        status
+      );
     case "ready":
-      return [{ id: "serve-order", ...ACTIONS["serve-order"] }];
+      return withPrintAction(
+        [{ id: "serve-order", ...ACTIONS["serve-order"] }],
+        status
+      );
     case "served":
+      return withPrintAction([], status);
     case "cancelled":
       return [];
     default:
@@ -126,13 +171,14 @@ function getCashierPosOrdersActions(
   status: OrderLifecycleStatus,
   _gate: OrdersSettlementGate
 ): OperationalAction[] {
-  if (status === "cancelled" || status === "served") return [];
+  if (status === "cancelled") return [];
   // Orders Workspace listActive uses paid-visible cashier_pos membership.
   // Dining Session membership still excludes cashier_pos.
   // Cancel is invalid on that surface (settled Check cannot be voided).
   // Unpaid cashier_pos is not listed; void remains the existing money path.
   // Served is terminal — تم التقديم must not remain as a live action.
-  return [CASHIER_POS_SERVE];
+  if (status === "served") return withPrintAction([], status);
+  return withPrintAction([CASHIER_POS_SERVE], status);
 }
 
 export function getOrdersWorkspaceActions(
@@ -150,16 +196,19 @@ export function getOrdersWorkspaceActions(
 
   const lifecycle = base.filter((a) => a.id !== "cancel-order");
   if (!gate.unpaidSessionless) {
-    return lifecycle;
+    return withPrintAction(lifecycle, status);
   }
 
   // LIFECYCLE-SETTLEMENT-GUARDS-1 — completion requires settlement first.
   const nonComplete = lifecycle.filter((a) => a.id !== "serve-order");
-  return [
-    ...nonComplete,
-    SEND_TO_CASHIER,
-    ...(status === "pending"
-      ? [{ id: "cancel-order" as const, ...ACTIONS["cancel-order"] }]
-      : []),
-  ];
+  return withPrintAction(
+    [
+      ...nonComplete,
+      SEND_TO_CASHIER,
+      ...(status === "pending"
+        ? [{ id: "cancel-order" as const, ...ACTIONS["cancel-order"] }]
+        : []),
+    ],
+    status
+  );
 }

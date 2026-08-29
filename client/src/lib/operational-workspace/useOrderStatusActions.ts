@@ -139,6 +139,8 @@ export function useOrderStatusActions(
   });
 
   async function executeAction(orderId: number, actionId: OperationalActionId) {
+    // ORDER-CARD-PRINT-ACTION-1 — Print is not an order.updateStatus transition.
+    if (actionId === "print-order" || actionId === "send-to-cashier") return;
     const target = ACTION_MAP[actionId]?.targetStatus;
     if (!target) return;
     const traceId = createOrderLifecycleTraceId();

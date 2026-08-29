@@ -16,7 +16,12 @@ import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-c
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
-import { getOrdersWorkspaceActions } from "@/lib/operational-workspace/operationalActions";
+import {
+  getOrdersWorkspaceActions,
+  isPrintOrderAction,
+} from "@/lib/operational-workspace/operationalActions";
+import { formatPrintOrderCommandError } from "@/lib/print-workspace/printJobViewModels";
+import { usePrintOrderCommand } from "@/lib/print-workspace/usePrintWorkspaceActions";
 import { isLateOrder } from "@/lib/operational-workspace/orderViewModels";
 import {
   mapActiveOrderPresentation,
@@ -204,6 +209,7 @@ export function OrdersWorkspacePanel({
   );
   const orderActionsRef = useRef(orderActions);
   orderActionsRef.current = orderActions;
+  const printOrderCommand = usePrintOrderCommand();
 
   const items = useMemo(() => {
     let rows = listQuery.data?.items ?? [];
@@ -311,14 +317,34 @@ export function OrdersWorkspacePanel({
 
   const handleAction = useCallback(
     async (orderId: number, actionId: OperationalActionId) => {
-      if (orderActionsRef.current.isPending) return;
-
       const order =
         displayItems.find((o) => o.orderId === orderId) ??
         (selectedOrderId === orderId ? detailQuery.data?.order : undefined);
       const gate = order
         ? settlementGateFor(order)
         : { sessionless: false, unpaidSessionless: false, orderingChannel: null };
+
+      if (isPrintOrderAction(actionId)) {
+        if (!order?.orderNumber) {
+          toast.error(formatPrintOrderCommandError("Order is not available in the print read model", language));
+          return;
+        }
+        setPendingActionOrderId(orderId);
+        try {
+          await printOrderCommand.printOrder({
+            restaurantId,
+            orderId: order.orderId,
+            orderNumber: order.orderNumber,
+          });
+        } catch (error) {
+          toast.error(formatPrintOrderCommandError(error, language));
+        } finally {
+          setPendingActionOrderId(null);
+        }
+        return;
+      }
+
+      if (orderActionsRef.current.isPending) return;
 
       if (actionId === "send-to-cashier") {
         setPendingActionOrderId(orderId);
@@ -377,6 +403,8 @@ export function OrdersWorkspacePanel({
       restaurantId,
       activeRegisterId,
       sendToCashierMutation,
+      printOrderCommand,
+      language,
     ]
   );
 
@@ -415,7 +443,8 @@ export function OrdersWorkspacePanel({
 
   const moneyPending =
     settleMutation.isPending || cancelSessionlessMutation.isPending;
-  const actionPending = orderActions.isPending || moneyPending;
+  const actionPending =
+    orderActions.isPending || moneyPending || printOrderCommand.isPending;
 
   if (listQuery.error && isEmailNotVerifiedError(listQuery.error)) {
     return <VerificationRequiredPanel variant="orders" />;
