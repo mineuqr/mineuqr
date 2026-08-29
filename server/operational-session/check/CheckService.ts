@@ -1655,6 +1655,49 @@ export type CashierPosSaleOpenCheck = Readonly<{
 }>;
 
 /**
+ * SELF-ORDER-CHECK-IN-ORDER-TRANSACTION-HARDENING-1 —
+ * Sessionless Check + membership on the caller's Order persist transaction.
+ * Requires the transaction client. Does not open getDb().
+ * sessionId remains null. Does not create a Dining Session.
+ * Not a payment API.
+ */
+export async function ensureSessionlessCheckForOrderInTransaction(
+  input: {
+    restaurantId: number;
+    orderId: number;
+    billDiscountAmount?: string;
+  },
+  tx: SessionDbClient
+): Promise<OperationalCheck> {
+  if (tx == null) {
+    throw new DiningSessionUnavailableError(
+      "Sessionless Check enrollment requires the Order transaction client"
+    );
+  }
+  const stages = createEmptyEnsureCheckForOrderStageMs();
+  stages.checkCreated = true;
+  const created = await createOpenCheck({
+    restaurantId: input.restaurantId,
+    sessionId: null,
+    billDiscountAmount: input.billDiscountAmount,
+    client: tx,
+    stageMs: stages,
+  });
+  return enrollRefreshAndReloadCheck(
+    {
+      restaurantId: input.restaurantId,
+      checkId: created.id,
+      orderId: input.orderId,
+      billDiscountAmount: created.billDiscountAmount,
+      taxPolicySnapshot: created.taxPolicySnapshot,
+      fallback: created,
+    },
+    tx,
+    stages
+  );
+}
+
+/**
  * CASHIER-REBUILD-1 Stage 1 — OPEN Check on the Order persist transaction.
  * Requires the caller's transaction client. Does not open getDb().
  * Not a payment API. Payment must never call this.

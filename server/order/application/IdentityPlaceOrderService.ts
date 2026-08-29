@@ -20,17 +20,18 @@ import {
 import { sessionAnchorFromFulfilmentAnchor } from "@shared/operational-session";
 import { isCashierPosOrderingChannel } from "./cashierPosOrderLifecycle";
 import {
-  ensureCheckForOrder,
+  ensureSessionlessCheckForOrderInTransaction,
   resolveOperationalSession,
 } from "../../operational-session";
-import { opsLog } from "../../_core/opsLog";
-import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import {
   PlaceOrderService,
   PlaceOrderValidationError,
   type PlaceOrderResult,
 } from "./PlaceOrderService";
-import type { SaveOrderOptions } from "../repositories/OrderRepository";
+import type {
+  SaveOrderOptions,
+  SaveOrderResult,
+} from "../repositories/OrderRepository";
 import type { SessionDbClient } from "../../diningSession/sessionRepository";
 
 export type IdentityPlaceOrderCommand = {
@@ -74,9 +75,9 @@ export class IdentityPlaceOrderService {
       "afterPersistInTransaction" | "skipBusinessIdentityAllocation"
     > & {
       /**
-       * Default true (CHECK-GENERALIZATION-M5). POS sale HTTP sets false so
-       * post-commit ensureCheckForOrder is skipped. Cashier OPEN Check is not
-       * part of sale.create; Confirm commits Collection Fact from the Order.
+       * Default true (CHECK-GENERALIZATION-M5). Sessionless / ephemeral place
+       * enrolls Check on the Order persist transaction.
+       * POS sale HTTP sets false: Cashier OPEN Check is not part of sale.create.
        */
       enrollCheck?: boolean;
       /**
@@ -158,6 +159,14 @@ export class IdentityPlaceOrderService {
       items: command.items,
     };
     const enrollCheck = persist?.enrollCheck !== false;
+    // SELF-ORDER-CHECK-IN-ORDER-TRANSACTION-HARDENING-1 — sessionless Check
+    // joins the Order persist transaction. Table Session opens its own Check.
+    // enrollCheck: false skips enrollment (POS sale.create).
+    const shouldEnrollSessionlessCheck =
+      enrollCheck &&
+      !deferTableSession &&
+      (resolvedPersistence === "ephemeral" ||
+        identity.operationalSession.sessionId == null);
     const resolveSessionInTransaction = deferTableSession
       ? async (tx: unknown) => {
           const opened = await resolveOperationalSession(
@@ -178,16 +187,35 @@ export class IdentityPlaceOrderService {
           return { sessionId: opened.session.id };
         }
       : undefined;
-    const saveOpts = persist
-      ? {
-          afterPersistInTransaction: persist.afterPersistInTransaction,
-          skipBusinessIdentityAllocation: persist.skipBusinessIdentityAllocation,
-          ...(resolveSessionInTransaction
-            ? { resolveSessionInTransaction }
-            : {}),
+    const afterPersistInTransaction = shouldEnrollSessionlessCheck
+      ? async (tx: unknown, saved: SaveOrderResult) => {
+          if (persist?.afterPersistInTransaction) {
+            await persist.afterPersistInTransaction(tx, saved);
+          }
+          const orderId = saved.order.id;
+          if (orderId == null) {
+            throw new Error(
+              "Persisted order identity is required for Check enrollment"
+            );
+          }
+          await ensureSessionlessCheckForOrderInTransaction(
+            { restaurantId: command.restaurantId, orderId },
+            tx as SessionDbClient
+          );
         }
-      : resolveSessionInTransaction
-        ? { resolveSessionInTransaction }
+      : persist?.afterPersistInTransaction;
+    const saveOpts =
+      persist || resolveSessionInTransaction || shouldEnrollSessionlessCheck
+        ? {
+            ...(afterPersistInTransaction
+              ? { afterPersistInTransaction }
+              : {}),
+            skipBusinessIdentityAllocation:
+              persist?.skipBusinessIdentityAllocation,
+            ...(resolveSessionInTransaction
+              ? { resolveSessionInTransaction }
+              : {}),
+          }
         : undefined;
     const result = saveOpts
       ? await this.placeOrder.execute(placeCommand, saveOpts)
@@ -201,40 +229,6 @@ export class IdentityPlaceOrderService {
           sessionToken: resolvedSessionToken,
         })
       : identity;
-
-    // CHECK-GENERALIZATION-M5 — sessionless / ephemeral channels enroll into Check + Membership.
-    // Table Session path keeps Session Check create + dual-write (avoid duplicate sessionless Check).
-    // POS cashier enrolls OPEN Check inside the Order persist transaction (Stage 1).
-    // enrollCheck: false only skips this post-commit ensureCheckForOrder call.
-    if (
-      enrollCheck &&
-      (resolvedPersistence === "ephemeral" ||
-        placedIdentity.operationalSession.sessionId == null)
-    ) {
-      try {
-        const orderId = result.order.id;
-        if (orderId == null) {
-          throw new Error("Persisted order identity is required for Check enrollment");
-        }
-        await ensureCheckForOrder({
-          restaurantId: command.restaurantId,
-          orderId,
-        });
-      } catch (e) {
-        opsLog({
-          type: OPS_EVENT.check_membership_dual_write_failed,
-          category: "ORDER",
-          severity: "error",
-          ts: new Date().toISOString(),
-          restaurantId: command.restaurantId,
-          procedure: "IdentityPlaceOrderService.ensureCheckForOrder",
-          metadata: {
-            orderId: result.order.id,
-            error: e instanceof Error ? e.message : String(e),
-          },
-        });
-      }
-    }
 
     return {
       ...result,

@@ -16,16 +16,24 @@ import * as operationalSession from "../../../operational-session";
 vi.mock("../../../operational-session", () => ({
   resolveOperationalSession: vi.fn(),
   ensureCheckForOrder: vi.fn(),
-}));
-
-vi.mock("../../../_core/opsLog", () => ({
-  opsLog: vi.fn(),
+  ensureSessionlessCheckForOrderInTransaction: vi.fn(),
 }));
 
 describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
   const execute = vi.fn();
   const placeOrder = { execute } as unknown as PlaceOrderService;
   const service = new IdentityPlaceOrderService(placeOrder);
+
+  const placed = {
+    order: { id: 99, tableId: 0, tableNumber: 0, sessionId: null },
+    events: [],
+    orderNumber: "ORD-1",
+    trackingToken: "tok",
+    displayReference: "K #001",
+    totalAmount: "10.00",
+    itemCount: 1,
+    createdAt: "2026-07-14T12:00:00.000Z",
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -34,19 +42,19 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       created: false,
       persistence: "ephemeral",
     });
-    vi.mocked(operationalSession.ensureCheckForOrder).mockResolvedValue({
+    vi.mocked(
+      operationalSession.ensureSessionlessCheckForOrderInTransaction
+    ).mockResolvedValue({
       id: 200,
       sessionId: null,
-    } as Awaited<ReturnType<typeof operationalSession.ensureCheckForOrder>>);
-    execute.mockResolvedValue({
-      order: { id: 99, tableId: 0, tableNumber: 0 },
-      events: [],
-      orderNumber: "ORD-1",
-      trackingToken: "tok",
-      displayReference: "K #001",
-      totalAmount: "10.00",
-      itemCount: 1,
-      createdAt: "2026-07-14T12:00:00.000Z",
+    } as Awaited<
+      ReturnType<typeof operationalSession.ensureSessionlessCheckForOrderInTransaction>
+    >);
+    execute.mockImplementation(async (_command, persist) => {
+      if (persist?.afterPersistInTransaction) {
+        await persist.afterPersistInTransaction({ __tx: true }, placed);
+      }
+      return placed;
     });
   });
 
@@ -87,20 +95,23 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
         tableId: undefined,
         tableNumber: undefined,
         sessionId: null,
-      })
+      }),
+      expect.objectContaining({ afterPersistInTransaction: expect.any(Function) })
     );
-    // CHECK-GENERALIZATION-M5 — sessionless place enrolls Check + Membership
-    expect(operationalSession.ensureCheckForOrder).toHaveBeenCalledWith({
-      restaurantId: 1,
-      orderId: 99,
-    });
+    expect(
+      operationalSession.ensureSessionlessCheckForOrderInTransaction
+    ).toHaveBeenCalledWith(
+      { restaurantId: 1, orderId: 99 },
+      { __tx: true }
+    );
+    expect(operationalSession.ensureCheckForOrder).not.toHaveBeenCalled();
     expect(result.sessionPersistence).toBe("ephemeral");
     expect(result.identity.fulfilmentAnchor.anchorType).toBe("station");
-    // Persist dual-write is inside PlaceOrderService; orchestrator leaves table fields unset.
+    expect(result.identity.operationalSession.sessionId).toBeNull();
     expect(LEGACY_NON_TABLE_TABLE_ID).toBe(0);
   });
 
-  it("forwards afterPersistInTransaction into PlaceOrder and still enrolls Check after commit", async () => {
+  it("chains caller afterPersistInTransaction with in-transaction Check enroll", async () => {
     const hook = vi.fn();
     await service.execute(
       {
@@ -115,14 +126,33 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       },
       { afterPersistInTransaction: hook }
     );
-    expect(execute).toHaveBeenCalledWith(
-      expect.objectContaining({ restaurantId: 1 }),
-      expect.objectContaining({ afterPersistInTransaction: hook })
+    expect(hook).toHaveBeenCalledWith({ __tx: true }, placed);
+    expect(
+      operationalSession.ensureSessionlessCheckForOrderInTransaction
+    ).toHaveBeenCalledWith(
+      { restaurantId: 1, orderId: 99 },
+      { __tx: true }
     );
-    expect(operationalSession.ensureCheckForOrder).toHaveBeenCalledWith({
-      restaurantId: 1,
-      orderId: 99,
-    });
+    expect(operationalSession.ensureCheckForOrder).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when in-transaction Check enrollment fails", async () => {
+    vi.mocked(
+      operationalSession.ensureSessionlessCheckForOrderInTransaction
+    ).mockRejectedValue(new Error("check_insert_failed"));
+    await expect(
+      service.execute({
+        restaurantId: 1,
+        serviceMode: "counter",
+        fulfilmentAnchor: createStationFulfilmentAnchor({
+          stationId: "kiosk-a",
+          fulfilmentLabel: "Kiosk A",
+        }),
+        orderingChannel: "kiosk",
+        items: [{ menuItemId: 1, quantity: 1 }],
+      })
+    ).rejects.toThrow("check_insert_failed");
+    expect(operationalSession.ensureCheckForOrder).not.toHaveBeenCalled();
   });
 
   it("does not resolve a Dining Session for cashier_pos", async () => {
@@ -152,6 +182,9 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       }),
       expect.anything()
     );
+    expect(
+      operationalSession.ensureSessionlessCheckForOrderInTransaction
+    ).not.toHaveBeenCalled();
   });
 
   it("fails closed when cashier_pos is given a table fulfilment anchor", async () => {
@@ -172,7 +205,9 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
   });
 
   it("does not await Check enrollment when enrollCheck is false", async () => {
-    vi.mocked(operationalSession.ensureCheckForOrder).mockImplementation(
+    vi.mocked(
+      operationalSession.ensureSessionlessCheckForOrderInTransaction
+    ).mockImplementation(
       async () =>
         await new Promise(() => {
           /* never resolves — would hang the sale HTTP if still awaited */
@@ -192,19 +227,28 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       { enrollCheck: false }
     );
     expect(result.order.id).toBe(99);
+    expect(
+      operationalSession.ensureSessionlessCheckForOrderInTransaction
+    ).not.toHaveBeenCalled();
     expect(operationalSession.ensureCheckForOrder).not.toHaveBeenCalled();
   });
 
-  it("sale-path Check enrollment is on the HTTP await when enrollCheck is default", async () => {
+  it("sale-path Check enrollment is on the persist transaction when enrollCheck is default", async () => {
     const CHECK_MS = 80;
-    vi.mocked(operationalSession.ensureCheckForOrder).mockImplementation(
+    vi.mocked(
+      operationalSession.ensureSessionlessCheckForOrderInTransaction
+    ).mockImplementation(
       async () =>
         new Promise((resolve) => {
           setTimeout(() => {
             resolve({
               id: 200,
               sessionId: null,
-            } as Awaited<ReturnType<typeof operationalSession.ensureCheckForOrder>>);
+            } as Awaited<
+              ReturnType<
+                typeof operationalSession.ensureSessionlessCheckForOrderInTransaction
+              >
+            >);
           }, CHECK_MS);
         })
     );
@@ -220,6 +264,7 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       items: [{ menuItemId: 1, quantity: 1 }],
     });
     expect(Date.now() - started).toBeGreaterThanOrEqual(CHECK_MS - 15);
+    expect(operationalSession.ensureCheckForOrder).not.toHaveBeenCalled();
   });
 
   it("defers table Session resolution onto the persist transaction", async () => {
@@ -287,7 +332,9 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       "waiter-session-token"
     );
     expect(result.sessionPersistence).toBe("persistent");
+    expect(
+      operationalSession.ensureSessionlessCheckForOrderInTransaction
+    ).not.toHaveBeenCalled();
     expect(operationalSession.ensureCheckForOrder).not.toHaveBeenCalled();
   });
 });
-

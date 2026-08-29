@@ -11,6 +11,7 @@ export {
   recalculateOpenCheckForSession,
   createOpenCheck,
   ensureCheckForOrder,
+  ensureSessionlessCheckForOrderInTransaction,
   captureSnapshotsFromBusinessSettings,
   createAndEnrollCashierPosOpenCheckInTransaction,
   type CashierPosSaleOpenCheck,

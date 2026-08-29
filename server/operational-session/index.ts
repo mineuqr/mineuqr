@@ -21,6 +21,7 @@ export {
   recalculateOpenCheckForSession,
   createOpenCheck,
   ensureCheckForOrder,
+  ensureSessionlessCheckForOrderInTransaction,
   recalculateOpenCheck,
   applyCancelledOrderChargeCompensation,
   applyOpenOrderChargeReconciliation,

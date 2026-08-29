@@ -138,6 +138,7 @@ vi.mock("../checkSettlementRecordIntegration", () => ({
 import {
   createOpenCheck,
   ensureCheckForOrder,
+  ensureSessionlessCheckForOrderInTransaction,
   settleCashierPosOrderPaidByIdDetailed,
   settleCheckPaidById,
   settleCheckComplimentaryById,
@@ -275,6 +276,49 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
       expect.objectContaining({ checkId: 200, orderId: 55 }),
       fakeTx
     );
+    expect(check.id).toBe(200);
+  });
+
+  it("ensureSessionlessCheckForOrderInTransaction requires the Order tx and stays sessionless", async () => {
+    mocks.insertOperationalCheck.mockResolvedValue(200);
+    mocks.findCheckById.mockResolvedValue({
+      ...sessionlessOpenCheck,
+      subtotal: "10.00",
+      grandTotal: "10.00",
+    });
+    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
+    mocks.getOrdersByIds.mockResolvedValue([
+      { id: 55, status: "pending", totalAmount: "10.00" },
+    ]);
+
+    await expect(
+      ensureSessionlessCheckForOrderInTransaction(
+        { restaurantId: 1, orderId: 55 },
+        null as never
+      )
+    ).rejects.toThrow("Order transaction client");
+
+    const callerTx = { __caller: true };
+    const check = await ensureSessionlessCheckForOrderInTransaction(
+      { restaurantId: 1, orderId: 55 },
+      callerTx as never
+    );
+
+    expect(mocks.findSessionById).not.toHaveBeenCalled();
+    expect(mocks.insertOperationalCheck).toHaveBeenCalledWith(
+      expect.objectContaining({ restaurantId: 1, sessionId: null }),
+      callerTx
+    );
+    expect(mocks.enrollOrderInCheck).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checkId: 200,
+        orderId: 55,
+        enrolledReason: "order_place",
+      }),
+      callerTx,
+      expect.anything()
+    );
+    expect(check.sessionId).toBeNull();
     expect(check.id).toBe(200);
   });
 

@@ -26,6 +26,9 @@ describe("CHECK-GENERALIZATION-M4 architecture guards", () => {
   it("CheckService exposes Check-centric financial APIs only", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
     expect(svc).toContain("export async function ensureCheckForOrder");
+    expect(svc).toContain(
+      "export async function ensureSessionlessCheckForOrderInTransaction"
+    );
     expect(svc).toContain("export async function settleCheckPaidById");
     expect(svc).toContain("export async function settleCheckComplimentaryById");
     expect(svc).toContain("export async function voidCheckById");
@@ -37,6 +40,7 @@ describe("CHECK-GENERALIZATION-M4 architecture guards", () => {
     expect(svc).not.toMatch(/export async function voidCheck\b/);
     const barrel = read("server/operational-session/index.ts");
     expect(barrel).toContain("ensureCheckForOrder");
+    expect(barrel).toContain("ensureSessionlessCheckForOrderInTransaction");
     expect(barrel).not.toContain("settleCheckPaidById");
     expect(barrel).not.toMatch(/\bsettleCheckPaid\b/);
     expect(barrel).not.toMatch(/\bvoidCheck\b/);

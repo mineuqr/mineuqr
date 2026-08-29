@@ -21,10 +21,14 @@ describe("CHECK-GENERALIZATION-M5 architecture guards", () => {
     expect(svc).not.toMatch(/getOrdersBySessionId/);
   });
 
-  it("IdentityPlaceOrder enrolls sessionless orders into Check", () => {
+  it("IdentityPlaceOrder enrolls sessionless orders into Check on the Order transaction", () => {
     const place = read("server/order/application/IdentityPlaceOrderService.ts");
-    expect(place).toContain("ensureCheckForOrder");
-    expect(place).toContain('persistence === "ephemeral"');
+    expect(place).toContain("ensureSessionlessCheckForOrderInTransaction");
+    expect(place).toContain('resolvedPersistence === "ephemeral"');
+    expect(place).toContain("afterPersistInTransaction");
+    const executeAt = place.indexOf("await this.placeOrder.execute");
+    expect(executeAt).toBeGreaterThan(-1);
+    expect(place.indexOf("ensureCheckForOrder", executeAt)).toBe(-1);
   });
 
   it("OrderSessionConsumer enrolls sessionless OrderCreated", () => {
