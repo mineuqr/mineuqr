@@ -27,15 +27,32 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
     expect(unpaidGrandTotalForOrder([], 9)).toBeNull();
   });
 
+  it("keeps Cancel on unpaid pending Self-Order and hides it after accept", () => {
+    const pending = getOrdersWorkspaceActions("pending", {
+      sessionless: true,
+      unpaidSessionless: true,
+      orderingChannel: "kiosk",
+    });
+    expect(pending.map((a) => a.id)).toEqual([
+      "accept-order",
+      "send-to-cashier",
+      "cancel-order",
+    ]);
+    expect(
+      getOrdersWorkspaceActions("preparing", {
+        sessionless: true,
+        unpaidSessionless: true,
+        orderingChannel: "kiosk",
+      }).some((a) => a.id === "cancel-order")
+    ).toBe(false);
+  });
+
   it("exposes Settle + Cancel for unpaid sessionless; blocks complete until paid", () => {
     const unpaid = getOrdersWorkspaceActions("ready", {
       sessionless: true,
       unpaidSessionless: true,
     });
-    expect(unpaid.map((a) => a.id)).toEqual([
-      "send-to-cashier",
-      "cancel-order",
-    ]);
+    expect(unpaid.map((a) => a.id)).toEqual(["send-to-cashier"]);
     expect(unpaid.some((a) => a.id === "serve-order")).toBe(false);
 
     const paid = getOrdersWorkspaceActions("ready", {

@@ -137,7 +137,7 @@ describe("AdvanceOrderStatusService LIFECYCLE-SETTLEMENT-GUARDS-1", () => {
   });
 
   it("does not gate cancel (pre-settlement cancel remains allowed)", async () => {
-    const order = makeOrder({ sessionId: null, status: "ready" });
+    const order = makeOrder({ sessionId: null, status: "pending" });
     vi.mocked(repo.findById).mockResolvedValue(order as never);
 
     await svc.execute({

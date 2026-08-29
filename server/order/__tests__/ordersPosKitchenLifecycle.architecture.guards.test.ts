@@ -43,7 +43,7 @@ describe("ORDERS-POS-KITCHEN-LIFECYCLE-1 architecture guards", () => {
     expect(complete).toContain("nextCashierPosServeStep");
     expect(routers).toContain("completeCashierPosOperationalService");
     expect(policy).toContain('pending: ["preparing", "cancelled"]');
-    expect(policy).toContain('ready: ["served", "cancelled"]');
+    expect(policy).toContain('ready: ["served"]');
   });
 
   it("Kitchen still composes from Order Read Model pipeline statuses", () => {

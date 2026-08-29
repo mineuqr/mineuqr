@@ -83,15 +83,9 @@ export function getOrderWorkspaceActions(status: OrderLifecycleStatus): Operatio
         { id: "cancel-order", ...ACTIONS["cancel-order"] },
       ];
     case "preparing":
-      return [
-        { id: "mark-ready", ...ACTIONS["mark-ready"] },
-        { id: "cancel-order", ...ACTIONS["cancel-order"] },
-      ];
+      return [{ id: "mark-ready", ...ACTIONS["mark-ready"] }];
     case "ready":
-      return [
-        { id: "serve-order", ...ACTIONS["serve-order"] },
-        { id: "cancel-order", ...ACTIONS["cancel-order"] },
-      ];
+      return [{ id: "serve-order", ...ACTIONS["serve-order"] }];
     case "served":
     case "cancelled":
       return [];
@@ -164,6 +158,8 @@ export function getOrdersWorkspaceActions(
   return [
     ...nonComplete,
     SEND_TO_CASHIER,
-    { id: "cancel-order", ...ACTIONS["cancel-order"] },
+    ...(status === "pending"
+      ? [{ id: "cancel-order" as const, ...ACTIONS["cancel-order"] }]
+      : []),
   ];
 }

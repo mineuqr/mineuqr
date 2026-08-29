@@ -11,14 +11,32 @@ describe("operationalActions", () => {
     expect(actions[0]?.labelEn).toBe("Accept Order");
   });
 
-  it("maps preparing to mark ready and cancel", () => {
-    const actions = getOrderWorkspaceActions("preparing");
-    expect(actions.map((a) => a.id)).toEqual(["mark-ready", "cancel-order"]);
+  it("hides Cancel after acceptance", () => {
+    expect(getOrderWorkspaceActions("preparing").map((a) => a.id)).toEqual([
+      "mark-ready",
+    ]);
+    expect(getOrderWorkspaceActions("ready").map((a) => a.id)).toEqual([
+      "serve-order",
+    ]);
   });
 
-  it("maps ready to serve and cancel", () => {
-    const actions = getOrderWorkspaceActions("ready");
-    expect(actions.map((a) => a.id)).toEqual(["serve-order", "cancel-order"]);
+  it("uses the same Cancel-after-accept hide for Kiosk, Waiter, and Table/QR", () => {
+    for (const channel of ["kiosk", "waiter_tablet", "table_session"] as const) {
+      const pending = getOrdersWorkspaceActions("pending", {
+        sessionless: channel === "kiosk",
+        unpaidSessionless: channel === "kiosk",
+        orderingChannel: channel,
+      });
+      expect(pending.some((a) => a.id === "cancel-order"), channel).toBe(true);
+      expect(
+        getOrdersWorkspaceActions("preparing", {
+          sessionless: channel === "kiosk",
+          unpaidSessionless: channel === "kiosk",
+          orderingChannel: channel,
+        }).some((a) => a.id === "cancel-order"),
+        channel
+      ).toBe(false);
+    }
   });
 
   it("does not expose restore when domain has no transition", () => {

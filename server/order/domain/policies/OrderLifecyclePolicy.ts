@@ -2,8 +2,8 @@ import type { OrderStatus } from "../value-objects/OrderStatus";
 
 const ALLOWED_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   pending: ["preparing", "cancelled"],
-  preparing: ["ready", "cancelled"],
-  ready: ["served", "cancelled"],
+  preparing: ["ready"],
+  ready: ["served"],
   served: [],
   cancelled: [],
 };

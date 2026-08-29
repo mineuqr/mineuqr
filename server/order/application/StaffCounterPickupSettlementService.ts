@@ -300,6 +300,13 @@ export async function cancelCounterPickupUnpaid(input: {
     };
   }
 
+  if (order.status !== "pending") {
+    throw new StaffCounterPickupError(
+      "CHECK_NOT_CANCELLABLE",
+      "Accepted orders cannot be cancelled"
+    );
+  }
+
   if (checkOutcome === "open") {
     const hints = {
       registerId: input.registerId ?? null,

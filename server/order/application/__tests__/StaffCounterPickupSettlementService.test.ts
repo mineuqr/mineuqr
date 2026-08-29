@@ -89,7 +89,7 @@ describe("StaffCounterPickupSettlementService", () => {
     mocks.getOrderById.mockResolvedValue({
       id: 42,
       restaurantId: 1,
-      status: "preparing",
+      status: "pending",
       trackingToken: "tok",
     });
     mocks.findBlockingMembershipForOrder.mockResolvedValue({
@@ -132,7 +132,7 @@ describe("StaffCounterPickupSettlementService", () => {
       check: { id: 7, outcome: "voided" },
     });
     mocks.advanceExecute.mockResolvedValue({
-      previousStatus: "preparing",
+      previousStatus: "pending",
       newStatus: "cancelled",
       events: [],
     });
@@ -201,6 +201,25 @@ describe("StaffCounterPickupSettlementService", () => {
     );
     expect(result.checkOutcome).toBe("voided");
     expect(result.orderStatus).toBe("cancelled");
+  });
+
+  it("rejects cancel after acceptance without voiding the Check", async () => {
+    mocks.getOrderById.mockResolvedValue({
+      id: 42,
+      restaurantId: 1,
+      status: "preparing",
+      trackingToken: "tok",
+    });
+    await expect(
+      cancelCounterPickupUnpaid({
+        restaurantId: 1,
+        orderId: 42,
+        operatorUserId: 9,
+        actor,
+      })
+    ).rejects.toMatchObject({ code: "CHECK_NOT_CANCELLABLE" });
+    expect(mocks.voidCheckByIdDetailed).not.toHaveBeenCalled();
+    expect(mocks.advanceExecute).not.toHaveBeenCalled();
   });
 
   it("blocks cancel after paid (CSA-06)", async () => {

@@ -45,6 +45,14 @@ describe("OrderLifecyclePolicy", () => {
   it("forbids pending → ready skip", () => {
     expect(OrderLifecyclePolicy.canTransition("pending", "ready")).toBe(false);
   });
+
+  it("forbids cancel after acceptance", () => {
+    expect(OrderLifecyclePolicy.canTransition("preparing", "cancelled")).toBe(
+      false
+    );
+    expect(OrderLifecyclePolicy.canTransition("ready", "cancelled")).toBe(false);
+    expect(OrderLifecyclePolicy.canTransition("pending", "cancelled")).toBe(true);
+  });
 });
 
 describe("Order aggregate", () => {
@@ -106,6 +114,54 @@ describe("Order aggregate", () => {
     expect(() =>
       order.advanceStatus("cancelled", ownerActor, "2026-06-27T12:10:00.000Z")
     ).toThrow(OrderAlreadyCompletedError);
+  });
+
+  it("cancels a pending Order and rejects cancel after accept", () => {
+    const pending = Order.reconstitute({
+      id: 1,
+      restaurantId: 1,
+      tableId: 1,
+      tableNumber: 1,
+      sessionId: 20,
+      customerName: null,
+      customerPhone: null,
+      notes: null,
+      totalAmount: "20.00",
+      orderNumber: "ORD-1",
+      trackingToken: "t",
+      createdAt: "2026-06-27T12:00:00.000Z",
+      updatedAt: "2026-06-27T12:00:00.000Z",
+      status: "pending",
+      lifecycleStage: "active",
+      readyAt: null,
+      lines: [baseLine],
+    });
+    pending.advanceStatus("cancelled", ownerActor, "2026-06-27T12:10:00.000Z");
+    expect(pending.status).toBe("cancelled");
+
+    const accepted = Order.reconstitute({
+      id: 2,
+      restaurantId: 1,
+      tableId: 1,
+      tableNumber: 1,
+      sessionId: 20,
+      customerName: null,
+      customerPhone: null,
+      notes: null,
+      totalAmount: "20.00",
+      orderNumber: "ORD-2",
+      trackingToken: "t2",
+      createdAt: "2026-06-27T12:00:00.000Z",
+      updatedAt: "2026-06-27T12:00:00.000Z",
+      status: "preparing",
+      lifecycleStage: "active",
+      readyAt: null,
+      lines: [baseLine],
+    });
+    expect(() =>
+      accepted.advanceStatus("cancelled", ownerActor, "2026-06-27T12:10:00.000Z")
+    ).toThrow(InvalidTransitionError);
+    expect(accepted.status).toBe("preparing");
   });
 
   it("rejects invalid transition", () => {

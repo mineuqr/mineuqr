@@ -11,7 +11,8 @@ import { AccessDeniedError } from "../errors/OrderDomainErrors";
 export class OrderCancellationPolicy {
   static canCancel(status: OrderStatus, actor: OrderActor): boolean {
     if (!canCancelOrder(actor)) return false;
-    return !isTerminalOrderStatus(status);
+    // ORDER-CANCELLATION-AFTER-ACCEPTANCE-CLOSE-1 — only pre-accept pending.
+    return status === "pending";
   }
 
   static assertCanAdvance(actor: OrderActor): void {
