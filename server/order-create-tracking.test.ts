@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getDb: vi.fn(),
+  createOrder: vi.fn(async (data: Record<string, unknown>) => ({ id: 42, ...data })),
+  createOrderItems: vi.fn(async () => undefined),
+}));
 
 vi.mock("./orderTrackingToken", () => ({
   generateOrderTrackingToken: vi.fn(() => "test-tracking-token-abc"),
@@ -40,8 +44,8 @@ vi.mock("./db", () => ({
   })),
   getTableByRestaurantAndNumber: vi.fn(async () => ({ id: 1, tableNumber: 3 })),
   generateOrderNumber: vi.fn(async () => "ORD-0007"),
-  createOrder: vi.fn(async (data: Record<string, unknown>) => ({ id: 42, ...data })),
-  createOrderItems: vi.fn(async () => undefined),
+  createOrder: mocks.createOrder,
+  createOrderItems: mocks.createOrderItems,
   createNotification: vi.fn(async () => ({ id: 1 })),
 }));
 
@@ -50,7 +54,6 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 }));
 
 import { appRouter } from "./routers";
-import { createOrder, createOrderItems } from "./db";
 import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
 
 const dbFake = createTransactionalOrderDbFake({ insertId: 42 });
@@ -83,8 +86,8 @@ describe("order.create tracking token PR-CUX-1A", () => {
     // commit in one transaction; the non-transactional path is gone.
     expect(dbFake.inserted.orderItems).toHaveLength(1);
     expect(dbFake.inserted.outbox).toHaveLength(1);
-    expect(vi.mocked(createOrder)).not.toHaveBeenCalled();
-    expect(vi.mocked(createOrderItems)).not.toHaveBeenCalled();
+    expect(mocks.createOrder).not.toHaveBeenCalled();
+    expect(mocks.createOrderItems).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       orderId: 42,
       orderNumber: "ORD-0007",

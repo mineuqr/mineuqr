@@ -15,8 +15,8 @@ import {
   countriesCurrencies,
   restaurantHolidays, InsertRestaurantHoliday,
   restaurantTables, InsertRestaurantTable,
-  orders, InsertOrder,
-  orderItems, InsertOrderItem,
+  orders,
+  orderItems,
   customerPushSubscriptions, InsertCustomerPushSubscription,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -1206,19 +1206,6 @@ export async function getOrderByTrackingToken(
   };
 }
 
-export async function createOrder(data: InsertOrder) {
-  const db = await getDb();
-  if (!db) return null;
-  const result = await db.insert(orders).values(data);
-  return { id: result[0].insertId };
-}
-
-export async function updateOrderStatus(id: number, status: string) {
-  const db = await getDb();
-  if (!db) return;
-  await db.update(orders).set({ status: status as any }).where(eq(orders.id, id));
-}
-
 /** TRACKING-EXPIRY-1 — set once when order first enters READY; never overwritten. */
 export async function markOrderReadyAtIfFirstTransition(
   orderId: number,
@@ -1242,12 +1229,6 @@ export async function getOrderItemsByOrderId(
   const db = client ?? (await getDb());
   if (!db) return [];
   return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
-}
-
-export async function createOrderItems(items: InsertOrderItem[]) {
-  const db = await getDb();
-  if (!db) return;
-  await db.insert(orderItems).values(items);
 }
 
 export async function generateOrderNumber(restaurantId: number): Promise<string> {

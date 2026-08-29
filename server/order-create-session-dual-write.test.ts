@@ -7,7 +7,10 @@ import {
   TABLE_EVENT_TYPES,
 } from "./diningSession/sessionTypes";
 
-const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getDb: vi.fn(),
+  createOrder: vi.fn(async (data: Record<string, unknown>) => ({ id: 55, ...data })),
+}));
 
 vi.mock("./orderTrackingToken", () => ({
   generateOrderTrackingToken: vi.fn(() => "test-tracking-token-d3"),
@@ -72,7 +75,7 @@ vi.mock("./db", () => ({
   })),
   getTableByRestaurantAndNumber: vi.fn(async () => ({ id: 7, tableNumber: 3 })),
   generateOrderNumber: vi.fn(async () => "ORD-D3-001"),
-  createOrder: vi.fn(async (data: Record<string, unknown>) => ({ id: 55, ...data })),
+  createOrder: mocks.createOrder,
   createOrderItems: vi.fn(async () => undefined),
   createNotification: vi.fn(async () => ({ id: 1 })),
 }));
@@ -82,7 +85,6 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 }));
 
 import { appRouter } from "./routers";
-import { createOrder } from "./db";
 import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
 import { resolveSessionForOrderCreate, recordSessionEvent } from "./diningSession/sessionService";
 import { incrementSessionAggregatesForOrder } from "./diningSession/sessionAggregateWriters";
@@ -243,7 +245,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
 
     expect(dbFake.inserted.orders).toHaveLength(0);
     expect(dbFake.inserted.outbox).toHaveLength(0);
-    expect(createOrder).not.toHaveBeenCalled();
+    expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 
   it("flag ON — uses server-resolved table.id not client tableId", async () => {

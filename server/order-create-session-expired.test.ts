@@ -3,7 +3,10 @@ import type { TrpcContext } from "./_core/context";
 import { ENV } from "./_core/env";
 import { DiningSessionExpiredError } from "./diningSession/sessionTypes";
 
-const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getDb: vi.fn(),
+  createOrder: vi.fn(async (data: Record<string, unknown>) => ({ id: 55, ...data })),
+}));
 
 vi.mock("./orderTrackingToken", () => ({
   generateOrderTrackingToken: vi.fn(() => "test-tracking-token-1f"),
@@ -58,7 +61,7 @@ vi.mock("./db", () => ({
   })),
   getTableByRestaurantAndNumber: vi.fn(async () => ({ id: 7, tableNumber: 3 })),
   generateOrderNumber: vi.fn(async () => "ORD-1F-001"),
-  createOrder: vi.fn(async (data: Record<string, unknown>) => ({ id: 55, ...data })),
+  createOrder: mocks.createOrder,
   createOrderItems: vi.fn(async () => undefined),
   createNotification: vi.fn(async () => ({ id: 1 })),
 }));
@@ -68,7 +71,6 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 }));
 
 import { appRouter } from "./routers";
-import { createOrder } from "./db";
 import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
 import { resolveSessionForOrderCreate } from "./diningSession/sessionService";
 
@@ -116,7 +118,7 @@ describe("order.create expired session CUSTOMER-SESSION-LIFECYCLE-1F", () => {
 
     expect(dbFake.inserted.orders).toHaveLength(0);
     expect(dbFake.inserted.outbox).toHaveLength(0);
-    expect(createOrder).not.toHaveBeenCalled();
+    expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 
   it("passes sessionToken to resolveSessionForOrderCreate", async () => {
