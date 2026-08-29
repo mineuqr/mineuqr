@@ -51,6 +51,17 @@ export type SaveOrderOptions = {
     result: SaveOrderResult
   ) => Promise<void>;
   /**
+   * FIRST-ORDER-SESSION-CREATE-FAIL-CLOSED-HARDENING-1
+   * Resolve the Operational Session on the same DB transaction as the Order
+   * insert, after the restaurant row lock and before the Order row exists.
+   * Returning a sessionId stamps it on the Order row and on OrderCreated, so a
+   * first Order that fails rolls the Session opening back with it.
+   * Create path only. When set, save must not fall back to a non-transactional path.
+   */
+  resolveSessionInTransaction?: (
+    tx: unknown
+  ) => Promise<{ sessionId: number | null } | null>;
+  /**
    * CASHIER-PASS-2-PAYMENT-BOUNDARY-RUNTIME-IMPLEMENTATION-1
    * cashier_pos sale HTTP: skip daily display allocation. Payment UI does not
    * show customer-facing invoice identity; paidReceipt falls back to orderNumber

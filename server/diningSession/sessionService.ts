@@ -11,6 +11,7 @@ import {
   insertSessionEvent,
   updateSessionStatus,
 } from "./sessionRepository";
+import type { SessionDbClient } from "./sessionRepository";
 import { createOpenCheckForSession } from "../operational-session/check/CheckService";
 import { assertSessionCloseable } from "../operational-session/check/lifecycleSettlementGuardService";
 import { generateDiningSessionToken } from "./sessionToken";
@@ -270,10 +271,18 @@ type CreateSessionOptions = {
   preload?: DiningTableContextPreload | null;
 };
 
-/** Internal — not exported. Opens session + SESSION_OPENED in one transaction. */
+/**
+ * Internal — not exported. Opens session + SESSION_OPENED + open Check atomically.
+ *
+ * FIRST-ORDER-SESSION-CREATE-FAIL-CLOSED-HARDENING-1 — when `client` is a caller
+ * transaction the opening rows join it instead of committing on their own, so a
+ * first Order that fails after this point rolls the Session opening back and
+ * leaves no orphan open Session and no empty Check.
+ */
 async function createSession(
   input: GetOrCreateSessionInput,
-  options?: CreateSessionOptions
+  options?: CreateSessionOptions,
+  client?: SessionDbClient
 ): Promise<{
   session: SelectDiningSession;
   created: true;
@@ -282,56 +291,63 @@ async function createSession(
     await validateTableContext(input, options?.preload);
   }
 
-  const db = await getDb();
-  if (!db) {
-    throw new DiningSessionUnavailableError();
-  }
-
   const sessionToken = generateDiningSessionToken();
   const openedAt = formatDiningSessionTimestamp();
 
-  try {
-    const { sessionId, activeCheckId } = await db.transaction(async (tx) => {
-      const id = await insertSession(
-        {
-          restaurantId: input.restaurantId,
-          tableId: input.tableId,
+  const writeOpeningRows = async (tx: SessionDbClient) => {
+    const id = await insertSession(
+      {
+        restaurantId: input.restaurantId,
+        tableId: input.tableId,
+        tableNumber: input.tableNumber,
+        sessionToken,
+        openedAt,
+      },
+      tx
+    );
+
+    await insertSessionEvent(
+      {
+        restaurantId: input.restaurantId,
+        tableId: input.tableId,
+        sessionId: id,
+        eventType: TABLE_EVENT_TYPES.SESSION_OPENED,
+        metadata: {
+          source: "get_or_create",
           tableNumber: input.tableNumber,
-          sessionToken,
-          openedAt,
         },
-        tx
-      );
+      },
+      tx
+    );
 
-      await insertSessionEvent(
-        {
-          restaurantId: input.restaurantId,
-          tableId: input.tableId,
-          sessionId: id,
-          eventType: TABLE_EVENT_TYPES.SESSION_OPENED,
-          metadata: {
-            source: "get_or_create",
-            tableNumber: input.tableNumber,
-          },
-        },
-        tx
-      );
+    // CHECK-MANAGEMENT-ARCHITECTURE-1 — Open Check row + activeCheckId.
+    // Empty membership/charge/OS work is deferred to first Order enroll.
+    const check = await createOpenCheckForSession(
+      {
+        restaurantId: input.restaurantId,
+        sessionId: id,
+        skipEmptyBillPreparation: true,
+        newSessionInSameTransaction: true,
+        restaurantRow: options?.restaurantRow ?? null,
+      },
+      tx
+    );
 
-      // CHECK-MANAGEMENT-ARCHITECTURE-1 — Open Check row + activeCheckId.
-      // Empty membership/charge/OS work is deferred to first Order enroll.
-      const check = await createOpenCheckForSession(
-        {
-          restaurantId: input.restaurantId,
-          sessionId: id,
-          skipEmptyBillPreparation: true,
-          newSessionInSameTransaction: true,
-          restaurantRow: options?.restaurantRow ?? null,
-        },
-        tx
-      );
+    return { sessionId: id, activeCheckId: check.id };
+  };
 
-      return { sessionId: id, activeCheckId: check.id };
-    });
+  try {
+    let opened: { sessionId: number; activeCheckId: number };
+    if (client) {
+      opened = await writeOpeningRows(client);
+    } else {
+      const db = await getDb();
+      if (!db) {
+        throw new DiningSessionUnavailableError();
+      }
+      opened = await db.transaction(async (tx) => writeOpeningRows(tx));
+    }
+    const { sessionId, activeCheckId } = opened;
 
     return {
       session: {
@@ -432,7 +448,8 @@ export type ResolveSessionForOrderInput = GetOrCreateSessionInput & {
  * Reuses active open sessions; rejects terminal hinted tokens; opens new sessions only when allowed.
  */
 export async function resolveSessionForOrderCreate(
-  input: ResolveSessionForOrderInput
+  input: ResolveSessionForOrderInput,
+  client?: SessionDbClient
 ): Promise<GetOrCreateSessionResult> {
   if (!Number.isInteger(input.tableNumber) || input.tableNumber <= 0) {
     throw new DiningSessionValidationError("Invalid tableNumber");
@@ -440,20 +457,23 @@ export async function resolveSessionForOrderCreate(
 
   const validated = await validateTableContext(input, input.tableContext);
 
-  const active = await findActiveSession(input.restaurantId, input.tableId);
+  const active = await findActiveSession(input.restaurantId, input.tableId, client);
   if (active) {
     // CHECK-MANAGEMENT-ARCHITECTURE-1 — ensure legacy open sessions gain a Check.
     if (active.activeCheckId == null) {
       try {
         // Legacy session may already have Orders — keep full Check sync/money.
-        await createOpenCheckForSession({
-          restaurantId: input.restaurantId,
-          sessionId: active.id,
-        });
+        await createOpenCheckForSession(
+          {
+            restaurantId: input.restaurantId,
+            sessionId: active.id,
+          },
+          client
+        );
       } catch {
         /* best-effort; settle path also ensures */
       }
-      const refreshed = await findSessionById(active.id);
+      const refreshed = await findSessionById(active.id, client);
       if (refreshed) {
         return { session: refreshed, created: false };
       }
@@ -462,7 +482,11 @@ export async function resolveSessionForOrderCreate(
   }
 
   if (input.sessionToken) {
-    const hinted = await findSessionByToken(input.restaurantId, input.sessionToken);
+    const hinted = await findSessionByToken(
+      input.restaurantId,
+      input.sessionToken,
+      client
+    );
     if (hinted) {
       if (hinted.tableId !== input.tableId) {
         throw new DiningSessionValidationError("Session does not match table");
@@ -477,15 +501,22 @@ export async function resolveSessionForOrderCreate(
   }
 
   try {
-    return await createSession(input, {
-      tableContextAlreadyValidated: true,
-      restaurantRow: validated.restaurant,
-    });
+    return await createSession(
+      input,
+      {
+        tableContextAlreadyValidated: true,
+        restaurantRow: validated.restaurant,
+      },
+      client
+    );
   } catch (err) {
     if (
       err instanceof DiningSessionConflictError ||
       isMysqlDuplicateKeyError(err)
     ) {
+      // A duplicate key inside a caller transaction leaves that transaction
+      // unusable, so the winner must be re-read by the caller's retry.
+      if (client) throw err;
       const winner = await findActiveSession(input.restaurantId, input.tableId);
       if (winner) {
         return { session: winner, created: false };

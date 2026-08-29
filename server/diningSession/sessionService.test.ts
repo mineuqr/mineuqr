@@ -464,10 +464,14 @@ describe("sessionService TABLE-MANAGEMENT-1 D2", () => {
       });
 
       expect(result.created).toBe(false);
-      expect(createOpenCheckForSession).toHaveBeenCalledWith({
-        restaurantId: 1,
-        sessionId: 10,
-      });
+      expect(createOpenCheckForSession).toHaveBeenCalledWith(
+        {
+          restaurantId: 1,
+          sessionId: 10,
+        },
+        // No caller transaction here: this resolution is not on an Order persist.
+        undefined
+      );
       expect(createOpenCheckForSession).not.toHaveBeenCalledWith(
         expect.objectContaining({ skipEmptyBillPreparation: true })
       );

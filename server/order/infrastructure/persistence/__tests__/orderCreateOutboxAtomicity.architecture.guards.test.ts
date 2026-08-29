@@ -29,8 +29,6 @@ describe("order create Outbox atomicity guards", () => {
     const save = repo.slice(repo.indexOf("async save("), repo.indexOf("private async insertTransactional"));
 
     expect(save).toContain("const isNewOrder = order.isNew();");
-    // The only remaining fallback is the pre-existing update path.
-    expect(save).toContain("return this.updateLegacy(order, options);");
     expect(save).not.toContain("this.insertLegacy");
 
     // Both create failure modes fail closed and are observable.
@@ -69,7 +67,9 @@ describe("order create Outbox atomicity guards", () => {
     );
     expect(observability).toContain("order_create_persistence_failed");
 
-    const emitted = observability.slice(observability.indexOf("opsLog({"));
+    // Prose may name the fields it refuses to log; only emitted payloads matter.
+    const code = observability.replace(/\/\*\*[\s\S]*?\*\//g, "");
+    const emitted = code.slice(code.indexOf("opsLog({"));
     expect(emitted).not.toMatch(
       /sessionToken|customerName|customerPhone|trackingToken|notes/
     );

@@ -12,12 +12,7 @@ import type {
   SaveOrderResult,
 } from "../../repositories/OrderRepository";
 import { mapOrderRowToAggregate } from "./OrderMapper";
-import {
-  getOrderById,
-  getOrderItemsByOrderId,
-  markOrderReadyAtIfFirstTransition,
-  updateOrderStatus,
-} from "../../../db";
+import { getOrderById, getOrderItemsByOrderId } from "../../../db";
 import { DrizzleOutboxRepository } from "../events/outbox/DrizzleOutboxRepository";
 import { domainEventsToOutboxInputs } from "../events/outbox/domainEventsToOutbox";
 import type { DrizzleBusinessIdentityAllocator } from "../../business-identity/infrastructure/DrizzleBusinessIdentityAllocator";
@@ -40,7 +35,10 @@ import {
   noteOrderLifecyclePhase,
   timeOrderLifecyclePhase,
 } from "../../observability/orderLifecycleLatency";
-import { logOrderCreatePersistenceFailed } from "../../observability/orderCreatePersistenceObservability";
+import {
+  logOrderCreatePersistenceFailed,
+  logOrderUpdatePersistenceFailed,
+} from "../../observability/orderCreatePersistenceObservability";
 import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
 
 export class DrizzleOrderRepository implements OrderRepository {
@@ -146,10 +144,17 @@ export class DrizzleOrderRepository implements OrderRepository {
               attempts: attempt,
               error: error instanceof Error ? error.message : String(error),
             });
-            throw error;
+          } else {
+            logOrderUpdatePersistenceFailed({
+              orderId: order.id ?? undefined,
+              restaurantId: order.restaurantId,
+              correlationId: options?.correlationId ?? undefined,
+              reason: "transaction_failed",
+              attempts: attempt,
+              error: error instanceof Error ? error.message : String(error),
+            });
           }
-          console.warn("[OrderRepository] Transactional save failed, falling back:", error);
-          break;
+          throw error;
         }
       }
     }
@@ -163,9 +168,15 @@ export class DrizzleOrderRepository implements OrderRepository {
         correlationId: options?.correlationId ?? undefined,
         reason: "database_unavailable",
       });
-      throw new Error("database_unavailable");
+    } else {
+      logOrderUpdatePersistenceFailed({
+        orderId: order.id ?? undefined,
+        restaurantId: order.restaurantId,
+        correlationId: options?.correlationId ?? undefined,
+        reason: "database_unavailable",
+      });
     }
-    return this.updateLegacy(order, options);
+    throw new Error("database_unavailable");
   }
 
   private async insertTransactional(
@@ -180,6 +191,20 @@ export class DrizzleOrderRepository implements OrderRepository {
     const lockedRestaurant = await timeOrderLifecyclePhase("restaurant_lock_ms", () =>
       requireRestaurantRowForOrderPersist(tx, snapshot.restaurantId)
     );
+
+    // FIRST-ORDER-SESSION-CREATE-FAIL-CLOSED-HARDENING-1 — resolve/open the
+    // Operational Session inside this transaction, after the restaurant row lock
+    // (which already serializes order persist per restaurant) and before the
+    // Order row exists. A failure anywhere below rolls the Session opening back.
+    let resolvedSessionId = snapshot.sessionId;
+    if (options?.resolveSessionInTransaction) {
+      const resolved = await timeOrderLifecyclePhase("session_ms", () =>
+        options.resolveSessionInTransaction!(tx)
+      );
+      if (resolved?.sessionId != null) {
+        resolvedSessionId = resolved.sessionId;
+      }
+    }
 
     let businessIdentity: SaveOrderResult["businessIdentity"];
     if (this.businessIdentityAllocator && !options?.skipBusinessIdentityAllocation) {
@@ -208,7 +233,7 @@ export class DrizzleOrderRepository implements OrderRepository {
         restaurantId: snapshot.restaurantId,
         tableId: snapshot.tableId,
         tableNumber: snapshot.tableNumber,
-        ...(snapshot.sessionId != null ? { sessionId: snapshot.sessionId } : {}),
+        ...(resolvedSessionId != null ? { sessionId: resolvedSessionId } : {}),
         serviceMode: snapshot.serviceMode,
         fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
         fulfilmentLabel: snapshot.fulfilmentLabel,
@@ -258,7 +283,7 @@ export class DrizzleOrderRepository implements OrderRepository {
       restaurantId: snapshot.restaurantId,
       tableId: snapshot.tableId,
       tableNumber: snapshot.tableNumber,
-      sessionId: snapshot.sessionId,
+      sessionId: resolvedSessionId,
       serviceMode: snapshot.serviceMode,
       fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
       fulfilmentLabel: snapshot.fulfilmentLabel,
@@ -368,38 +393,4 @@ export class DrizzleOrderRepository implements OrderRepository {
     };
   }
 
-  private async updateLegacy(
-    order: Order,
-    options?: SaveOrderOptions
-  ): Promise<SaveOrderResult> {
-    const id = order.id;
-    if (id == null) {
-      throw new Error("Order id required for update");
-    }
-
-    const current = await getOrderById(id);
-    if (!current) {
-      throw new Error("Order not found");
-    }
-
-    if (
-      options?.expectedUpdatedAt != null &&
-      current.updatedAt !== options.expectedUpdatedAt
-    ) {
-      throw new ConcurrencyConflictError();
-    }
-
-    const previousStatus = current.status;
-    const newStatus = order.status;
-
-    await markOrderReadyAtIfFirstTransition(id, previousStatus, newStatus);
-    await updateOrderStatus(id, newStatus);
-
-    return {
-      order: Order.reconstitute({
-        ...order.toPersistedProps(),
-      }),
-      outboxEventIds: [],
-    };
-  }
 }

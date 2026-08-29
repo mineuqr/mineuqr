@@ -42,13 +42,17 @@ describe("OPERATIONAL-SESSION-PLATFORM-1 resolveOperationalSession", () => {
       sessionToken: "hint",
     });
 
-    expect(diningSessionService.resolveSessionForOrderCreate).toHaveBeenCalledWith({
-      restaurantId: 1,
-      tableId: 7,
-      tableNumber: 3,
-      sessionToken: "hint",
-      tableContext: undefined,
-    });
+    expect(diningSessionService.resolveSessionForOrderCreate).toHaveBeenCalledWith(
+      {
+        restaurantId: 1,
+        tableId: 7,
+        tableNumber: 3,
+        sessionToken: "hint",
+        tableContext: undefined,
+      },
+      // No caller transaction: this resolution is not on an Order persist.
+      undefined
+    );
     expect(result.created).toBe(true);
     expect(result.persistence).toBe("persistent");
     expect(result.session?.id).toBe(10);

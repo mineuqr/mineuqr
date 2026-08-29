@@ -35,3 +35,35 @@ export function logOrderCreatePersistenceFailed(ctx: {
     },
   });
 }
+
+/**
+ * ORDER-LIFECYCLE-ATOMICITY-AND-SESSION-CONSISTENCY-HARDENING-1 — Order status /
+ * lifecycle updates are atomic: the Order row change + its required
+ * OrderStatusChanged Outbox commit together or not at all. Emitted when the
+ * update transaction fails and the update is refused, replacing the legacy
+ * fallback that committed a status change while discarding its Outbox event.
+ * Never carries sessionToken, trackingToken, credentials, or customer payload.
+ */
+export function logOrderUpdatePersistenceFailed(ctx: {
+  orderId?: number;
+  restaurantId?: number;
+  correlationId?: string;
+  reason: OrderCreatePersistenceFailureReason;
+  attempts?: number;
+  error?: string;
+}): void {
+  opsLog({
+    type: OPS_EVENT.order_update_persistence_failed,
+    category: "ORDER",
+    severity: "error",
+    ts: new Date().toISOString(),
+    restaurantId: ctx.restaurantId ?? null,
+    correlationId: ctx.correlationId,
+    metadata: {
+      orderId: ctx.orderId,
+      degradedReason: ctx.reason,
+      attempts: ctx.attempts,
+      error: ctx.error,
+    },
+  });
+}

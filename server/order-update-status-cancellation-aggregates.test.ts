@@ -2,18 +2,34 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import { ENV } from "./_core/env";
 
-vi.mock("./db", () => ({
+const mocks = vi.hoisted(() => ({
+  getDb: vi.fn(),
   getOrderById: vi.fn(),
+}));
+
+vi.mock("./db", () => ({
+  getDb: mocks.getDb,
+  getOrderById: mocks.getOrderById,
   getOrderItemsByOrderId: vi.fn(async () => []),
   generateOrderNumber: vi.fn(async () => "ORD-0001"),
   getRestaurantById: vi.fn(async () => ({ id: 1, userId: 1 })),
-  updateOrderStatus: vi.fn(async () => undefined),
-  markOrderReadyAtIfFirstTransition: vi.fn(async () => undefined),
 }));
 
 vi.mock("./customerPush/sendReadyPush", () => ({
   sendReadyPushForOrder: vi.fn(async () => undefined),
 }));
+
+// COMMERCIAL-FROZEN-ACCOUNT-STATE-1 fails closed without a database, which would
+// reject order.updateStatus before the persistence path under test is reached.
+vi.mock("./subscription-runtime", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./subscription-runtime")>();
+  return {
+    ...actual,
+    resolveOwnerEntitlements: vi.fn(async () => ({
+      meta: { commercialAccountState: "active" },
+    })),
+  };
+});
 
 vi.mock("./diningSession/sessionAggregateWriters", () => ({
   decrementSessionAggregatesForCancelledOrder: vi.fn(),
@@ -33,8 +49,9 @@ vi.mock("./order/eventInfrastructureComposition", async (importOriginal) => {
 });
 
 import { appRouter } from "./routers";
-import { getOrderById, updateOrderStatus } from "./db";
+import { getOrderById } from "./db";
 import { decrementSessionAggregatesForCancelledOrder } from "./diningSession/sessionAggregateWriters";
+import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
 
 const baseOrder = {
   id: 7,
@@ -65,9 +82,15 @@ function createCaller() {
 }
 
 describe("order.updateStatus cancellation router ORDER-EVENTS-1B", () => {
+  let dbFake: ReturnType<typeof createTransactionalOrderDbFake>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     ENV.tableSessionDualWrite = true;
+    dbFake = createTransactionalOrderDbFake({
+      existingOrderRow: baseOrder as unknown as Record<string, unknown>,
+    });
+    mocks.getDb.mockImplementation(dbFake.getDb);
     vi.mocked(getOrderById).mockResolvedValue(baseOrder);
   });
 
@@ -79,7 +102,9 @@ describe("order.updateStatus cancellation router ORDER-EVENTS-1B", () => {
     const caller = createCaller();
     const result = await caller.order.updateStatus({ id: 7, status: "cancelled" });
 
-    expect(updateOrderStatus).toHaveBeenCalledWith(7, "cancelled");
+    expect(dbFake.orderUpdates).toContainEqual(
+      expect.objectContaining({ status: "cancelled" })
+    );
     expect(decrementSessionAggregatesForCancelledOrder).not.toHaveBeenCalled();
     expect(result).toEqual({
       success: true,

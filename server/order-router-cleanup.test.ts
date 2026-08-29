@@ -85,6 +85,18 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
   resolveGuestOrderingAllowed: vi.fn(async () => ({ canOrder: true })),
 }));
 
+// COMMERCIAL-FROZEN-ACCOUNT-STATE-1 fails closed without a database, which would
+// reject order.updateStatus before the persistence path under test is reached.
+vi.mock("./subscription-runtime", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./subscription-runtime")>();
+  return {
+    ...actual,
+    resolveOwnerEntitlements: vi.fn(async () => ({
+      meta: { commercialAccountState: "active" },
+    })),
+  };
+});
+
 import { appRouter } from "./routers";
 import { createNotification } from "./db";
 import { createTransactionalOrderDbFake } from "./order/__tests__/support/transactionalOrderDbFake";
@@ -156,7 +168,7 @@ describe("order router cleanup ORDER-EVENTS-1B", () => {
 
   it("order.updateStatus does not invoke push or session aggregate side-effects inline", async () => {
     const { getOrderById } = await import("./db");
-    vi.mocked(getOrderById).mockResolvedValue({
+    const existingOrderRow = {
       id: 7,
       restaurantId: 1,
       tableId: 1,
@@ -167,9 +179,17 @@ describe("order router cleanup ORDER-EVENTS-1B", () => {
       totalAmount: "10.00",
       createdAt: "2026-01-01 00:00:00",
       updatedAt: "2026-01-01 00:00:00",
+      lifecycleStage: "active",
       readyAt: null,
       sessionId: 10,
-    } as Awaited<ReturnType<typeof getOrderById>>);
+    };
+    vi.mocked(getOrderById).mockResolvedValue(
+      existingOrderRow as Awaited<ReturnType<typeof getOrderById>>
+    );
+    // The update path is transaction-only too, so it needs a transactional getDb.
+    mocks.getDb.mockImplementation(
+      createTransactionalOrderDbFake({ existingOrderRow }).getDb
+    );
 
     const ownerCaller = appRouter.createCaller({
       user: {

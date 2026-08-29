@@ -1,10 +1,13 @@
 /**
- * ORDER-CREATE-LEGACY-FALLBACK-OUTBOX-SAFETY-1 — test support (not a test file).
+ * ORDER-CREATE-LEGACY-FALLBACK-OUTBOX-SAFETY-1 +
+ * ORDER-LIFECYCLE-ATOMICITY-AND-SESSION-CONSISTENCY-HARDENING-1 — test support
+ * (not a test file).
  *
- * Order creation is transaction-only: Order + Order Items + OrderCreated Outbox
- * commit together or nothing commits. Router-level `order.create` tests must
- * therefore supply a transaction-capable `getDb`, and assert on the rows staged
- * inside that transaction rather than on the removed non-transactional helpers.
+ * Order create and Order update are both transaction-only: the Order rows and
+ * their required Outbox events commit together or nothing commits. Router-level
+ * `order.create` / `order.updateStatus` tests must therefore supply a
+ * transaction-capable `getDb`, and assert on the rows staged inside that
+ * transaction rather than on the removed non-transactional helpers.
  */
 import { orderDomainOutbox, orderItems, orders } from "../../../../drizzle/schema";
 
@@ -16,6 +19,8 @@ export type TransactionalOrderDbFake = {
     orderItems: Record<string, unknown>[];
     outbox: Record<string, unknown>[];
   };
+  /** `UPDATE orders SET ...` payloads staged inside the transaction. */
+  orderUpdates: Record<string, unknown>[];
   /** The single row staged into `orders`, for create assertions. */
   orderRow: () => Record<string, unknown> | undefined;
   reset: () => void;
@@ -39,6 +44,7 @@ export function createTransactionalOrderDbFake(options?: {
     orderItems: [],
     outbox: [],
   };
+  const orderUpdates: Record<string, unknown>[] = [];
 
   // One shape serves both readers: `restaurants ... FOR UPDATE` reads
   // id/userId/workingHours, and the business-identity allocator reads `n`.
@@ -70,31 +76,56 @@ export function createTransactionalOrderDbFake(options?: {
       },
     }),
     select: (_projection?: unknown) => ({
-      from: (table: unknown) => ({
-        where: async () => {
+      from: (table: unknown) => {
+        const resolve = () => {
           if (table === orderDomainOutbox) return [{ maxSeq: 0 }];
           if (table === orders && options?.existingOrderRow) {
             return [options.existingOrderRow];
           }
           return [];
+        };
+        // Awaitable at any point in the chain, mirroring a Drizzle query builder.
+        const chain = {
+          where: () => chain,
+          orderBy: () => chain,
+          limit: () => chain,
+          innerJoin: () => chain,
+          leftJoin: () => chain,
+          groupBy: () => chain,
+          for: () => chain,
+          then: (
+            onFulfilled?: (value: Record<string, unknown>[]) => unknown,
+            onRejected?: (reason: unknown) => unknown
+          ) => Promise.resolve(resolve()).then(onFulfilled, onRejected),
+        };
+        return chain;
+      },
+    }),
+    update: (table: unknown) => ({
+      set: (values: unknown) => ({
+        where: async () => {
+          if (table === orders) {
+            orderUpdates.push(values as Record<string, unknown>);
+          }
         },
       }),
-    }),
-    update: (_table: unknown) => ({
-      set: (_values: unknown) => ({ where: async () => undefined }),
     }),
   };
 
   return {
+    // Reads outside a transaction (guards, lookups) share the tx query shape.
     getDb: async () => ({
+      ...tx,
       transaction: async (fn: (handle: unknown) => Promise<unknown>) => fn(tx),
     }),
     inserted,
+    orderUpdates,
     orderRow: () => inserted.orders[0],
     reset: () => {
       inserted.orders.length = 0;
       inserted.orderItems.length = 0;
       inserted.outbox.length = 0;
+      orderUpdates.length = 0;
     },
   };
 }

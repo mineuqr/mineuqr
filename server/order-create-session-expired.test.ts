@@ -159,7 +159,10 @@ describe("order.create expired session CUSTOMER-SESSION-LIFECYCLE-1F", () => {
         tableContext: expect.objectContaining({
           table: expect.objectContaining({ id: 7, tableNumber: 3 }),
         }),
-      })
+      }),
+      // FIRST-ORDER-SESSION-CREATE-FAIL-CLOSED-HARDENING-1 — resolved on the
+      // Order persist transaction handle.
+      expect.anything()
     );
   });
 });

@@ -175,6 +175,9 @@ export const OPS_EVENT = {
   // ORDER-CREATE-LEGACY-FALLBACK-OUTBOX-SAFETY-1
   order_create_persistence_failed: "order_create_persistence_failed",
 
+  // ORDER-LIFECYCLE-ATOMICITY-AND-SESSION-CONSISTENCY-HARDENING-1
+  order_update_persistence_failed: "order_update_persistence_failed",
+
   // SESSION-AGGREGATES-1 Phase A
   session_aggregate_drift_detected: "session_aggregate_drift_detected",
   session_aggregate_update_failed: "session_aggregate_update_failed",

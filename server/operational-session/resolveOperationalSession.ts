@@ -4,6 +4,7 @@ import {
   type ResolveOperationalSessionResult,
 } from "@shared/operational-session";
 import type { DiningTableContextPreload } from "../diningSession/sessionService";
+import type { SessionDbClient } from "../diningSession/sessionRepository";
 import {
   OperationalSessionAnchorNotActivatedError,
   OperationalSessionValidationError,
@@ -23,7 +24,12 @@ import { resolveTableOperationalSession } from "./tableSessionAdapter";
 export async function resolveOperationalSession(
   request: ResolveOperationalSessionRequest & {
     tableContext?: DiningTableContextPreload;
-  }
+  },
+  /**
+   * FIRST-ORDER-SESSION-CREATE-FAIL-CLOSED-HARDENING-1 — table anchors may join
+   * a caller transaction so a failed first Order leaves no orphan open Session.
+   */
+  client?: SessionDbClient
 ): Promise<ResolveOperationalSessionResult> {
   if (!Number.isInteger(request.restaurantId) || request.restaurantId <= 0) {
     throw new OperationalSessionValidationError("Invalid restaurantId");
@@ -40,12 +46,15 @@ export async function resolveOperationalSession(
 
   switch (request.anchor.anchorType) {
     case "table":
-      return resolveTableOperationalSession({
-        restaurantId: request.restaurantId,
-        anchor: request.anchor,
-        sessionToken: request.sessionToken,
-        tableContext: request.tableContext,
-      });
+      return resolveTableOperationalSession(
+        {
+          restaurantId: request.restaurantId,
+          anchor: request.anchor,
+          sessionToken: request.sessionToken,
+          tableContext: request.tableContext,
+        },
+        client
+      );
     case "station":
     case "pickup_point":
     case "queue":

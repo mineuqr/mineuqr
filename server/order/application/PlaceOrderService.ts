@@ -120,7 +120,9 @@ export class PlaceOrderService {
     command: PlaceOrderCommand,
     persist?: Pick<
       SaveOrderOptions,
-      "afterPersistInTransaction" | "skipBusinessIdentityAllocation"
+      | "afterPersistInTransaction"
+      | "skipBusinessIdentityAllocation"
+      | "resolveSessionInTransaction"
     >
   ): Promise<PlaceOrderResult> {
     const orderNoteResult = validateOrderNote(
@@ -263,6 +265,7 @@ export class PlaceOrderService {
       afterPersistInTransaction: persist?.afterPersistInTransaction,
       skipBusinessIdentityAllocation:
         persist?.skipBusinessIdentityAllocation === true,
+      resolveSessionInTransaction: persist?.resolveSessionInTransaction,
     });
     persisted.clearDomainEvents();
 

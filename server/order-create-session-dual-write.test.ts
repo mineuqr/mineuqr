@@ -188,7 +188,10 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
           restaurant: expect.objectContaining({ id: 1, isActive: true }),
           table: expect.objectContaining({ id: 7, tableNumber: 3 }),
         }),
-      })
+      }),
+      // FIRST-ORDER-SESSION-CREATE-FAIL-CLOSED-HARDENING-1 — resolved on the
+      // Order persist transaction handle.
+      expect.anything()
     );
     expect(dbFake.orderRow()).toMatchObject({ sessionId: 10 });
     expect(recordSessionEvent).not.toHaveBeenCalled();
@@ -255,7 +258,8 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     });
 
     expect(resolveSessionForOrderCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ tableId: 7 })
+      expect.objectContaining({ tableId: 7 }),
+      expect.anything()
     );
     expect(recordSessionEvent).not.toHaveBeenCalled();
     expect(incrementSessionAggregatesForOrder).not.toHaveBeenCalled();

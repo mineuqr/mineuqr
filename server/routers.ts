@@ -111,6 +111,7 @@ import {
 } from "./diningSession/sessionRepository";
 import { SESSION_TOKEN_PATTERN } from "./diningSession/sessionPublicStatus";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
+import type { SessionDbClient } from "./diningSession/sessionRepository";
 import {
   getPublicActiveSessionByTable,
   getPublicSessionByToken,
@@ -2835,81 +2836,102 @@ const orderRouter = router({
 
           let sessionId: number | undefined;
           let sessionToken: string | undefined;
-          if (ENV.tableSessionDualWrite) {
-            await timeOrderLifecyclePhase("session_ms", async () => {
-              try {
-                // OPERATIONAL-SESSION-PLATFORM-1 — QR table path via Operational Session Platform.
-                // Dining Session remains the table specialization (no rename / no behaviour change).
-                const sessionResult = await resolveOperationalSession({
-                  restaurantId: input.restaurantId,
-                  anchor: createTableSessionAnchor({
-                    tableId: table.id,
-                    tableNumber: table.tableNumber,
-                  }),
-                  sessionToken: input.sessionToken,
-                  tableContext: { restaurant, table },
-                });
-                // Table specialization always returns a persistent session when successful.
-                if (!sessionResult.session) {
-                  throw new Error("Table Operational Session resolution returned no session");
-                }
-                sessionId = sessionResult.session.id;
-                sessionToken = sessionResult.session.sessionToken;
-                opsLog({
-                  type: sessionResult.created ? OPS_EVENT.session_created : OPS_EVENT.session_reused,
-                  category: "ORDER",
-                  severity: "info",
-                  ts: new Date().toISOString(),
-                  restaurantId: input.restaurantId,
-                  procedure: "order.create",
-                  metadata: {
-                    sessionId: sessionResult.session.id,
-                    tableId: table.id,
-                    tableNumber: table.tableNumber,
-                    anchorType: sessionResult.session.anchor.anchorType,
-                  },
-                });
-              } catch (err) {
-                throwSessionServiceTrpcError(err);
-              }
-            });
-          } else {
+          let sessionAnchorType: string | undefined;
+          let sessionCreated = false;
+
+          if (!ENV.tableSessionDualWrite) {
             noteOrderLifecyclePhase("session_ms", 0);
             noteOrderLifecycleMeta("session_skipped", true);
           }
 
+          /**
+           * FIRST-ORDER-SESSION-CREATE-FAIL-CLOSED-HARDENING-1
+           * Session resolution runs on the Order persist transaction instead of
+           * committing first, so a first Order that fails leaves no orphan open
+           * Session, no SESSION_OPENED event, and no empty Check.
+           */
+          const resolveSessionInTransaction = ENV.tableSessionDualWrite
+            ? async (tx: unknown) => {
+                try {
+                  // OPERATIONAL-SESSION-PLATFORM-1 — QR table path via Operational Session Platform.
+                  // Dining Session remains the table specialization (no rename / no behaviour change).
+                  const sessionResult = await resolveOperationalSession(
+                    {
+                      restaurantId: input.restaurantId,
+                      anchor: createTableSessionAnchor({
+                        tableId: table.id,
+                        tableNumber: table.tableNumber,
+                      }),
+                      sessionToken: input.sessionToken,
+                      tableContext: { restaurant, table },
+                    },
+                    tx as SessionDbClient
+                  );
+                  // Table specialization always returns a persistent session when successful.
+                  if (!sessionResult.session) {
+                    throw new Error("Table Operational Session resolution returned no session");
+                  }
+                  sessionId = sessionResult.session.id;
+                  sessionToken = sessionResult.session.sessionToken;
+                  sessionAnchorType = sessionResult.session.anchor.anchorType;
+                  sessionCreated = sessionResult.created;
+                  return { sessionId: sessionResult.session.id };
+                } catch (err) {
+                  throwSessionServiceTrpcError(err);
+                }
+              }
+            : undefined;
+
           // ORDER-IDENTITY-RUNTIME-1 — table ordering as Fulfilment Anchor type `table`.
+          // Session identity is stamped inside the persist transaction.
           const orderIdentity = createTableOrderIdentity({
             tableId: table.id,
             tableNumber: table.tableNumber,
-            sessionId: ENV.tableSessionDualWrite && sessionId != null ? sessionId : null,
-            sessionToken:
-              ENV.tableSessionDualWrite && sessionToken != null ? sessionToken : null,
+            sessionId: null,
+            sessionToken: null,
           });
 
           const placeResult = await runOrderCommand(
             () =>
-              placeOrderService.execute({
-                restaurantId: input.restaurantId,
-                identity: orderIdentity,
-                tableId: table.id,
-                tableNumber: table.tableNumber,
-                ...(ENV.tableSessionDualWrite && sessionId != null
-                  ? { sessionId }
-                  : {}),
-                orderingChannel: ORDERING_CHANNEL_QR,
-                customerName: input.customerName,
-                customerPhone: input.customerPhone,
-                notes: input.notes,
-                items: input.items.map((item) => ({
-                  menuItemId: item.menuItemId,
-                  quantity: item.quantity,
-                  notes: item.notes,
-                  modifiers: item.modifiers,
-                })),
-              }),
+              placeOrderService.execute(
+                {
+                  restaurantId: input.restaurantId,
+                  identity: orderIdentity,
+                  tableId: table.id,
+                  tableNumber: table.tableNumber,
+                  orderingChannel: ORDERING_CHANNEL_QR,
+                  customerName: input.customerName,
+                  customerPhone: input.customerPhone,
+                  notes: input.notes,
+                  items: input.items.map((item) => ({
+                    menuItemId: item.menuItemId,
+                    quantity: item.quantity,
+                    notes: item.notes,
+                    modifiers: item.modifiers,
+                  })),
+                },
+                { resolveSessionInTransaction }
+              ),
             { awaitRelay: false }
           );
+
+          // Only observable once the Session opening actually committed with the Order.
+          if (ENV.tableSessionDualWrite && sessionId != null) {
+            opsLog({
+              type: sessionCreated ? OPS_EVENT.session_created : OPS_EVENT.session_reused,
+              category: "ORDER",
+              severity: "info",
+              ts: new Date().toISOString(),
+              restaurantId: input.restaurantId,
+              procedure: "order.create",
+              metadata: {
+                sessionId,
+                tableId: table.id,
+                tableNumber: table.tableNumber,
+                anchorType: sessionAnchorType,
+              },
+            });
+          }
 
           const latency = getOrderLifecycleLatencyContext();
           if (latency && placeResult.order.id != null) {

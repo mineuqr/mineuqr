@@ -6,6 +6,7 @@ import {
   resolveSessionForOrderCreate,
   type DiningTableContextPreload,
 } from "../diningSession/sessionService";
+import type { SessionDbClient } from "../diningSession/sessionRepository";
 import { mapDiningSessionToOperational } from "./mapDiningSessionToOperational";
 import { OperationalSessionValidationError } from "./operationalSessionErrors";
 
@@ -14,12 +15,15 @@ import { OperationalSessionValidationError } from "./operationalSessionErrors";
  * Preserves QR uniqueness: one open session per (restaurantId, tableId).
  * Behaviour-identical to resolveSessionForOrderCreate for the table path.
  */
-export async function resolveTableOperationalSession(input: {
-  restaurantId: number;
-  anchor: TableSessionAnchor;
-  sessionToken?: string;
-  tableContext?: DiningTableContextPreload;
-}): Promise<ResolveOperationalSessionResult> {
+export async function resolveTableOperationalSession(
+  input: {
+    restaurantId: number;
+    anchor: TableSessionAnchor;
+    sessionToken?: string;
+    tableContext?: DiningTableContextPreload;
+  },
+  client?: SessionDbClient
+): Promise<ResolveOperationalSessionResult> {
   if (!Number.isInteger(input.restaurantId) || input.restaurantId <= 0) {
     throw new OperationalSessionValidationError("Invalid restaurantId");
   }
@@ -33,13 +37,16 @@ export async function resolveTableOperationalSession(input: {
     throw new OperationalSessionValidationError("Invalid tableNumber");
   }
 
-  const result = await resolveSessionForOrderCreate({
-    restaurantId: input.restaurantId,
-    tableId: input.anchor.tableId,
-    tableNumber: input.anchor.tableNumber,
-    sessionToken: input.sessionToken,
-    tableContext: input.tableContext,
-  });
+  const result = await resolveSessionForOrderCreate(
+    {
+      restaurantId: input.restaurantId,
+      tableId: input.anchor.tableId,
+      tableNumber: input.anchor.tableNumber,
+      sessionToken: input.sessionToken,
+      tableContext: input.tableContext,
+    },
+    client
+  );
 
   return {
     session: mapDiningSessionToOperational(result.session),
