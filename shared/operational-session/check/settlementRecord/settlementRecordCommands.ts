@@ -185,7 +185,9 @@ export function createSettlementRecord(
 }
 
 /**
- * Append a compensating Settlement Record (refund / void / reversal / correction).
+ * Append a compensating Settlement Record.
+ * Production Refund uses recordKind=refund. Void is published by Check finalize.
+ * reversal / correction remain domain kinds for history; there is no dedicated writer.
  * Never updates the prior record (SR-INV-02).
  */
 export function createCompensatingSettlementRecord(
