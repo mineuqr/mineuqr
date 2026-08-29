@@ -1,7 +1,7 @@
 import type { DiningSessionRecoveryResult } from "@/lib/diningSessionRecovery";
 import {
   clearCustomerJourney,
-  hasPostSubmitSeal,
+  isSameDocumentAsPostSubmitSeal,
   loadCustomerJourney,
   type CustomerJourneyRecord,
 } from "@/lib/customerJourneyStorage";
@@ -15,7 +15,11 @@ export type PostSubmissionGuardResult = {
 
 /**
  * Resolves whether ordering UI must be blocked for the current table journey.
- * Clears the lock when a new dining session (Session B) is detected.
+ *
+ * TABLE-QR-SAME-SESSION-FRESH-QR-NEW-ORDER-1 — an open Session token is not
+ * a journey identity. A physical QR scan loads a new document and may start
+ * another Order on the same Session. Back / Refresh / the submitted document
+ * remain locked by navigation type and the post-submit seal.
  */
 export function resolvePostSubmissionOrderingBlock(input: {
   slug: string;
@@ -44,23 +48,18 @@ export function resolvePostSubmissionOrderingBlock(input: {
     return { blocked: false, journey: null };
   }
 
-  if (
-    recovery.session?.status === "open" &&
-    journey.sessionToken &&
-    recovery.session.sessionToken === journey.sessionToken
-  ) {
-    return { blocked: true, journey, trackingPath };
-  }
-
   const navType = getNavigationEntryType();
   if (navType === "back_forward" || navType === "reload") {
     return { blocked: true, journey, trackingPath };
   }
 
-  if (hasPostSubmitSeal(slug, tableNumber)) {
+  // Same document as Submit: Back, stale Menu / Cart / Review in this tab.
+  if (isSameDocumentAsPostSubmitSeal(slug, tableNumber)) {
     return { blocked: true, journey, trackingPath };
   }
 
+  // New document (physical QR) or a tab without the seal — new ordering attempt.
+  // The server still decides Session reuse. No Order mutation happens here.
   clearCustomerJourney(slug, tableNumber);
   return { blocked: false, journey: null };
 }

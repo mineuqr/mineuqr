@@ -16,6 +16,29 @@ export type CustomerJourneyRecord = {
 const JOURNEY_PREFIX = "mineuqr:customer-journey:";
 const SEAL_PREFIX = "mineuqr:post-submit-seal:";
 
+export type PostSubmitSealRecord = {
+  trackingToken: string;
+  sealedAt: string;
+  /**
+   * TABLE-QR-SAME-SESSION-FRESH-QR-NEW-ORDER-1
+   * Identifies the document that submitted this journey. A later physical QR
+   * scan loads a new document (different timeOrigin). Back / stale Cart /
+   * Review stay on this document.
+   */
+  navigationStartedAt?: number;
+};
+
+/**
+ * Stable per document load. Not a Session or Order identifier.
+ */
+export function readDocumentNavigationStartedAt(): number | null {
+  if (typeof performance === "undefined") return null;
+  if (typeof performance.timeOrigin === "number" && Number.isFinite(performance.timeOrigin)) {
+    return performance.timeOrigin;
+  }
+  return null;
+}
+
 export function customerJourneyStorageKey(slug: string, tableNumber: number): string {
   return `${JOURNEY_PREFIX}${slug}:${tableNumber}`;
 }
@@ -88,22 +111,63 @@ export function setPostSubmitSeal(
 ): void {
   if (!slug || tableNumber <= 0 || typeof sessionStorage === "undefined") return;
   try {
+    const payload: PostSubmitSealRecord = {
+      trackingToken,
+      sealedAt: new Date().toISOString(),
+      navigationStartedAt: readDocumentNavigationStartedAt() ?? undefined,
+    };
     sessionStorage.setItem(
       postSubmitSealStorageKey(slug, tableNumber),
-      JSON.stringify({ trackingToken, sealedAt: new Date().toISOString() })
+      JSON.stringify(payload)
     );
   } catch {
     /* ignore */
   }
 }
 
-export function hasPostSubmitSeal(slug: string, tableNumber: number): boolean {
-  if (!slug || tableNumber <= 0 || typeof sessionStorage === "undefined") return false;
+export function loadPostSubmitSeal(
+  slug: string,
+  tableNumber: number
+): PostSubmitSealRecord | null {
+  if (!slug || tableNumber <= 0 || typeof sessionStorage === "undefined") return null;
   try {
-    return sessionStorage.getItem(postSubmitSealStorageKey(slug, tableNumber)) != null;
+    const raw = sessionStorage.getItem(postSubmitSealStorageKey(slug, tableNumber));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PostSubmitSealRecord>;
+    if (!parsed.trackingToken) return null;
+    return {
+      trackingToken: parsed.trackingToken,
+      sealedAt: parsed.sealedAt ?? "",
+      navigationStartedAt:
+        typeof parsed.navigationStartedAt === "number" &&
+        Number.isFinite(parsed.navigationStartedAt)
+          ? parsed.navigationStartedAt
+          : undefined,
+    };
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function hasPostSubmitSeal(slug: string, tableNumber: number): boolean {
+  return loadPostSubmitSeal(slug, tableNumber) != null;
+}
+
+/**
+ * True when the current document is the same load that sealed the journey.
+ * A physical QR scan starts a new document and returns false.
+ */
+export function isSameDocumentAsPostSubmitSeal(
+  slug: string,
+  tableNumber: number
+): boolean {
+  const seal = loadPostSubmitSeal(slug, tableNumber);
+  if (!seal) return false;
+  // Pre-existing seals without a document id fail closed: keep the journey locked.
+  if (seal.navigationStartedAt == null) return true;
+  const current = readDocumentNavigationStartedAt();
+  if (current == null) return true;
+  return current === seal.navigationStartedAt;
 }
 
 export function clearCustomerJourney(slug: string, tableNumber: number): void {
