@@ -4,12 +4,14 @@
  * Must not run inside the Collection Fact transaction. Must not block Confirm HTTP.
  */
 import { recoverCashierPosDownstreamSettlements } from "../operational-session/payment/recoverCashierPosDownstreamSettlement";
+import { recoverCollectionFactDrawerAttributions } from "../operational-session/payment/recoverCollectionFactDrawerAttribution";
 import { orderEventRelay, orderOutboxRepository } from "./eventInfrastructureComposition";
 
 export async function runPostConfirmOperationalRecoveryCycle(): Promise<void> {
   await orderOutboxRepository.requeueFailedBatch(25);
   await orderEventRelay.processBatch(50);
   await recoverCashierPosDownstreamSettlements(25);
+  await recoverCollectionFactDrawerAttributions(25);
 }
 
 export function schedulePostConfirmOperationalRecovery(): void {

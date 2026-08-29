@@ -6,6 +6,7 @@
 import { and, asc, eq, inArray, notExists, or, sql } from "drizzle-orm";
 import {
   checkOrderMembership,
+  crmpSettlementAttributions,
   operationalChecks,
   paymentCollectionFacts,
   type SelectPaymentCollectionFact,
@@ -350,6 +351,52 @@ export async function listCashierPosProductionFactsAwaitingDownstreamSettlement(
     .orderBy(asc(paymentCollectionFacts.committedAt))
     .limit(take);
   return rows;
+}
+
+/**
+ * DRAWER-ATTRIBUTION-RELIABILITY-1
+ * Production CFs on Cashier-finalizable channels with no CF attribution row.
+ * Discovery is independent of Check / Settlement Record so paid Checks can still converge.
+ * Read-only. Does not write CF, PAID, Invoice, or Attribution.
+ */
+export async function listProductionCollectionFactsAwaitingDrawerAttribution(
+  limit: number
+): Promise<CollectionFact[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const take = Math.min(Math.max(limit, 0), 50);
+  if (take === 0) return [];
+  const attributed = db
+    .select({ present: sql`1` })
+    .from(crmpSettlementAttributions)
+    .where(
+      and(
+        eq(
+          crmpSettlementAttributions.restaurantId,
+          paymentCollectionFacts.restaurantId
+        ),
+        eq(
+          crmpSettlementAttributions.collectionFactId,
+          paymentCollectionFacts.collectionFactId
+        )
+      )
+    );
+  const rows = await db
+    .select()
+    .from(paymentCollectionFacts)
+    .where(
+      and(
+        eq(paymentCollectionFacts.purpose, COLLECTION_FACT_PRODUCTION_PURPOSE),
+        inArray(
+          paymentCollectionFacts.orderingChannel,
+          CASHIER_FINALIZABLE_ORDERING_CHANNELS
+        ),
+        notExists(attributed)
+      )
+    )
+    .orderBy(asc(paymentCollectionFacts.committedAt))
+    .limit(take);
+  return rows.map(mapRowToCollectionFact);
 }
 
 export async function findCollectionFactByFactId(

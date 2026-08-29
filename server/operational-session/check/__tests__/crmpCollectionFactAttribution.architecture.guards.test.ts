@@ -70,4 +70,18 @@ describe("CRMP-CF-ATTRIBUTION-1 architecture", () => {
     expect(refund).toContain("insertSettlementRecord");
     expect(refund).toContain("recordKind: \"refund\"");
   });
+
+  it("replays missing CF Drawer attribution without writing Financial Core", () => {
+    const recover = read(
+      "server/operational-session/payment/recoverCollectionFactDrawerAttribution.ts"
+    );
+    const cycle = read("server/order/postConfirmOperationalRecovery.ts");
+    expect(recover).toContain("listProductionCollectionFactsAwaitingDrawerAttribution");
+    expect(recover).toContain("adoptSettlementAttributionAfterFinalize");
+    expect(recover).toContain("settlementRecord: null");
+    expect(recover).not.toContain("commitCollectionFact");
+    expect(recover).not.toContain("allocateCashierInvoiceForOrder");
+    expect(recover).not.toContain("markOrderPaid");
+    expect(cycle).toContain("recoverCollectionFactDrawerAttributions");
+  });
 });

@@ -44,7 +44,7 @@ describe("POST-PAYMENT-INCOMING-CHECK-RECOVERY-HARDENING-1 architecture", () => 
     const listFn = sliceFn(
       repo,
       "export async function listCashierPosProductionFactsAwaitingDownstreamSettlement",
-      "export async function findCollectionFactByFactId"
+      "export async function listProductionCollectionFactsAwaitingDrawerAttribution"
     );
     expect(listFn).toContain("CASHIER_FINALIZABLE_ORDERING_CHANNELS");
     expect(listFn).toContain("COLLECTION_FACT_PRODUCTION_PURPOSE");

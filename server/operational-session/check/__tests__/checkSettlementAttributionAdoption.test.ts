@@ -243,6 +243,48 @@ describe("checkSettlementAttributionAdoption", () => {
     expect(bundle.events[0]?.collectionFactId).toBe("cf_1");
   });
 
+  it("retries a transient attribution create failure without requiring Settlement", async () => {
+    let calls = 0;
+    const original = shifts.createAttribution.bind(shifts);
+    shifts.createAttribution = (async (input) => {
+      calls += 1;
+      if (calls === 1) throw new Error("shift save blip");
+      return original(input);
+    }) as typeof shifts.createAttribution;
+    const bundle = await adoptSettlementAttributionAfterFinalize(
+      {
+        restaurantId: 1,
+        outcome: "paid",
+        settlementContext: resolvedContext(),
+        settlementRecord: null,
+        settlementLines: null,
+        at: "t3",
+        collectionFact: {
+          collectionFactId: "cf_retry",
+          restaurantId: 1,
+          orderId: 44,
+          paymentIntentId: "cpi_retry",
+          purpose: "production",
+          amount: "20.00",
+          discountAmount: "0.00",
+          currencyCode: "SAR",
+          tenders: [{ paymentMethod: "cash", amount: "20.00" }],
+          checkId: null,
+          committedAt: "t3",
+          businessDay: "2026-08-27",
+          actorId: "10",
+          terminalId: "term_1",
+          orderingChannel: "cashier_pos",
+        },
+      },
+      { shiftService: shifts }
+    );
+    expect(calls).toBe(2);
+    expect(bundle.attribution.outcome).toBe("created");
+    expect(bundle.attribution.collectionFactId).toBe("cf_retry");
+    expect(bundle.attribution.settlementRecordId).toBeNull();
+  });
+
   it("is idempotent by collectionFactId on replay", async () => {
     const input = {
       restaurantId: 1,

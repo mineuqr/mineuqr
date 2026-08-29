@@ -2,6 +2,8 @@
  * SETTLEMENT-ATTRIBUTION-ADOPTION-1 / REFUND-REGISTER-ADOPTION-1 / CRMP-CF-ATTRIBUTION-1
  * Post-commit Attribution adoption.
  *
+ * DRAWER-ATTRIBUTION-RELIABILITY-1 — create failures retry once, then fail-open.
+ * Durable CF replay lives in recoverCollectionFactDrawerAttribution.
  * Runs AFTER Check-owned financial TX commits so Attribution never rolls back money.
  * Current Cashier sales attribute after Collection Fact commit (CF identity).
  * Fail-open (ADR-ARCH-030). Never fabricates Register / Financial Shift.
@@ -110,7 +112,7 @@ function attributionCreateDeps(deps?: {
   );
 }
 
-async function persistAttribution(input: {
+async function persistAttributionAttempt(input: {
   restaurantId: number;
   settlementContext: SettlementContext;
   settlementRecordId: string | null;
@@ -177,6 +179,26 @@ async function persistAttribution(input: {
       events: [],
     };
   }
+}
+
+/** One immediate retry of create failures. Still fail-open. Never rolls back CF/PAID. */
+async function persistAttribution(input: {
+  restaurantId: number;
+  settlementContext: SettlementContext;
+  settlementRecordId: string | null;
+  collectionFactId: string | null;
+  cashTenderAmount: string;
+  at: string;
+  shiftService: FinancialShiftDomainService;
+}): Promise<SettlementAttributionAdoptionBundle> {
+  const first = await persistAttributionAttempt(input);
+  if (
+    first.attribution.outcome !== "failed" ||
+    !first.attribution.gaps.includes("attribution_create_failed")
+  ) {
+    return first;
+  }
+  return persistAttributionAttempt(input);
 }
 
 async function adoptCollectionFactAttributionAfterPaid(

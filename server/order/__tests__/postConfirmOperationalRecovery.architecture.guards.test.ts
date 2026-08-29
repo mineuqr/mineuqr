@@ -23,6 +23,7 @@ describe("POST-CONFIRM OPERATIONAL RECOVERY architecture", () => {
     expect(recovery).toContain("if (process.env.NODE_ENV === \"test\") return");
     expect(recovery).toContain("requeueFailedBatch");
     expect(recovery).toContain("recoverCashierPosDownstreamSettlements");
+    expect(recovery).toContain("recoverCollectionFactDrawerAttributions");
   });
 
   it("recovers failed outbox via existing pending/published/failed states", () => {
