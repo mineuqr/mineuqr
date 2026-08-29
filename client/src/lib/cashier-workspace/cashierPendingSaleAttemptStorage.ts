@@ -9,7 +9,34 @@ export type CashierPendingSaleAttempt = {
   idempotencyKey: string;
   paymentIntentId?: string;
   items: readonly CashierSaleAttemptLine[];
+  /**
+   * Incoming Confirm owner. Positive orderId binds the attempt to that Order.
+   * Absent/null is POS (no Incoming Order) or a pre-scope legacy record.
+   */
+  orderId?: number | null;
 };
+
+function positiveOrderId(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
+    : null;
+}
+
+/**
+ * CASHIER-INCOMING-CONFIRM-PENDING-ATTEMPT-SCOPE-1
+ * orderId is identity. Item snapshot is same-Order retry validation only.
+ * A legacy attempt without orderId cannot apply to a known Incoming Order.
+ */
+export function cashierPendingSaleAttemptAppliesToOrder(
+  attempt: Pick<CashierPendingSaleAttempt, "orderId"> | null,
+  currentOrderId: number | null
+): boolean {
+  if (!attempt) return false;
+  const stored = positiveOrderId(attempt.orderId);
+  const current = positiveOrderId(currentOrderId);
+  if (current != null) return stored === current;
+  return stored == null;
+}
 
 function storageKey(restaurantId: number): string {
   return `cashier-pending-sale:${restaurantId}`;
@@ -51,6 +78,7 @@ export function readCashierPendingSaleAttempt(
           ? parsed.paymentIntentId
           : undefined,
       items,
+      orderId: positiveOrderId(parsed.orderId),
     };
   } catch {
     return null;

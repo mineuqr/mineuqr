@@ -150,7 +150,7 @@ describe("CashierInvoiceView", () => {
     ).toBe(false);
   });
 
-  it("matches a pending sale.create attempt by menu item and quantity", () => {
+  it("matches a pending sale.create attempt by menu item and quantity as same-Order validation only", () => {
     expect(
       cashierTicketMatchesSaleAttempt(
         [{ menuItemId: 3, quantity: 2, nameAr: "x", nameEn: "x", price: "1.00" }],

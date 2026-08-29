@@ -38,8 +38,10 @@ describe("CASHIER-PASS-2-INVOICE-IDENTITY-1", () => {
     );
     expect(completeFn).toContain("writeCashierPendingSaleAttempt");
     expect(completeFn).toContain("if (!settleKeyRef.current)");
+    expect(completeFn).toContain("cashierPendingSaleAttemptAppliesToOrder");
     expect(completeFn).toContain("cashierTicketMatchesSaleAttempt");
     expect(completeFn).toContain("idempotencyKey: settleKeyRef.current");
+    expect(completeFn).toContain("orderId: inboundOrderId");
     expect(completeFn).not.toContain("idempotencyKey: newCashierIdempotencyKey");
     const catchFn = completeFn.slice(completeFn.indexOf("} catch (error)"));
     expect(catchFn).not.toContain("settleKeyRef.current = null");

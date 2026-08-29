@@ -37,6 +37,7 @@ import {
   type CashierRegisterGapKind,
 } from "@/lib/cashier-workspace/cashierRegisterGap";
 import {
+  cashierPendingSaleAttemptAppliesToOrder,
   clearCashierPendingSaleAttempt,
   readCashierPendingSaleAttempt,
   writeCashierPendingSaleAttempt,
@@ -211,6 +212,7 @@ export function CashierWorkspacePanel({
   >(null);
   const settleKeyRef = useRef<string | null>(null);
   const paymentIntentRef = useRef<string | null>(null);
+  const saleAttemptOrderIdRef = useRef<number | null>(null);
   const cashierFlowIdRef = useRef<string | null>(null);
 
   function endCashierPaymentFlow(outcome: CashierPaymentFlowOutcome) {
@@ -244,6 +246,7 @@ export function CashierWorkspacePanel({
     settleKeyRef.current = pendingAttempt?.idempotencyKey ?? null;
     paymentIntentRef.current = pendingAttempt?.paymentIntentId ?? null;
     saleAttemptItemsRef.current = pendingAttempt?.items ?? null;
+    saleAttemptOrderIdRef.current = pendingAttempt?.orderId ?? null;
     const snapshot = readCashierDirectSale(restaurantId);
     if (snapshot) {
       const lines = snapshot.invoice?.lines ?? [];
@@ -628,6 +631,7 @@ export function CashierWorkspacePanel({
     saleAttemptItemsRef.current = null;
     settleKeyRef.current = null;
     paymentIntentRef.current = null;
+    saleAttemptOrderIdRef.current = null;
     setTicket([]);
     setSelectedOrderId(null);
     setOpenCheck(null);
@@ -687,7 +691,13 @@ export function CashierWorkspacePanel({
       return;
     }
     const pendingItems = saleAttemptItemsRef.current;
+    const currentOrderId =
+      directSale && directSale.orderId > 0 ? directSale.orderId : null;
     if (
+      cashierPendingSaleAttemptAppliesToOrder(
+        { orderId: saleAttemptOrderIdRef.current },
+        currentOrderId
+      ) &&
       settleKeyRef.current &&
       pendingItems &&
       !cashierTicketMatchesSaleAttempt(ticket, pendingItems)
@@ -807,13 +817,23 @@ export function CashierWorkspacePanel({
       return;
     }
     const pendingItems = saleAttemptItemsRef.current;
-    if (
-      settleKeyRef.current &&
-      pendingItems &&
-      !cashierTicketMatchesSaleAttempt(confirmItems, pendingItems)
-    ) {
-      toast.error(t("saleRetrySameItems"));
-      return;
+    const pendingApplies = cashierPendingSaleAttemptAppliesToOrder(
+      { orderId: saleAttemptOrderIdRef.current },
+      inboundOrderId
+    );
+    if (pendingApplies) {
+      if (
+        settleKeyRef.current &&
+        pendingItems &&
+        !cashierTicketMatchesSaleAttempt(confirmItems, pendingItems)
+      ) {
+        toast.error(t("saleRetrySameItems"));
+        return;
+      }
+    } else {
+      settleKeyRef.current = null;
+      paymentIntentRef.current = null;
+      saleAttemptItemsRef.current = null;
     }
     cashierPaymentFlowTiming.mark(
       cashierFlowIdRef.current,
@@ -828,10 +848,12 @@ export function CashierWorkspacePanel({
       paymentIntentRef.current = newCashierPaymentIntentId();
     }
     saleAttemptItemsRef.current = confirmItems;
+    saleAttemptOrderIdRef.current = inboundOrderId;
     writeCashierPendingSaleAttempt(restaurantId, {
       idempotencyKey: settleKeyRef.current,
       paymentIntentId: paymentIntentRef.current,
       items: confirmItems,
+      orderId: inboundOrderId,
     });
     try {
       cashierPaymentFlowTiming.mark(
