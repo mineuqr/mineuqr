@@ -51,6 +51,7 @@ describe("ORDER-CARD-OPERATIONAL-PRINT-WINDOWS-1 architecture", () => {
     expect(dialog).toContain("printOperationalOrderTicket");
     expect(ticket).toContain("window.print()");
     expect(ticket).toContain("function printOperationalOrderTicket");
+    expect(ticket).toContain("OPERATIONAL_ORDER_TICKET_PRINT_BODY_CLASS");
     expect(ticket).toContain("operationalDisplayReference");
     const printBranch = panel.slice(
       panel.indexOf("isPrintOrderAction(actionId)"),

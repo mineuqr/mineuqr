@@ -1,7 +1,9 @@
 /**
  * ORDER-CARD-OPERATIONAL-PRINT-WINDOWS-1
  * Windows Print Preview for the operational Order Ticket.
- * Reuses Cashier/Settlement Dialog + window.print() — not RLC/connector.
+ * Reuses Cashier/Settlement Dialog + existing browser print invocation.
+ * ORDER-CARD-PRINT-ONE-PAGE-LAYOUT-FIX-1 — isolation body class hides #root
+ * during print so the dashboard cannot occupy a blank first page.
  */
 
 import { Button } from "@/components/ui/button";
@@ -63,7 +65,10 @@ export function OperationalOrderTicketDialog({
           >
             <div className="space-y-1 text-center">
               <p className="text-lg font-semibold tabular-nums tracking-wide">
-                {t("orderNumber")}: {ticket.orderReference}
+                {t("orderNumber")}:{" "}
+                <span dir="ltr" className="inline-block">
+                  {ticket.orderReference}
+                </span>
               </p>
               {ticket.tableOrChannelLabel ? (
                 <p className="text-muted-foreground">

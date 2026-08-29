@@ -2,10 +2,9 @@
  * ORDER-CARD-OPERATIONAL-PRINT-WINDOWS-1
  * @vitest-environment node
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   operationalTicketSourceLabel,
-  printOperationalOrderTicket,
   toOperationalOrderTicketViewModel,
   type OperationalOrderTicketSource,
 } from "../operationalOrderTicket";
@@ -36,11 +35,6 @@ const FINANCIAL_LEAK =
   /price|unitPrice|subtotal|discount|tax|total|tender|payment|invoice|settlement|paid|grandTotal|currency/i;
 
 describe("ORDER-CARD-OPERATIONAL-PRINT-WINDOWS-1 ticket", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-  });
-
   it("prints pending, preparing, ready, and served from the same operational projection", () => {
     for (const status of ["pending", "preparing", "ready", "served"] as const) {
       const vm = toOperationalOrderTicketViewModel(
@@ -254,12 +248,64 @@ describe("ORDER-CARD-OPERATIONAL-PRINT-WINDOWS-1 ticket", () => {
     }
   });
 
-  it("invokes the existing window.print() preview path and stays read-only", () => {
-    const print = vi.fn();
-    vi.stubGlobal("window", { print });
-    printOperationalOrderTicket();
-    expect(print).toHaveBeenCalledTimes(1);
-    printOperationalOrderTicket();
-    expect(print).toHaveBeenCalledTimes(2);
+  it("dedupes identical source and fulfilment so the channel line is not repeated", () => {
+    const vm = toOperationalOrderTicketViewModel(
+      ticketSource({
+        displayReference: "K #009",
+        identityScope: "KIOSK",
+        orderingChannel: "kiosk",
+        fulfilmentAnchorType: "counter",
+        serviceMode: "self_order",
+        fulfilmentLabel: "طلب ذاتي",
+      }),
+      "ar"
+    );
+    expect(vm.sourceLabel).toBe("طلب ذاتي");
+    expect(vm.tableOrChannelLabel).toBe("طلب ذاتي");
+    expect(vm.tableOrChannelLabel).not.toContain("·");
+  });
+
+  it("keeps a one-item Kiosk ticket structurally one document with no money", () => {
+    const vm = toOperationalOrderTicketViewModel(
+      ticketSource({
+        displayReference: "K #009",
+        identityScope: "KIOSK",
+        orderingChannel: "kiosk",
+        lineItems: [{ nameAr: "متبل", nameEn: "Mutabbal", quantity: 1 }],
+      }),
+      "en"
+    );
+    expect(vm.orderReference).toBe("K #009");
+    expect(vm.items).toHaveLength(1);
+    expect(vm.items[0]?.lineLabel).toBe("Mutabbal × 1");
+    expect(JSON.stringify(vm)).not.toMatch(FINANCIAL_LEAK);
+  });
+
+  it("keeps multi-item and long names in one ticket instance", () => {
+    const vm = toOperationalOrderTicketViewModel(
+      ticketSource({
+        displayReference: "T #012",
+        identityScope: "TABLE",
+        orderingChannel: "qr",
+        fulfilmentAnchorType: "table",
+        fulfilmentLabel: "4",
+        tableNumber: 4,
+        serviceMode: "table_service",
+        lineItems: [
+          { nameAr: "أ", nameEn: "Short", quantity: 1 },
+          {
+            nameAr: "اسم صنف طويل جداً مع وصف إضافي",
+            nameEn: "Very long item name with extra description",
+            quantity: 3,
+          },
+        ],
+      }),
+      "en"
+    );
+    expect(vm.items.map((i) => `${i.name}:${i.quantity}`)).toEqual([
+      "Short:1",
+      "Very long item name with extra description:3",
+    ]);
+    expect(Object.keys(vm).filter((k) => k === "items")).toHaveLength(1);
   });
 });

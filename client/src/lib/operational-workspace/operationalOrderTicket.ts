@@ -20,6 +20,14 @@ export type OperationalOrderTicketLang = "ar" | "en";
 export const OPERATIONAL_ORDER_TICKET_PRINT_ROOT_ID =
   "operational-order-ticket-print" as const;
 
+/**
+ * ORDER-CARD-PRINT-ONE-PAGE-LAYOUT-FIX-1 —
+ * Body class scopes @media print isolation to the operational ticket.
+ * Does not affect Cashier, Settlement, or shift-closing print surfaces.
+ */
+export const OPERATIONAL_ORDER_TICKET_PRINT_BODY_CLASS =
+  "printing-operational-order-ticket" as const;
+
 const SOURCE_LABELS = {
   counter: { ar: "الكاشير", en: "Counter" },
   table_order: { ar: "طلب طاولة", en: "Table Order" },
@@ -151,7 +159,10 @@ export function toOperationalOrderTicketViewModel(
     },
     { isAr, tableUnit }
   );
-  const tableOrChannelLabel = [sourceLabel, fulfilment].filter(Boolean).join(" · ");
+  const tableOrChannelLabel =
+    sourceLabel && fulfilment && sourceLabel !== fulfilment
+      ? `${sourceLabel} · ${fulfilment}`
+      : sourceLabel || fulfilment;
 
   return {
     orderReference,
@@ -170,8 +181,26 @@ export function toOperationalOrderTicketViewModel(
   };
 }
 
-/** Same browser/Windows print invocation used by Cashier, Settlement, and Drawer. */
+/**
+ * Same window.print() path as Cashier/Settlement/Drawer.
+ * Isolation body class matches Drawer: display:none on the app shell so
+ * min-height:100% #root cannot produce a blank first page.
+ */
 export function printOperationalOrderTicket(): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  const body = document.body;
+  body.classList.add(OPERATIONAL_ORDER_TICKET_PRINT_BODY_CLASS);
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    body.classList.remove(OPERATIONAL_ORDER_TICKET_PRINT_BODY_CLASS);
+    window.removeEventListener("afterprint", cleanup);
+  };
+
+  window.addEventListener("afterprint", cleanup);
   window.print();
+  window.setTimeout(cleanup, 2_000);
 }
