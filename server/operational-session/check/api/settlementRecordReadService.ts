@@ -15,8 +15,10 @@ import {
   sortSettlementRecordsNewestFirst,
   type SettlementRecord,
 } from "@shared/operational-session";
-import { getOrderById, getOrderItemsByOrderId } from "../../../db";
+import { getOrderById, getOrderItemsByOrderId, getOrdersByIds } from "../../../db";
 import { mapOrderDisplayIdentityFields } from "../../../order/read/presentation/mapOrderDisplayIdentity";
+import { mapCashierInvoiceNumbersByOrderIds } from "../../../pos/cashier-invoice/cashierInvoiceRepository";
+import { settlementSourceChannelFromOrderingChannel } from "./settlementSourceChannel";
 import {
   findSettlementRecordById,
   listSettlementRecordsForCheck,
@@ -42,6 +44,8 @@ import {
   toSettlementRecordHistoryItemDto,
   toSettlementRecordReceiptDto,
   withSettlementRecordAttributionDisplay,
+  withSettlementRecordFinancialIdentity,
+  withSettlementRecordHistoryFinancialIdentity,
 } from "./settlementRecordApiMapper";
 import {
   PaidSaleReceiptIdentityError,
@@ -64,6 +68,9 @@ async function enrichOrders(
         orderNumber: order.orderNumber,
         businessDay: order.businessDay ?? null,
         dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+        identityScope: order.identityScope ?? null,
+        fulfilmentAnchorType: order.fulfilmentAnchorType ?? null,
+        serviceMode: order.serviceMode ?? null,
       });
       out.push({
         orderId: ref.orderId,
@@ -106,32 +113,67 @@ async function enrichItemsSnapshot(
   return lines;
 }
 
+async function financialIdentityForOrderIds(
+  restaurantId: number,
+  orderIds: readonly number[]
+): Promise<{ invoiceNumber: string | null; sourceChannel: string | null }> {
+  const uniqueIds = [...new Set(orderIds.filter((id) => id > 0))];
+  if (uniqueIds.length === 0) {
+    return { invoiceNumber: null, sourceChannel: null };
+  }
+  const [invoices, orders] = await Promise.all([
+    mapCashierInvoiceNumbersByOrderIds({ restaurantId, orderIds: uniqueIds }),
+    getOrdersByIds(restaurantId, uniqueIds),
+  ]);
+  let invoiceNumber: string | null = null;
+  let sourceChannel: string | null = null;
+  for (const orderId of uniqueIds) {
+    const serial = invoices.get(orderId);
+    if (serial && !invoiceNumber) invoiceNumber = serial;
+  }
+  for (const order of orders) {
+    const channel = settlementSourceChannelFromOrderingChannel(
+      order.orderingChannel
+    );
+    if (channel && !sourceChannel) sourceChannel = channel;
+  }
+  return { invoiceNumber, sourceChannel };
+}
+
 async function toEnrichedDetail(
   restaurantId: number,
   record: SettlementRecord
 ): Promise<SettlementRecordDetailDto> {
-  const [orders, itemsSnapshot, attribution, refundSequence] = await Promise.all([
-    enrichOrders(restaurantId, record),
-    enrichItemsSnapshot(restaurantId, record),
-    loadSettlementRecordAttributionDisplay({
-      restaurantId,
-      settlementRecordId: record.settlementRecordId,
-    }),
-    record.recordKind === "refund"
-      ? findRefundDocumentSequenceByRecordId({
-          restaurantId,
-          settlementRecordId: record.settlementRecordId,
-        })
-      : Promise.resolve(null),
-  ]);
-  return withSettlementRecordAttributionDisplay(
-    toSettlementRecordDetailDto({
-      record,
-      orders,
-      itemsSnapshot,
-      refundSequence,
-    }),
-    attribution
+  const [orders, itemsSnapshot, attribution, refundSequence, financialIdentity] =
+    await Promise.all([
+      enrichOrders(restaurantId, record),
+      enrichItemsSnapshot(restaurantId, record),
+      loadSettlementRecordAttributionDisplay({
+        restaurantId,
+        settlementRecordId: record.settlementRecordId,
+      }),
+      record.recordKind === "refund"
+        ? findRefundDocumentSequenceByRecordId({
+            restaurantId,
+            settlementRecordId: record.settlementRecordId,
+          })
+        : Promise.resolve(null),
+      financialIdentityForOrderIds(
+        restaurantId,
+        record.orderRefs.map((ref) => ref.orderId)
+      ),
+    ]);
+  return withSettlementRecordFinancialIdentity(
+    withSettlementRecordAttributionDisplay(
+      toSettlementRecordDetailDto({
+        record,
+        orders,
+        itemsSnapshot,
+        refundSequence,
+      }),
+      attribution
+    ),
+    financialIdentity
   );
 }
 
@@ -146,12 +188,44 @@ async function toHistoryItems(
     restaurantId,
     settlementRecordIds: refundIds,
   });
-  return records.map((record) =>
-    toSettlementRecordHistoryItemDto(
-      record,
-      sequenceMap.get(record.settlementRecordId) ?? null
-    )
+  const allOrderIds = records.flatMap((record) =>
+    record.orderRefs.map((ref) => ref.orderId)
   );
+  const uniqueOrderIds = [...new Set(allOrderIds.filter((id) => id > 0))];
+  const [invoices, orders] =
+    uniqueOrderIds.length === 0
+      ? [new Map<number, string>(), [] as Awaited<ReturnType<typeof getOrdersByIds>>]
+      : await Promise.all([
+          mapCashierInvoiceNumbersByOrderIds({
+            restaurantId,
+            orderIds: uniqueOrderIds,
+          }),
+          getOrdersByIds(restaurantId, uniqueOrderIds),
+        ]);
+  const channelByOrderId = new Map<number, string>();
+  for (const order of orders) {
+    const channel = settlementSourceChannelFromOrderingChannel(
+      order.orderingChannel
+    );
+    if (channel) channelByOrderId.set(order.id, channel);
+  }
+  return records.map((record) => {
+    let invoiceNumber: string | null = null;
+    let sourceChannel: string | null = null;
+    for (const ref of record.orderRefs) {
+      const serial = invoices.get(ref.orderId);
+      if (serial && !invoiceNumber) invoiceNumber = serial;
+      const channel = channelByOrderId.get(ref.orderId);
+      if (channel && !sourceChannel) sourceChannel = channel;
+    }
+    return withSettlementRecordHistoryFinancialIdentity(
+      toSettlementRecordHistoryItemDto(
+        record,
+        sequenceMap.get(record.settlementRecordId) ?? null
+      ),
+      { invoiceNumber, sourceChannel }
+    );
+  });
 }
 
 export class SettlementRecordReadService {

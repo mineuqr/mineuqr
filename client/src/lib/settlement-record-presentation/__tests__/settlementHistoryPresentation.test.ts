@@ -32,7 +32,7 @@ describe("formatOperationalSettlementNumber", () => {
         checkId: 12,
         settlementRecordId: "sr:1:12:refund:2",
       })
-    ).toBe("ST-000012-2");
+    ).toBe("ST-000012");
   });
 
   it("never exposes restaurantId or sr: prefix", () => {
@@ -68,7 +68,9 @@ describe("settlementQuickRangeBounds", () => {
 describe("toSettlementHistoryRowViewModel rationalization", () => {
   const sample: SettlementRecordHistoryItemApiDto = {
     settlementRecordId: "sr:720007:360004:settlement:1",
-    settlementNumber: "sr:720007:360004:settlement:1",
+    settlementNumber: "ST-360004",
+    documentNumber: "ST-360004",
+    documentType: "settlement",
     settlementTime: "2026-07-24T10:22:00.000Z",
     sourceType: "session",
     sourceNumber: "2310003",
@@ -93,5 +95,19 @@ describe("toSettlementHistoryRowViewModel rationalization", () => {
     expect(row.settlementTimeDateLabel.length).toBeGreaterThan(0);
     expect(row.settlementTimeClockLabel.length).toBeGreaterThan(0);
     expect(row.settlementNumber).not.toContain("sr:");
+  });
+
+  it("shows Order source channel and Invoice serial when present", () => {
+    const row = toSettlementHistoryRowViewModel(
+      {
+        ...sample,
+        sourceChannel: "self_order",
+        invoiceNumber: "000042",
+      },
+      "en"
+    );
+    expect(row.sourceLabel).toBe("Self-Order");
+    expect(row.invoiceNumber).toBe("000042");
+    expect(row.sourceLabel).not.toContain("T #");
   });
 });

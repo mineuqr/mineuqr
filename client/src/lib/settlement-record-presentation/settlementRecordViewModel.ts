@@ -59,6 +59,25 @@ function methodLabel(method: string, language: PresentationLanguage): string {
   }
 }
 
+function settlementSourceChannelLabel(
+  sourceChannel: string | null | undefined,
+  language: SettlementRecordLang
+): string | null {
+  if (sourceChannel === "counter") {
+    return settlementRecordUiLabel("sourceChannelCounter", language);
+  }
+  if (sourceChannel === "table_order") {
+    return settlementRecordUiLabel("sourceChannelTableOrder", language);
+  }
+  if (sourceChannel === "waiter_order") {
+    return settlementRecordUiLabel("sourceChannelWaiterOrder", language);
+  }
+  if (sourceChannel === "self_order") {
+    return settlementRecordUiLabel("sourceChannelSelfOrder", language);
+  }
+  return null;
+}
+
 export type SettlementHistoryRowViewModel = Readonly<{
   settlementRecordId: string;
   settlementNumber: string;
@@ -71,6 +90,7 @@ export type SettlementHistoryRowViewModel = Readonly<{
   businessDay: string;
   sourceLabel: string;
   sourceType: "session" | "check";
+  invoiceNumber: string | null;
   recordKind: string;
   recordGeneration: number;
   generationLabel: string | null;
@@ -99,9 +119,10 @@ export function toSettlementHistoryRowViewModel(
     .join(", ");
 
   const sourceTypeLabel =
-    item.sourceType === "session"
+    settlementSourceChannelLabel(item.sourceChannel, language) ??
+    (item.sourceType === "session"
       ? settlementRecordUiLabel("sessionSource", language)
-      : settlementRecordUiLabel("checkSource", language);
+      : settlementRecordUiLabel("checkSource", language));
 
   const time = formatSettlementHistoryTimeParts(item.settlementTime, language);
 
@@ -134,7 +155,10 @@ export function toSettlementHistoryRowViewModel(
     settlementTimeDateLabel: time.dateLabel,
     settlementTimeClockLabel: time.timeLabel,
     businessDay: item.businessDay,
-    sourceLabel: `${sourceTypeLabel} #${item.sourceNumber}`,
+    sourceLabel: item.sourceChannel
+      ? sourceTypeLabel
+      : `${sourceTypeLabel} #${item.sourceNumber}`,
+    invoiceNumber: item.invoiceNumber?.trim() || null,
     sourceType: item.sourceType,
     recordKind: item.recordKind,
     recordGeneration: item.recordGeneration,
@@ -158,6 +182,7 @@ export type SettlementDetailViewModel = Readonly<{
   settlementStatusLabel: string;
   sourceTypeLabel: string;
   sourceIdentifier: string;
+  invoiceNumber: string | null;
   checkId: number;
   recordKind: string;
   outcome: string;
@@ -194,10 +219,15 @@ export function toSettlementDetailViewModel(
   language: SettlementRecordLang
 ): SettlementDetailViewModel {
   const sym = detail.financialSnapshot.currencySymbol;
+  const channelLabel = settlementSourceChannelLabel(
+    detail.sourceChannel,
+    language
+  );
   const sourceTypeLabel =
-    detail.sourceType === "session"
+    channelLabel ??
+    (detail.sourceType === "session"
       ? settlementRecordUiLabel("sessionSource", language)
-      : settlementRecordUiLabel("checkSource", language);
+      : settlementRecordUiLabel("checkSource", language));
   const priorId = detail.priorSettlementRecordId;
   const documentType =
     detail.documentType ??
@@ -225,7 +255,10 @@ export function toSettlementDetailViewModel(
     settlementTimeLabel: formatTime(detail.settlementTime, language),
     settlementStatusLabel: settlementStatusLabel(detail.settlementStatus, language),
     sourceTypeLabel,
-    sourceIdentifier: `${sourceTypeLabel} #${detail.sourceIdentifier}`,
+    sourceIdentifier: channelLabel
+      ? channelLabel
+      : `${sourceTypeLabel} #${detail.sourceIdentifier}`,
+    invoiceNumber: detail.invoiceNumber?.trim() || null,
     checkId: detail.checkId,
     recordKind: detail.recordKind,
     outcome: detail.outcome,
@@ -291,6 +324,8 @@ export type SettlementReceiptViewModel = Readonly<{
   financial: SettlementDetailViewModel["financial"];
   grandTotalLabel: string;
   orders: SettlementDetailViewModel["orders"];
+  invoiceNumber: string | null;
+  sourceChannelLabel: string | null;
 }>;
 
 export function toSettlementReceiptViewModel(
@@ -309,6 +344,8 @@ export function toSettlementReceiptViewModel(
     settlementStatus: receipt.settlementStatus,
     sourceType: "check",
     sourceIdentifier: "",
+    sourceChannel: receipt.sourceChannel ?? null,
+    invoiceNumber: receipt.invoiceNumber ?? null,
     recordKind: receipt.recordKind,
     recordGeneration: receipt.recordGeneration,
     priorSettlementRecordId: receipt.priorSettlementRecordId,
@@ -345,6 +382,11 @@ export function toSettlementReceiptViewModel(
     financial: detail.financial,
     grandTotalLabel: detail.grandTotalLabel,
     orders: detail.orders,
+    invoiceNumber: detail.invoiceNumber,
+    sourceChannelLabel: settlementSourceChannelLabel(
+      receipt.sourceChannel,
+      language
+    ),
   };
 }
 

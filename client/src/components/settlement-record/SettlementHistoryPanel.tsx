@@ -322,6 +322,9 @@ export function SettlementHistoryPanel({
                       {settlementRecordUiLabel("settlementTime", language)}
                     </SemanticTableHead>
                     <SemanticTableHead density="ledger">
+                      {settlementRecordUiLabel("invoiceNumber", language)}
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ledger">
                       {settlementRecordUiLabel("source", language)}
                     </SemanticTableHead>
                     <SemanticTableHead density="ledger">
@@ -372,6 +375,12 @@ export function SettlementHistoryPanel({
                             {row.businessDay}
                           </div>
                         </div>
+                      </SemanticTableCell>
+                      <SemanticTableCell
+                        density="ledger"
+                        className="tabular-nums"
+                      >
+                        {row.invoiceNumber ?? "—"}
                       </SemanticTableCell>
                       <SemanticTableCell density="ledger">
                         {row.sourceLabel}

@@ -104,6 +104,8 @@ export function toSettlementRecordHistoryItemDto(
     settlementTime: settlementTimeOf(record),
     sourceType: sourceTypeOf(record),
     sourceNumber: sourceNumberOf(record),
+    sourceChannel: null,
+    invoiceNumber: null,
     grandTotal: String(record.grandTotal),
     currencyCode: record.currencySnapshot.currencyCode,
     currencySymbol: record.currencySnapshot.currencySymbol,
@@ -146,6 +148,8 @@ export function toSettlementRecordDetailDto(input: {
     settlementStatus: settlementStatusOf(record),
     sourceType: sourceTypeOf(record),
     sourceIdentifier: sourceNumberOf(record),
+    sourceChannel: null,
+    invoiceNumber: null,
     recordKind: record.recordKind,
     recordGeneration: record.recordGeneration,
     priorSettlementRecordId: record.priorSettlementRecordId,
@@ -190,6 +194,35 @@ export function withSettlementRecordAttributionDisplay(
   return { ...detail, attribution };
 }
 
+/** Invoice serial + Order source channel — presentation only. */
+export function withSettlementRecordFinancialIdentity(
+  detail: SettlementRecordDetailDto,
+  identity: {
+    invoiceNumber: string | null;
+    sourceChannel: string | null;
+  }
+): SettlementRecordDetailDto {
+  return {
+    ...detail,
+    invoiceNumber: identity.invoiceNumber,
+    sourceChannel: identity.sourceChannel,
+  };
+}
+
+export function withSettlementRecordHistoryFinancialIdentity(
+  item: SettlementRecordHistoryItemDto,
+  identity: {
+    invoiceNumber: string | null;
+    sourceChannel: string | null;
+  }
+): SettlementRecordHistoryItemDto {
+  return {
+    ...item,
+    invoiceNumber: identity.invoiceNumber,
+    sourceChannel: identity.sourceChannel,
+  };
+}
+
 export function toSettlementRecordReceiptDto(
   detail: SettlementRecordDetailDto
 ): SettlementRecordReceiptDto {
@@ -206,6 +239,8 @@ export function toSettlementRecordReceiptDto(
     recordGeneration: detail.recordGeneration,
     priorSettlementRecordId: detail.priorSettlementRecordId,
     businessDay: detail.audit.businessDay,
+    invoiceNumber: detail.invoiceNumber,
+    sourceChannel: detail.sourceChannel,
     orders: detail.orders,
     itemsSnapshot: detail.itemsSnapshot,
     paymentMethods: detail.paymentMethods,

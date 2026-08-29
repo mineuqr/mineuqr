@@ -17,6 +17,7 @@ import {
 import { listProductionCollectionFactsByOrderId } from "../../payment/collection-fact/collectionFactRepository";
 import { cashierInvoiceNumberForOrder } from "../../../pos/cashier-invoice/cashierInvoiceRepository";
 import type { SettlementRecordReceiptDto } from "./settlementRecordApiDtos";
+import { settlementSourceChannelFromOrderingChannel } from "./settlementSourceChannel";
 
 export class PaidSaleReceiptIdentityError extends Error {
   constructor(message: string) {
@@ -41,6 +42,7 @@ function toReceiptFromCollectionFact(input: {
   fact: CollectionFact;
   displayReference: string | null;
   invoiceNumber: string | null;
+  sourceChannel: string | null;
   itemsSnapshot: SettlementRecordReceiptDto["itemsSnapshot"];
 }): SettlementRecordReceiptDto {
   const { fact } = input;
@@ -63,6 +65,8 @@ function toReceiptFromCollectionFact(input: {
     recordGeneration: 1,
     priorSettlementRecordId: null,
     businessDay: fact.businessDay,
+    invoiceNumber: input.invoiceNumber?.trim() || null,
+    sourceChannel: input.sourceChannel,
     orders: [
       {
         orderId: fact.orderId,
@@ -163,6 +167,9 @@ export async function resolvePaidSaleReceiptFromCollectionFact(input: {
     orderNumber: order.orderNumber?.trim() || String(input.orderId),
     businessDay: order.businessDay ?? null,
     dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+    identityScope: order.identityScope ?? null,
+    fulfilmentAnchorType: order.fulfilmentAnchorType ?? null,
+    serviceMode: order.serviceMode ?? null,
   });
   const items = await getOrderItemsByOrderId(input.orderId);
   const itemsSnapshot = items.map((item) => ({
@@ -181,6 +188,9 @@ export async function resolvePaidSaleReceiptFromCollectionFact(input: {
     fact,
     displayReference: identity.displayReference,
     invoiceNumber,
+    sourceChannel: settlementSourceChannelFromOrderingChannel(
+      order.orderingChannel
+    ),
     itemsSnapshot,
   });
 }

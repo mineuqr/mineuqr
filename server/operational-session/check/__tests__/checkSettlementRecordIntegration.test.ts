@@ -8,11 +8,17 @@ const mocks = vi.hoisted(() => ({
   findSettlementRecordByIdentity: vi.fn(),
   insertSettlementRecord: vi.fn(),
   existsSettlementRecord: vi.fn(),
+  listProductionCollectionFactsForRefundAnchor: vi.fn(),
 }));
 
 vi.mock("../checkOrderMembershipRepository", () => ({
   listActiveOrderIdsForCheck: (...a: unknown[]) =>
     mocks.listActiveOrderIdsForCheck(...a),
+}));
+
+vi.mock("../../payment/collection-fact/collectionFactRepository", () => ({
+  listProductionCollectionFactsForRefundAnchor: (...a: unknown[]) =>
+    mocks.listProductionCollectionFactsForRefundAnchor(...a),
 }));
 
 vi.mock("../settlementRecordRepository", () => {
@@ -73,6 +79,7 @@ describe("createSettlementRecordForCheckFinalize", () => {
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
     mocks.findSettlementRecordByIdentity.mockResolvedValue(null);
     mocks.insertSettlementRecord.mockResolvedValue(7);
+    mocks.listProductionCollectionFactsForRefundAnchor.mockResolvedValue([]);
   });
 
   it("applies Settlement Record with copied freeze values", async () => {
@@ -174,6 +181,74 @@ describe("createSettlementRecordForCheckFinalize", () => {
     });
 
     expect(result.outcome).toBe("already_applied");
+  });
+
+  it("uses unique production Collection Fact money when Check freeze differs", async () => {
+    mocks.listProductionCollectionFactsForRefundAnchor.mockResolvedValue([
+      {
+        collectionFactId: "pcf_1",
+        restaurantId: 1,
+        orderId: 55,
+        purpose: "production",
+        subtotal: "8.70",
+        discountAmount: "0.00",
+        taxAmount: "1.30",
+        amount: "10.00",
+        taxBreakdown: {
+          totalTaxAmount: "1.30",
+          lines: [],
+        },
+        tenders: [{ paymentMethod: "cash", amount: "10.00" }],
+        committedAt: "2026-07-23T13:05:00.000Z",
+      },
+    ]);
+
+    const result = await createSettlementRecordForCheckFinalize({
+      restaurantId: 1,
+      check,
+      outcome: "paid",
+      freeze: {
+        subtotal: "9.57",
+        billDiscountAmount: "0.00",
+        taxAmount: "1.43",
+        taxBreakdown: { totalTaxAmount: "1.43", lines: [] },
+        grandTotal: "11.00",
+        settledAt: "2026-07-23 13:00:00",
+      },
+      settlementLines: [
+        { paymentMethod: "cash", amount: "11.00", status: "captured" },
+      ],
+      orderSettlements: [],
+      createdAt: "2026-07-23 13:00:00",
+    });
+
+    expect(result.record?.grandTotal).toBe("10.00");
+    expect(result.record?.subtotal).toBe("8.70");
+    expect(result.record?.taxAmount).toBe("1.30");
+    expect(result.record?.paymentSnapshot[0]?.amount).toBe("10.00");
+    expect(result.record?.settledAt).toBe("2026-07-23T13:05:00.000Z");
+  });
+
+  it("keeps Check freeze when no production Collection Fact exists", async () => {
+    const result = await createSettlementRecordForCheckFinalize({
+      restaurantId: 1,
+      check,
+      outcome: "paid",
+      freeze: {
+        subtotal: "20.00",
+        billDiscountAmount: "0.00",
+        taxAmount: "0.00",
+        taxBreakdown: { totalTaxAmount: "0.00", lines: [] },
+        grandTotal: "20.00",
+        settledAt: "2026-07-23 13:00:00",
+      },
+      settlementLines: [
+        { paymentMethod: "cash", amount: "20.00", status: "captured" },
+      ],
+      orderSettlements: [],
+      createdAt: "2026-07-23 13:00:00",
+    });
+    expect(result.record?.grandTotal).toBe("20.00");
   });
 
   it("propagates non-duplicate insert failures for TX rollback", async () => {

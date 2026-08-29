@@ -26,6 +26,10 @@ import {
   insertSettlementRecord,
   SettlementRecordPersistenceError,
 } from "./settlementRecordRepository";
+import {
+  resolveUniqueProductionCollectionFactForSettlement,
+  settlementFinancialFactsFromCollectionFact,
+} from "./settlementPaidSaleFinancialFacts";
 
 export type CheckSettlementRecordMutationResult = Readonly<{
   record: SettlementRecord | null;
@@ -103,23 +107,37 @@ export async function createSettlementRecordForCheckFinalize(
     client
   );
 
+  const paidSaleCf =
+    input.outcome === "paid" || input.outcome === "complimentary"
+      ? await resolveUniqueProductionCollectionFactForSettlement({
+          restaurantId: input.restaurantId,
+          checkId: input.check.id,
+          orderIds,
+          client,
+        })
+      : null;
+  const cfFacts = paidSaleCf
+    ? settlementFinancialFactsFromCollectionFact(paidSaleCf)
+    : null;
+
   const freezeCheck: OperationalCheck = {
     ...input.check,
     outcome: input.outcome,
-    subtotal: input.freeze.subtotal,
-    billDiscountAmount: input.freeze.billDiscountAmount,
-    taxAmount: input.freeze.taxAmount,
-    taxBreakdown: input.freeze.taxBreakdown,
-    grandTotal: input.freeze.grandTotal,
-    settledAt: input.freeze.settledAt,
+    subtotal: cfFacts?.subtotal ?? input.freeze.subtotal,
+    billDiscountAmount: cfFacts?.discountAmount ?? input.freeze.billDiscountAmount,
+    taxAmount: cfFacts?.taxAmount ?? input.freeze.taxAmount,
+    taxBreakdown: cfFacts?.taxBreakdown ?? input.freeze.taxBreakdown,
+    grandTotal: cfFacts?.grandTotal ?? input.freeze.grandTotal,
+    settledAt: cfFacts?.settledAt ?? input.freeze.settledAt,
     totalsFrozenAt: createdAt,
   };
 
-  const paymentSnapshotOverride = input.settlementLines?.length
+  const settlementLines = cfFacts?.paymentLines ?? input.settlementLines;
+  const paymentSnapshotOverride = settlementLines?.length
     ? paymentSnapshotFromLines({
         currencyCode: input.check.currencySnapshot.currencyCode,
-        businessTimestamp: createdAt,
-        lines: input.settlementLines,
+        businessTimestamp: cfFacts?.settledAt ?? createdAt,
+        lines: settlementLines,
       })
     : [];
 

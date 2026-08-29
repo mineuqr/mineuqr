@@ -131,6 +131,58 @@ describe("resolvePaidSaleReceiptFromCollectionFact", () => {
     expect(receipt?.outcome).toBe("paid");
   });
 
+  it("preserves Kiosk identityScope on the Order reference", async () => {
+    mocks.getOrderById.mockResolvedValue(
+      order({
+        identityScope: "KIOSK",
+        dailyDisplayNumber: 5,
+        businessDay: "2026-08-27",
+        orderingChannel: "kiosk",
+      })
+    );
+    mocks.cashierInvoiceNumberForOrder.mockResolvedValue("000042");
+    const receipt = await resolvePaidSaleReceiptFromCollectionFact({
+      restaurantId: 1,
+      orderId: 55,
+    });
+    expect(receipt?.invoiceNumber).toBe("000042");
+    expect(receipt?.orders[0]?.displayReference).toBe("K #005");
+    expect(receipt?.orders[0]?.displayReference).not.toBe("T #005");
+    expect(receipt?.sourceChannel).toBe("self_order");
+  });
+
+  it("does not default Waiter or POS Orders to TABLE", async () => {
+    mocks.getOrderById.mockResolvedValue(
+      order({
+        identityScope: "WAITER",
+        dailyDisplayNumber: 5,
+        businessDay: "2026-08-27",
+        orderingChannel: "waiter_tablet",
+      })
+    );
+    const waiter = await resolvePaidSaleReceiptFromCollectionFact({
+      restaurantId: 1,
+      orderId: 55,
+    });
+    expect(waiter?.orders[0]?.displayReference).toBe("WT #005");
+    expect(waiter?.sourceChannel).toBe("waiter_order");
+
+    mocks.getOrderById.mockResolvedValue(
+      order({
+        identityScope: "POS",
+        dailyDisplayNumber: 5,
+        businessDay: "2026-08-27",
+        orderingChannel: "cashier_pos",
+      })
+    );
+    const pos = await resolvePaidSaleReceiptFromCollectionFact({
+      restaurantId: 1,
+      orderId: 55,
+    });
+    expect(pos?.orders[0]?.displayReference).toBe("P #005");
+    expect(pos?.sourceChannel).toBe("counter");
+  });
+
   it("uses Cashier invoice number as document identity without replacing Order displayReference", async () => {
     mocks.cashierInvoiceNumberForOrder.mockResolvedValue("000126");
     const receipt = await resolvePaidSaleReceiptFromCollectionFact({

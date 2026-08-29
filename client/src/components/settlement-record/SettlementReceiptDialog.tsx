@@ -98,6 +98,12 @@ export function SettlementReceiptDialog({
                   ? settlementRecordUiLabel("refundReceiptTitle", language)
                   : settlementRecordUiLabel("receiptTitle", language)}
               </p>
+              {vm.invoiceNumber ? (
+                <p className="text-lg font-semibold tabular-nums tracking-wide">
+                  {settlementRecordUiLabel("invoiceNumber", language)}{" "}
+                  {vm.invoiceNumber}
+                </p>
+              ) : null}
               <p className="text-lg font-semibold tabular-nums tracking-wide">
                 {vm.documentNumber}
               </p>
@@ -106,6 +112,9 @@ export function SettlementReceiptDialog({
                   {settlementRecordUiLabel("originSettlementNumber", language)}{" "}
                   {vm.originSettlementNumber}
                 </p>
+              ) : null}
+              {vm.sourceChannelLabel ? (
+                <p className="text-muted-foreground">{vm.sourceChannelLabel}</p>
               ) : null}
               <p className="text-muted-foreground">{vm.settlementTimeLabel}</p>
               <p className="text-muted-foreground">{vm.statusLabel}</p>

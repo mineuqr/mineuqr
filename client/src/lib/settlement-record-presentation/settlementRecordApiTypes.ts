@@ -14,6 +14,8 @@ export type SettlementRecordHistoryItemApiDto = Readonly<{
   settlementTime: string;
   sourceType: "session" | "check";
   sourceNumber: string;
+  sourceChannel?: string | null;
+  invoiceNumber?: string | null;
   grandTotal: string;
   currencyCode: string;
   currencySymbol: string;
@@ -48,6 +50,8 @@ export type SettlementRecordDetailApiDto = Readonly<{
   settlementStatus: string;
   sourceType: "session" | "check";
   sourceIdentifier: string;
+  sourceChannel?: string | null;
+  invoiceNumber?: string | null;
   recordKind: string;
   recordGeneration: number;
   priorSettlementRecordId: string | null;
@@ -109,6 +113,8 @@ export type SettlementRecordReceiptApiDto = Readonly<{
   recordGeneration: number;
   priorSettlementRecordId: string | null;
   businessDay: string;
+  invoiceNumber?: string | null;
+  sourceChannel?: string | null;
   orders: SettlementRecordDetailApiDto["orders"];
   itemsSnapshot: SettlementRecordDetailApiDto["itemsSnapshot"];
   paymentMethods: SettlementRecordDetailApiDto["paymentMethods"];

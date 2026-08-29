@@ -155,6 +155,12 @@ export function SettlementDetailSheet({
                   label={settlementRecordUiLabel("documentNumber", language)}
                   value={vm.documentNumber}
                 />
+                {vm.invoiceNumber ? (
+                  <SemanticDetailFact
+                    label={settlementRecordUiLabel("invoiceNumber", language)}
+                    value={vm.invoiceNumber}
+                  />
+                ) : null}
                 <SemanticDetailFact
                   label={settlementRecordUiLabel("documentType", language)}
                   value={vm.documentTypeLabel}

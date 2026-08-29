@@ -2,7 +2,7 @@
  * CASHIER-INVOICE-IDENTITY-IMPLEMENTATION-1
  * Persistent Cashier invoice identity. Not Order identity. Not Collection Fact.
  */
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   formatCashierInvoiceNumber,
   type CashierInvoiceAssignment,
@@ -75,6 +75,42 @@ export async function findCashierInvoiceByOrderId(
     .limit(1);
   if (!row) return null;
   return assignment(row.restaurantId, row.orderId, row.sequenceNumber);
+}
+
+/** Read-only batch Invoice serials. Restaurant-scoped. Does not allocate. */
+export async function mapCashierInvoiceNumbersByOrderIds(
+  input: { restaurantId: number; orderIds: readonly number[] },
+  client?: SessionDbClient
+): Promise<ReadonlyMap<number, string>> {
+  const orderIds = [
+    ...new Set(
+      input.orderIds.filter((id) => Number.isInteger(id) && id > 0)
+    ),
+  ];
+  const out = new Map<number, string>();
+  if (orderIds.length === 0) return out;
+  try {
+    const db = await resolveDb(client);
+    const rows = await db
+      .select({
+        orderId: cashierInvoices.orderId,
+        sequenceNumber: cashierInvoices.sequenceNumber,
+      })
+      .from(cashierInvoices)
+      .where(
+        and(
+          eq(cashierInvoices.restaurantId, input.restaurantId),
+          inArray(cashierInvoices.orderId, orderIds)
+        )
+      );
+    for (const row of rows) {
+      out.set(row.orderId, formatCashierInvoiceNumber(row.sequenceNumber));
+    }
+    return out;
+  } catch (error) {
+    if (error instanceof DiningSessionUnavailableError) return out;
+    throw error;
+  }
 }
 
 /**

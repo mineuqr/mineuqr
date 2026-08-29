@@ -32,6 +32,10 @@ export type SettlementRecordHistoryItemDto = Readonly<{
   settlementTime: string;
   sourceType: "session" | "check";
   sourceNumber: string;
+  /** Order.orderingChannel → Counter / Table Order / Waiter Order / Self-Order. */
+  sourceChannel: string | null;
+  /** Cashier Invoice serial for the first enrolled Order; null when none. */
+  invoiceNumber: string | null;
   grandTotal: string;
   currencyCode: string;
   currencySymbol: string;
@@ -94,6 +98,8 @@ export type SettlementRecordDetailDto = Readonly<{
   settlementStatus: string;
   sourceType: "session" | "check";
   sourceIdentifier: string;
+  sourceChannel: string | null;
+  invoiceNumber: string | null;
   recordKind: SettlementRecordKind;
   recordGeneration: number;
   priorSettlementRecordId: string | null;
@@ -155,6 +161,8 @@ export type SettlementRecordReceiptDto = Readonly<{
   recordGeneration: number;
   priorSettlementRecordId: string | null;
   businessDay: string;
+  invoiceNumber: string | null;
+  sourceChannel: string | null;
   orders: readonly SettlementRecordOrderRefDto[];
   itemsSnapshot: readonly SettlementRecordItemSnapshotLineDto[];
   paymentMethods: readonly SettlementRecordPaymentLineDto[];

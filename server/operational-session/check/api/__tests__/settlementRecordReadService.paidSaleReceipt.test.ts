@@ -35,6 +35,8 @@ function detail(
     settlementStatus: "settled",
     sourceType: "check",
     sourceIdentifier: "10",
+    sourceChannel: null,
+    invoiceNumber: null,
     recordKind: "settlement",
     recordGeneration: 1,
     priorSettlementRecordId: null,
@@ -90,6 +92,8 @@ function cfReceipt(
     recordGeneration: 1,
     priorSettlementRecordId: null,
     businessDay: "2026-08-27",
+    invoiceNumber: null,
+    sourceChannel: null,
     orders: [{ orderId: 55, displayReference: "ORD-0055" }],
     itemsSnapshot: [],
     paymentMethods: [
