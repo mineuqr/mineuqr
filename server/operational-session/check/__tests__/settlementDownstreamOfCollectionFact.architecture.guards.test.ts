@@ -1,5 +1,5 @@
 /**
- * SETTLEMENT-DOWNSTREAM-OF-COLLECTION-FACT-BOUNDARY-1
+ * CHECK-FINALIZE-PAYABLE-ISOLATION-1
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -11,33 +11,49 @@ function read(rel: string): string {
   return readFileSync(join(repoRoot, rel), "utf8");
 }
 
-describe("SETTLEMENT-DOWNSTREAM-OF-COLLECTION-FACT-BOUNDARY-1", () => {
-  it("paid-sale Settlement prefers unique production CF over Check freeze", () => {
+describe("CHECK-FINALIZE-PAYABLE-ISOLATION-1", () => {
+  it("resolves current paid-sale Settlement money per enrolled Order", () => {
+    const facts = read(
+      "server/operational-session/check/settlementPaidSaleFinancialFacts.ts"
+    );
     const writer = read(
       "server/operational-session/check/checkSettlementRecordIntegration.ts"
     );
-    expect(writer).toContain("resolveUniqueProductionCollectionFactForSettlement");
-    expect(writer).toContain("settlementFinancialFactsFromCollectionFact");
-    expect(writer).toContain("cfFacts?.grandTotal ?? input.freeze.grandTotal");
+    expect(facts).toContain("resolveProductionCollectionFactsByEnrolledOrders");
+    expect(facts).toContain("settlementFinancialFactsFromOrderResolutions");
+    expect(writer).toContain("resolvePaidSaleSettlementFinancialFacts");
+    expect(writer).not.toContain("facts.length !== 1");
+    expect(facts).not.toMatch(/if \(facts\.length !== 1\) return null/);
+  });
+
+  it("does not let Check-wide CF cardinality suppress a valid Order CF", () => {
+    const facts = read(
+      "server/operational-session/check/settlementPaidSaleFinancialFacts.ts"
+    );
+    expect(facts).toContain("byOrder.get(fact.orderId)");
+    expect(facts).toContain('if (!bucket) continue');
+    expect(facts).toContain("resolution.status === \"unique\"");
+  });
+
+  it("Settlement must not write Invoice, CF, or PAID", () => {
+    const writer = read(
+      "server/operational-session/check/checkSettlementRecordIntegration.ts"
+    );
+    const facts = read(
+      "server/operational-session/check/settlementPaidSaleFinancialFacts.ts"
+    );
     expect(writer).not.toContain("allocateCashierInvoiceForOrder");
     expect(writer).not.toContain("commitCashierProductionCollectionFact");
+    expect(facts).not.toContain("allocateCashierInvoiceForOrder");
+    expect(facts).not.toContain("commitCollectionFact");
+    expect(facts).not.toContain("insertCollectionFact");
   });
 
-  it("Settlement read rematerializes Order display with persisted identityScope", () => {
-    const readSvc = read(
-      "server/operational-session/check/api/settlementRecordReadService.ts"
+  it("uses Order CF over Check freeze when exact CF exists", () => {
+    const writer = read(
+      "server/operational-session/check/checkSettlementRecordIntegration.ts"
     );
-    expect(readSvc).toContain("identityScope: order.identityScope ?? null");
-    expect(readSvc).toContain("mapCashierInvoiceNumbersByOrderIds");
-    expect(readSvc).toContain("settlementSourceChannelFromOrderingChannel");
-  });
-
-  it("does not write Invoice, CF, or PAID from Settlement surfaces", () => {
-    const receipt = read(
-      "server/operational-session/check/api/paidSaleReceiptResolution.ts"
-    );
-    expect(receipt).toContain("identityScope: order.identityScope ?? null");
-    expect(receipt).not.toContain("allocateCashierInvoiceForOrder");
-    expect(receipt).not.toContain("commitCollectionFact");
+    expect(writer).toContain("cfFacts?.grandTotal ?? input.freeze.grandTotal");
+    expect(writer).toContain("resolvePaidSaleSettlementFinancialFacts");
   });
 });

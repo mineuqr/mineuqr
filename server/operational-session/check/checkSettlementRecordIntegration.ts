@@ -26,10 +26,7 @@ import {
   insertSettlementRecord,
   SettlementRecordPersistenceError,
 } from "./settlementRecordRepository";
-import {
-  resolveUniqueProductionCollectionFactForSettlement,
-  settlementFinancialFactsFromCollectionFact,
-} from "./settlementPaidSaleFinancialFacts";
+import { resolvePaidSaleSettlementFinancialFacts } from "./settlementPaidSaleFinancialFacts";
 
 export type CheckSettlementRecordMutationResult = Readonly<{
   record: SettlementRecord | null;
@@ -107,18 +104,15 @@ export async function createSettlementRecordForCheckFinalize(
     client
   );
 
-  const paidSaleCf =
+  const cfFacts =
     input.outcome === "paid" || input.outcome === "complimentary"
-      ? await resolveUniqueProductionCollectionFactForSettlement({
+      ? await resolvePaidSaleSettlementFinancialFacts({
           restaurantId: input.restaurantId,
           checkId: input.check.id,
           orderIds,
           client,
         })
       : null;
-  const cfFacts = paidSaleCf
-    ? settlementFinancialFactsFromCollectionFact(paidSaleCf)
-    : null;
 
   const freezeCheck: OperationalCheck = {
     ...input.check,
