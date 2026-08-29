@@ -38,7 +38,7 @@ describe("WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 architecture guards", () => {
     const service = read(
       "server/operational-device/services/WaiterDeviceOrderingService.ts"
     );
-    expect(service).toContain("resolveOperationalSession");
+    expect(service).toContain("bindWaiterTable");
     expect(service).toContain("identityPlaceOrderService");
     expect(service).toContain('identityScope: "WAITER"');
     expect(service).toContain("rolePermitsWaiterOrdering");

@@ -59,6 +59,44 @@ export function WaiterTableWorkspaceStage({
 
   const query = deviceMode ? deviceQuery : staffQuery;
 
+  if (sessionId <= 0) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white pb-28">
+        <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-900/95 px-4 py-4">
+          <button
+            type="button"
+            onClick={onBackToTables}
+            className="text-xs text-white/60 mb-1"
+          >
+            {ar ? "← الطاولات" : "← Tables"}
+          </button>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold">
+                {ar ? `طاولة ${tableNumber}` : `Table ${tableNumber}`}
+              </h1>
+              <p className="text-sm text-white/60 mt-1">
+                {ar ? "مساحة الطاولة" : "Table workspace"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onAddOrder}
+              className="rounded-xl bg-teal-500 px-4 py-3 font-bold text-sm text-slate-950 shrink-0"
+            >
+              {ar ? "طلب جديد" : "New order"}
+            </button>
+          </div>
+        </header>
+        <main className="px-4 py-5">
+          <p className="text-sm text-white/50 py-10 text-center">
+            {ar ? "لا توجد طلبات لهذه الطاولة" : "No orders for this table"}
+          </p>
+        </main>
+      </div>
+    );
+  }
+
   if (query.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">

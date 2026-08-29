@@ -54,7 +54,7 @@ export function WaiterOrderingClientHost({
         slug,
         stationId,
         tableNumber,
-        sessionId: String(sessionId),
+        sessionId: sessionId > 0 ? String(sessionId) : undefined,
       }),
     [slug, stationId, tableNumber, sessionId]
   );
@@ -74,7 +74,7 @@ export function WaiterOrderingClientHost({
     [slug, shellStage, setLocation, querySuffix, onHostStageNavigate]
   );
 
-  if (!slug || !stationId || !tableNumber || !sessionId) return null;
+  if (!slug || !stationId || !tableNumber) return null;
 
   return (
     <OrderingClientErrorBoundary>

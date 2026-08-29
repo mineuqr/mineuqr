@@ -117,7 +117,7 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
     );
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({ restaurantId: 1 }),
-      { afterPersistInTransaction: hook }
+      expect.objectContaining({ afterPersistInTransaction: hook })
     );
     expect(operationalSession.ensureCheckForOrder).toHaveBeenCalledWith({
       restaurantId: 1,
@@ -220,6 +220,74 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       items: [{ menuItemId: 1, quantity: 1 }],
     });
     expect(Date.now() - started).toBeGreaterThanOrEqual(CHECK_MS - 15);
+  });
+
+  it("defers table Session resolution onto the persist transaction", async () => {
+    const callOrder: string[] = [];
+    vi.mocked(operationalSession.resolveOperationalSession).mockImplementation(
+      async (_request, client) => {
+        callOrder.push(client ? "resolve-in-tx" : "resolve-before");
+        return {
+          session: {
+            id: 44,
+            restaurantId: 1,
+            status: "open",
+            sessionToken: "waiter-session-token",
+            anchor: {
+              anchorType: "table",
+              tableId: 7,
+              tableNumber: 3,
+            },
+            openedAt: "2026-08-29T00:00:00.000Z",
+            settledAt: null,
+            closedAt: null,
+            settlementOutcome: null,
+            totalAmount: null,
+            totalOrders: 0,
+            activeCheckId: 800,
+          },
+          created: true,
+          persistence: "persistent",
+        };
+      }
+    );
+    execute.mockImplementation(async (_command, persist) => {
+      callOrder.push("place");
+      const resolved = await persist?.resolveSessionInTransaction?.({});
+      return {
+        order: { id: 99, sessionId: resolved?.sessionId ?? null },
+        events: [],
+        orderNumber: "ORD-1",
+        trackingToken: "tok",
+        displayReference: "WT #001",
+        totalAmount: "10.00",
+        itemCount: 1,
+        createdAt: "2026-07-14T12:00:00.000Z",
+      };
+    });
+
+    const result = await service.execute(
+      {
+        restaurantId: 1,
+        serviceMode: "table_service",
+        fulfilmentAnchor: createTableFulfilmentAnchor({
+          tableId: 7,
+          tableNumber: 3,
+        }),
+        orderingChannel: "waiter_tablet",
+        identityScope: "WAITER",
+        items: [{ menuItemId: 1, quantity: 1 }],
+      },
+      { resolveTableSessionInTransaction: true }
+    );
+
+    expect(callOrder).toEqual(["place", "resolve-in-tx"]);
+    expect(result.identity.operationalSession.sessionId).toBe(44);
+    expect(result.identity.operationalSession.sessionToken).toBe(
+      "waiter-session-token"
+    );
+    expect(result.sessionPersistence).toBe("persistent");
+    expect(operationalSession.ensureCheckForOrder).not.toHaveBeenCalled();
   });
 });
 

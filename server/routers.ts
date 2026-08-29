@@ -122,6 +122,7 @@ import {
   getWaiterTableWorkspace,
   listWaiterFloorTables,
 } from "./operational-device/services/WaiterTableWorkspaceService";
+import { bindWaiterTable } from "./operational-device/services/bindWaiterTable";
 import { opsRouter } from "./ops/opsRouter";
 import { reportingRouter } from "./reporting-platform";
 import { kitchenRouter } from "./kitchen/read/kitchenRouter";
@@ -2021,8 +2022,8 @@ const tableRouter = router({
 // ─── Dining Session Router (TABLE-MANAGEMENT-1 D4) ─────────────
 /**
  * WAITER-ORDERING-FOUNDATION-1 — staff channel orchestration APIs.
- * Owns restaurant/table access + Session Platform attach only.
- * Does not place orders or own session lifecycle.
+ * Owns restaurant/table access + table binding only.
+ * Does not place orders or open a Session on table select.
  */
 const waiterRouter = router({
   listRestaurants: protectedProcedure.query(async ({ ctx }) => {
@@ -2069,41 +2070,12 @@ const waiterRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "waiter.attachTable");
-      const table = await getTableById(input.tableId);
-      if (
-        !table ||
-        table.restaurantId !== input.restaurantId ||
-        table.tableNumber !== input.tableNumber
-      ) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
-      }
-
       try {
-        const sessionResult = await resolveOperationalSession({
+        return await bindWaiterTable({
           restaurantId: input.restaurantId,
-          anchor: createTableSessionAnchor({
-            tableId: table.id,
-            tableNumber: table.tableNumber,
-          }),
+          tableId: input.tableId,
+          tableNumber: input.tableNumber,
         });
-
-        if (!sessionResult.session) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "تعذر فتح جلسة الطاولة",
-          });
-        }
-
-        return {
-          restaurantId: input.restaurantId,
-          tableId: table.id,
-          tableNumber: table.tableNumber,
-          sessionId: sessionResult.session.id,
-          sessionToken: sessionResult.session.sessionToken,
-          sessionStatus: sessionResult.session.status,
-          created: sessionResult.created,
-          persistence: sessionResult.persistence,
-        };
       } catch (err) {
         throwSessionServiceTrpcError(err);
       }
@@ -2693,7 +2665,7 @@ const orderRouter = router({
   /**
    * WAITER-ORDERING-FOUNDATION-1 — authenticated staff place path.
    * Wraps IdentityPlaceOrderService; forces Business Identity scope WAITER.
-   * Requires restaurant access + existing/resolvable table session token.
+   * Session opens on the first successful Order persist transaction.
    */
   placeAsWaiter: verifiedProcedure
     .input(
@@ -2714,7 +2686,8 @@ const orderRouter = router({
           .string()
           .min(16)
           .max(64)
-          .regex(SESSION_TOKEN_PATTERN),
+          .regex(SESSION_TOKEN_PATTERN)
+          .optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -2733,23 +2706,26 @@ const orderRouter = router({
       try {
         const placeResult = await runOrderCommand(
           () =>
-            identityPlaceOrderService.execute({
-              restaurantId: input.restaurantId,
-              serviceMode: "table_service",
-              fulfilmentAnchor,
-              sessionToken: input.sessionToken,
-              identityScope: "WAITER",
-              orderingChannel: ORDERING_CHANNEL_WAITER_TABLET,
-              customerName: input.customerName,
-              customerPhone: input.customerPhone,
-              notes: input.notes,
-              items: input.items.map((item) => ({
-                menuItemId: item.menuItemId,
-                quantity: item.quantity,
-                notes: item.notes,
-                modifiers: item.modifiers,
-              })),
-            }),
+            identityPlaceOrderService.execute(
+              {
+                restaurantId: input.restaurantId,
+                serviceMode: "table_service",
+                fulfilmentAnchor,
+                sessionToken: input.sessionToken,
+                identityScope: "WAITER",
+                orderingChannel: ORDERING_CHANNEL_WAITER_TABLET,
+                customerName: input.customerName,
+                customerPhone: input.customerPhone,
+                notes: input.notes,
+                items: input.items.map((item) => ({
+                  menuItemId: item.menuItemId,
+                  quantity: item.quantity,
+                  notes: item.notes,
+                  modifiers: item.modifiers,
+                })),
+              },
+              { resolveTableSessionInTransaction: true }
+            ),
           { awaitRelay: false }
         );
 
@@ -2772,6 +2748,7 @@ const orderRouter = router({
           createdAt: placeResult.createdAt,
           status: "pending" as const,
           sessionPersistence: placeResult.sessionPersistence,
+          sessionId: placeResult.identity.operationalSession.sessionId,
           sessionToken: placeResult.identity.operationalSession.sessionToken,
         };
       } catch (err) {

@@ -19,8 +19,8 @@ type Props = {
   onSelectTable: (binding: {
     tableId: number;
     tableNumber: number;
-    sessionId: number;
-    sessionToken: string;
+    sessionId: number | null;
+    sessionToken: string | null;
   }) => void;
   onBack?: () => void;
 };
@@ -78,8 +78,8 @@ export function WaiterTablesStage({
       onSelectTable({
         tableId: attached.tableId,
         tableNumber: attached.tableNumber,
-        sessionId: attached.sessionId,
-        sessionToken: attached.sessionToken,
+        sessionId: attached.sessionId ?? null,
+        sessionToken: attached.sessionToken ?? null,
       });
     } catch (err) {
       const message =

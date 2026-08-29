@@ -85,7 +85,7 @@ describe("WAITER-ORDERING-FOUNDATION-1 architecture guards", () => {
     expect(routers).toContain("assertRestaurantAccess");
     expect(routers).toContain("waiterRouter");
     expect(routers).toContain("attachTable");
-    expect(routers).toContain("resolveOperationalSession");
+    expect(routers).toContain("bindWaiterTable");
   });
 
   it("Business Identity scope includes WAITER → WT", () => {

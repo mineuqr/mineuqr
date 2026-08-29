@@ -8,14 +8,10 @@ import {
   deriveFulfilmentLabel,
 } from "@shared/ordering-platform/orderingIdentityContract";
 import { ORDERING_CHANNEL_WAITER_TABLET } from "@shared/ordering-platform/orderingPlatformContracts";
-import { createTableSessionAnchor } from "@shared/operational-session";
-import {
-  getTableById,
-  getTableByRestaurantAndNumber,
-} from "../../db";
+import { getTableByRestaurantAndNumber } from "../../db";
 import { throwSessionServiceTrpcError } from "../../diningSession/mapSessionErrorToTrpc";
-import { resolveOperationalSession } from "../../operational-session";
 import { identityPlaceOrderService } from "../../order/placeOrderComposition";
+import { bindWaiterTable } from "./bindWaiterTable";
 import { runOrderCommand } from "../../order/application/mapOrderDomainError";
 import type { OperationalDeviceSession } from "../domain/deviceContracts";
 import { rolePermitsWaiterOrdering } from "../domain/deviceRoles";
@@ -56,42 +52,12 @@ export async function attachWaiterTableForDevice(
   input: { tableId: number; tableNumber: number }
 ) {
   assertWaiterDevice(session);
-  const restaurantId = session.restaurantId;
-  const table = await getTableById(input.tableId);
-  if (
-    !table ||
-    table.restaurantId !== restaurantId ||
-    table.tableNumber !== input.tableNumber
-  ) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
-  }
-
   try {
-    const sessionResult = await resolveOperationalSession({
-      restaurantId,
-      anchor: createTableSessionAnchor({
-        tableId: table.id,
-        tableNumber: table.tableNumber,
-      }),
+    return await bindWaiterTable({
+      restaurantId: session.restaurantId,
+      tableId: input.tableId,
+      tableNumber: input.tableNumber,
     });
-
-    if (!sessionResult.session) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "تعذر فتح جلسة الطاولة",
-      });
-    }
-
-    return {
-      restaurantId,
-      tableId: table.id,
-      tableNumber: table.tableNumber,
-      sessionId: sessionResult.session.id,
-      sessionToken: sessionResult.session.sessionToken,
-      sessionStatus: sessionResult.session.status,
-      created: sessionResult.created,
-      persistence: sessionResult.persistence,
-    };
   } catch (err) {
     throwSessionServiceTrpcError(err);
   }
@@ -116,7 +82,7 @@ export async function placeWaiterOrderForDevice(
       notes?: string | null;
       modifiers?: readonly string[] | null;
     }>;
-    sessionToken: string;
+    sessionToken?: string;
   }
 ) {
   assertWaiterDevice(session);
@@ -134,23 +100,26 @@ export async function placeWaiterOrderForDevice(
   try {
     const placeResult = await runOrderCommand(
       () =>
-        identityPlaceOrderService.execute({
-          restaurantId,
-          serviceMode: "table_service",
-          fulfilmentAnchor,
-          sessionToken: input.sessionToken,
-          identityScope: "WAITER",
-          orderingChannel: ORDERING_CHANNEL_WAITER_TABLET,
-          customerName: input.customerName,
-          customerPhone: input.customerPhone,
-          notes: input.notes,
-          items: input.items.map((item) => ({
-            menuItemId: item.menuItemId,
-            quantity: item.quantity,
-            notes: item.notes,
-            modifiers: item.modifiers,
-          })),
-        }),
+        identityPlaceOrderService.execute(
+          {
+            restaurantId,
+            serviceMode: "table_service",
+            fulfilmentAnchor,
+            sessionToken: input.sessionToken,
+            identityScope: "WAITER",
+            orderingChannel: ORDERING_CHANNEL_WAITER_TABLET,
+            customerName: input.customerName,
+            customerPhone: input.customerPhone,
+            notes: input.notes,
+            items: input.items.map((item) => ({
+              menuItemId: item.menuItemId,
+              quantity: item.quantity,
+              notes: item.notes,
+              modifiers: item.modifiers,
+            })),
+          },
+          { resolveTableSessionInTransaction: true }
+        ),
       { awaitRelay: false }
     );
 
@@ -173,6 +142,7 @@ export async function placeWaiterOrderForDevice(
       createdAt: placeResult.createdAt,
       status: "pending" as const,
       sessionPersistence: placeResult.sessionPersistence,
+      sessionId: placeResult.identity.operationalSession.sessionId,
       sessionToken: placeResult.identity.operationalSession.sessionToken,
     };
   } catch (err) {

@@ -90,7 +90,8 @@ const placeWaiterOrderInput = z.object({
     .string()
     .min(16)
     .max(64)
-    .regex(SESSION_TOKEN_PATTERN),
+    .regex(SESSION_TOKEN_PATTERN)
+    .optional(),
 });
 
 /**

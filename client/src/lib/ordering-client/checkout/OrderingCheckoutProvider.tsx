@@ -134,7 +134,7 @@ export function OrderingCheckoutProvider({
         (!identitySubmit && !tableReady) ||
         (identitySubmit &&
           request.identity.placeAuth === "staff" &&
-          !request.sessionToken)
+          request.identity.fulfilmentAnchor.anchorType !== "table")
       ) {
         return {
           ok: false,
@@ -194,8 +194,7 @@ export function OrderingCheckoutProvider({
           const anchor = request.identity.fulfilmentAnchor;
           if (
             request.identity.serviceMode !== "table_service" ||
-            anchor.anchorType !== "table" ||
-            !request.sessionToken
+            anchor.anchorType !== "table"
           ) {
             const error: CheckoutSubmitError = {
               code: "NOT_READY",
@@ -214,7 +213,9 @@ export function OrderingCheckoutProvider({
               tableNumber: anchor.tableNumber,
               fulfilmentLabel: anchor.fulfilmentLabel,
             },
-            sessionToken: request.sessionToken,
+            ...(request.sessionToken
+              ? { sessionToken: request.sessionToken }
+              : {}),
             customerName: customerName || undefined,
             customerPhone: customerPhone || undefined,
             notes: validated.orderNotes ?? undefined,

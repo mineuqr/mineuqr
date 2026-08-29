@@ -4,8 +4,9 @@
  * Canonical path:
  *   OrderingOrderIdentity facts → resolveOperationalSession → PlaceOrderService
  *
- * Channel-agnostic. No channel-specific PlaceOrder forks. No fake tables.
- * QR production continues to use order.create (table) separately.
+ * Table Waiter first Order may defer Session resolution onto the persist
+ * transaction (WAITER-ATTACH-MUST-NOT-OPEN-SESSION-1). No channel-specific
+ * PlaceOrder forks. QR production continues to use order.create separately.
  */
 
 import type { OrderLineInput } from "../../orderPricing";
@@ -30,6 +31,7 @@ import {
   type PlaceOrderResult,
 } from "./PlaceOrderService";
 import type { SaveOrderOptions } from "../repositories/OrderRepository";
+import type { SessionDbClient } from "../../diningSession/sessionRepository";
 
 export type IdentityPlaceOrderCommand = {
   restaurantId: number;
@@ -77,6 +79,11 @@ export class IdentityPlaceOrderService {
        * part of sale.create; Confirm commits Collection Fact from the Order.
        */
       enrollCheck?: boolean;
+      /**
+       * WAITER-ATTACH-MUST-NOT-OPEN-SESSION-1 — table Session opens on the
+       * Order persist transaction. Do not pre-commit Session/Check.
+       */
+      resolveTableSessionInTransaction?: boolean;
     }
   ): Promise<IdentityPlaceOrderResult> {
     const draftIdentity = createOrderIdentity({
@@ -94,23 +101,39 @@ export class IdentityPlaceOrderService {
         "Cashier POS orders cannot join a Dining Session or table"
       );
     }
+
+    const deferTableSession =
+      persist?.resolveTableSessionInTransaction === true &&
+      command.fulfilmentAnchor.anchorType === "table" &&
+      !cashierPos;
+
     const sessionResult = cashierPos
       ? {
           session: null,
           created: false,
           persistence: "ephemeral" as const,
         }
-      : await resolveOperationalSession({
-          restaurantId: command.restaurantId,
-          anchor: sessionAnchorFromFulfilmentAnchor(command.fulfilmentAnchor),
-          sessionToken: command.sessionToken,
-        });
+      : deferTableSession
+        ? {
+            session: null,
+            created: false,
+            persistence: "persistent" as const,
+          }
+        : await resolveOperationalSession({
+            restaurantId: command.restaurantId,
+            anchor: sessionAnchorFromFulfilmentAnchor(command.fulfilmentAnchor),
+            sessionToken: command.sessionToken,
+          });
+
+    let resolvedSessionToken: string | null =
+      sessionResult.session?.sessionToken ?? null;
+    let resolvedPersistence = sessionResult.persistence;
 
     const identity = createOrderIdentity({
       serviceMode: command.serviceMode,
       fulfilmentAnchor: command.fulfilmentAnchor,
       sessionId: sessionResult.session?.id ?? null,
-      sessionToken: sessionResult.session?.sessionToken ?? null,
+      sessionToken: resolvedSessionToken,
     });
 
     const placeCommand = {
@@ -135,15 +158,49 @@ export class IdentityPlaceOrderService {
       items: command.items,
     };
     const enrollCheck = persist?.enrollCheck !== false;
+    const resolveSessionInTransaction = deferTableSession
+      ? async (tx: unknown) => {
+          const opened = await resolveOperationalSession(
+            {
+              restaurantId: command.restaurantId,
+              anchor: sessionAnchorFromFulfilmentAnchor(command.fulfilmentAnchor),
+              sessionToken: command.sessionToken,
+            },
+            tx as SessionDbClient
+          );
+          if (!opened.session) {
+            throw new Error(
+              "Table Operational Session resolution returned no session"
+            );
+          }
+          resolvedSessionToken = opened.session.sessionToken;
+          resolvedPersistence = opened.persistence;
+          return { sessionId: opened.session.id };
+        }
+      : undefined;
     const saveOpts = persist
       ? {
           afterPersistInTransaction: persist.afterPersistInTransaction,
           skipBusinessIdentityAllocation: persist.skipBusinessIdentityAllocation,
+          ...(resolveSessionInTransaction
+            ? { resolveSessionInTransaction }
+            : {}),
         }
-      : undefined;
+      : resolveSessionInTransaction
+        ? { resolveSessionInTransaction }
+        : undefined;
     const result = saveOpts
       ? await this.placeOrder.execute(placeCommand, saveOpts)
       : await this.placeOrder.execute(placeCommand);
+
+    const placedIdentity = deferTableSession
+      ? createOrderIdentity({
+          serviceMode: command.serviceMode,
+          fulfilmentAnchor: command.fulfilmentAnchor,
+          sessionId: result.order.sessionId,
+          sessionToken: resolvedSessionToken,
+        })
+      : identity;
 
     // CHECK-GENERALIZATION-M5 — sessionless / ephemeral channels enroll into Check + Membership.
     // Table Session path keeps Session Check create + dual-write (avoid duplicate sessionless Check).
@@ -151,8 +208,8 @@ export class IdentityPlaceOrderService {
     // enrollCheck: false only skips this post-commit ensureCheckForOrder call.
     if (
       enrollCheck &&
-      (sessionResult.persistence === "ephemeral" ||
-        identity.operationalSession.sessionId == null)
+      (resolvedPersistence === "ephemeral" ||
+        placedIdentity.operationalSession.sessionId == null)
     ) {
       try {
         const orderId = result.order.id;
@@ -181,8 +238,8 @@ export class IdentityPlaceOrderService {
 
     return {
       ...result,
-      identity,
-      sessionPersistence: sessionResult.persistence,
+      identity: placedIdentity,
+      sessionPersistence: resolvedPersistence,
     };
   }
 }

@@ -49,8 +49,8 @@ export type WaiterShellProps = Readonly<{
 type TableBinding = {
   tableId: number;
   tableNumber: number;
-  sessionId: number;
-  sessionToken: string;
+  sessionId: number | null;
+  sessionToken: string | null;
 };
 
 /**
@@ -182,8 +182,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
     return p.toString();
   }, [tableId, tableNumber, sessionId, sessionToken]);
 
-  const orderingBound =
-    tableId > 0 && tableNumber > 0 && sessionId > 0 && !!sessionToken;
+  const orderingBound = tableId > 0 && tableNumber > 0;
 
   const sessionDependentStage =
     stage === "workspace" ||
@@ -193,7 +192,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
 
   const sessionBinding = useMemo(
     () =>
-      orderingBound && slug
+      orderingBound && slug && sessionId > 0 && sessionToken
         ? {
             slug,
             tableNumber,
@@ -287,8 +286,10 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
     const p = new URLSearchParams();
     p.set("tableId", String(binding.tableId));
     p.set("table", String(binding.tableNumber));
-    p.set("sessionId", String(binding.sessionId));
-    p.set("session", binding.sessionToken);
+    if (binding.sessionId && binding.sessionToken) {
+      p.set("sessionId", String(binding.sessionId));
+      p.set("session", binding.sessionToken);
+    }
     setLocation(`/waiter/${slug}/workspace?${p.toString()}`);
   };
 
@@ -429,6 +430,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
 
   if (
     sessionDependentStage &&
+    sessionBinding &&
     (bindingGuard.validating || !bindingGuard.isValid)
   ) {
     return (

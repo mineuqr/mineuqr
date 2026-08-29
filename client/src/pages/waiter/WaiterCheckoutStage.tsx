@@ -17,7 +17,7 @@ type Props = {
   qs: string;
   tableId: number;
   tableNumber: number;
-  sessionToken: string;
+  sessionToken?: string;
   /** WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 — device for /screen host. */
   placeAuth?: "staff" | "device";
 };
@@ -162,7 +162,6 @@ function WaiterStaffCheckoutStage({
     runtime.gates.platformCanPlaceOrder &&
     tableId > 0 &&
     tableNumber > 0 &&
-    !!sessionToken &&
     checkout.summaryLines.length > 0;
 
   const handleSubmit = async () => {
@@ -174,7 +173,7 @@ function WaiterStaffCheckoutStage({
     }
     const outcome = await checkout.submit({
       restaurantId: restaurant.id,
-      sessionToken,
+      ...(sessionToken ? { sessionToken } : {}),
       identity: buildWaiterTableCheckoutIdentity({
         tableId,
         tableNumber,
@@ -220,12 +219,11 @@ function WaiterDeviceCheckoutStage({
     runtime.gates.platformCanPlaceOrder &&
     tableId > 0 &&
     tableNumber > 0 &&
-    !!sessionToken &&
     checkout.summaryLines.length > 0 &&
     !!restaurant?.id;
 
   const handleSubmit = async () => {
-    if (!restaurant?.id || !sessionToken) {
+    if (!restaurant?.id) {
       toast.error(
         language === "ar" ? "المطعم غير جاهز" : "Restaurant not ready"
       );
@@ -239,7 +237,7 @@ function WaiterDeviceCheckoutStage({
           tableId,
           tableNumber,
         },
-        sessionToken,
+        ...(sessionToken ? { sessionToken } : {}),
         notes: checkout.orderNotes || undefined,
         items: checkout.summaryLines.map((line) => ({
           menuItemId: line.menuItemId,
