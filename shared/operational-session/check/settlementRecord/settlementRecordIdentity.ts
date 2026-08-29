@@ -101,6 +101,11 @@ export function buildSettlementRecordId(input: {
   return `sr:${input.restaurantId}:${input.checkId}:${input.recordKind}:${input.recordGeneration}`;
 }
 
+/**
+ * CHECK-RESIDUAL-FINANCIAL-REFERENCE-CLEANUP-1
+ * Settlement document correlation only. Check-scoped because one SR per Check.
+ * Do not treat this as Invoice, CF, PAID, or payment authority.
+ */
 export function buildSettlementFinancialReference(input: {
   checkId: number;
   recordGeneration: number;

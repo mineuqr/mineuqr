@@ -1,8 +1,13 @@
 /**
  * SETTLEMENT-RECORD-IMPLEMENTATION-1 — Check Aggregate orchestration.
+ * CHECK-RESIDUAL-FINANCIAL-REFERENCE-CLEANUP-1
  *
  * Sole production path: Check financial finalization TX → Domain create → Repository insert.
  * Events collected, not published (ADR-021). Reporting consumers unchanged.
+ *
+ * Current paid/complimentary money comes from unique enrolled Order CFs.
+ * input.freeze is operational Check money and is used only when no unique Order CF exists.
+ * financialReference is Settlement document correlation, not Financial Core identity.
  */
 
 import type { SessionDbClient } from "../../diningSession/sessionRepository";
@@ -114,6 +119,7 @@ export async function createSettlementRecordForCheckFinalize(
         })
       : null;
 
+  // Snapshot carrier for the document command. CF facts win over operational Check freeze.
   const freezeCheck: OperationalCheck = {
     ...input.check,
     outcome: input.outcome,

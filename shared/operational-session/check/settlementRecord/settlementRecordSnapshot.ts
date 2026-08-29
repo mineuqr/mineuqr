@@ -1,7 +1,8 @@
 /**
  * ADR-ARCH-026 / SETTLEMENT-RECORD-IMPLEMENTATION-1 — snapshot builder.
  *
- * Copies finalized Check / tender / enrollment facts into an immutable document.
+ * Copies the command snapshot / tender / enrollment facts into an immutable document.
+ * For current paid/complimentary sales that snapshot is Order-level CF when unique CFs exist.
  * MUST NEVER calculate subtotal, discounts, tax, grand total, FX, or service charges.
  */
 

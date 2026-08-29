@@ -67,6 +67,8 @@ describe("settlementRecordApiMapper", () => {
     expect(item.sourceType).toBe("session");
     expect(item.sourceNumber).toBe("20");
     expect(item.invoiceNumber).toBeNull();
+    expect(item.invoiceNumber).not.toBe("fin:check:10:gen:1");
+    expect(item.settlementNumber).not.toBe("fin:check:10:gen:1");
     expect(item.sourceChannel).toBeNull();
     expect(item.paymentMethodSummary).toBe("cash");
     expect(item.settlementStatus).toBe("settled");

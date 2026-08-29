@@ -1,7 +1,9 @@
 /**
  * CHECK-FINALIZE-PAYABLE-ISOLATION-1
+ * CHECK-RESIDUAL-FINANCIAL-REFERENCE-CLEANUP-1
  * Current paid-sale Settlement money is resolved per enrolled Order CF.
  * Check-wide CF cardinality must not suppress a valid Order-level CF.
+ * Check operational money may differ and must not become Settlement authority.
  * Does not write Invoice, CF, or PAID.
  */
 

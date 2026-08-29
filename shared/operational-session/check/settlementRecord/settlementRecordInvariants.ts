@@ -105,7 +105,9 @@ export function assertTerminalOutcome(
 }
 
 /**
- * Copied money on the Record must equal the finalized Check freeze values.
+ * Copied money on the Record must equal the snapshot passed into create.
+ * For current paid/complimentary sales that snapshot is Order-level CF when
+ * unique CFs exist — not the live operational Check row.
  * Comparison only — never recalculates (SR-INV-01 / SR-INV-03).
  */
 export function assertMonetaryConsistencyWithCheck(input: {

@@ -22,7 +22,10 @@ export const SETTLEMENT_RECORD_ADR_ID = "ADR-ARCH-026" as const;
 /** Document shape version — versions structure, never mutates money. */
 export const SETTLEMENT_RECORD_SCHEMA_VERSION = 1 as const;
 
-/** Sole Financial Producer identity (Check Aggregate). */
+/**
+ * Settlement document producer (Check Aggregate as publisher).
+ * Not Financial Core. Not Invoice / CF / PAID identity.
+ */
 export const SETTLEMENT_RECORD_PRODUCER = "check_aggregate" as const;
 
 export const SETTLEMENT_RECORD_KINDS = [
@@ -38,7 +41,10 @@ export type SettlementRecordKind = (typeof SETTLEMENT_RECORD_KINDS)[number];
 /** Opaque stable document identity — independent from DB surrogate. */
 export type SettlementRecordId = string;
 
-/** Business idempotency / correlation key. */
+/**
+ * Settlement document correlation key (`fin:check:{checkId}:gen:{n}`).
+ * Not Invoice serial, Collection Fact id, PAID identity, or payable identity.
+ */
 export type SettlementFinancialReference = string;
 
 /**

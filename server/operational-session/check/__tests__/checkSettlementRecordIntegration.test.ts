@@ -227,6 +227,9 @@ describe("createSettlementRecordForCheckFinalize", () => {
     expect(result.record?.taxAmount).toBe("1.30");
     expect(result.record?.paymentSnapshot[0]?.amount).toBe("10.00");
     expect(result.record?.settledAt).toBe("2026-07-23T13:05:00.000Z");
+    expect(result.record?.financialReference).toBe("fin:check:100:gen:1");
+    expect(result.record?.financialReference).not.toBe("000042");
+    expect(result.record?.settlementRecordId).toBe("sr:1:100:settlement:1");
   });
 
   it("uses each Order CF on a multi-order Check instead of Check freeze", async () => {

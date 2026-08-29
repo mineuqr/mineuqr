@@ -177,9 +177,8 @@ export class CheckTransitionError extends Error {
  */
 /**
  * PRODUCTION-COLLECTION-FACT-CASHIER-ADOPTION-1
- * Authoritative paid freeze from Check money + charges + collection lines.
- * Payment Confirm maps this onto the certified Collection Fact command.
- * Check does not persist Collection Facts.
+ * Confirm payable freeze (Order items + computeCheckMoney) mapped onto CF commit.
+ * Not current paid-sale Settlement authority. Check does not persist Collection Facts.
  */
 export type CashierAuthoritativePaidFreeze = Readonly<{
   restaurantId: number;
@@ -334,6 +333,7 @@ async function withCheckOwnedTransaction<T>(
 
 /**
  * BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 — Bill money from frozen Charges.
+ * Operational Check row only. Not current paid-sale Settlement / Drawer / Report authority.
  */
 async function refreshOpenCheckMoneyFromDiscovery(
   input: {
@@ -895,6 +895,7 @@ async function finalizeOpenCheckById(
         checkId: check.id,
       });
   const orderDiscoveryMs = elapsedSinceMs(orderDiscoveryStartedAt);
+  // Operational Check freeze + collection-line validation. SR money uses Order CF when unique.
   let money = computeCheckMoney({
     chargesSubtotal,
     billDiscountAmount: check.billDiscountAmount,
