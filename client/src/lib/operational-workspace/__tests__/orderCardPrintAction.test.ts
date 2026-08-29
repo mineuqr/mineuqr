@@ -1,5 +1,5 @@
 /**
- * ORDER-CARD-PRINT-ACTION-1
+ * ORDER-CARD-PRINT-ACTION-1 / ORDER-CARD-OPERATIONAL-PRINT-WINDOWS-1
  * @vitest-environment node
  */
 import { describe, expect, it } from "vitest";
@@ -10,7 +10,10 @@ import {
   getOrderWorkspaceActions,
   isPrintOrderAction,
 } from "../operationalActions";
-import { formatPrintOrderCommandError } from "@/lib/print-workspace/printJobViewModels";
+import {
+  operationalOrderTicketUiLabel,
+  toOperationalOrderTicketViewModel,
+} from "../operationalOrderTicket";
 
 const CHANNELS = [
   { id: "kiosk", sessionless: true, unpaidSessionless: true },
@@ -135,13 +138,21 @@ describe("ORDER-CARD-PRINT-ACTION-1 catalog", () => {
     ).toBe("K #005");
   });
 
-  it("keeps print failures as print/UI errors, not lifecycle or money errors", () => {
-    expect(formatPrintOrderCommandError("paper out", "en")).toContain("Paper");
-    expect(formatPrintOrderCommandError("Gateway executionId missing", "ar")).toContain(
-      "الطباعة"
-    );
-    expect(formatPrintOrderCommandError(new Error("offline"), "en")).not.toMatch(
+  it("keeps print preview errors as print/UI errors, not lifecycle or money errors", () => {
+    expect(operationalOrderTicketUiLabel("unavailable", "en")).toMatch(/print/i);
+    expect(operationalOrderTicketUiLabel("previewFailed", "ar")).toContain("الطباعة");
+    expect(operationalOrderTicketUiLabel("previewFailed", "en")).not.toMatch(
       /cancel|accept|settlement|paid|invoice/i
     );
+    const vm = toOperationalOrderTicketViewModel(
+      {
+        displayReference: "K #005",
+        orderingChannel: "kiosk",
+        createdAt: "2026-08-29T10:15:00.000Z",
+        lineItems: [{ nameAr: "أ", nameEn: "A", quantity: 1 }],
+      },
+      "en"
+    );
+    expect(JSON.stringify(vm)).not.toMatch(/invoice|settlement|paid|tax|total/i);
   });
 });

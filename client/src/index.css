@@ -1138,3 +1138,26 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
     overflow: visible !important;
   }
 }
+
+/*
+ * ORDER-CARD-OPERATIONAL-PRINT-WINDOWS-1
+ * Same Dialog + window.print() lift as Cashier paid receipt.
+ * Scoped to the operational ticket dialog — does not change Cashier,
+ * Settlement, or shift-closing print surfaces.
+ */
+@media print {
+  [data-slot="dialog-content"]:has(#operational-order-ticket-print) {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #operational-order-ticket-print {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}

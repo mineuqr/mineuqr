@@ -15,13 +15,16 @@ import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFi
 import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
+import { OperationalOrderTicketDialog } from "@/components/orders-workspace/OperationalOrderTicketDialog";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
 import {
   getOrdersWorkspaceActions,
   isPrintOrderAction,
 } from "@/lib/operational-workspace/operationalActions";
-import { formatPrintOrderCommandError } from "@/lib/print-workspace/printJobViewModels";
-import { usePrintOrderCommand } from "@/lib/print-workspace/usePrintWorkspaceActions";
+import {
+  operationalOrderTicketUiLabel,
+  toOperationalOrderTicketViewModel,
+} from "@/lib/operational-workspace/operationalOrderTicket";
 import { isLateOrder } from "@/lib/operational-workspace/orderViewModels";
 import {
   mapActiveOrderPresentation,
@@ -82,6 +85,7 @@ export function OrdersWorkspacePanel({
   const { presets, activeId, active, select } = useSavedFilters("orders", restaurantId, DEFAULT_ORDER_FILTERS);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [pendingActionOrderId, setPendingActionOrderId] = useState<number | null>(null);
+  const [printOrderId, setPrintOrderId] = useState<number | null>(null);
   const [settleOrderId, setSettleOrderId] = useState<number | null>(null);
   const [settleAmount, setSettleAmount] = useState("0.00");
   const utils = trpc.useUtils();
@@ -209,8 +213,6 @@ export function OrdersWorkspacePanel({
   );
   const orderActionsRef = useRef(orderActions);
   orderActionsRef.current = orderActions;
-  const printOrderCommand = usePrintOrderCommand();
-
   const items = useMemo(() => {
     let rows = listQuery.data?.items ?? [];
     if (active?.status === "late") {
@@ -325,22 +327,11 @@ export function OrdersWorkspacePanel({
         : { sessionless: false, unpaidSessionless: false, orderingChannel: null };
 
       if (isPrintOrderAction(actionId)) {
-        if (!order?.orderNumber) {
-          toast.error(formatPrintOrderCommandError("Order is not available in the print read model", language));
+        if (!order) {
+          toast.error(operationalOrderTicketUiLabel("unavailable", language));
           return;
         }
-        setPendingActionOrderId(orderId);
-        try {
-          await printOrderCommand.printOrder({
-            restaurantId,
-            orderId: order.orderId,
-            orderNumber: order.orderNumber,
-          });
-        } catch (error) {
-          toast.error(formatPrintOrderCommandError(error, language));
-        } finally {
-          setPendingActionOrderId(null);
-        }
+        setPrintOrderId(orderId);
         return;
       }
 
@@ -403,7 +394,6 @@ export function OrdersWorkspacePanel({
       restaurantId,
       activeRegisterId,
       sendToCashierMutation,
-      printOrderCommand,
       language,
     ]
   );
@@ -441,10 +431,20 @@ export function OrdersWorkspacePanel({
       )
     : [];
 
+  const printOrder =
+    displayItems.find((o) => o.orderId === printOrderId) ??
+    (selectedOrderId === printOrderId ? detailQuery.data?.order : undefined);
+  const printTicket = useMemo(
+    () =>
+      printOrder
+        ? toOperationalOrderTicketViewModel(printOrder, language, tableUnit)
+        : null,
+    [printOrder, language, tableUnit]
+  );
+
   const moneyPending =
     settleMutation.isPending || cancelSessionlessMutation.isPending;
-  const actionPending =
-    orderActions.isPending || moneyPending || printOrderCommand.isPending;
+  const actionPending = orderActions.isPending || moneyPending;
 
   if (listQuery.error && isEmailNotVerifiedError(listQuery.error)) {
     return <VerificationRequiredPanel variant="orders" />;
@@ -545,6 +545,15 @@ export function OrdersWorkspacePanel({
           ))}
         </div>
       )}
+
+      <OperationalOrderTicketDialog
+        open={printOrderId != null}
+        language={language}
+        ticket={printTicket}
+        onOpenChange={(open) => {
+          if (!open) setPrintOrderId(null);
+        }}
+      />
 
       <MarkPaidSettlementDialog
         open={settleOrderId != null}
