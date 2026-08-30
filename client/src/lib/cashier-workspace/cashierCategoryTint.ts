@@ -1,5 +1,5 @@
 /**
- * CASHIER-UX-REDESIGN-1 — soft pastel category tiles for scanability.
+ * CASHIER-UX-REDESIGN-1 / CASHIER-UX-REDESIGN-2 — soft pastel category tiles.
  * Presentation only. Does not invent catalog taxonomy.
  */
 

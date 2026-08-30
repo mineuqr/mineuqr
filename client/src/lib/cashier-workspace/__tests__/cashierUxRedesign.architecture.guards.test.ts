@@ -1,5 +1,5 @@
 /**
- * CASHIER-UX-REDESIGN-1 — presentation / progressive-disclosure guards.
+ * CASHIER-UX-REDESIGN-1 / CASHIER-UX-REDESIGN-2 — presentation guards.
  * Financial contracts remain Cash / Network / Mixed / Complimentary.
  */
 import { readFileSync } from "node:fs";
@@ -17,25 +17,35 @@ function read(rel: string): string {
 const PANEL = "client/src/components/cashier-workspace/CashierWorkspacePanel.tsx";
 const STYLES = "client/src/lib/cashier-workspace/cashierPosStyles.ts";
 const TINT = "client/src/lib/cashier-workspace/cashierCategoryTint.ts";
+const ICONS = "client/src/lib/cashier-workspace/cashierCategoryIcon.ts";
 const CARD = "client/src/components/cashier-workspace/CashierProductCard.tsx";
 
-describe("CASHIER-UX-REDESIGN-1 architecture", () => {
-  it("uses a three-rail workspace: Current Order | Catalog | Contextual", () => {
+describe("CASHIER-UX-REDESIGN-2 architecture", () => {
+  it("uses top Incoming + left Current Sale + wide Catalog (no permanent right Incoming rail)", () => {
     const panel = read(PANEL);
     const styles = read(STYLES);
-    expect(panel).toContain("CASHIER-UX-REDESIGN-1");
+    expect(panel).toContain("CASHIER-UX-REDESIGN-2");
     expect(panel).toContain("cashierPos.orderRail");
     expect(panel).toContain("cashierPos.catalog");
-    expect(panel).toContain("cashierPos.aside");
-    expect(panel).toContain('contextualMode: "incoming" | "payment" | "paid"');
-    expect(styles).toContain("orderRail");
-    expect(styles).toContain("lg:grid-cols-[minmax(18rem,26%)_minmax(0,1fr)_minmax(18rem,26%)]");
+    expect(panel).toContain("cashierPos.incomingBar");
+    expect(panel).toContain("paymentOpen");
+    expect(styles).toContain("incomingBar");
+    expect(styles).toContain(
+      "lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]"
+    );
+    expect(styles).not.toContain(
+      "lg:grid-cols-[minmax(18rem,26%)_minmax(0,1fr)_minmax(18rem,26%)]"
+    );
   });
 
-  it("shows payment methods only in Payment state and keeps Option A tender modes", () => {
+  it("opens Payment as a focused modal after PAY and keeps Option A tender modes with icons", () => {
     const panel = read(PANEL);
-    expect(panel).toContain('contextualMode === "payment"');
+    expect(panel).toContain("paymentOpen ?");
     expect(panel).toContain("cashierPos.overlay");
+    expect(panel).toContain("Banknote");
+    expect(panel).toContain("CreditCard");
+    expect(panel).toContain("Combine");
+    expect(panel).toContain("Gift");
     expect(panel).toContain('tenderMode === "cash"');
     expect(panel).toContain('tenderMode === "network"');
     expect(panel).toContain('tenderMode === "mixed"');
@@ -48,7 +58,7 @@ describe("CASHIER-UX-REDESIGN-1 architecture", () => {
     expect(cashierUiLabel("tenderNetwork", "en")).toBe("Network");
   });
 
-  it("hydrates Incoming QR into Current Order without auto-opening Payment", () => {
+  it("hydrates Incoming QR into Current Sale without auto-opening Payment", () => {
     const panel = read(PANEL);
     const reviewFn = panel.slice(
       panel.indexOf("function reviewInvoiceIntent"),
@@ -59,9 +69,10 @@ describe("CASHIER-UX-REDESIGN-1 architecture", () => {
     expect(reviewFn).not.toContain('setSalePhase("payment")');
     expect(panel).toContain("listInvoiceIntents.useQuery");
     expect(panel).toContain("getInvoiceIntent.fetch");
+    expect(panel).toContain("incomingPulse");
   });
 
-  it("keeps Confirm on settlement.initiate and pastel category tiles + POS cards", () => {
+  it("keeps Confirm on settlement.initiate and icon category tiles + POS cards", () => {
     const panel = read(PANEL);
     const completeFn = panel.slice(
       panel.indexOf("async function completePayment"),
@@ -70,7 +81,9 @@ describe("CASHIER-UX-REDESIGN-1 architecture", () => {
     expect(completeFn).toContain("settleMutation.mutateAsync");
     expect(panel).toContain("CashierProductCard");
     expect(panel).toContain("resolveCashierCategoryTint");
+    expect(panel).toContain("resolveCashierCategoryIcon");
     expect(read(TINT)).toContain("soft pastel");
+    expect(read(ICONS)).toContain("resolveCashierCategoryIcon");
     expect(read(CARD)).toContain("cashierPos.productAdd");
     expect(panel).not.toContain("trpc.pos.cashier");
     expect(panel).not.toContain("commitCashierProductionCollectionFact");

@@ -7,9 +7,10 @@
  * panel until Confirm / Paid Receipt.
  * CASHIER-PASS-2-CONFIRM-FINALIZATION-1 — الدفع opens Payment UI only.
  * Confirm (تأكيد الدفع) finalizes Order + Collection Fact = PAID.
- * CASHIER-UX-REDESIGN-1 — three-rail POS workspace (Current Order | Catalog |
- * Contextual). Payment methods live only in Payment state (right rail /
- * narrow overlay). Tender modes remain Cash / Network / Mixed / Complimentary.
+ * CASHIER-UX-REDESIGN-1 — initial three-rail POS workspace.
+ * CASHIER-UX-REDESIGN-2 — UX correction: top Incoming notification, left
+ * Current Sale, wide Product Catalog, payment as focused modal/sheet.
+ * Tender modes remain Cash / Network / Mixed / Complimentary.
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -23,10 +24,20 @@ import { CashierPaidReceiptDialog } from "@/components/cashier-workspace/Cashier
 import { CashierProductCard } from "@/components/cashier-workspace/CashierProductCard";
 import { Button } from "@/components/ui/button";
 import {
+  cashierAllCategoryIcon,
+  cashierFavoritesCategoryIcon,
+  resolveCashierCategoryIcon,
+} from "@/lib/cashier-workspace/cashierCategoryIcon";
+import {
   cashierAllCategoryTint,
   cashierFavoritesCategoryTint,
   resolveCashierCategoryTint,
 } from "@/lib/cashier-workspace/cashierCategoryTint";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cashierPaymentFlowTiming } from "@/lib/cashier-workspace/cashierPaymentFlowTiming";
 import type { CashierPaymentFlowOutcome } from "@/lib/cashier-workspace/cashierPaymentFlowTiming";
 import { resolveCashierPaymentReadiness } from "@/lib/cashier-workspace/cashierPaymentReadiness";
@@ -107,7 +118,16 @@ import type { CheckMoneyResult } from "@shared/operational-session";
 import type { SelectablePaymentMethod } from "@shared/operational-session";
 import { projectCashierSaleInvoiceMoney } from "@shared/operational-session";
 import type { InvoiceIntent } from "@shared/pos";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import {
+  Banknote,
+  Combine,
+  CreditCard,
+  Gift,
+  Minus,
+  Plus,
+  QrCode,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -224,6 +244,9 @@ export function CashierWorkspacePanel({
   const [paymentDisplayMoney, setPaymentDisplayMoney] =
     useState<CheckMoneyResult | null>(null);
   const [ordersOpen, setOrdersOpen] = useState(false);
+  const [incomingOpen, setIncomingOpen] = useState(false);
+  const [incomingPulse, setIncomingPulse] = useState(false);
+  const prevIncomingCountRef = useRef(0);
   const [printOpen, setPrintOpen] = useState(false);
   const [paidReceipt, setPaidReceipt] =
     useState<CashierPaidReceiptSnapshot | null>(null);
@@ -1028,6 +1051,16 @@ export function CashierWorkspacePanel({
   ]);
   const orders = ordersQuery.data?.items ?? [];
   const awaitingIntents = invoiceIntentsQuery.data ?? [];
+  useEffect(() => {
+    const count = awaitingIntents.length;
+    if (count > prevIncomingCountRef.current) {
+      setIncomingPulse(true);
+      const timer = setTimeout(() => setIncomingPulse(false), 2400);
+      prevIncomingCountRef.current = count;
+      return () => clearTimeout(timer);
+    }
+    prevIncomingCountRef.current = count;
+  }, [awaitingIntents.length]);
   const ticketTotal = displayTicketTotal(ticket);
   const taxPolicySnapshot = useMemo(
     () => cashierDisplayTaxPolicy({ taxEnabled, taxMode, taxPolicyJson }),
@@ -1183,11 +1216,7 @@ export function CashierWorkspacePanel({
       ticketTotal ??
       "0.00"
   );
-  const contextualMode: "incoming" | "payment" | "paid" = paidCheckout
-    ? "paid"
-    : salePhase === "payment"
-      ? "payment"
-      : "incoming";
+  const paymentOpen = salePhase === "payment" && !paidCheckout;
   const displayDue = amountDue ?? sheetMoney?.grandTotal ?? null;
   const tenderDraft =
     amountDue != null && tenderMode != null
@@ -1407,758 +1436,837 @@ export function CashierWorkspacePanel({
       ) : null}
 
       {scoped && allowed ? (
-        <div className={cashierPos.body}>
-          {/* LEFT — Current Order */}
-          <section className={cashierPos.orderRail} aria-label={t("currentOrder")}>
-            <div className={cashierPos.orderScroll}>
-              <div>
-                <p className={cashierPos.orderSource}>
-                  {orderSourceLabel
-                    ? displayTableNumber != null
-                      ? `${orderSourceLabel} · ${t("incomingTable")} ${displayTableNumber}`
-                      : orderSourceLabel
-                    : t("currentOrder")}
-                </p>
-                <h2 className={cashierPos.orderHeading}>
-                  {displayOrderNumber
-                    ? `#${displayOrderNumber}`
-                    : t("saleInvoice")}
-                </h2>
-                {(invoiceView.cashierDisplayName ||
-                  selectedTerminalCode ||
-                  (directSale?.displayReference &&
-                    directSale.displayReference !== displayOrderNumber)) ? (
-                  <div className={cashierPos.orderMeta}>
-                    {directSale?.displayReference &&
-                    directSale.displayReference !== displayOrderNumber ? (
-                      <p>{directSale.displayReference}</p>
-                    ) : null}
-                    {invoiceView.cashierDisplayName ? (
-                      <p>
-                        {t("receiptCashier")}: {invoiceView.cashierDisplayName}
-                      </p>
-                    ) : null}
-                    {selectedTerminalCode ? (
-                      <p>
-                        {t("terminal")}: {selectedTerminalCode}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-
-              {invoiceView.lines.length === 0 ? (
-                <p className="text-sm text-[#6b7280]">{t("ticketEmpty")}</p>
-              ) : (
-                <ul className="flex min-h-0 flex-1 flex-col gap-2">
-                  {invoiceView.lines.map((line) => {
-                    const menuItemId = line.menuItemId;
-                    return (
-                      <li key={line.key} className={cashierPos.ticketLine}>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-[#111827]">
-                            {language === "ar" ? line.nameAr : line.nameEn}
-                          </p>
-                          <p className="text-xs text-[#6b7280]">
-                            {line.unitPrice} × {line.quantity}
-                          </p>
-                        </div>
-                        {invoiceView.editable && menuItemId != null ? (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="outline"
-                              className="size-11"
-                              aria-label={
-                                line.quantity === 1 ? t("removeLine") : t("qty")
-                              }
-                              onClick={() => changeQty(menuItemId, -1)}
-                            >
-                              {line.quantity === 1 ? <Trash2 /> : <Minus />}
-                            </Button>
-                            <span className="w-8 text-center text-sm font-semibold text-[#111827]">
-                              {line.quantity}
-                            </span>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="outline"
-                              className="size-11"
-                              aria-label={t("qty")}
-                              onClick={() => changeQty(menuItemId, 1)}
-                            >
-                              <Plus />
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="w-8 text-center text-sm font-semibold text-[#111827]">
-                            {line.quantity}
-                          </span>
-                        )}
-                        <p className="w-16 text-end text-sm font-semibold tabular-nums text-[#111827]">
-                          {line.lineTotal}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-
-              <div className={cashierPos.totalBox}>
-                <p className="flex justify-between text-sm text-[#6b7280]">
-                  <span>{t("ticketSubtotal")}</span>
-                  <span className="tabular-nums">
-                    {money(
-                      invoiceView.money?.subtotal ??
-                        ticketMoney?.subtotal ??
-                        ticketTotal ??
-                        "0.00"
-                    )}
+        <>
+          {/* TOP — Incoming QR notification */}
+          <div className={cashierPos.incomingBar}>
+            <Popover open={incomingOpen} onOpenChange={setIncomingOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    incomingOpen
+                      ? cashierPos.incomingTriggerActive
+                      : cashierPos.incomingTrigger,
+                    incomingPulse && cashierPos.incomingTriggerPulse
+                  )}
+                  aria-label={t("incomingOpenPanel")}
+                >
+                  <QrCode className="size-5 text-[#4f46e5]" aria-hidden />
+                  <span>
+                    <span className={cashierPos.incomingLabel}>
+                      {t("incomingOrders")}
+                    </span>
+                    <span className={cn(cashierPos.incomingHint, "ms-2")}>
+                      {t("incomingCount")}
+                    </span>
                   </span>
-                </p>
-                <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
-                  <span>{t("ticketDiscount")}</span>
-                  <span className="tabular-nums">
-                    {isPositiveDisplayMoney(
-                      sheetMoney?.discount ?? appliedDiscount
-                    )
-                      ? `-${money(sheetMoney?.discount ?? appliedDiscount)}`
-                      : money("0.00")}
-                  </span>
-                </p>
-                <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
-                  <span>{t("paymentTax")}</span>
-                  <span className="tabular-nums">
-                    {money(
-                      sheetMoney?.taxAmount ??
-                        ticketMoney?.taxAmount ??
-                        "0.00"
-                    )}
-                  </span>
-                </p>
-                <p className="mt-2 flex items-end justify-between">
-                  <span className="text-sm font-semibold text-[#111827]">
-                    {t("ticketTotal")}
-                  </span>
-                  <span className={cashierPos.totalValue}>{payAmountLabel}</span>
-                </p>
-                {discountOpen && invoiceView.editable ? (
-                  <div className="mt-3 flex gap-2">
-                    <input
-                      className={cashierPos.moneyInput}
-                      inputMode="decimal"
-                      aria-label={t("discountAmount")}
-                      placeholder={t("discountAmount")}
-                      value={discountDraft}
-                      onChange={(event) => setDiscountDraft(event.target.value)}
-                    />
-                    <Button
-                      type="button"
-                      className="min-h-12"
-                      onClick={() => {
-                        const next = clampCashierDiscountAmount(
-                          discountDraft,
-                          ticketTotal
-                        );
-                        if (
-                          cashierDiscountExceedsCatalogSubtotal(
-                            discountDraft,
-                            ticketTotal
-                          )
-                        ) {
-                          toast.error(t("discountExceeds"));
-                        }
-                        setTicketDiscount(next);
-                        setDiscountOpen(false);
-                      }}
-                    >
-                      {t("applyDiscountAction")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="min-h-12"
-                      onClick={() => {
-                        setTicketDiscount("0.00");
-                        setDiscountDraft("");
-                        setDiscountOpen(false);
-                      }}
-                    >
-                      {t("clearDiscount")}
-                    </Button>
-                  </div>
-                ) : invoiceView.editable ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-3 min-h-11 w-full"
-                    disabled={ticket.length === 0}
-                    onClick={() => {
-                      setDiscountDraft(
-                        appliedDiscount === "0.00" ? "" : appliedDiscount
-                      );
-                      setDiscountOpen(true);
-                    }}
-                  >
-                    {t("applyDiscount")}
-                  </Button>
-                ) : null}
-              </div>
-
-              <Button
-                type="button"
-                className={cn(cashierPos.primaryAction, "mt-3")}
-                disabled={
-                  !terminalId ||
-                  contextualMode === "payment" ||
-                  (directSale
-                    ? Boolean(paidCheckout)
-                    : ticket.length === 0)
-                }
-                onClick={() => {
-                  if (
-                    directSale &&
-                    !paidCheckout &&
-                    cashierCatalogTicketMatchesInvoiceLines(
-                      ticket,
-                      directSale.lines
-                    )
-                  ) {
-                    resumePaymentSheet();
-                    return;
-                  }
-                  void placeSale();
-                }}
-              >
-                {t("payWithAmount")} — {payAmountLabel}
-              </Button>
-            </div>
-          </section>
-
-          {/* CENTER — Product workspace */}
-          <div className={cashierPos.catalog}>
-            <div className={cashierPos.catalogToolbar}>
-              <input
-                className={cashierPos.catalogSearch}
-                value={productSearch}
-                onChange={(event) => setProductSearch(event.target.value)}
-                placeholder={t("productSearch")}
-                aria-label={t("productSearch")}
-              />
-              <div className={cashierPos.catalogTools}>
-                <label className="flex items-center gap-2 text-xs text-[#6b7280]">
-                  <span>{t("sortBy")}</span>
-                  <select
-                    className="min-h-10 rounded-lg border border-[#d8dee6] bg-white px-2 text-sm text-[#111827]"
-                    value={catalogSort}
-                    onChange={(event) =>
-                      setCatalogSort(event.target.value as CatalogSort)
+                  <span
+                    className={
+                      awaitingIntents.length > 0
+                        ? cashierPos.incomingBadge
+                        : cashierPos.incomingBadgeIdle
                     }
                   >
-                    <option value="default">{t("sortDefault")}</option>
-                    <option value="name">{t("sortName")}</option>
-                    <option value="price">{t("sortPrice")}</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-            <div className={cashierPos.categoryBar}>
-              <button
-                type="button"
-                className={cn(
-                  cashierPos.categoryTile,
-                  categoryFilter === "all"
-                    ? cashierAllCategoryTint().selected
-                    : cashierAllCategoryTint().idle
-                )}
-                onClick={() => setCategoryFilter("all")}
-              >
-                {t("allCategories")}
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  cashierPos.categoryTile,
-                  categoryFilter === "favorites"
-                    ? cashierFavoritesCategoryTint().selected
-                    : cashierFavoritesCategoryTint().idle
-                )}
-                onClick={() => setCategoryFilter("favorites")}
-              >
-                {t("favorites")}
-              </button>
-              {categories.map((category) => {
-                const tint = resolveCashierCategoryTint(category);
-                return (
-                  <button
-                    key={category.id}
-                    type="button"
-                    className={cn(
-                      cashierPos.categoryTile,
-                      categoryFilter === category.id ? tint.selected : tint.idle
-                    )}
-                    onClick={() => setCategoryFilter(category.id)}
-                  >
-                    {categoryLabel(
-                      language,
-                      category.nameAr,
-                      category.nameEn,
-                      t("unknownCategory")
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <div className={cashierPos.catalogScroll}>
-              {catalogQuery.isPending ? (
-                <AppLoadingState label={t("loading")} />
-              ) : visibleItems.length === 0 ? (
-                <AppEmptyState title={t("emptyCatalog")} />
-              ) : (
-                <div className={cashierPos.productGrid}>
-                  {visibleItems.map((item) => {
-                    const itemName =
-                      language === "ar"
-                        ? item.nameAr
-                        : item.nameEn ?? item.nameAr;
-                    return (
-                      <CashierProductCard
-                        key={item.menuItemId}
-                        item={{
-                          menuItemId: item.menuItemId,
-                          name: itemName,
-                          price: item.price,
-                          imageUrl: item.imageUrl,
-                          isAvailable: item.isAvailable,
-                        }}
-                        currencyLabel={money}
-                        availableLabel={t("available")}
-                        unavailableLabel={t("unavailable")}
-                        addLabel={t("addProduct")}
-                        favorite={favoriteIdSet.has(item.menuItemId)}
-                        flash={flashItemId === item.menuItemId}
-                        disabled={salePhase === "payment" || Boolean(paidCheckout)}
-                        onToggleFavorite={() => {
-                          setFavoriteIds(
-                            toggleCashierFavoriteId(
-                              restaurantId,
-                              item.menuItemId
-                            )
-                          );
-                        }}
-                        onAdd={() =>
-                          addItem({
-                            menuItemId: item.menuItemId,
-                            nameAr: item.nameAr,
-                            nameEn: item.nameEn,
-                            price: item.price,
-                          })
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* RIGHT — Contextual workspace */}
-          <aside className={cashierPos.aside}>
-            {contextualMode === "payment" ? (
-              <div
-                className={cashierPos.overlay}
-                role="dialog"
-                aria-modal="true"
-                aria-label={t("paymentWorkspace")}
-              >
-                <div className={cashierPos.sheet} dir={dir}>
-                  <h2 className="text-lg font-semibold">
-                    {t("completePaymentTitle")}
-                  </h2>
-                  {sheetMoney ? (
-                    <div className="mt-4 space-y-1">
-                      <p className="flex justify-between text-sm text-[#6b7280]">
-                        <span>{t("ticketSubtotal")}</span>
-                        <span className="tabular-nums">
-                          {money(sheetMoney.subtotal)}
-                        </span>
-                      </p>
-                      <p className="flex justify-between text-sm text-[#6b7280]">
-                        <span>{t("ticketDiscount")}</span>
-                        <span className="tabular-nums">
-                          {isPositiveDisplayMoney(sheetMoney.discount)
-                            ? `-${money(sheetMoney.discount)}`
-                            : money("0.00")}
-                        </span>
-                      </p>
-                      <p className="flex justify-between text-sm text-[#6b7280]">
-                        <span>{t("paymentTax")}</span>
-                        <span className="tabular-nums">
-                          {money(sheetMoney.taxAmount)}
-                        </span>
-                      </p>
-                    </div>
-                  ) : null}
-                  <p className="mt-4 text-sm font-medium text-[#6b7280]">
-                    {t("amountDue")}
-                  </p>
-                  <p className={cashierPos.amountDueHuge}>
-                    {amountDue
-                      ? money(amountDue)
-                      : sheetMoney
-                        ? money(sheetMoney.grandTotal)
-                        : money("0.00")}
-                  </p>
-                  {paying ? (
-                    <p className="mt-1 text-xs text-[#6b7280]">{t("paying")}</p>
-                  ) : null}
-                  <p className="mb-2 mt-4 text-sm font-medium">
-                    {t("choosePaymentMethod")}
-                  </p>
-                  <div className={cashierPos.methodGrid}>
-                    {(
-                      [
-                        ["cash", "tenderCash"],
-                        ["network", "tenderNetwork"],
-                        ["mixed", "tenderMixed"],
-                        ["complimentary", "tenderComplimentary"],
-                      ] as const
-                    ).map(([mode, label]) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        className={
-                          tenderMode === mode
-                            ? cashierPos.methodBtnActive
-                            : cashierPos.methodBtn
-                        }
-                        onClick={() => {
-                          setTenderMode(mode);
-                          if (mode === "complimentary") {
-                            setPaymentMethod("cash");
-                            setCardTender("");
-                            setCashReceived("");
-                          } else if (mode === "cash") {
-                            setPaymentMethod("cash");
-                            setCardTender("");
-                            setCashReceived(
-                              amountDue ?? sheetMoney?.grandTotal ?? ""
-                            );
-                          } else if (mode === "network") {
-                            setPaymentMethod("card");
-                            setCashReceived("");
-                            setCardTender(
-                              amountDue ?? sheetMoney?.grandTotal ?? ""
-                            );
-                          } else {
-                            setPaymentMethod("cash");
-                            setCashReceived("");
-                            setCardTender("");
-                          }
-                        }}
-                      >
-                        {t(label)}
-                      </button>
-                    ))}
-                  </div>
-                  {tenderMode === "complimentary" ? (
-                    <p className="mt-3 text-sm text-[#6b7280]">
-                      {t("complimentaryConfirmHint")}
-                    </p>
-                  ) : null}
-                  {tenderMode === "cash" || tenderMode === "mixed" ? (
-                    <div className="mt-3">
-                      <label
-                        className="text-sm font-medium"
-                        htmlFor="cashier-tender-cash"
-                      >
-                        {tenderMode === "cash"
-                          ? t("amountReceived")
-                          : t("tenderCash")}
-                      </label>
-                      <input
-                        id="cashier-tender-cash"
-                        className={cn(cashierPos.moneyInput, "mt-1")}
-                        inputMode="decimal"
-                        disabled={paying}
-                        value={cashReceived}
-                        onChange={(event) => {
-                          const next = event.target.value;
-                          setCashReceived(next);
-                          persistDirectSaleSnapshot({
-                            received: next,
-                            method: "cash",
-                          });
-                        }}
-                      />
-                    </div>
-                  ) : null}
-                  {tenderMode === "network" || tenderMode === "mixed" ? (
-                    <div className="mt-3">
-                      <label
-                        className="text-sm font-medium"
-                        htmlFor="cashier-tender-card"
-                      >
-                        {t("tenderNetwork")}
-                      </label>
-                      <input
-                        id="cashier-tender-card"
-                        className={cn(cashierPos.moneyInput, "mt-1")}
-                        inputMode="decimal"
-                        disabled={paying}
-                        value={cardTender}
-                        onChange={(event) => {
-                          const next = event.target.value;
-                          setCardTender(next);
-                          persistDirectSaleSnapshot({
-                            card: next,
-                            method: "card",
-                          });
-                        }}
-                      />
-                    </div>
-                  ) : null}
-                  {tenderMode != null && tenderMode !== "complimentary" ? (
-                    <>
-                      <p className="mt-3 flex justify-between text-sm">
-                        <span>{t("totalTendered")}</span>
-                        <span className="tabular-nums font-semibold">
-                          {money(tenderedShown)}
-                        </span>
-                      </p>
-                      <p className="mt-1 flex justify-between text-sm">
-                        <span>{t("remainingAmount")}</span>
-                        <span className="tabular-nums font-semibold">
-                          {money(remainingShown ?? "0.00")}
-                        </span>
-                      </p>
-                    </>
-                  ) : null}
-                  {cashChange ? (
-                    <p className="mt-1 flex justify-between text-sm">
-                      <span>{t("changeDue")}</span>
-                      <span className="tabular-nums font-semibold">
-                        {money(cashChange)}
-                      </span>
-                    </p>
-                  ) : null}
-                  {tenderMode !== "complimentary" &&
-                  tenderPlan &&
-                  tenderPlan.remainingCents > 0 ? (
-                    <p className="mt-1 text-sm text-red-700">
-                      {t("underpayment")}
-                    </p>
-                  ) : null}
-                  {paymentReadiness.showCardOverTender ? (
-                    <p className="mt-1 text-sm text-red-700">
-                      {t("cardOverTender")}
-                    </p>
-                  ) : null}
-                  {registerGap ? (
-                    <div className={cn(cashierPos.warnBox, "mt-4")}>
-                      <p className="text-sm font-medium">{t("shiftBeforePay")}</p>
-                      <p className="mt-1 text-sm">
-                        {t(
-                          registerGap === "shift_required"
-                            ? "shiftRequired"
-                            : registerGap === "register_closed"
-                              ? "registerClosed"
-                              : "registerRequired"
-                        )}
-                      </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="mt-3 min-h-12"
-                        onClick={openRegisterOps}
-                      >
-                        {t("openRegisterOps")}
-                      </Button>
-                    </div>
-                  ) : null}
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="min-h-12 min-w-28 flex-1"
-                      disabled={paying}
-                      onClick={cancelPaymentSheet}
-                    >
-                      {t("cancelPayment")}
-                    </Button>
-                    <Button
-                      type="button"
-                      className={cn(cashierPos.primaryAction, "flex-1")}
-                      disabled={
-                        paymentReadiness.confirmDisabled || tenderMode == null
-                      }
-                      onClick={() => void completePayment()}
-                    >
-                      {paying ? t("paying") : t("confirmPayment")}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : contextualMode === "paid" ? (
-              <div className={cashierPos.contextualRail}>
-                <div className={cashierPos.contextualHeader}>
-                  <h2 className={cashierPos.contextualTitle}>
-                    {t("paidWorkspaceTitle")}
-                  </h2>
-                </div>
-                <div className={cashierPos.contextualScroll}>
-                  <div className={cashierPos.paidBox}>
-                    <p className={cashierPos.paidStamp}>✓ {t("receiptPaidStamp")}</p>
-                    <p className="mt-2 text-2xl font-bold tabular-nums">
-                      {money(paidCheckout?.grandTotal ?? "0.00")}
-                    </p>
-                  </div>
-                  <div className="mt-4 flex flex-col gap-2">
-                    <Button
-                      type="button"
-                      className={cashierPos.primaryAction}
-                      onClick={() => setPrintOpen(true)}
-                      disabled={!paidReceipt}
-                    >
-                      {t("printInvoice")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={cashierPos.secondaryAction}
-                      disabled
-                    >
-                      {t("sendInvoice")}
-                    </Button>
-                    <Button
-                      type="button"
-                      className={cashierPos.secondaryAction}
-                      onClick={startNewSale}
-                    >
-                      {t("newSale")}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className={cashierPos.contextualRail}>
-                <div className={cashierPos.contextualHeader}>
-                  <h2 className={cashierPos.contextualTitle}>
-                    {t("incomingOrders")} · {t("incomingCount")}
-                  </h2>
-                  <span className={cashierPos.contextualBadge}>
                     {awaitingIntents.length}
                   </span>
-                </div>
-                <div className={cashierPos.contextualScroll}>
-                  {invoiceIntentsQuery.isPending ? (
-                    <AppLoadingState label={t("loading")} />
-                  ) : awaitingIntents.length === 0 ? (
-                    <p className="text-sm text-[#6b7280]">
-                      {t("noIncomingOrders")}
-                    </p>
-                  ) : (
-                    <ul className="mb-3 flex flex-col gap-2">
-                      {awaitingIntents.map((intent) => (
-                        <li key={intent.invoiceIntentId}>
-                          <button
-                            type="button"
-                            className={
-                              selectedOrderId === intent.orderId
-                                ? cashierPos.orderBtnActive
-                                : cashierPos.orderBtn
-                            }
-                            onClick={() => void selectOrder(intent.orderId)}
-                          >
-                            <span className="block font-medium text-[#111827]">
-                              #{intent.orderNumber}
-                              {intent.tableNumber != null
-                                ? ` · ${t("incomingTable")} ${intent.tableNumber}`
-                                : ""}
-                            </span>
-                            <span className="text-xs text-[#6b7280]">
-                              {t("incomingOperationalOrder")}{" "}
-                              {intent.displayReference || intent.orderNumber}
-                              {intent.sessionId != null
-                                ? ` · session ${intent.sessionId}`
-                                : ""}{" "}
-                              · {intent.sourceChannel} · {intent.items.length}{" "}
-                              {t("incomingOrderItems")} ·{" "}
-                              {intent.expectedGrandTotal}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <button
-                    type="button"
-                    className={cashierPos.secondaryAction}
-                    onClick={() => setOrdersOpen((open) => !open)}
-                  >
-                    {ordersOpen ? t("hideActiveOrders") : t("showActiveOrders")}
-                  </button>
-                  {ordersOpen ? (
-                    <div className="mt-3">
-                      {ordersQuery.isPending ? (
-                        <AppLoadingState label={t("loading")} />
-                      ) : orders.length === 0 ? (
-                        <p className="text-sm text-[#6b7280]">{t("noOrders")}</p>
-                      ) : (
-                        <ul className="mb-3 flex flex-col gap-2">
-                          {orders.map((order) => (
-                            <li key={order.orderId}>
-                              <button
-                                type="button"
-                                className={
-                                  selectedOrderId === order.orderId
-                                    ? cashierPos.orderBtnActive
-                                    : cashierPos.orderBtn
-                                }
-                                onClick={() => void selectOrder(order.orderId)}
-                              >
-                                <span className="block font-medium text-[#111827]">
-                                  {order.displayReference || order.orderNumber}
-                                </span>
-                                <span className="text-xs text-[#6b7280]">
-                                  {order.status} · {order.totalAmount}
-                                </span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {selectedOrderId != null && detailQuery.data ? (
-                        <>
-                          <p className="text-sm text-[#111827]">
-                            {t("orderCreated")}:{" "}
-                            {detailQuery.data.order.displayReference} ·{" "}
-                            {detailQuery.data.order.status}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-auto border-0 bg-transparent p-0 shadow-none"
+                dir={dir}
+              >
+                <div className={cashierPos.incomingPanel}>
+                  <div className={cashierPos.incomingPanelHeader}>
+                    <h2 className={cashierPos.contextualTitle}>
+                      {t("incomingOrders")}
+                    </h2>
+                    <span className={cashierPos.contextualBadge}>
+                      {awaitingIntents.length}
+                    </span>
+                  </div>
+                  <div className={cashierPos.incomingPanelScroll}>
+                    {invoiceIntentsQuery.isPending ? (
+                      <AppLoadingState label={t("loading")} />
+                    ) : awaitingIntents.length === 0 ? (
+                      <p className="text-sm text-[#6b7280]">
+                        {t("noIncomingOrders")}
+                      </p>
+                    ) : (
+                      <ul className="flex flex-col gap-2">
+                        {awaitingIntents.map((intent) => (
+                          <li key={intent.invoiceIntentId}>
+                            <button
+                              type="button"
+                              className={
+                                selectedOrderId === intent.orderId
+                                  ? cashierPos.orderBtnActive
+                                  : cashierPos.orderBtn
+                              }
+                              onClick={() => {
+                                void selectOrder(intent.orderId);
+                                setIncomingOpen(false);
+                              }}
+                            >
+                              <span className="block text-base font-semibold text-[#111827]">
+                                #{intent.orderNumber}
+                              </span>
+                              <span className="mt-0.5 block text-xs font-medium text-[#4f46e5]">
+                                {t("orderSourceQr")}
+                                {intent.tableNumber != null
+                                  ? ` · ${t("incomingTable")} ${intent.tableNumber}`
+                                  : ""}
+                              </span>
+                              <span className="mt-1 block text-xs text-[#6b7280]">
+                                {t("incomingOperationalOrder")}{" "}
+                                {intent.displayReference || intent.orderNumber}
+                                {" · "}
+                                {intent.sourceChannel}
+                                {" · "}
+                                {intent.items.length} {t("incomingOrderItems")}
+                                {" · "}
+                                {intent.expectedGrandTotal}
+                              </span>
+                              <span className="mt-2 inline-flex min-h-9 items-center rounded-lg bg-[#eef2ff] px-3 text-xs font-semibold text-[#4338ca]">
+                                {t("incomingPayAction")}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <button
+                      type="button"
+                      className={cn(cashierPos.secondaryAction, "mt-3")}
+                      onClick={() => setOrdersOpen((open) => !open)}
+                    >
+                      {ordersOpen
+                        ? t("hideActiveOrders")
+                        : t("showActiveOrders")}
+                    </button>
+                    {ordersOpen ? (
+                      <div className="mt-3">
+                        {ordersQuery.isPending ? (
+                          <AppLoadingState label={t("loading")} />
+                        ) : orders.length === 0 ? (
+                          <p className="text-sm text-[#6b7280]">
+                            {t("noOrders")}
                           </p>
-                          <div className="mt-3">
-                            <h3 className="mb-1 text-xs font-semibold text-[#6b7280]">
-                              {t("timeline")}
-                            </h3>
-                            <ul className="text-xs text-[#6b7280]">
-                              {(timelineQuery.data?.events ?? []).map(
-                                (event) => (
-                                  <li key={event.eventId}>
-                                    {event.toStatus} · {event.occurredAt}
-                                  </li>
-                                )
-                              )}
-                            </ul>
-                          </div>
-                        </>
+                        ) : (
+                          <ul className="mb-3 flex flex-col gap-2">
+                            {orders.map((order) => (
+                              <li key={order.orderId}>
+                                <button
+                                  type="button"
+                                  className={
+                                    selectedOrderId === order.orderId
+                                      ? cashierPos.orderBtnActive
+                                      : cashierPos.orderBtn
+                                  }
+                                  onClick={() => {
+                                    void selectOrder(order.orderId);
+                                    setIncomingOpen(false);
+                                  }}
+                                >
+                                  <span className="block font-medium text-[#111827]">
+                                    {order.displayReference ||
+                                      order.orderNumber}
+                                  </span>
+                                  <span className="text-xs text-[#6b7280]">
+                                    {order.status} · {order.totalAmount}
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className={cashierPos.body}>
+            {/* LEFT — Current Sale */}
+            <section
+              className={cashierPos.orderRail}
+              aria-label={t("currentOrder")}
+            >
+              <div className={cashierPos.orderScroll}>
+                <div>
+                  <p className={cashierPos.orderSource}>
+                    {orderSourceLabel
+                      ? displayTableNumber != null
+                        ? `${orderSourceLabel} · ${t("incomingTable")} ${displayTableNumber}`
+                        : orderSourceLabel
+                      : t("currentOrder")}
+                  </p>
+                  <h2 className={cashierPos.orderHeading}>
+                    {displayOrderNumber
+                      ? `#${displayOrderNumber}`
+                      : t("saleInvoice")}
+                  </h2>
+                  {(invoiceView.cashierDisplayName ||
+                    selectedTerminalCode ||
+                    (directSale?.displayReference &&
+                      directSale.displayReference !== displayOrderNumber)) ? (
+                    <div className={cashierPos.orderMeta}>
+                      {directSale?.displayReference &&
+                      directSale.displayReference !== displayOrderNumber ? (
+                        <p>{directSale.displayReference}</p>
+                      ) : null}
+                      {invoiceView.cashierDisplayName ? (
+                        <p>
+                          {t("receiptCashier")}: {invoiceView.cashierDisplayName}
+                        </p>
+                      ) : null}
+                      {selectedTerminalCode ? (
+                        <p>
+                          {t("terminal")}: {selectedTerminalCode}
+                        </p>
                       ) : null}
                     </div>
                   ) : null}
                 </div>
+
+                {invoiceView.lines.length === 0 ? (
+                  <div className={cashierPos.orderEmpty}>
+                    <p className={cashierPos.orderEmptyTitle}>
+                      {t("noActiveOrder")}
+                    </p>
+                    <p className={cashierPos.orderEmptyHint}>
+                      {t("noActiveOrderHint")}
+                    </p>
+                  </div>
+                ) : (
+                  <ul className="flex min-h-0 flex-1 flex-col gap-2">
+                    {invoiceView.lines.map((line) => {
+                      const menuItemId = line.menuItemId;
+                      return (
+                        <li key={line.key} className={cashierPos.ticketLine}>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-[#111827]">
+                              {language === "ar" ? line.nameAr : line.nameEn}
+                            </p>
+                            <p className="text-xs text-[#6b7280]">
+                              {line.unitPrice} × {line.quantity}
+                            </p>
+                          </div>
+                          {invoiceView.editable && menuItemId != null ? (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="outline"
+                                className="size-11"
+                                aria-label={
+                                  line.quantity === 1
+                                    ? t("removeLine")
+                                    : t("qty")
+                                }
+                                onClick={() => changeQty(menuItemId, -1)}
+                              >
+                                {line.quantity === 1 ? <Trash2 /> : <Minus />}
+                              </Button>
+                              <span className="w-8 text-center text-sm font-semibold text-[#111827]">
+                                {line.quantity}
+                              </span>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="outline"
+                                className="size-11"
+                                aria-label={t("qty")}
+                                onClick={() => changeQty(menuItemId, 1)}
+                              >
+                                <Plus />
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="w-8 text-center text-sm font-semibold text-[#111827]">
+                              {line.quantity}
+                            </span>
+                          )}
+                          <p className="w-16 text-end text-sm font-semibold tabular-nums text-[#111827]">
+                            {line.lineTotal}
+                          </p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                <div className={cashierPos.totalBox}>
+                  <p className="flex justify-between text-sm text-[#6b7280]">
+                    <span>{t("ticketSubtotal")}</span>
+                    <span className="tabular-nums">
+                      {money(
+                        invoiceView.money?.subtotal ??
+                          ticketMoney?.subtotal ??
+                          ticketTotal ??
+                          "0.00"
+                      )}
+                    </span>
+                  </p>
+                  <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
+                    <span>{t("ticketDiscount")}</span>
+                    <span className="tabular-nums">
+                      {isPositiveDisplayMoney(
+                        sheetMoney?.discount ?? appliedDiscount
+                      )
+                        ? `-${money(sheetMoney?.discount ?? appliedDiscount)}`
+                        : money("0.00")}
+                    </span>
+                  </p>
+                  <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
+                    <span>{t("paymentTax")}</span>
+                    <span className="tabular-nums">
+                      {money(
+                        sheetMoney?.taxAmount ??
+                          ticketMoney?.taxAmount ??
+                          "0.00"
+                      )}
+                    </span>
+                  </p>
+                  <p className="mt-2 flex items-end justify-between">
+                    <span className="text-sm font-semibold text-[#111827]">
+                      {t("ticketTotal")}
+                    </span>
+                    <span className={cashierPos.totalValue}>
+                      {payAmountLabel}
+                    </span>
+                  </p>
+                  {discountOpen && invoiceView.editable ? (
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        className={cashierPos.moneyInput}
+                        inputMode="decimal"
+                        aria-label={t("discountAmount")}
+                        placeholder={t("discountAmount")}
+                        value={discountDraft}
+                        onChange={(event) =>
+                          setDiscountDraft(event.target.value)
+                        }
+                      />
+                      <Button
+                        type="button"
+                        className="min-h-12"
+                        onClick={() => {
+                          const next = clampCashierDiscountAmount(
+                            discountDraft,
+                            ticketTotal
+                          );
+                          if (
+                            cashierDiscountExceedsCatalogSubtotal(
+                              discountDraft,
+                              ticketTotal
+                            )
+                          ) {
+                            toast.error(t("discountExceeds"));
+                          }
+                          setTicketDiscount(next);
+                          setDiscountOpen(false);
+                        }}
+                      >
+                        {t("applyDiscountAction")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-12"
+                        onClick={() => {
+                          setTicketDiscount("0.00");
+                          setDiscountDraft("");
+                          setDiscountOpen(false);
+                        }}
+                      >
+                        {t("clearDiscount")}
+                      </Button>
+                    </div>
+                  ) : invoiceView.editable ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-3 min-h-11 w-full"
+                      disabled={ticket.length === 0}
+                      onClick={() => {
+                        setDiscountDraft(
+                          appliedDiscount === "0.00" ? "" : appliedDiscount
+                        );
+                        setDiscountOpen(true);
+                      }}
+                    >
+                      {t("applyDiscount")}
+                    </Button>
+                  ) : null}
+                </div>
+
+                <Button
+                  type="button"
+                  className={cn(cashierPos.primaryAction, "mt-3")}
+                  disabled={
+                    !terminalId ||
+                    paymentOpen ||
+                    (directSale
+                      ? Boolean(paidCheckout)
+                      : ticket.length === 0)
+                  }
+                  onClick={() => {
+                    if (
+                      directSale &&
+                      !paidCheckout &&
+                      cashierCatalogTicketMatchesInvoiceLines(
+                        ticket,
+                        directSale.lines
+                      )
+                    ) {
+                      resumePaymentSheet();
+                      return;
+                    }
+                    void placeSale();
+                  }}
+                >
+                  {t("payWithAmount")} — {payAmountLabel}
+                </Button>
               </div>
-            )}
-          </aside>
-        </div>
+            </section>
+
+            {/* CENTER — wide Product Catalog */}
+            <div className={cashierPos.catalog}>
+              <div className={cashierPos.catalogToolbar}>
+                <input
+                  className={cashierPos.catalogSearch}
+                  value={productSearch}
+                  onChange={(event) => setProductSearch(event.target.value)}
+                  placeholder={t("productSearch")}
+                  aria-label={t("productSearch")}
+                />
+                <div className={cashierPos.catalogTools}>
+                  <label className="flex items-center gap-2 text-xs text-[#6b7280]">
+                    <span>{t("sortBy")}</span>
+                    <select
+                      className="min-h-10 rounded-lg border border-[#d8dee6] bg-white px-2 text-sm text-[#111827]"
+                      value={catalogSort}
+                      onChange={(event) =>
+                        setCatalogSort(event.target.value as CatalogSort)
+                      }
+                    >
+                      <option value="default">{t("sortDefault")}</option>
+                      <option value="name">{t("sortName")}</option>
+                      <option value="price">{t("sortPrice")}</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div className={cashierPos.categoryBar}>
+                {(() => {
+                  const AllIcon = cashierAllCategoryIcon();
+                  const tint = cashierAllCategoryTint();
+                  return (
+                    <button
+                      type="button"
+                      className={cn(
+                        cashierPos.categoryTile,
+                        categoryFilter === "all" ? tint.selected : tint.idle
+                      )}
+                      onClick={() => setCategoryFilter("all")}
+                    >
+                      <AllIcon className={cashierPos.categoryIcon} aria-hidden />
+                      <span className={cashierPos.categoryLabel}>
+                        {t("allCategories")}
+                      </span>
+                    </button>
+                  );
+                })()}
+                {(() => {
+                  const FavIcon = cashierFavoritesCategoryIcon();
+                  const tint = cashierFavoritesCategoryTint();
+                  return (
+                    <button
+                      type="button"
+                      className={cn(
+                        cashierPos.categoryTile,
+                        categoryFilter === "favorites"
+                          ? tint.selected
+                          : tint.idle
+                      )}
+                      onClick={() => setCategoryFilter("favorites")}
+                    >
+                      <FavIcon className={cashierPos.categoryIcon} aria-hidden />
+                      <span className={cashierPos.categoryLabel}>
+                        {t("favorites")}
+                      </span>
+                    </button>
+                  );
+                })()}
+                {categories.map((category) => {
+                  const tint = resolveCashierCategoryTint(category);
+                  const Icon = resolveCashierCategoryIcon(category);
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      className={cn(
+                        cashierPos.categoryTile,
+                        categoryFilter === category.id
+                          ? tint.selected
+                          : tint.idle
+                      )}
+                      onClick={() => setCategoryFilter(category.id)}
+                    >
+                      <Icon className={cashierPos.categoryIcon} aria-hidden />
+                      <span className={cashierPos.categoryLabel}>
+                        {categoryLabel(
+                          language,
+                          category.nameAr,
+                          category.nameEn,
+                          t("unknownCategory")
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className={cashierPos.catalogScroll}>
+                {catalogQuery.isPending ? (
+                  <AppLoadingState label={t("loading")} />
+                ) : visibleItems.length === 0 ? (
+                  <AppEmptyState title={t("emptyCatalog")} />
+                ) : (
+                  <div className={cashierPos.productGrid}>
+                    {visibleItems.map((item) => {
+                      const itemName =
+                        language === "ar"
+                          ? item.nameAr
+                          : item.nameEn ?? item.nameAr;
+                      return (
+                        <CashierProductCard
+                          key={item.menuItemId}
+                          item={{
+                            menuItemId: item.menuItemId,
+                            name: itemName,
+                            price: item.price,
+                            imageUrl: item.imageUrl,
+                            isAvailable: item.isAvailable,
+                          }}
+                          currencyLabel={money}
+                          availableLabel={t("available")}
+                          unavailableLabel={t("unavailable")}
+                          addLabel={t("addProduct")}
+                          favorite={favoriteIdSet.has(item.menuItemId)}
+                          flash={flashItemId === item.menuItemId}
+                          disabled={salePhase === "payment" || Boolean(paidCheckout)}
+                          onToggleFavorite={() => {
+                            setFavoriteIds(
+                              toggleCashierFavoriteId(
+                                restaurantId,
+                                item.menuItemId
+                              )
+                            );
+                          }}
+                          onAdd={() =>
+                            addItem({
+                              menuItemId: item.menuItemId,
+                              nameAr: item.nameAr,
+                              nameEn: item.nameEn,
+                              price: item.price,
+                            })
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Payment modal — only after PAY */}
+          {paymentOpen ? (
+            <div
+              className={cashierPos.overlay}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("paymentWorkspace")}
+            >
+              <div className={cashierPos.sheet} dir={dir}>
+                <h2 className="text-lg font-semibold">
+                  {t("completePaymentTitle")}
+                </h2>
+                {sheetMoney ? (
+                  <div className="mt-4 space-y-1">
+                    <p className="flex justify-between text-sm text-[#6b7280]">
+                      <span>{t("ticketSubtotal")}</span>
+                      <span className="tabular-nums">
+                        {money(sheetMoney.subtotal)}
+                      </span>
+                    </p>
+                    <p className="flex justify-between text-sm text-[#6b7280]">
+                      <span>{t("ticketDiscount")}</span>
+                      <span className="tabular-nums">
+                        {isPositiveDisplayMoney(sheetMoney.discount)
+                          ? `-${money(sheetMoney.discount)}`
+                          : money("0.00")}
+                      </span>
+                    </p>
+                    <p className="flex justify-between text-sm text-[#6b7280]">
+                      <span>{t("paymentTax")}</span>
+                      <span className="tabular-nums">
+                        {money(sheetMoney.taxAmount)}
+                      </span>
+                    </p>
+                  </div>
+                ) : null}
+                <p className="mt-4 text-sm font-medium text-[#6b7280]">
+                  {t("amountDue")}
+                </p>
+                <p className={cashierPos.amountDueHuge}>
+                  {amountDue
+                    ? money(amountDue)
+                    : sheetMoney
+                      ? money(sheetMoney.grandTotal)
+                      : money("0.00")}
+                </p>
+                {paying ? (
+                  <p className="mt-1 text-xs text-[#6b7280]">{t("paying")}</p>
+                ) : null}
+                <p className="mb-2 mt-4 text-sm font-medium">
+                  {t("choosePaymentMethod")}
+                </p>
+                <div className={cashierPos.methodGrid}>
+                  {(
+                    [
+                      ["cash", "tenderCash", Banknote],
+                      ["network", "tenderNetwork", CreditCard],
+                      ["mixed", "tenderMixed", Combine],
+                      ["complimentary", "tenderComplimentary", Gift],
+                    ] as const
+                  ).map(([mode, label, Icon]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={
+                        tenderMode === mode
+                          ? cashierPos.methodBtnActive
+                          : cashierPos.methodBtn
+                      }
+                      onClick={() => {
+                        setTenderMode(mode);
+                        if (mode === "complimentary") {
+                          setPaymentMethod("cash");
+                          setCardTender("");
+                          setCashReceived("");
+                        } else if (mode === "cash") {
+                          setPaymentMethod("cash");
+                          setCardTender("");
+                          setCashReceived(
+                            amountDue ?? sheetMoney?.grandTotal ?? ""
+                          );
+                        } else if (mode === "network") {
+                          setPaymentMethod("card");
+                          setCashReceived("");
+                          setCardTender(
+                            amountDue ?? sheetMoney?.grandTotal ?? ""
+                          );
+                        } else {
+                          setPaymentMethod("cash");
+                          setCashReceived("");
+                          setCardTender("");
+                        }
+                      }}
+                    >
+                      <Icon className={cashierPos.methodIcon} aria-hidden />
+                      <span>{t(label)}</span>
+                    </button>
+                  ))}
+                </div>
+                {tenderMode === "complimentary" ? (
+                  <p className="mt-3 text-sm text-[#6b7280]">
+                    {t("complimentaryConfirmHint")}
+                  </p>
+                ) : null}
+                {tenderMode === "cash" || tenderMode === "mixed" ? (
+                  <div className="mt-3">
+                    <label
+                      className="text-sm font-medium"
+                      htmlFor="cashier-tender-cash"
+                    >
+                      {tenderMode === "cash"
+                        ? t("amountReceived")
+                        : t("tenderCash")}
+                    </label>
+                    <input
+                      id="cashier-tender-cash"
+                      className={cn(cashierPos.moneyInput, "mt-1")}
+                      inputMode="decimal"
+                      disabled={paying}
+                      value={cashReceived}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        setCashReceived(next);
+                        persistDirectSaleSnapshot({
+                          received: next,
+                          method: "cash",
+                        });
+                      }}
+                    />
+                  </div>
+                ) : null}
+                {tenderMode === "network" || tenderMode === "mixed" ? (
+                  <div className="mt-3">
+                    <label
+                      className="text-sm font-medium"
+                      htmlFor="cashier-tender-card"
+                    >
+                      {t("tenderNetwork")}
+                    </label>
+                    <input
+                      id="cashier-tender-card"
+                      className={cn(cashierPos.moneyInput, "mt-1")}
+                      inputMode="decimal"
+                      disabled={paying}
+                      value={cardTender}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        setCardTender(next);
+                        persistDirectSaleSnapshot({
+                          card: next,
+                          method: "card",
+                        });
+                      }}
+                    />
+                  </div>
+                ) : null}
+                {tenderMode != null && tenderMode !== "complimentary" ? (
+                  <>
+                    <p className="mt-3 flex justify-between text-sm">
+                      <span>{t("totalTendered")}</span>
+                      <span className="tabular-nums font-semibold">
+                        {money(tenderedShown)}
+                      </span>
+                    </p>
+                    <p className="mt-1 flex justify-between text-sm">
+                      <span>{t("remainingAmount")}</span>
+                      <span className="tabular-nums font-semibold">
+                        {money(remainingShown ?? "0.00")}
+                      </span>
+                    </p>
+                  </>
+                ) : null}
+                {cashChange ? (
+                  <p className="mt-1 flex justify-between text-sm">
+                    <span>{t("changeDue")}</span>
+                    <span className="tabular-nums font-semibold">
+                      {money(cashChange)}
+                    </span>
+                  </p>
+                ) : null}
+                {tenderMode !== "complimentary" &&
+                tenderPlan &&
+                tenderPlan.remainingCents > 0 ? (
+                  <p className="mt-1 text-sm text-red-700">
+                    {t("underpayment")}
+                  </p>
+                ) : null}
+                {paymentReadiness.showCardOverTender ? (
+                  <p className="mt-1 text-sm text-red-700">
+                    {t("cardOverTender")}
+                  </p>
+                ) : null}
+                {registerGap ? (
+                  <div className={cn(cashierPos.warnBox, "mt-4")}>
+                    <p className="text-sm font-medium">{t("shiftBeforePay")}</p>
+                    <p className="mt-1 text-sm">
+                      {t(
+                        registerGap === "shift_required"
+                          ? "shiftRequired"
+                          : registerGap === "register_closed"
+                            ? "registerClosed"
+                            : "registerRequired"
+                      )}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-3 min-h-12"
+                      onClick={openRegisterOps}
+                    >
+                      {t("openRegisterOps")}
+                    </Button>
+                  </div>
+                ) : null}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-12 min-w-28 flex-1"
+                    disabled={paying}
+                    onClick={cancelPaymentSheet}
+                  >
+                    {t("cancelPayment")}
+                  </Button>
+                  <Button
+                    type="button"
+                    className={cn(cashierPos.primaryAction, "flex-1")}
+                    disabled={
+                      paymentReadiness.confirmDisabled || tenderMode == null
+                    }
+                    onClick={() => void completePayment()}
+                  >
+                    {paying ? t("paying") : t("confirmPayment")}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {paidCheckout ? (
+            <div
+              className={cashierPos.overlay}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("paidWorkspaceTitle")}
+            >
+              <div className={cashierPos.sheet} dir={dir}>
+                <div className={cashierPos.paidBox}>
+                  <p className={cashierPos.paidStamp}>
+                    ✓ {t("receiptPaidStamp")}
+                  </p>
+                  <p className="mt-2 text-2xl font-bold tabular-nums">
+                    {money(paidCheckout.grandTotal)}
+                  </p>
+                </div>
+                <div className="mt-4 flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    className={cashierPos.primaryAction}
+                    onClick={() => setPrintOpen(true)}
+                    disabled={!paidReceipt}
+                  >
+                    {t("printInvoice")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cashierPos.secondaryAction}
+                    disabled
+                  >
+                    {t("sendInvoice")}
+                  </Button>
+                  <Button
+                    type="button"
+                    className={cashierPos.secondaryAction}
+                    onClick={startNewSale}
+                  >
+                    {t("newSale")}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </>
       ) : null}
       </div>
 

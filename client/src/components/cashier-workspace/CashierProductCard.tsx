@@ -1,5 +1,6 @@
 /**
- * CASHIER-UX-REDESIGN-1 — POS product card. Presentation only.
+ * CASHIER-UX-REDESIGN-1 / CASHIER-UX-REDESIGN-2 — POS product card.
+ * Presentation only.
  */
 
 import { cashierPos } from "@/lib/cashier-workspace/cashierPosStyles";

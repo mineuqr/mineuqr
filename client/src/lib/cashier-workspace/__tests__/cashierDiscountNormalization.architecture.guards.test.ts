@@ -34,6 +34,11 @@ describe("CASHIER-DISCOUNT-NORMALIZATION-FALSE-POSITIVE-FIX-1 architecture", () 
     expect(applySlice).toContain("ticketTotal");
     expect(applySlice).not.toContain("invoiceView.money");
     expect(applySlice).not.toContain("sheetMoney");
-    expect(panel).toContain("clampCashierDiscountAmount(\n                          discountDraft,\n                          ticketTotal");
+    const clampIdx = panel.indexOf("const next = clampCashierDiscountAmount");
+    expect(clampIdx).toBeGreaterThan(-1);
+    const clampApply = panel.slice(clampIdx, clampIdx + 200).replace(/\s+/g, " ");
+    expect(clampApply).toContain(
+      "clampCashierDiscountAmount( discountDraft, ticketTotal"
+    );
   });
 });

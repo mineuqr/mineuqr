@@ -52,6 +52,13 @@ const COPY: Record<string, { ar: string; en: string }> = {
   payWithAmount: { ar: "ادفع", en: "Pay" },
   placing: { ar: "جاري فتح الدفع…", en: "Opening payment…" },
   currentOrder: { ar: "الطلب الحالي", en: "Current order" },
+  noActiveOrder: { ar: "لا يوجد طلب نشط", en: "No active order" },
+  noActiveOrderHint: {
+    ar: "اختر طلب QR وارد أو ابدأ بيعًا جديدًا من القائمة.",
+    en: "Select an incoming QR order or start a new sale from the catalog.",
+  },
+  incomingOpenPanel: { ar: "فتح الطلبات الواردة", en: "Open incoming orders" },
+  incomingPayAction: { ar: "تحميل للفاتورة", en: "Load to sale" },
   productSearch: { ar: "بحث عن صنف…", en: "Search products…" },
   sortBy: { ar: "ترتيب", en: "Sort" },
   sortDefault: { ar: "الافتراضي", en: "Default" },

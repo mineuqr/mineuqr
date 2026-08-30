@@ -63,9 +63,11 @@ describe("CASHIER-UX-FULLSCREEN-AND-THEME-1 architecture guards", () => {
     expect(styles).toContain("bg-[#f4f5f7]");
     expect(styles).toContain("bg-white");
     expect(styles).toContain("orderRail");
+    expect(styles).toContain("incomingBar");
     expect(styles).toContain("paymentWorkspace");
     expect(panel).toContain("cashierPos.orderRail");
-    expect(panel).toContain("contextualMode");
+    expect(panel).toContain("paymentOpen");
+    expect(panel).toContain("cashierPos.incomingBar");
     expect(read(INDEX_CSS)).not.toContain("cashier-pos");
     expect(read(RESTAURANT_DASH)).not.toContain("cashierPos");
     // CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 — Orders may identify
