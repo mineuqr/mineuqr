@@ -50,7 +50,7 @@ describe("DrizzleOutboxRepository.appendInTransaction", () => {
 });
 
 describe("DrizzleOutboxRepository.requeueFailedBatch", () => {
-  it("moves failed rows back to pending without inventing a status", async () => {
+  it("moves failed rows back to pending without resetting publishAttempts", async () => {
     const where = vi.fn(async () => undefined);
     const set = vi.fn(() => ({ where }));
     vi.mocked(getDb).mockResolvedValue({
@@ -58,7 +58,7 @@ describe("DrizzleOutboxRepository.requeueFailedBatch", () => {
         from: vi.fn(() => ({
           where: vi.fn(() => ({
             orderBy: vi.fn(() => ({
-              limit: vi.fn(async () => [{ id: "failed-1" }]),
+              limit: vi.fn(async () => [{ id: "failed-1", publishAttempts: 5 }]),
             })),
           })),
         })),
@@ -73,9 +73,9 @@ describe("DrizzleOutboxRepository.requeueFailedBatch", () => {
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "pending",
-        publishAttempts: 0,
-        nextRetryAt: null,
+        nextRetryAt: expect.any(String),
       })
     );
+    expect(set.mock.calls[0]![0]).not.toHaveProperty("publishAttempts");
   });
 });

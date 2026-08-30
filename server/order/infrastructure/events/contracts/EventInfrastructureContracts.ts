@@ -30,7 +30,8 @@ export interface OutboxRepository {
 
   /**
    * Re-queue dead-lettered rows as pending so durable recovery can retry.
-   * Does not invent statuses. Returns how many rows moved failed → pending.
+   * Preserves publishAttempts and schedules nextRetryAt. Does not invent statuses.
+   * Returns how many rows moved failed → pending.
    */
   requeueFailedBatch(limit: number): Promise<number>;
 }

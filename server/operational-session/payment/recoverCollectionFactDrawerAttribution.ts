@@ -10,6 +10,10 @@
  * CASH-DRAWER-SHIFT-ATTRIBUTION-CONSISTENCY-FIX-1
  * Resolves the Shift that covered CF.committedAt. Never binds a pre-shift
  * Collection Fact to the currently open Shift.
+ *
+ * RECOVERY-DISCOVERY-STARVATION-HARDENING-1
+ * Parks permanently unrecoverable (and cooled-down deferred/retryable) CFs
+ * out of the bounded oldest-first window. Does not delete the CF.
  */
 
 import { opsLog } from "../../_core/opsLog";
@@ -21,6 +25,14 @@ import {
   type CollectionFactAttributionInput,
 } from "../check/checkSettlementAttributionAdoption";
 import { listProductionCollectionFactsAwaitingDrawerAttribution } from "./collection-fact/collectionFactRepository";
+import { classifyDrawerAttributionRecovery } from "./recoveryDiscoveryClassification";
+import {
+  listActiveParkedDrawerAttributionFactIds,
+  parkDrawerAttributionDiscovery,
+} from "./recoveryDiscoveryPark";
+
+export const DRAWER_ATTRIBUTION_RECOVERY_PAGE_CAP = 50;
+export const DRAWER_ATTRIBUTION_RECOVERY_MAX_PAGES = 4;
 
 function toAttributionInput(
   fact: CollectionFact
@@ -51,56 +63,145 @@ function operatorUserIdFromFact(fact: CollectionFact): number | undefined {
 
 export async function recoverCollectionFactDrawerAttributions(
   limit = 25
-): Promise<{ attempted: number; failed: number; created: number }> {
-  const facts = await listProductionCollectionFactsAwaitingDrawerAttribution(
-    limit
-  );
+): Promise<{
+  attempted: number;
+  failed: number;
+  created: number;
+  parked: number;
+}> {
+  const pageSize = Math.min(Math.max(limit, 0), DRAWER_ATTRIBUTION_RECOVERY_PAGE_CAP);
+  const maxCandidates = pageSize * DRAWER_ATTRIBUTION_RECOVERY_MAX_PAGES;
+  let attempted = 0;
   let failed = 0;
   let created = 0;
-  for (const fact of facts) {
-    try {
-      const at = new Date().toISOString();
-      const settlementContext = await resolveSettlementContextForCollectionFact({
-        restaurantId: fact.restaurantId,
-        deviceId: fact.terminalId?.trim() || undefined,
-        operatorUserId: operatorUserIdFromFact(fact),
-        committedAt: fact.committedAt,
-      });
-      const bundle = await adoptSettlementAttributionAfterFinalize({
-        restaurantId: fact.restaurantId,
-        outcome: "paid",
-        settlementContext,
-        settlementRecord: null,
-        settlementLines: null,
-        at,
-        collectionFact: toAttributionInput(fact),
-      });
-      if (
-        bundle.attribution.outcome === "created" ||
-        bundle.attribution.outcome === "already_applied"
-      ) {
-        created += 1;
-        continue;
-      }
-      if (bundle.attribution.outcome === "failed") {
-        failed += 1;
-      }
-    } catch (err) {
-      failed += 1;
-      opsLog({
-        type: OPS_EVENT.check_settlement_attribution_deferred_failed,
-        category: "ORDER",
-        severity: "warn",
-        ts: new Date().toISOString(),
-        restaurantId: fact.restaurantId,
-        action: "recoverCollectionFactDrawerAttributions",
-        metadata: {
-          orderId: fact.orderId,
-          collectionFactId: fact.collectionFactId,
-          error: err instanceof Error ? err.message : String(err),
-        },
-      });
-    }
+  let parked = 0;
+  let actionable = 0;
+
+  if (pageSize === 0) {
+    return { attempted: 0, failed: 0, created: 0, parked: 0 };
   }
-  return { attempted: facts.length, failed, created };
+
+  while (attempted < maxCandidates && actionable < pageSize) {
+    const facts = await listProductionCollectionFactsAwaitingDrawerAttribution(
+      pageSize,
+      {
+        excludeCollectionFactIds: listActiveParkedDrawerAttributionFactIds(),
+      }
+    );
+    if (facts.length === 0) break;
+
+    for (const fact of facts) {
+      if (attempted >= maxCandidates || actionable >= pageSize) break;
+      attempted += 1;
+      try {
+        const at = new Date().toISOString();
+        const settlementContext = await resolveSettlementContextForCollectionFact({
+          restaurantId: fact.restaurantId,
+          deviceId: fact.terminalId?.trim() || undefined,
+          operatorUserId: operatorUserIdFromFact(fact),
+          committedAt: fact.committedAt,
+        });
+        const bundle = await adoptSettlementAttributionAfterFinalize({
+          restaurantId: fact.restaurantId,
+          outcome: "paid",
+          settlementContext,
+          settlementRecord: null,
+          settlementLines: null,
+          at,
+          collectionFact: toAttributionInput(fact),
+        });
+        const classification = classifyDrawerAttributionRecovery({
+          outcome: bundle.attribution.outcome,
+          gaps: bundle.attribution.gaps,
+        });
+        if (
+          classification === "recovered" ||
+          classification === "already_resolved"
+        ) {
+          created += 1;
+          actionable += 1;
+          continue;
+        }
+        if (classification === "retryable") {
+          failed += 1;
+          actionable += 1;
+          parkDrawerAttributionDiscovery({
+            collectionFactId: fact.collectionFactId,
+            restaurantId: fact.restaurantId,
+            classification: "retryable",
+            gaps: bundle.attribution.gaps,
+            reason: bundle.attribution.reason ?? "retryable_drawer_attribution",
+          });
+          parked += 1;
+          logParked(fact, "retryable", bundle.attribution.gaps, bundle.attribution.reason);
+          continue;
+        }
+        parkDrawerAttributionDiscovery({
+          collectionFactId: fact.collectionFactId,
+          restaurantId: fact.restaurantId,
+          classification,
+          gaps: bundle.attribution.gaps,
+          reason:
+            bundle.attribution.reason ??
+            (classification === "permanently_unrecoverable"
+              ? "permanently_unrecoverable_drawer_attribution"
+              : "deferred_drawer_attribution"),
+        });
+        parked += 1;
+        logParked(fact, classification, bundle.attribution.gaps, bundle.attribution.reason);
+      } catch (err) {
+        failed += 1;
+        actionable += 1;
+        parkDrawerAttributionDiscovery({
+          collectionFactId: fact.collectionFactId,
+          restaurantId: fact.restaurantId,
+          classification: "retryable",
+          gaps: ["recovery_writer_threw"],
+          reason: err instanceof Error ? err.message : String(err),
+        });
+        parked += 1;
+        opsLog({
+          type: OPS_EVENT.check_settlement_attribution_deferred_failed,
+          category: "ORDER",
+          severity: "warn",
+          ts: new Date().toISOString(),
+          restaurantId: fact.restaurantId,
+          action: "recoverCollectionFactDrawerAttributions",
+          metadata: {
+            orderId: fact.orderId,
+            collectionFactId: fact.collectionFactId,
+            classification: "retryable",
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
+      }
+    }
+
+    if (facts.length < pageSize) break;
+  }
+
+  return { attempted, failed, created, parked };
+}
+
+function logParked(
+  fact: CollectionFact,
+  classification: "permanently_unrecoverable" | "deferred" | "retryable",
+  gaps: readonly string[],
+  reason: string | null | undefined
+): void {
+  opsLog({
+    type: OPS_EVENT.recovery_discovery_parked,
+    category: "ORDER",
+    severity: classification === "retryable" ? "warn" : "info",
+    ts: new Date().toISOString(),
+    restaurantId: fact.restaurantId,
+    action: "recoverCollectionFactDrawerAttributions",
+    metadata: {
+      orderId: fact.orderId,
+      collectionFactId: fact.collectionFactId,
+      classification,
+      gaps: [...gaps],
+      reason: reason ?? null,
+    },
+  });
 }

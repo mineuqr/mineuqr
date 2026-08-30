@@ -30,6 +30,7 @@ vi.mock("../../../_core/opsLog", () => ({
 }));
 
 import { recoverCollectionFactDrawerAttributions } from "../recoverCollectionFactDrawerAttribution";
+import { resetDrawerAttributionDiscoveryParkForTests } from "../recoveryDiscoveryPark";
 
 function fact(overrides: Partial<CollectionFact> = {}): CollectionFact {
   return {
@@ -71,6 +72,7 @@ function fact(overrides: Partial<CollectionFact> = {}): CollectionFact {
 
 describe("recoverCollectionFactDrawerAttributions", () => {
   beforeEach(() => {
+    resetDrawerAttributionDiscoveryParkForTests();
     vi.clearAllMocks();
     mocks.resolveSettlementContextForCollectionFact.mockResolvedValue({
       restaurantId: 1,
@@ -92,7 +94,7 @@ describe("recoverCollectionFactDrawerAttributions", () => {
       [fact()]
     );
     const result = await recoverCollectionFactDrawerAttributions(25);
-    expect(result).toEqual({ attempted: 1, failed: 0, created: 1 });
+    expect(result).toEqual({ attempted: 1, failed: 0, created: 1, parked: 0 });
     expect(mocks.resolveSettlementContextForCollectionFact).toHaveBeenCalledWith(
       expect.objectContaining({
         restaurantId: 1,
@@ -124,7 +126,7 @@ describe("recoverCollectionFactDrawerAttributions", () => {
       events: [],
     });
     const result = await recoverCollectionFactDrawerAttributions(25);
-    expect(result).toEqual({ attempted: 1, failed: 0, created: 1 });
+    expect(result).toEqual({ attempted: 1, failed: 0, created: 1, parked: 0 });
   });
 
   it("does not treat a skipped context as Financial Core failure", async () => {
@@ -139,7 +141,7 @@ describe("recoverCollectionFactDrawerAttributions", () => {
       events: [],
     });
     const result = await recoverCollectionFactDrawerAttributions(25);
-    expect(result).toEqual({ attempted: 1, failed: 0, created: 0 });
+    expect(result).toEqual({ attempted: 1, failed: 0, created: 0, parked: 1 });
   });
 
   it("isolates a failed replay and continues the batch", async () => {
@@ -156,6 +158,113 @@ describe("recoverCollectionFactDrawerAttributions", () => {
         events: [],
       });
     const result = await recoverCollectionFactDrawerAttributions(25);
-    expect(result).toEqual({ attempted: 2, failed: 1, created: 1 });
+    expect(result).toEqual({ attempted: 2, failed: 1, created: 1, parked: 1 });
+  });
+
+  it("processes a newer recoverable CF after 25 permanently unwritable older CFs", async () => {
+    const permanent = Array.from({ length: 25 }, (_, i) =>
+      fact({
+        collectionFactId: `cf-old-${i}`,
+        orderId: i + 1,
+        committedAt: "2026-08-20T12:00:00.000Z",
+      })
+    );
+    const newer = fact({
+      collectionFactId: "cf-new",
+      orderId: 99,
+      committedAt: "2026-08-29T19:11:00.000Z",
+    });
+    const pool = [...permanent, newer];
+    mocks.listProductionCollectionFactsAwaitingDrawerAttribution.mockImplementation(
+      async (limit: number, options?: { excludeCollectionFactIds?: readonly string[] }) => {
+        const exclude = new Set(options?.excludeCollectionFactIds ?? []);
+        return pool
+          .filter((row) => !exclude.has(row.collectionFactId))
+          .slice(0, limit);
+      }
+    );
+    mocks.adoptSettlementAttributionAfterFinalize.mockImplementation(
+      async (input: { collectionFact?: { collectionFactId: string } }) => {
+        const id = input.collectionFact?.collectionFactId ?? "";
+        if (id === "cf-new") {
+          return { attribution: { outcome: "created", gaps: [], reason: null }, events: [] };
+        }
+        return {
+          attribution: {
+            outcome: "skipped",
+            gaps: ["no_shift_at_commit_time"],
+            reason: "no historical Shift",
+          },
+          events: [],
+        };
+      }
+    );
+
+    const result = await recoverCollectionFactDrawerAttributions(25);
+    expect(result.created).toBe(1);
+    expect(result.parked).toBe(25);
+    expect(result.failed).toBe(0);
+    expect(mocks.adoptSettlementAttributionAfterFinalize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collectionFact: expect.objectContaining({ collectionFactId: "cf-new" }),
+      })
+    );
+    expect(mocks.resolveSettlementContextForCollectionFact).toHaveBeenCalledWith(
+      expect.objectContaining({ committedAt: "2026-08-29T19:11:00.000Z" })
+    );
+  });
+
+  it("does not re-adopt a permanently parked CF on the next cycle", async () => {
+    mocks.listProductionCollectionFactsAwaitingDrawerAttribution.mockImplementation(
+      async (limit: number, options?: { excludeCollectionFactIds?: readonly string[] }) => {
+        const exclude = new Set(options?.excludeCollectionFactIds ?? []);
+        const row = fact({ collectionFactId: "cf-closed" });
+        if (exclude.has(row.collectionFactId)) return [];
+        return [row].slice(0, limit);
+      }
+    );
+    mocks.adoptSettlementAttributionAfterFinalize.mockResolvedValue({
+      attribution: {
+        outcome: "skipped",
+        gaps: ["shift_not_writable_for_attribution"],
+        reason: "historical Shift closed",
+      },
+      events: [],
+    });
+
+    expect(await recoverCollectionFactDrawerAttributions(25)).toEqual({
+      attempted: 1,
+      failed: 0,
+      created: 0,
+      parked: 1,
+    });
+    expect(await recoverCollectionFactDrawerAttributions(25)).toEqual({
+      attempted: 0,
+      failed: 0,
+      created: 0,
+      parked: 0,
+    });
+    expect(mocks.adoptSettlementAttributionAfterFinalize).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not bind a closed historical Shift skip to a later Shift", async () => {
+    mocks.listProductionCollectionFactsAwaitingDrawerAttribution.mockResolvedValue([
+      fact({ collectionFactId: "cf-a", committedAt: "2026-08-27T12:00:00.000Z" }),
+    ]);
+    mocks.adoptSettlementAttributionAfterFinalize.mockResolvedValue({
+      attribution: {
+        outcome: "skipped",
+        gaps: ["shift_not_writable_for_attribution"],
+        reason: "Shift A closed",
+      },
+      events: [],
+    });
+    await recoverCollectionFactDrawerAttributions(25);
+    expect(mocks.resolveSettlementContextForCollectionFact).toHaveBeenCalledWith(
+      expect.objectContaining({ committedAt: "2026-08-27T12:00:00.000Z" })
+    );
+    expect(mocks.resolveSettlementContextForCollectionFact).not.toHaveBeenCalledWith(
+      expect.objectContaining({ committedAt: expect.not.stringMatching(/2026-08-27/) })
+    );
   });
 });

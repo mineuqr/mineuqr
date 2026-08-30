@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { and, asc, eq, inArray, lte, or, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, lte, or, isNull, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { readMysqlAffectedRows } from "../../../../db/mysqlAffectedRows";
 import {
@@ -12,6 +12,7 @@ import type {
 } from "../contracts/EventInfrastructureContracts";
 import type { EventEnvelope, StoredOutboxRecord } from "../EventEnvelope";
 import { serializeDomainEventPayload } from "../serialization/domainEventSerializer";
+import { nextOutboxRequeueRetryAt } from "./outboxRetrySchedule";
 
 type DbTx = Parameters<Parameters<NonNullable<Awaited<ReturnType<typeof getDb>>>["transaction"]>[0]>[0];
 
@@ -84,7 +85,11 @@ export class DrizzleOutboxRepository implements OutboxRepository {
           )
         )
       )
-      .orderBy(asc(orderDomainOutbox.occurredAt), asc(orderDomainOutbox.sequenceNumber))
+      .orderBy(
+        asc(orderDomainOutbox.publishAttempts),
+        asc(orderDomainOutbox.occurredAt),
+        asc(orderDomainOutbox.sequenceNumber)
+      )
       .limit(limit);
 
     return rows.map(mapRowToStored);
@@ -147,27 +152,31 @@ export class DrizzleOutboxRepository implements OutboxRepository {
     const take = Math.min(Math.max(limit, 0), 100);
     if (take === 0) return 0;
     const failed = await db
-      .select({ id: orderDomainOutbox.id })
+      .select({
+        id: orderDomainOutbox.id,
+        publishAttempts: orderDomainOutbox.publishAttempts,
+      })
       .from(orderDomainOutbox)
       .where(eq(orderDomainOutbox.status, "failed"))
       .orderBy(asc(orderDomainOutbox.occurredAt), asc(orderDomainOutbox.sequenceNumber))
       .limit(take);
     if (failed.length === 0) return 0;
-    const ids = failed.map((row) => row.id);
-    await db
-      .update(orderDomainOutbox)
-      .set({
-        status: "pending",
-        publishAttempts: 0,
-        nextRetryAt: null,
-      })
-      .where(
-        and(
-          inArray(orderDomainOutbox.id, ids),
-          eq(orderDomainOutbox.status, "failed")
-        )
-      );
-    return ids.length;
+    const nowMs = Date.now();
+    for (const row of failed) {
+      await db
+        .update(orderDomainOutbox)
+        .set({
+          status: "pending",
+          nextRetryAt: nextOutboxRequeueRetryAt(row.publishAttempts, nowMs),
+        })
+        .where(
+          and(
+            eq(orderDomainOutbox.id, row.id),
+            eq(orderDomainOutbox.status, "failed")
+          )
+        );
+    }
+    return failed.length;
   }
 }
 

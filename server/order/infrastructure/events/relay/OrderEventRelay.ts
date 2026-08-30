@@ -5,9 +5,9 @@ import type {
 } from "../contracts/EventInfrastructureContracts";
 import type { OutboxRepository } from "../contracts/EventInfrastructureContracts";
 import type { EventInfrastructureMetrics } from "../monitoring/EventInfrastructureMetrics";
+import { computeRetryDelayMs } from "../outbox/outboxRetrySchedule";
 
 const MAX_PUBLISH_ATTEMPTS = 5;
-const BASE_RETRY_MS = 5_000;
 
 export class OrderEventRelay implements EventRelay {
   constructor(
@@ -58,7 +58,7 @@ export class OrderEventRelay implements EventRelay {
         const deadLetter = attempt >= MAX_PUBLISH_ATTEMPTS;
         const nextRetryAt = deadLetter
           ? null
-          : new Date(Date.now() + BASE_RETRY_MS * 2 ** (attempt - 1))
+          : new Date(Date.now() + computeRetryDelayMs(attempt))
               .toISOString()
               .slice(0, 19)
               .replace("T", " ");
@@ -97,6 +97,4 @@ export class OrderEventRelay implements EventRelay {
   }
 }
 
-export function computeRetryDelayMs(attempt: number): number {
-  return BASE_RETRY_MS * 2 ** Math.max(0, attempt - 1);
-}
+export { computeRetryDelayMs } from "../outbox/outboxRetrySchedule";

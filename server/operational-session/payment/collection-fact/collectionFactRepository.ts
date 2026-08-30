@@ -3,7 +3,7 @@
  * Drizzle Collection Fact repository. Insert + retrieve only. No money UPDATE.
  */
 
-import { and, asc, eq, inArray, notExists, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, notExists, notInArray, or, sql } from "drizzle-orm";
 import {
   checkOrderMembership,
   crmpSettlementAttributions,
@@ -353,14 +353,22 @@ export async function listCashierPosProductionFactsAwaitingDownstreamSettlement(
   return rows;
 }
 
+export type DrawerAttributionDiscoveryOptions = {
+  readonly excludeCollectionFactIds?: readonly string[];
+};
+
 /**
  * DRAWER-ATTRIBUTION-RELIABILITY-1
  * Production CFs on Cashier-finalizable channels with no CF attribution row.
  * Discovery is independent of Check / Settlement Record so paid Checks can still converge.
  * Read-only. Does not write CF, PAID, Invoice, or Attribution.
+ *
+ * RECOVERY-DISCOVERY-STARVATION-HARDENING-1
+ * Optional exclude list is process-local park IDs — never deletes the CF.
  */
 export async function listProductionCollectionFactsAwaitingDrawerAttribution(
-  limit: number
+  limit: number,
+  options?: DrawerAttributionDiscoveryOptions
 ): Promise<CollectionFact[]> {
   const db = await getDb();
   if (!db) return [];
@@ -381,6 +389,11 @@ export async function listProductionCollectionFactsAwaitingDrawerAttribution(
         )
       )
     );
+  const excluded = [
+    ...new Set(
+      (options?.excludeCollectionFactIds ?? []).filter((id) => id.trim().length > 0)
+    ),
+  ];
   const rows = await db
     .select()
     .from(paymentCollectionFacts)
@@ -391,7 +404,10 @@ export async function listProductionCollectionFactsAwaitingDrawerAttribution(
           paymentCollectionFacts.orderingChannel,
           CASHIER_FINALIZABLE_ORDERING_CHANNELS
         ),
-        notExists(attributed)
+        notExists(attributed),
+        ...(excluded.length > 0
+          ? [notInArray(paymentCollectionFacts.collectionFactId, excluded)]
+          : [])
       )
     )
     .orderBy(asc(paymentCollectionFacts.committedAt))

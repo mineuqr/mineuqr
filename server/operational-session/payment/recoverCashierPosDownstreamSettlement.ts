@@ -4,6 +4,10 @@
  * Direct cashier_pos and Incoming finalizable channels share this sweeper.
  * Does not write Collection Facts, Invoices, or Orders. Does not gate HTTP Confirm.
  * Does not Confirm, close Session, or enter Incoming.
+ *
+ * Check failures stay retryable: DiningSessionUnavailableError is shared by
+ * missing Order and infrastructure unavailability, so this sweeper does not
+ * park items as permanently unrecoverable.
  */
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
