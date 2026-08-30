@@ -2,33 +2,34 @@
 
 ## Verdict
 
-**PASS (automated + structural UI acceptance)**  
-**Live authenticated browser critical path: NOT EXECUTED in this agent session** (no Cashier auth session / browser automation available). Operator should spot-check the Cashier UI once before treating visual closeout as final.
+**IMPLEMENTATION PASS** (layout + responsive + touch composition)  
+Live authenticated multi-device browser walkthrough still recommended for visual sign-off.
 
-## Layout (final)
+## Layout
 
 ```
 TOP:    Incoming QR notification strip (count badge + popover)
-LEFT:   Current Sale / Sales Invoice (~22rem)
-CENTER: Wide Product Catalog (flex 1fr)
+LEFT:   Current Sale (lg+ inline rail)
+CENTER: Wide Product Catalog (primary)
+<lg:    Catalog-first; Current Sale = bottom sheet; sticky cart dock
 PAYMENT: Focused modal/sheet after PAY only
 ```
 
-No permanent right Incoming rail.
+## Responsive / touch
+
+- Root: `overflow-x-hidden` + `touch-manipulation`
+- Below `lg`: sale becomes bottom sheet + backdrop; cart dock keeps sale one tap away
+- Incoming select opens sale sheet on tablet/phone
+- Touch targets ≥ ~44px for categories, Add, favorites, methods, dock, Pay
+- Payment sheet bottom-anchored on narrow viewports with safe-area padding
+- Active (not hover-only) styles on primary controls
 
 ## Validation
 
 | Check | Result |
 |-------|--------|
-| Cashier Vitest | 38 files / 163 tests (includes layout acceptance) |
-| `pnpm run check` | passed |
-| Settlement contract | still `pos.settlement.initiate` |
-| Tender modes | Cash / Network / Mixed / Complimentary + Lucide icons |
-| Realtime architecture | unchanged |
-
-## Notes
-
-- Incoming select hydrates Current Sale in `ticket` phase (does not auto-open Payment).
-- Category tiles: fixed size ~5.5×4.75rem, gap-3, pastel tints, Lucide icons.
-- Product cards: taller min-height, wider grid (up to 6 cols on 2xl).
-- Send Invoice remains disabled (no send API).
+| Cashier Vitest | **38 files / 163 tests passed** |
+| `pnpm run check` | **passed** |
+| Settlement | still `pos.settlement.initiate` |
+| Tender modes | Cash / Network / Mixed / Complimentary + icons |
+| Realtime | unchanged |

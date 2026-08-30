@@ -18,15 +18,16 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
   );
   const styles = read("client/src/lib/cashier-workspace/cashierPosStyles.ts");
 
-  it("catalog is the wide primary workspace beside a fixed-width sale rail", () => {
+  it("catalog is the wide primary workspace beside a fixed-width sale rail on lg+", () => {
     expect(styles).toMatch(
       /lg:grid-cols-\[minmax\(18rem,22rem\)_minmax\(0,1fr\)\]/
     );
     expect(styles).toContain("xl:grid-cols-5");
     expect(styles).toContain("min-h-[13.5rem]");
-    expect(styles).toContain("h-[4.75rem]");
-    expect(styles).toContain("w-[5.5rem]");
-    expect(styles).toContain("gap-3");
+    expect(styles).toContain("orderRailClosed");
+    expect(styles).toContain("cartDock");
+    expect(styles).toContain("overflow-x-hidden");
+    expect(styles).toContain("touch-manipulation");
   });
 
   it("Incoming is top notification + popover, not a permanent right rail", () => {
@@ -41,13 +42,15 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
     );
   });
 
-  it("Payment is modal-only after PAY with tender icons", () => {
+  it("adapts Current Sale to a sheet/dock below lg and keeps Payment modal-only", () => {
+    expect(panel).toContain("salePanelOpen");
+    expect(panel).toContain("cashierPos.cartDock");
+    expect(panel).toContain("cashierPos.orderRailClosed");
+    expect(panel).toContain("cashierPos.saleBackdrop");
+    expect(styles).toContain("max-lg:fixed");
+    expect(styles).toContain("lg:hidden");
     expect(panel).toContain("paymentOpen ?");
-    expect(panel).toContain("cashierPos.overlay");
     expect(styles).toContain("fixed inset-0");
-    expect(styles).not.toContain("lg:static lg:inset-auto");
-    expect(panel).toContain("Banknote");
-    expect(panel).toContain("CreditCard");
   });
 
   it("category tiles resolve icons and Incoming select does not auto-pay", () => {
@@ -58,5 +61,6 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
       panel.indexOf("async function selectOrder")
     );
     expect(reviewFn).toContain('setSalePhase("ticket")');
+    expect(reviewFn).toContain("setSalePanelOpen(true)");
   });
 });

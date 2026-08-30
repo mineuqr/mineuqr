@@ -126,7 +126,9 @@ import {
   Minus,
   Plus,
   QrCode,
+  ShoppingCart,
   Trash2,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -246,6 +248,7 @@ export function CashierWorkspacePanel({
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [incomingOpen, setIncomingOpen] = useState(false);
   const [incomingPulse, setIncomingPulse] = useState(false);
+  const [salePanelOpen, setSalePanelOpen] = useState(false);
   const prevIncomingCountRef = useRef(0);
   const [printOpen, setPrintOpen] = useState(false);
   const [paidReceipt, setPaidReceipt] =
@@ -584,6 +587,7 @@ export function CashierWorkspacePanel({
       card: "",
     });
     setSalePhase("ticket");
+    setSalePanelOpen(true);
   }
 
   async function selectOrder(orderId: number) {
@@ -1589,11 +1593,33 @@ export function CashierWorkspacePanel({
           </div>
 
           <div className={cashierPos.body}>
-            {/* LEFT — Current Sale */}
+            {salePanelOpen ? (
+              <button
+                type="button"
+                className={cashierPos.saleBackdrop}
+                aria-label={t("closeSalePanel")}
+                onClick={() => setSalePanelOpen(false)}
+              />
+            ) : null}
+            {/* LEFT / sheet — Current Sale */}
             <section
-              className={cashierPos.orderRail}
+              className={cn(
+                cashierPos.orderRail,
+                salePanelOpen
+                  ? cashierPos.orderRailOpen
+                  : cashierPos.orderRailClosed
+              )}
               aria-label={t("currentOrder")}
             >
+              <div className={cashierPos.orderSheetHandle} aria-hidden />
+              <button
+                type="button"
+                className={cashierPos.orderSheetClose}
+                aria-label={t("closeSalePanel")}
+                onClick={() => setSalePanelOpen(false)}
+              >
+                <X className="size-5" />
+              </button>
               <div className={cashierPos.orderScroll}>
                 <div>
                   <p className={cashierPos.orderSource}>
@@ -1981,6 +2007,32 @@ export function CashierWorkspacePanel({
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Mobile / tablet cart dock */}
+          <div className={cashierPos.cartDock}>
+            <button
+              type="button"
+              className={cashierPos.cartDockBtn}
+              onClick={() => setSalePanelOpen(true)}
+              aria-label={t("viewSale")}
+            >
+              <ShoppingCart className="size-5 shrink-0" aria-hidden />
+              <span className={cashierPos.cartDockMeta}>
+                <span className={cashierPos.cartDockTitle}>
+                  {t("viewSale")}
+                </span>
+                <span className={cashierPos.cartDockSub}>
+                  {invoiceView.lines.reduce(
+                    (sum, line) => sum + line.quantity,
+                    0
+                  )}{" "}
+                  {t("cartItemsCount")}
+                  {displayOrderNumber ? ` · #${displayOrderNumber}` : ""}
+                </span>
+              </span>
+              <span className={cashierPos.cartDockTotal}>{payAmountLabel}</span>
+            </button>
           </div>
 
           {/* Payment modal — only after PAY */}

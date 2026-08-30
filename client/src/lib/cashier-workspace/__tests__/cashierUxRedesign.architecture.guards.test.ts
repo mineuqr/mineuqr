@@ -29,7 +29,9 @@ describe("CASHIER-UX-REDESIGN-2 architecture", () => {
     expect(panel).toContain("cashierPos.catalog");
     expect(panel).toContain("cashierPos.incomingBar");
     expect(panel).toContain("paymentOpen");
+    expect(panel).toContain("salePanelOpen");
     expect(styles).toContain("incomingBar");
+    expect(styles).toContain("cartDock");
     expect(styles).toContain(
       "lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]"
     );
