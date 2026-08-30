@@ -2092,6 +2092,50 @@ export const posSaleIdempotency = mysqlTable(
 export type InsertPosSaleIdempotency = typeof posSaleIdempotency.$inferInsert;
 export type SelectPosSaleIdempotency = typeof posSaleIdempotency.$inferSelect;
 
+/**
+ * REALTIME-MULTI-INSTANCE-FANOUT-1 — ephemeral cross-instance hint bus.
+ * Infrastructure only. Not a financial/order ledger. Short TTL via app cleanup.
+ */
+export const realtimeBusMessages = mysqlTable(
+  "realtime_bus_messages",
+  {
+    id: bigint("id", { mode: "bigint", unsigned: true })
+      .autoincrement()
+      .primaryKey(),
+    eventId: varchar("eventId", { length: 64 }).notNull(),
+    originInstanceId: varchar("originInstanceId", { length: 64 }).notNull(),
+    restaurantId: int("restaurantId").notNull(),
+    channel: varchar("channel", { length: 64 }).notNull(),
+    hintJson: json("hintJson").notNull(),
+    createdAt: timestamp("createdAt", { fsp: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("realtime_bus_messages_event_id_unique").on(table.eventId),
+    index("realtime_bus_messages_created").on(table.createdAt),
+  ]
+);
+
+export type InsertRealtimeBusMessage = typeof realtimeBusMessages.$inferInsert;
+export type SelectRealtimeBusMessage = typeof realtimeBusMessages.$inferSelect;
+
+/** Shared realtime ticket revocation (multi-instance). Infrastructure only. */
+export const realtimeTicketRevocations = mysqlTable(
+  "realtime_ticket_revocations",
+  {
+    jti: varchar("jti", { length: 64 }).primaryKey(),
+    revokedAt: timestamp("revokedAt", { fsp: 3 }).defaultNow().notNull(),
+    expiresAt: timestamp("expiresAt", { fsp: 3 }).notNull(),
+  },
+  (table) => [index("realtime_ticket_revocations_expires").on(table.expiresAt)]
+);
+
+export type InsertRealtimeTicketRevocation =
+  typeof realtimeTicketRevocations.$inferInsert;
+export type SelectRealtimeTicketRevocation =
+  typeof realtimeTicketRevocations.$inferSelect;
+
 // ─── Live Commercial Plans (COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1) ───
 export {
   commercialPlans,

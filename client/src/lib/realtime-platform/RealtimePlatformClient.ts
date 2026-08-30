@@ -89,6 +89,7 @@ export class RealtimePlatformClient {
   private options: RealtimeConnectOptions | null = null;
   private everLive = false;
   private refreshInFlight = false;
+  private lastEventId: string | null = null;
   private readonly boundVisibility = () => this.onVisibility();
   /** Dedup window for public customer hints (no seq). */
   private readonly recentPublicHintKeys = new Set<string>();
@@ -177,7 +178,8 @@ export class RealtimePlatformClient {
       this.reconnectAttempts > 0 ? "reconnecting" : "connecting"
     );
 
-    const source = new EventSource(this.options.sseUrl);
+    const url = appendLastEventId(this.options.sseUrl, this.lastEventId);
+    const source = new EventSource(url);
     this.source = source;
 
     source.addEventListener("platform.ready", () => {
@@ -188,7 +190,9 @@ export class RealtimePlatformClient {
     });
 
     source.addEventListener("platform.catch_up", (ev) => {
-      const data = safeParse(ev);
+      const msg = ev as MessageEvent;
+      if (msg.lastEventId) this.lastEventId = msg.lastEventId;
+      const data = safeParse(msg.data);
       noteRealtimeClientCatchUp();
       this.options?.handlers?.onCatchUp?.({
         reason: (data?.reason as string) ?? "catch_up",
@@ -200,10 +204,14 @@ export class RealtimePlatformClient {
     });
 
     // Listen for known hint event names via generic message + typed events.
-    source.onmessage = (ev) => this.handleEventData(ev.data);
+    source.onmessage = (ev) => {
+      if (ev.lastEventId) this.lastEventId = ev.lastEventId;
+      this.handleEventData(ev.data);
+    };
     for (const type of HINT_EVENT_TYPES) {
       source.addEventListener(type, (ev) => {
         const msg = ev as MessageEvent;
+        if (msg.lastEventId) this.lastEventId = msg.lastEventId;
         this.handleEventData(msg.data);
       });
     }
@@ -428,6 +436,7 @@ export function buildRealtimeSseUrl(input: {
   token: string;
   channels?: RealtimeChannel[];
   origin?: string;
+  lastEventId?: string | null;
 }): string {
   const base = input.origin ?? (typeof window !== "undefined" ? "" : "");
   const url = new URL(input.ssePath, base || "http://localhost");
@@ -435,11 +444,29 @@ export function buildRealtimeSseUrl(input: {
   if (input.channels?.length) {
     url.searchParams.set("channels", input.channels.join(","));
   }
+  if (input.lastEventId) {
+    url.searchParams.set("lastEventId", input.lastEventId);
+  }
   // Return path+query when browser-relative
   if (!input.origin && typeof window !== "undefined") {
     return `${url.pathname}${url.search}`;
   }
   return url.toString();
+}
+
+function appendLastEventId(
+  sseUrl: string,
+  lastEventId: string | null
+): string {
+  if (!lastEventId) return sseUrl;
+  try {
+    const url = new URL(sseUrl, "http://localhost");
+    url.searchParams.set("lastEventId", lastEventId);
+    if (sseUrl.startsWith("http")) return url.toString();
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return sseUrl;
+  }
 }
 
 /**

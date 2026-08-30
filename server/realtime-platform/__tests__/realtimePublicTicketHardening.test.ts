@@ -54,7 +54,7 @@ afterEach(() => {
 });
 
 describe("REALTIME-PUBLIC-TICKET-HARDENING-1 opaque issuance", () => {
-  it("issues unguessable opaque tickets without JWT payload", () => {
+  it("issues unguessable opaque tickets without JWT payload", async () => {
     const trackingHash = hashTrackingToken("tok-public-hardening-1");
     const minted = issueOpaqueCustomerTicket({
       restaurantId: 42,
@@ -72,7 +72,7 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 opaque issuance", () => {
     expect(getRealtimeMetrics().ticketsIssued).toBe(1);
   });
 
-  it("registry lookup authorizes and never returns client-decodable claims on wire", () => {
+  it("registry lookup authorizes and never returns client-decodable claims on wire", async () => {
     const trackingHash = hashTrackingToken("tok-a");
     const minted = issueOpaqueCustomerTicket({
       restaurantId: 7,
@@ -90,25 +90,25 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 opaque issuance", () => {
     expect(() => JSON.parse(Buffer.from(minted.token, "base64").toString())).toThrow();
   });
 
-  it("rejects forgery / unknown opaque ids", () => {
+  it("rejects forgery / unknown opaque ids", async () => {
     expect(lookupOpaqueRealtimeTicket(`${OPAQUE_TICKET_PREFIX}forged`).ok).toBe(
       false
     );
-    expect(authorizeRealtimeCredential(`${OPAQUE_TICKET_PREFIX}forged`).ok).toBe(
+    expect((await authorizeRealtimeCredential(`${OPAQUE_TICKET_PREFIX}forged`)).ok).toBe(
       false
     );
   });
 
-  it("revokes and expires correctly", () => {
+  it("revokes and expires correctly", async () => {
     const minted = issueOpaqueCustomerTicket({
       restaurantId: 1,
       orderId: 2,
       trackingTokenHash: hashTrackingToken("tok-rev"),
       ttlSeconds: 600,
     });
-    expect(authorizeRealtimeCredential(minted.token).ok).toBe(true);
+    expect((await authorizeRealtimeCredential(minted.token)).ok).toBe(true);
     revokeOpaqueRealtimeTicket(minted.token, "test");
-    const revoked = authorizeRealtimeCredential(minted.token);
+    const revoked = await authorizeRealtimeCredential(minted.token);
     expect(revoked.ok).toBe(false);
     if (revoked.ok) return;
     expect(revoked.code).toBe("revoked");
@@ -123,7 +123,7 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 opaque issuance", () => {
     expect(looked.ok).toBe(true);
     if (!looked.ok) return;
     looked.record.expiresAt = Math.floor(Date.now() / 1000) - 1;
-    const expired = authorizeRealtimeCredential(short.token);
+    const expired = await authorizeRealtimeCredential(short.token);
     expect(expired.ok).toBe(false);
     if (expired.ok) return;
     expect(expired.code).toBe("expired");
@@ -131,7 +131,7 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 opaque issuance", () => {
     expect(getRealtimeMetrics().ticketsExpired).toBeGreaterThanOrEqual(1);
   });
 
-  it("renews by rotating opaque ticket id", () => {
+  it("renews by rotating opaque ticket id", async () => {
     const first = issueOpaqueCustomerTicket({
       restaurantId: 5,
       orderId: 8,
@@ -140,12 +140,12 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 opaque issuance", () => {
     const renewed = renewOpaqueCustomerTicket(first.token);
     expect(renewed).not.toBeNull();
     expect(renewed!.token).not.toBe(first.token);
-    expect(authorizeRealtimeCredential(first.token).ok).toBe(false);
-    expect(authorizeRealtimeCredential(renewed!.token).ok).toBe(true);
+    expect((await authorizeRealtimeCredential(first.token)).ok).toBe(false);
+    expect((await authorizeRealtimeCredential(renewed!.token)).ok).toBe(true);
     expect(getRealtimeMetrics().ticketsRenewed).toBe(1);
   });
 
-  it("cleanup removes dead tickets after grace", () => {
+  it("cleanup removes dead tickets after grace", async () => {
     const minted = issueOpaqueCustomerTicket({
       restaurantId: 1,
       orderId: 1,
@@ -159,7 +159,7 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 opaque issuance", () => {
     expect(getOpaqueTicketRegistrySize()).toBe(0);
   });
 
-  it("supports concurrent tickets for same order", () => {
+  it("supports concurrent tickets for same order", async () => {
     const hash = hashTrackingToken("tok-multi");
     const a = issueOpaqueCustomerTicket({
       restaurantId: 1,
@@ -172,11 +172,11 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 opaque issuance", () => {
       trackingTokenHash: hash,
     });
     expect(a.token).not.toBe(b.token);
-    expect(authorizeRealtimeCredential(a.token).ok).toBe(true);
-    expect(authorizeRealtimeCredential(b.token).ok).toBe(true);
+    expect((await authorizeRealtimeCredential(a.token)).ok).toBe(true);
+    expect((await authorizeRealtimeCredential(b.token)).ok).toBe(true);
   });
 
-  it("binds connection id on first open", () => {
+  it("binds connection id on first open", async () => {
     const minted = issueOpaqueCustomerTicket({
       restaurantId: 1,
       orderId: 1,
@@ -193,20 +193,20 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 opaque issuance", () => {
 });
 
 describe("REALTIME-PUBLIC-TICKET-HARDENING-1 isolation + migration", () => {
-  it("opaque customer cannot authorize staff channels", () => {
+  it("opaque customer cannot authorize staff channels", async () => {
     const minted = issueOpaqueCustomerTicket({
       restaurantId: 9,
       orderId: 1,
       trackingTokenHash: hashTrackingToken("tok-acl"),
     });
-    const auth = authorizeRealtimeCredential(minted.token);
+    const auth = await authorizeRealtimeCredential(minted.token);
     expect(auth.ok).toBe(true);
     if (!auth.ok) return;
     expect(auth.claims.channels).toEqual(["customer"]);
     expect(auth.claims.channels.includes("orders" as never)).toBe(false);
   });
 
-  it("cross-customer ACL differs by orderId in registry claims", () => {
+  it("cross-customer ACL differs by orderId in registry claims", async () => {
     const a = issueOpaqueCustomerTicket({
       restaurantId: 1,
       orderId: 100,
@@ -217,14 +217,14 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 isolation + migration", () => {
       orderId: 200,
       trackingTokenHash: hashTrackingToken("tok-b"),
     });
-    const ca = authorizeRealtimeCredential(a.token);
-    const cb = authorizeRealtimeCredential(b.token);
+    const ca = await authorizeRealtimeCredential(a.token);
+    const cb = await authorizeRealtimeCredential(b.token);
     expect(ca.ok && cb.ok).toBe(true);
     if (!ca.ok || !cb.ok) return;
     expect(ca.claims.orderId).not.toBe(cb.claims.orderId);
   });
 
-  it("cross-tenant isolation via restaurantId in registry", () => {
+  it("cross-tenant isolation via restaurantId in registry", async () => {
     const a = issueOpaqueCustomerTicket({
       restaurantId: 1,
       orderId: 1,
@@ -235,13 +235,13 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 isolation + migration", () => {
       orderId: 1,
       trackingTokenHash: hashTrackingToken("t2"),
     });
-    const ca = authorizeRealtimeCredential(a.token);
-    const cb = authorizeRealtimeCredential(b.token);
+    const ca = await authorizeRealtimeCredential(a.token);
+    const cb = await authorizeRealtimeCredential(b.token);
     if (!ca.ok || !cb.ok) throw new Error("auth failed");
     expect(ca.claims.restaurantId).not.toBe(cb.claims.restaurantId);
   });
 
-  it("accepts legacy customer JWT while migration flag enabled", () => {
+  it("accepts legacy customer JWT while migration flag enabled", async () => {
     process.env.REALTIME_LEGACY_CUSTOMER_JWT = "true";
     const legacy = mintRealtimeTicket({
       restaurantId: 3,
@@ -252,10 +252,10 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 isolation + migration", () => {
       trackingRef: "abc",
     });
     expect(verifyRealtimeTicket(legacy.token).ok).toBe(true);
-    expect(authorizeRealtimeCredential(legacy.token).ok).toBe(true);
+    expect((await authorizeRealtimeCredential(legacy.token)).ok).toBe(true);
   });
 
-  it("rejects legacy customer JWT when migration disabled", () => {
+  it("rejects legacy customer JWT when migration disabled", async () => {
     process.env.REALTIME_LEGACY_CUSTOMER_JWT = "false";
     const legacy = mintRealtimeTicket({
       restaurantId: 3,
@@ -265,22 +265,22 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 isolation + migration", () => {
       orderId: 5,
       trackingRef: "abc",
     });
-    expect(authorizeRealtimeCredential(legacy.token).ok).toBe(false);
+    expect((await authorizeRealtimeCredential(legacy.token)).ok).toBe(false);
   });
 
-  it("staff JWT path unchanged", () => {
+  it("staff JWT path unchanged", async () => {
     const staff = mintRealtimeTicket({
       restaurantId: 3,
       authMode: "staff_session",
       sub: "user:1",
       channels: ["orders"],
     });
-    expect(authorizeRealtimeCredential(staff.token).ok).toBe(true);
+    expect((await authorizeRealtimeCredential(staff.token)).ok).toBe(true);
   });
 });
 
 describe("REALTIME-PUBLIC-TICKET-HARDENING-1 gateway", () => {
-  it("opens SSE with opaque ticket and sanitizes customer ready", () => {
+  it("opens SSE with opaque ticket and sanitizes customer ready", async () => {
     const bus = new InMemoryRealtimePubSub();
     const gateway = new RealtimeSseGateway(bus);
     const chunks: string[] = [];
@@ -307,7 +307,7 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 gateway", () => {
       trackingTokenHash: hashTrackingToken("tok-gw"),
     });
 
-    const opened = gateway.open({
+    const opened = await gateway.open({
       connectionId: "c-opaque",
       token: minted.token,
       channels: ["customer"],
@@ -324,7 +324,7 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 gateway", () => {
 });
 
 describe("REALTIME-PUBLIC-TICKET-HARDENING-1 architecture", () => {
-  it("customer mint uses opaque registry by default", () => {
+  it("customer mint uses opaque registry by default", async () => {
     const router = read(
       "server/realtime-platform/realtimePlatformRouter.ts"
     );
@@ -342,7 +342,7 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 architecture", () => {
     expect(returned![0]).not.toContain("orderId");
   });
 
-  it("gateway authorizes via unified credential helper", () => {
+  it("gateway authorizes via unified credential helper", async () => {
     const gateway = read(
       "server/realtime-platform/gateway/RealtimeSseGateway.ts"
     );
@@ -350,7 +350,7 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 architecture", () => {
     expect(gateway).toContain("bindOpaqueTicketConnection");
   });
 
-  it("OrderStatusPage / customer hook unchanged (no EventSource)", () => {
+  it("OrderStatusPage / customer hook unchanged (no EventSource)", async () => {
     const page = read("client/src/pages/OrderStatusPage.tsx");
     expect(page).toContain("useCustomerTrackingRealtime");
     expect(page).not.toContain("EventSource");
@@ -359,7 +359,7 @@ describe("REALTIME-PUBLIC-TICKET-HARDENING-1 architecture", () => {
     expect(hook).not.toContain("new EventSource");
   });
 
-  it("program docs exist", () => {
+  it("program docs exist", async () => {
     const base =
       "docs/engineering/programs/REALTIME-PUBLIC-TICKET-HARDENING-1";
     for (const name of ["IMPLEMENTATION.md", "FINAL-REPORT.md"]) {

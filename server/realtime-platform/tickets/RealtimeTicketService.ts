@@ -164,17 +164,23 @@ export function verifyRealtimeTicket(token: string): VerifyRealtimeTicketResult 
   return { ok: true, claims };
 }
 
-/** In-memory revocation set (single-node). Multi-instance: replace with shared store. */
-const revoked = new Set<string>();
+import { getRealtimeRevocationStore, isRealtimeTicketRevokedLocal } from "./RealtimeRevocationStore";
 
-export function revokeRealtimeTicket(jti: string): void {
-  revoked.add(jti);
+/** Sync fast-path (local cache). Prefer ensureRealtimeTicketRevoked for cross-instance. */
+export function isRealtimeTicketRevoked(jti: string): boolean {
+  return isRealtimeTicketRevokedLocal(jti);
 }
 
-export function isRealtimeTicketRevoked(jti: string): boolean {
-  return revoked.has(jti);
+export function revokeRealtimeTicket(jti: string, expiresAtSec?: number): void {
+  const expiresAtMs =
+    (expiresAtSec ?? Math.floor(Date.now() / 1000) + 3600) * 1000;
+  void getRealtimeRevocationStore().revoke(jti, expiresAtMs);
+}
+
+export async function ensureRealtimeTicketRevoked(jti: string): Promise<boolean> {
+  return getRealtimeRevocationStore().isRevoked(jti);
 }
 
 export function clearRealtimeTicketRevocations(): void {
-  revoked.clear();
+  getRealtimeRevocationStore().clear();
 }

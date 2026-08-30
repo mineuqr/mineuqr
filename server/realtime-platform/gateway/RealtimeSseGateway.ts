@@ -9,6 +9,10 @@ import { DEFAULT_SERVER_CAPABILITIES } from "@shared/realtime-platform";
 import type { RealtimePubSub } from "../pubsub/RealtimePubSub";
 import { authorizeRealtimeCredential } from "../tickets/authorizeRealtimeCredential";
 import {
+  ensureRealtimeTicketRevoked,
+  isRealtimeTicketRevoked,
+} from "../tickets/RealtimeTicketService";
+import {
   bindOpaqueTicketConnection,
   isOpaqueRealtimeTicket,
 } from "../tickets/RealtimeOpaqueTicketRegistry";
@@ -50,18 +54,21 @@ export class RealtimeSseGateway {
     return this.connections.size;
   }
 
-  open(input: {
+  async open(input: {
     connectionId: string;
     token: string;
     channels?: string[];
     lastEventId?: string;
     res: Response;
-  }): { ok: true; connection: RealtimeConnection } | { ok: false; status: number; message: string } {
+  }): Promise<
+    | { ok: true; connection: RealtimeConnection }
+    | { ok: false; status: number; message: string }
+  > {
     if (this.shuttingDown) {
       return { ok: false, status: 503, message: "Realtime gateway shutting down" };
     }
 
-    const verified = authorizeRealtimeCredential(input.token);
+    const verified = await authorizeRealtimeCredential(input.token);
     if (!verified.ok) {
       incRealtimeMetric("authFailures");
       noteRealtimeEvent("realtime_auth_failed", { code: verified.code });
@@ -130,15 +137,21 @@ export class RealtimeSseGateway {
     if (heartbeatMs > 0) {
       connection.heartbeat = setInterval(() => {
         if (connection.closed) return;
-        try {
-          writeSse(res, "platform.heartbeat", {
-            ts: new Date().toISOString(),
-            connectionId: connection.id,
-          });
-          incRealtimeMetric("heartbeats");
-        } catch {
-          this.close(connection.id);
-        }
+        void (async () => {
+          try {
+            if (await ensureRealtimeTicketRevoked(connection.claims.jti)) {
+              this.close(connection.id);
+              return;
+            }
+            writeSse(res, "platform.heartbeat", {
+              ts: new Date().toISOString(),
+              connectionId: connection.id,
+            });
+            incRealtimeMetric("heartbeats");
+          } catch {
+            this.close(connection.id);
+          }
+        })();
       }, heartbeatMs);
     }
 
@@ -184,6 +197,10 @@ export class RealtimeSseGateway {
 
   private deliver(connection: RealtimeConnection, hint: RealtimeHint): void {
     if (connection.closed) return;
+    if (isRealtimeTicketRevoked(connection.claims.jti)) {
+      this.close(connection.id);
+      return;
+    }
     // Hard tenant isolation
     if (hint.restaurantId !== connection.claims.restaurantId) {
       incRealtimeMetric("dropped");

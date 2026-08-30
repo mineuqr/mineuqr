@@ -34,7 +34,7 @@ beforeEach(() => {
 });
 
 describe("protocol negotiation", () => {
-  it("negotiates v1 capabilities as intersection", () => {
+  it("negotiates v1 capabilities as intersection", async () => {
     const result = negotiateRealtimeCapabilities({
       protocolVersion: REALTIME_PROTOCOL_VERSION,
       heartbeat: true,
@@ -46,14 +46,14 @@ describe("protocol negotiation", () => {
     expect(result.negotiated.compression).toBe(false);
   });
 
-  it("rejects unsupported protocol version", () => {
+  it("rejects unsupported protocol version", async () => {
     const result = negotiateRealtimeCapabilities({ protocolVersion: 99 });
     expect(result.ok).toBe(false);
   });
 });
 
 describe("hint envelope", () => {
-  it("creates metadata-only hints", () => {
+  it("creates metadata-only hints", async () => {
     const hint = createRealtimeHint({
       type: "order.status_changed",
       channel: "orders",
@@ -66,7 +66,7 @@ describe("hint envelope", () => {
     assertHintIsMetadataOnly(hint);
   });
 
-  it("rejects invalid channel", () => {
+  it("rejects invalid channel", async () => {
     expect(() =>
       createRealtimeHint({
         type: "order.created",
@@ -79,14 +79,14 @@ describe("hint envelope", () => {
 });
 
 describe("channel + surface registries", () => {
-  it("defines all channels with tenant scope", () => {
+  it("defines all channels with tenant scope", async () => {
     for (const def of Object.values(REALTIME_CHANNEL_REGISTRY)) {
       expect(def.tenantScoped).toBe(true);
       expect(def.authModes.length).toBeGreaterThan(0);
     }
   });
 
-  it("orders, kitchen, expo, and customer-tracking may be migrated; others stay false", () => {
+  it("orders, kitchen, expo, and customer-tracking may be migrated; others stay false", async () => {
     const migrated = new Set(
       REALTIME_SURFACE_CAPABILITY_REGISTRY.filter((s) => s.migrated).map(
         (s) => s.surfaceId
@@ -104,7 +104,7 @@ describe("channel + surface registries", () => {
 });
 
 describe("tickets", () => {
-  it("mints and verifies staff tickets with channel ACL", () => {
+  it("mints and verifies staff tickets with channel ACL", async () => {
     const minted = mintRealtimeTicket({
       restaurantId: 9,
       authMode: "staff_session",
@@ -119,7 +119,7 @@ describe("tickets", () => {
     expect(verified.claims.restaurantId).toBe(9);
   });
 
-  it("rejects an actually expired HMAC ticket using Unix seconds", () => {
+  it("rejects an actually expired HMAC ticket using Unix seconds", async () => {
     vi.useFakeTimers({ now: 1_700_000_000_000 });
     try {
       const minted = mintRealtimeTicket({
@@ -142,7 +142,7 @@ describe("tickets", () => {
     }
   });
 
-  it("rejects bad signatures and supports revocation", () => {
+  it("rejects bad signatures and supports revocation", async () => {
     const minted = mintRealtimeTicket({
       restaurantId: 1,
       authMode: "staff_session",
@@ -154,7 +154,7 @@ describe("tickets", () => {
     expect(isRealtimeTicketRevoked(minted.claims.jti)).toBe(true);
   });
 
-  it("filters customer channels", () => {
+  it("filters customer channels", async () => {
     expect(
       filterChannelsForAuthMode(["orders", "customer"], "customer_tracking")
     ).toEqual(["customer"]);
@@ -182,7 +182,7 @@ describe("publisher + bus", () => {
 });
 
 describe("sequence tracker", () => {
-  it("detects duplicates and gaps", () => {
+  it("detects duplicates and gaps", async () => {
     const t = new RealtimeSequenceTracker();
     expect(t.observe(1, "orders", 1, "a").action).toBe("apply");
     expect(t.observe(1, "orders", 1, "a").action).toBe("apply"); // equal refresh
@@ -232,7 +232,7 @@ describe("SSE gateway", () => {
       channels: ["kitchen"],
     });
     const res = mockRes();
-    const opened = gateway.open({
+    const opened = await gateway.open({
       connectionId: "c1",
       token: minted.token,
       res,
@@ -264,7 +264,7 @@ describe("SSE gateway", () => {
     await gateway.shutdown();
   });
 
-  it("rejects an actually expired HMAC ticket before opening a connection", () => {
+  it("rejects an actually expired HMAC ticket before opening a connection", async () => {
     vi.useFakeTimers({ now: 1_700_000_000_000 });
     try {
       const gateway = new RealtimeSseGateway(new InMemoryRealtimePubSub());
@@ -277,7 +277,7 @@ describe("SSE gateway", () => {
       });
       vi.setSystemTime(1_700_000_002_000);
       const res = mockRes();
-      const opened = gateway.open({
+      const opened = await gateway.open({
         connectionId: "c-expired",
         token: minted.token,
         res,
@@ -294,10 +294,10 @@ describe("SSE gateway", () => {
     }
   });
 
-  it("rejects missing/invalid tickets", () => {
+  it("rejects missing/invalid tickets", async () => {
     const gateway = new RealtimeSseGateway(new InMemoryRealtimePubSub());
     const res = mockRes();
-    const opened = gateway.open({
+    const opened = await gateway.open({
       connectionId: "c2",
       token: "not-a-ticket",
       res,

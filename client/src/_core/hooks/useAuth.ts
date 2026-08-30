@@ -1,6 +1,7 @@
 import { authMeQueryOptions } from "@/lib/authSession";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { getRealtimePlatform } from "@/lib/realtime-platform";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -40,6 +41,11 @@ export function useAuth(options?: UseAuthOptions) {
       // cookie would rehydrate the user immediately after logout.
       utils.auth.me.setData(undefined, null);
       localStorage.removeItem("manus-runtime-user-info");
+      try {
+        getRealtimePlatform().disconnect();
+      } catch {
+        /* platform may be idle */
+      }
     }
   }, [logoutMutation, utils]);
 

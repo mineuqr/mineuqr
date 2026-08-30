@@ -7,12 +7,13 @@ import { Router, type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import {
   getRealtimeSseGateway,
+  getRealtimeSharedBusStatus,
   isRealtimePlatformEnabled,
 } from "../composition";
 
 export const realtimeHttpRouter = Router();
 
-realtimeHttpRouter.get("/sse", (req: Request, res: Response) => {
+realtimeHttpRouter.get("/sse", async (req: Request, res: Response) => {
   if (!isRealtimePlatformEnabled()) {
     res.status(503).json({ error: "Realtime platform disabled" });
     return;
@@ -44,7 +45,7 @@ realtimeHttpRouter.get("/sse", (req: Request, res: Response) => {
         : undefined;
 
   const gateway = getRealtimeSseGateway();
-  const opened = gateway.open({
+  const opened = await gateway.open({
     connectionId: randomUUID(),
     token,
     channels,
@@ -62,5 +63,6 @@ realtimeHttpRouter.get("/health", (_req, res) => {
     program: "REALTIME-PLATFORM-FOUNDATION-1",
     enabled: isRealtimePlatformEnabled(),
     connections: getRealtimeSseGateway().connectionCount,
+    sharedBus: getRealtimeSharedBusStatus(),
   });
 });

@@ -5,6 +5,7 @@
 
 import type { RealtimeTicketClaims } from "@shared/realtime-platform";
 import {
+  ensureRealtimeTicketRevoked,
   isRealtimeTicketRevoked,
   verifyRealtimeTicket,
 } from "./RealtimeTicketService";
@@ -24,10 +25,11 @@ export type AuthorizeRealtimeCredentialResult =
 /**
  * Opaque customer tickets → registry (sole ACL source).
  * Signed JWTs → staff/device (and legacy customer during migration).
+ * Async so shared multi-instance revocation can be observed.
  */
-export function authorizeRealtimeCredential(
+export async function authorizeRealtimeCredential(
   token: string
-): AuthorizeRealtimeCredentialResult {
+): Promise<AuthorizeRealtimeCredentialResult> {
   if (isOpaqueRealtimeTicket(token)) {
     const looked = lookupOpaqueRealtimeTicket(token);
     if (!looked.ok) {
@@ -55,7 +57,10 @@ export function authorizeRealtimeCredential(
     }
   }
 
-  if (isRealtimeTicketRevoked(verified.claims.jti)) {
+  if (
+    isRealtimeTicketRevoked(verified.claims.jti) ||
+    (await ensureRealtimeTicketRevoked(verified.claims.jti))
+  ) {
     return { ok: false, code: "revoked" };
   }
 
