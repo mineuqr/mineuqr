@@ -231,3 +231,161 @@ export function formatBusinessYearMonthLabel(
     timeZone
   );
 }
+
+// ─── CIVIL-DATE-PERIOD-END-INSTANT-HARDENING-1 ─────────────────────────────
+
+const CIVIL_DATE_YMD = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export class InvalidCivilDateError extends Error {
+  readonly code = "INVALID_CIVIL_DATE" as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidCivilDateError";
+  }
+}
+
+export type CivilDateParts = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+/**
+ * Parse and validate a Gregorian civil date `YYYY-MM-DD`.
+ * Rejects malformed strings and non-existent calendar dates (no silent rollover).
+ */
+export function parseCivilDateYmd(value: string): CivilDateParts {
+  const trimmed = String(value ?? "").trim();
+  const match = CIVIL_DATE_YMD.exec(trimmed);
+  if (!match) {
+    throw new InvalidCivilDateError(`Invalid civil date: ${String(value)}`);
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    throw new InvalidCivilDateError(`Invalid civil date: ${trimmed}`);
+  }
+  return { year, month, day };
+}
+
+export function formatCivilDateYmd(parts: CivilDateParts): string {
+  return `${String(parts.year).padStart(4, "0")}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+}
+
+/**
+ * Convert a restaurant-local wall clock (`YYYY-MM-DDTHH:mm:ss`) to a UTC ISO instant.
+ * Host-timezone independent (same algorithm as business-day windows).
+ */
+export function restaurantLocalWallToUtcIso(
+  localIso: string,
+  timeZone: string
+): string {
+  const normalized = localIso.includes("T") ? localIso : localIso.replace(" ", "T");
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/.exec(normalized);
+  if (!match) {
+    throw new Error(`Invalid local wall clock: ${localIso}`);
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const desiredAsUtcMs = Date.UTC(year, month - 1, day, hour, minute, second);
+
+  let utcMs = desiredAsUtcMs;
+  for (let i = 0; i < 3; i++) {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date(utcMs));
+
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+    const shownAsUtcMs = Date.UTC(
+      parseInt(get("year"), 10),
+      parseInt(get("month"), 10) - 1,
+      parseInt(get("day"), 10),
+      parseInt(get("hour"), 10),
+      parseInt(get("minute"), 10),
+      parseInt(get("second"), 10)
+    );
+    utcMs -= shownAsUtcMs - desiredAsUtcMs;
+  }
+
+  return new Date(utcMs).toISOString();
+}
+
+/** Add signed calendar days to a civil date (UTC-calendar arithmetic on YMD components). */
+export function addCivilCalendarDays(civilDate: string, days: number): string {
+  const { year, month, day } = parseCivilDateYmd(civilDate);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Add signed calendar months with JavaScript `Date#setMonth` overflow semantics
+ * (e.g. Jan 31 + 1 month → Mar 3), applied to civil YMD — not host-local.
+ */
+export function addCivilCalendarMonths(civilDate: string, months: number): string {
+  const { year, month, day } = parseCivilDateYmd(civilDate);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return date.toISOString().slice(0, 10);
+}
+
+export function addCivilCalendarYears(civilDate: string, years: number): string {
+  return addCivilCalendarMonths(civilDate, years * 12);
+}
+
+/**
+ * Civil date → exclusive period-end UTC instant.
+ *
+ * Semantics (subscription entitlement uses `now >= periodEnd` ⇒ expired):
+ * active through the entire business civil date in `timeZone`, then expires at
+ * local midnight starting the next civil day.
+ *
+ * Pure and host-TZ independent. Caller must pass an explicit IANA timezone
+ * (production callers use `APP_TIMEZONE`).
+ */
+export function civilDateToPeriodEndInstant(
+  civilDate: string,
+  timeZone: string
+): Date {
+  parseCivilDateYmd(civilDate);
+  const nextDay = addCivilCalendarDays(civilDate, 1);
+  const iso = restaurantLocalWallToUtcIso(`${nextDay}T00:00:00`, timeZone);
+  return new Date(iso);
+}
+
+/**
+ * Calendar offset from an anchor instant's civil date in `timeZone`, then
+ * exclusive period-end conversion. Used for trial (+N days) and renewal (+N months).
+ */
+export function periodEndInstantAfterCivilOffset(params: {
+  from?: Date;
+  timeZone: string;
+  days?: number;
+  months?: number;
+  years?: number;
+}): Date {
+  const from = params.from ?? new Date();
+  let ymd = todayYmd(from, params.timeZone);
+  if (params.years) ymd = addCivilCalendarYears(ymd, params.years);
+  if (params.months) ymd = addCivilCalendarMonths(ymd, params.months);
+  if (params.days) ymd = addCivilCalendarDays(ymd, params.days);
+  return civilDateToPeriodEndInstant(ymd, params.timeZone);
+}

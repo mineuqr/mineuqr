@@ -127,13 +127,40 @@ describe("adminSubscriptionHelpers", () => {
   });
 
   describe("applyAdminTrialStatusUpdate", () => {
-    it("populates trialEndsAt from subscriptionEndDate", () => {
+    it("populates trialEndsAt from subscriptionEndDate as Riyadh exclusive period end", () => {
       const updateData: Record<string, unknown> = {};
       applyAdminTrialStatusUpdate(updateData, {
         status: "trial",
         subscriptionEndDate: "2027-01-15",
       });
-      expect(updateData.trialEndsAt).toBe(new Date("2027-01-15").toISOString());
+      // 2027-01-16 00:00 Asia/Riyadh
+      expect(updateData.trialEndsAt).toBe("2027-01-15T21:00:00.000Z");
+    });
+  });
+
+  describe("computeAdminSubscriptionPeriodEnd", () => {
+    it("converts civil YYYY-MM-DD without host-local midnight", async () => {
+      const { computeAdminSubscriptionPeriodEnd } = await import(
+        "./adminSubscriptionHelpers"
+      );
+      expect(
+        computeAdminSubscriptionPeriodEnd({
+          billingCycle: "monthly",
+          subscriptionEndDate: "2026-08-30",
+        }).toISOString()
+      ).toBe("2026-08-30T21:00:00.000Z");
+    });
+
+    it("preserves already-canonical UTC ISO concession endsAt", async () => {
+      const { computeAdminSubscriptionPeriodEnd } = await import(
+        "./adminSubscriptionHelpers"
+      );
+      expect(
+        computeAdminSubscriptionPeriodEnd({
+          billingCycle: "monthly",
+          subscriptionEndDate: "2026-10-30T12:17:12.111Z",
+        }).toISOString()
+      ).toBe("2026-10-30T12:17:12.111Z");
     });
   });
 });

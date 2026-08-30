@@ -1,6 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import type { InsertUserSubscription } from "../drizzle/schema";
 import {
+  APP_TIMEZONE,
+  civilDateToPeriodEndInstant,
+  parseStoredUtcInstant,
+  periodEndInstantAfterCivilOffset,
+} from "@shared/utils/timezone";
+import {
   getRestaurantById,
   getRestaurantsByUser,
   getSubscriptionById,
@@ -13,24 +19,60 @@ export const ADMIN_TRIAL_DAYS = 14;
 type BillingCycle = "monthly" | "yearly";
 type SubscriptionStatus = "active" | "canceled" | "expired" | "trial";
 
+const CIVIL_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Admin `subscriptionEndDate` is either a civil `YYYY-MM-DD` (UI date input)
+ * or an already-canonical UTC ISO instant (e.g. concession endsAt).
+ */
+export function resolveAdminPeriodEndInstant(
+  subscriptionEndDate: string,
+  timeZone: string = APP_TIMEZONE
+): Date {
+  const trimmed = subscriptionEndDate.trim();
+  if (CIVIL_DATE_ONLY.test(trimmed)) {
+    return civilDateToPeriodEndInstant(trimmed, timeZone);
+  }
+  const instant = parseStoredUtcInstant(trimmed);
+  if (!instant) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "تاريخ انتهاء الاشتراك غير صالح",
+    });
+  }
+  return instant;
+}
+
 /** Period end for admin-created subscriptions (trial defaults to 14 days). */
 export function computeAdminSubscriptionPeriodEnd(params: {
   billingCycle: BillingCycle;
   subscriptionEndDate?: string;
   status?: SubscriptionStatus;
+  now?: Date;
 }): Date {
   if (params.subscriptionEndDate) {
-    return new Date(params.subscriptionEndDate);
+    return resolveAdminPeriodEndInstant(params.subscriptionEndDate);
   }
-  const periodEnd = new Date();
+  const now = params.now ?? new Date();
   if (params.status === "trial") {
-    periodEnd.setDate(periodEnd.getDate() + ADMIN_TRIAL_DAYS);
-  } else if (params.billingCycle === "yearly") {
-    periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-  } else {
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
+    return periodEndInstantAfterCivilOffset({
+      from: now,
+      timeZone: APP_TIMEZONE,
+      days: ADMIN_TRIAL_DAYS,
+    });
   }
-  return periodEnd;
+  if (params.billingCycle === "yearly") {
+    return periodEndInstantAfterCivilOffset({
+      from: now,
+      timeZone: APP_TIMEZONE,
+      years: 1,
+    });
+  }
+  return periodEndInstantAfterCivilOffset({
+    from: now,
+    timeZone: APP_TIMEZONE,
+    months: 1,
+  });
 }
 
 /** Ensures trial rows always carry trialEndsAt aligned with currentPeriodEnd. */
@@ -69,12 +111,11 @@ export function applyAdminTrialStatusUpdate(
   if (input.status !== "trial") return;
 
   const trialEnd = input.subscriptionEndDate
-    ? new Date(input.subscriptionEndDate)
-    : (() => {
-        const d = new Date();
-        d.setDate(d.getDate() + ADMIN_TRIAL_DAYS);
-        return d;
-      })();
+    ? resolveAdminPeriodEndInstant(input.subscriptionEndDate)
+    : periodEndInstantAfterCivilOffset({
+        timeZone: APP_TIMEZONE,
+        days: ADMIN_TRIAL_DAYS,
+      });
 
   updateData.trialEndsAt = trialEnd.toISOString();
   if (!input.subscriptionEndDate) {

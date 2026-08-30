@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  APP_TIMEZONE,
+  periodEndInstantAfterCivilOffset,
+} from "@shared/utils/timezone";
 import { createTrialSubscription } from "./create-trial-subscription";
 import { handlePayPalWebhook } from "./paypal-webhook";
 import type { Request, Response } from "express";
@@ -129,16 +133,15 @@ describe("Trial Subscription", () => {
         })
       );
 
-      // Check that trialEndsAt is approximately 14 days from now
+      // Check that trialEndsAt is exclusive end of civil today+14 in APP_TIMEZONE
       const call = (createUserSubscription as any).mock.calls[0][0];
       const trialEndDate = new Date(call.trialEndsAt);
-      const expectedDate = new Date();
-      expectedDate.setDate(expectedDate.getDate() + 14);
+      const expectedDate = periodEndInstantAfterCivilOffset({
+        timeZone: APP_TIMEZONE,
+        days: 14,
+      });
 
-      const dayDifference = Math.abs(
-        (trialEndDate.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      expect(dayDifference).toBeLessThan(0.1); // Within 2.4 hours
+      expect(trialEndDate.toISOString()).toBe(expectedDate.toISOString());
     });
 
     it("should set currentPeriodEnd to 14 days from now", async () => {
@@ -148,13 +151,12 @@ describe("Trial Subscription", () => {
 
       const call = (createUserSubscription as any).mock.calls[0][0];
       const periodEnd = new Date(call.currentPeriodEnd);
-      const expectedDate = new Date();
-      expectedDate.setDate(expectedDate.getDate() + 14);
+      const expectedDate = periodEndInstantAfterCivilOffset({
+        timeZone: APP_TIMEZONE,
+        days: 14,
+      });
 
-      const dayDifference = Math.abs(
-        (periodEnd.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      expect(dayDifference).toBeLessThan(0.1);
+      expect(periodEnd.toISOString()).toBe(expectedDate.toISOString());
     });
   });
 });

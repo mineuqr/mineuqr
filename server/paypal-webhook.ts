@@ -12,6 +12,10 @@ import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { noteWebhookEvent } from "./_core/webhookDedup";
 import { ensureLivePlanBoundForSubscription } from "./services/commercial-catalog";
+import {
+  APP_TIMEZONE,
+  periodEndInstantAfterCivilOffset,
+} from "@shared/utils/timezone";
 
 export async function handlePayPalWebhook(req: Request, res: Response) {
   const correlationId = getCorrelationId(req);
@@ -125,8 +129,11 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
         const plan = await resolveLivePlanDisplayByPlanRef(livePlanId);
 
         const now = new Date();
-        const periodEnd = new Date();
-        periodEnd.setMonth(periodEnd.getMonth() + 1);
+        const periodEnd = periodEndInstantAfterCivilOffset({
+          from: now,
+          timeZone: APP_TIMEZONE,
+          months: 1,
+        });
 
         const activatedId = await updateSubscriptionForActivation(
           userId,

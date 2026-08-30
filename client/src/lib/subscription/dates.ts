@@ -1,21 +1,21 @@
-import { formatRiyadhDate } from "@/lib/datetime";
+import {
+  APP_TIMEZONE,
+  addCivilCalendarMonths,
+  addCivilCalendarYears,
+  formatRiyadhDate,
+  todayYmd,
+} from "@/lib/datetime";
 import type { BillingCycle } from "./types";
 
-/** YYYY-MM-DD for `<input type="date" />` — mirrors server create-subscription period logic. */
+/** YYYY-MM-DD for `<input type="date" />` — civil calendar in APP_TIMEZONE. */
 export function suggestSubscriptionEndDateInput(
   billingCycle: BillingCycle,
   from: Date = new Date()
 ): string {
-  const end = new Date(from);
-  if (billingCycle === "yearly") {
-    end.setFullYear(end.getFullYear() + 1);
-  } else {
-    end.setMonth(end.getMonth() + 1);
-  }
-  const y = end.getFullYear();
-  const m = String(end.getMonth() + 1).padStart(2, "0");
-  const d = String(end.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  const start = todayYmd(from, APP_TIMEZONE);
+  return billingCycle === "yearly"
+    ? addCivilCalendarYears(start, 1)
+    : addCivilCalendarMonths(start, 1);
 }
 
 /** Display label for period end (date input or ISO string). */

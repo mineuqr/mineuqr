@@ -12,6 +12,10 @@ import {
 import { updateSubscriptionForActivation } from "./db";
 import { notifyOwnerNewSubscription } from "./owner-email-notifications";
 import { ensureLivePlanBoundForSubscription } from "./services/commercial-catalog";
+import {
+  APP_TIMEZONE,
+  periodEndInstantAfterCivilOffset,
+} from "@shared/utils/timezone";
 
 export async function handleTapWebhook(req: Request, res: Response) {
   const correlationId = getCorrelationId(req);
@@ -87,12 +91,18 @@ export async function handleTapWebhook(req: Request, res: Response) {
       const billingCycle = metadata.billing_cycle;
 
       const now = new Date();
-      const endDate = new Date(now);
-      if (billingCycle === "yearly") {
-        endDate.setFullYear(endDate.getFullYear() + 1);
-      } else {
-        endDate.setMonth(endDate.getMonth() + 1);
-      }
+      const endDate =
+        billingCycle === "yearly"
+          ? periodEndInstantAfterCivilOffset({
+              from: now,
+              timeZone: APP_TIMEZONE,
+              years: 1,
+            })
+          : periodEndInstantAfterCivilOffset({
+              from: now,
+              timeZone: APP_TIMEZONE,
+              months: 1,
+            });
       const { parseWebhookPlanRef, resolveCanonicalLivePlanId, resolveLegacyPlanIdFromPlan } =
         await import("./services/commercial-catalog");
       const planRef = parseWebhookPlanRef(metadata.plan_id);

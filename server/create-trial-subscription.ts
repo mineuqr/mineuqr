@@ -6,6 +6,10 @@
 import { createUserSubscription } from "./db";
 import { InsertUserSubscription } from "../drizzle/schema";
 import {
+  APP_TIMEZONE,
+  periodEndInstantAfterCivilOffset,
+} from "@shared/utils/timezone";
+import {
   resolveTrialPolicyFromCatalog,
   bindSubscriptionToLivePlan,
   ensureCatalogReady,
@@ -47,10 +51,12 @@ export function buildTrialSubscriptionPayload(
   trialDays = TRIAL_DAYS
 ): InsertUserSubscription {
   const now = new Date();
-  const trialEndsAt = new Date();
-  trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
-  const currentPeriodEnd = new Date();
-  currentPeriodEnd.setDate(currentPeriodEnd.getDate() + trialDays);
+  const periodEnd = periodEndInstantAfterCivilOffset({
+    from: now,
+    timeZone: APP_TIMEZONE,
+    days: trialDays,
+  });
+  const trialEndsAtIso = periodEnd.toISOString();
 
   return {
     userId,
@@ -59,8 +65,8 @@ export function buildTrialSubscriptionPayload(
     status: "trial",
     billingCycle: "monthly",
     currentPeriodStart: now.toISOString(),
-    currentPeriodEnd: currentPeriodEnd.toISOString(),
-    trialEndsAt: trialEndsAt.toISOString(),
+    currentPeriodEnd: trialEndsAtIso,
+    trialEndsAt: trialEndsAtIso,
   };
 }
 

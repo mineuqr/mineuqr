@@ -9,6 +9,7 @@ import {
   buildAdminSubscriptionInsert,
   applyAdminTrialStatusUpdate,
   computeAdminSubscriptionPeriodEnd,
+  resolveAdminPeriodEndInstant,
 } from "./adminSubscriptionHelpers";
 import { getOwnerAccountSubscriptionRow } from "./commercial/ownerAccountSubscriptionAuthority";
 import { assertUpdateDoesNotImplicitlyReactivate } from "./commercial/adminReactivation";
@@ -294,7 +295,9 @@ function buildAdminSubscriptionUpdateData(input: {
   if (input.billingCycle !== undefined) updateData.billingCycle = input.billingCycle;
   if (input.status !== undefined) updateData.status = input.status;
   if (input.subscriptionEndDate) {
-    updateData.currentPeriodEnd = new Date(input.subscriptionEndDate).toISOString();
+    updateData.currentPeriodEnd = resolveAdminPeriodEndInstant(
+      input.subscriptionEndDate
+    ).toISOString();
   }
   applyAdminTrialStatusUpdate(updateData, input);
   return updateData;

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
+  APP_TIMEZONE,
+  periodEndInstantAfterCivilOffset,
+} from "@shared/utils/timezone";
+import {
   TRIAL_DAYS,
   TRIAL_PLAN_SORT_ORDER,
   buildTrialSubscriptionPayload,
@@ -66,12 +70,13 @@ describe("create-trial-subscription (LAUNCH-5B)", () => {
 
       const trialEnd = new Date(payload.trialEndsAt!);
       const periodEnd = new Date(payload.currentPeriodEnd);
-      const expected = new Date(FIXED_NOW);
-      expected.setDate(expected.getDate() + TRIAL_DAYS);
+      const expected = periodEndInstantAfterCivilOffset({
+        from: FIXED_NOW,
+        timeZone: APP_TIMEZONE,
+        days: TRIAL_DAYS,
+      });
 
-      expect(
-        Math.abs(trialEnd.getTime() - expected.getTime()) / (1000 * 60 * 60 * 24)
-      ).toBeLessThan(0.1);
+      expect(trialEnd.toISOString()).toBe(expected.toISOString());
       expect(trialEnd.getTime()).toBe(periodEnd.getTime());
       expect(payload.currentPeriodStart).toBe(FIXED_NOW.toISOString());
     });
