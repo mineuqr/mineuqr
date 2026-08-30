@@ -19,9 +19,21 @@ export const ORDERING_PLATFORM_ORDER_AGGREGATE = "server/order/domain/aggregate/
 export const ORDERING_PLATFORM_GUEST_ENTITLEMENT =
   "server/commercial/guestOrderingAuthority.ts" as const;
 
-/** Current production place-order router entry (QR channel today). */
+/** QR table Place entry. Other live Place entries: ORDERING_PLATFORM_PLACE_ORDER_LIVE_ENTRIES. */
 export const ORDERING_PLATFORM_PLACE_ORDER_ROUTER_ENTRY =
   "server/routers.ts:order.create" as const;
+
+/**
+ * ORDER-CREATE-COVERAGE-COMMAND-RESTORE-1 — every production Place entry.
+ * All converge on PlaceOrderService → DrizzleOrderRepository.
+ */
+export const ORDERING_PLATFORM_PLACE_ORDER_LIVE_ENTRIES = [
+  "server/routers.ts:order.create",
+  "server/routers.ts:order.placeWithIdentity",
+  "server/routers.ts:order.placeAsWaiter",
+  "server/operational-device/services/WaiterDeviceOrderingService.ts:placeWaiterOrderForDevice",
+  "server/pos/services/PosSaleService.ts",
+] as const;
 
 /**
  * ORDERING-RUNTIME-MATERIALIZATION-1 — sole runtime composition layer.
@@ -78,14 +90,22 @@ export const ORDERING_PLATFORM_KIOSK_SESSION_LIFECYCLE =
 export const ORDERING_PLATFORM_KIOSK_RUNTIME_CONSUMER =
   "client/src/lib/ordering-platform/kioskRuntimeConsumerContract.ts" as const;
 
-/** Channels with production runtime consumption today. */
-export const ORDERING_PLATFORM_ACTIVE_CHANNELS = ["qr"] as const;
+/**
+ * Live production Place writers (ORDER-CREATE-COVERAGE-COMMAND-RESTORE-1).
+ * Must match orderingChannelRegistry live Place channels — not reserved IDs.
+ */
+export const ORDERING_PLATFORM_ACTIVE_CHANNELS = [
+  "qr",
+  "waiter_tablet",
+  "kiosk",
+  "cashier_pos",
+] as const;
 
 /**
  * Channels with certified Ordering Platform client architecture.
- * Kiosk is established (second client); UI not shipped in this program.
+ * Distinct from live Place writers (ACTIVE_CHANNELS).
  */
 export const ORDERING_PLATFORM_ESTABLISHED_CHANNELS = ["qr", "kiosk"] as const;
 
-/** Channels registered for future architecture/adoption — not established yet. */
-export const ORDERING_PLATFORM_FUTURE_CHANNELS = ["mobile", "waiter_tablet"] as const;
+/** Registered, no production Place writer yet. */
+export const ORDERING_PLATFORM_FUTURE_CHANNELS = ["mobile"] as const;

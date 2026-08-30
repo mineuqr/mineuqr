@@ -27,6 +27,7 @@
     "db:order-read:discover": "node scripts/order-read-projection-staging.mjs --discover",
     "db:order-read:validate": "node scripts/order-read-projection-staging.mjs --validate",
     "db:order-read:backfill": "cross-env ORDER_READ_BACKFILL_CONFIRM=YES tsx scripts/order-read-backfill-execute.ts --scope full",
+    "db:order-create:coverage": "tsx scripts/order-create-coverage.ts",
     "db:order-read:bd-rollup-backfill": "cross-env ORDER_READ_BD_ROLLUP_BACKFILL_CONFIRM=YES tsx scripts/order-read-business-day-rollup-backfill-execute.ts --scope full",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "build:connector:bundle": "esbuild server/connector-product/entry/rlcServiceMain.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/connector/rlc-service.mjs && esbuild server/connector-product/entry/rlcEnrollMain.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/connector/rlc-enroll.mjs && node scripts/stage-connector-runtime-deps.mjs",

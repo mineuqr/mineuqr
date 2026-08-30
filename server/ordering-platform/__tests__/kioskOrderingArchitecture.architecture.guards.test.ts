@@ -19,10 +19,10 @@ describe("SELF-ORDERING-KIOSK-ARCHITECTURE-1 server architecture guards", () => 
     expect(ownership).toContain("ORDERING_PLATFORM_KIOSK_RUNTIME_CONSUMER");
   });
 
-  it("keeps production active channels QR-only (kiosk established; platform activation separate)", () => {
+  it("registers kiosk as a live Place channel without a separate Place writer", () => {
     const ownership = read("server/ordering-platform/orderingPlatformOwnership.ts");
     expect(ownership).toMatch(
-      /ORDERING_PLATFORM_ACTIVE_CHANNELS\s*=\s*\[["']qr["']\]/
+      /ORDERING_PLATFORM_ACTIVE_CHANNELS\s*=\s*\[[^\]]*["']kiosk["']/
     );
     expect(ownership).toContain('"mobile"');
     expect(ownership).toContain('"waiter_tablet"');
