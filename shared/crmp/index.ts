@@ -19,6 +19,7 @@ export * from "./financialShift/expectedCash";
 export * from "./financialShift/financialShiftCommands";
 export * from "./financialShift/financialShiftEvents";
 export * from "./financialShift/financialShiftResolve";
+export * from "./financialShift/collectionFactShiftEligibility";
 export * from "./financialShift/shiftNumber";
 export * from "./settlementContext/settlementContextContract";
 export * from "./settlementContext/resolveSettlementContext";

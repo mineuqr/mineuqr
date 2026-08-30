@@ -564,4 +564,41 @@ describe("checkSettlementAttributionAdoption", () => {
     expect(loaded.attributions).toHaveLength(1);
     expect(loaded.attributions[0]?.collectionFactId).toBe("cf_race");
   });
+
+  it("skips a Collection Fact committed before the selected Shift opened", async () => {
+    const bundle = await adoptSettlementAttributionAfterFinalize(
+      {
+        restaurantId: 1,
+        outcome: "paid",
+        settlementContext: resolvedContext(),
+        settlementRecord: null,
+        settlementLines: null,
+        at: "t3",
+        collectionFact: {
+          collectionFactId: "cf_old",
+          restaurantId: 1,
+          orderId: 44,
+          paymentIntentId: "cpi_old",
+          purpose: "production",
+          amount: "10.00",
+          discountAmount: "0.00",
+          currencyCode: "SAR",
+          tenders: [{ paymentMethod: "cash", amount: "10.00" }],
+          checkId: null,
+          committedAt: "t1",
+          businessDay: "2026-08-27",
+          actorId: "10",
+          terminalId: "term_1",
+          orderingChannel: "cashier_pos",
+        },
+      },
+      { shiftService: shifts }
+    );
+    expect(bundle.attribution.outcome).toBe("skipped");
+    expect(bundle.attribution.gaps).toContain(
+      "collection_fact_outside_shift_window"
+    );
+    const loaded = await shifts.get(1, "fsh_1");
+    expect(loaded?.attributions).toHaveLength(0);
+  });
 });

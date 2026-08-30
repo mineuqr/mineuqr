@@ -14,6 +14,7 @@
 import {
   buildSettlementAttributedEvent,
   cashCustodyAmountForRefundRecord,
+  collectionFactCommitFallsInShiftWindow,
   failedAttribution,
   isAttributionEligible,
   isRefundAttributionEligible,
@@ -264,6 +265,47 @@ async function adoptCollectionFactAttributionAfterPaid(
     };
   }
 
+  const shiftService = attributionCreateDeps(deps);
+  const financialShiftId = input.settlementContext.financialShiftId!;
+  const targetShift = await shiftService.get(
+    input.restaurantId,
+    financialShiftId
+  );
+  if (!targetShift) {
+    return {
+      attribution: skippedAttribution({
+        gaps: ["financial_shift_unavailable", ...input.settlementContext.gaps],
+        reason: "Financial Shift for Collection Fact attribution was not found",
+        collectionFactId,
+      }),
+      events: [],
+    };
+  }
+  const alreadyOnTarget = targetShift.attributions.some(
+    (row) => row.collectionFactId === collectionFactId
+  );
+  if (
+    !alreadyOnTarget &&
+    !collectionFactCommitFallsInShiftWindow({
+      committedAt: input.collectionFact.committedAt,
+      openedAt: targetShift.openedAt,
+      closedAt: targetShift.closedAt,
+    })
+  ) {
+    return {
+      attribution: skippedAttribution({
+        gaps: [
+          "collection_fact_outside_shift_window",
+          ...input.settlementContext.gaps,
+        ],
+        reason:
+          "Collection Fact committedAt is outside the selected Financial Shift lifetime",
+        collectionFactId,
+      }),
+      events: [],
+    };
+  }
+
   return persistAttribution({
     restaurantId: input.restaurantId,
     settlementContext: input.settlementContext,
@@ -271,7 +313,7 @@ async function adoptCollectionFactAttributionAfterPaid(
     collectionFactId,
     cashTenderAmount: sumCashTenderAmounts(input.collectionFact.tenders),
     at: input.at,
-    shiftService: attributionCreateDeps(deps),
+    shiftService,
   });
 }
 

@@ -6,11 +6,15 @@
  * Does not roll back Financial Core.
  * Does not use Settlement as current-sale Drawer authority.
  * Missing / failed Attribution stays fail-open until replay converges.
+ *
+ * CASH-DRAWER-SHIFT-ATTRIBUTION-CONSISTENCY-FIX-1
+ * Resolves the Shift that covered CF.committedAt. Never binds a pre-shift
+ * Collection Fact to the currently open Shift.
  */
 
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
-import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextResolver";
+import { resolveSettlementContextForCollectionFact } from "../../crmp/SettlementContextResolver";
 import type { CollectionFact } from "@shared/operational-session/payment/collection-fact";
 import {
   adoptSettlementAttributionAfterFinalize,
@@ -56,11 +60,11 @@ export async function recoverCollectionFactDrawerAttributions(
   for (const fact of facts) {
     try {
       const at = new Date().toISOString();
-      const settlementContext = await resolveSettlementContextForSettle({
+      const settlementContext = await resolveSettlementContextForCollectionFact({
         restaurantId: fact.restaurantId,
         deviceId: fact.terminalId?.trim() || undefined,
         operatorUserId: operatorUserIdFromFact(fact),
-        at,
+        committedAt: fact.committedAt,
       });
       const bundle = await adoptSettlementAttributionAfterFinalize({
         restaurantId: fact.restaurantId,

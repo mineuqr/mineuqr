@@ -7,7 +7,11 @@ import type {
   FinancialShift,
   SettlementAttribution,
 } from "@shared/crmp";
-import { CrmpConflictError, isActiveShiftStatus } from "@shared/crmp";
+import {
+  CrmpConflictError,
+  collectionFactCommitFallsInShiftWindow,
+  isActiveShiftStatus,
+} from "@shared/crmp";
 import type {
   CrmpFinancialShiftRepository,
   CrmpRegisterRepository,
@@ -111,6 +115,34 @@ export function createInMemoryCrmpStore(): CrmpUnitOfWork {
             s.restaurantId === restaurantId &&
             s.operatorUserId === operatorUserId &&
             isActiveShiftStatus(s.status)
+        )
+        .map(cloneShift);
+    },
+    async findCoveringByRegister(restaurantId, registerId, committedAt) {
+      return [...shifts.values()]
+        .filter(
+          (s) =>
+            s.restaurantId === restaurantId &&
+            s.registerId === registerId &&
+            collectionFactCommitFallsInShiftWindow({
+              committedAt,
+              openedAt: s.openedAt,
+              closedAt: s.closedAt,
+            })
+        )
+        .map(cloneShift);
+    },
+    async findCoveringByOperator(restaurantId, operatorUserId, committedAt) {
+      return [...shifts.values()]
+        .filter(
+          (s) =>
+            s.restaurantId === restaurantId &&
+            s.operatorUserId === operatorUserId &&
+            collectionFactCommitFallsInShiftWindow({
+              committedAt,
+              openedAt: s.openedAt,
+              closedAt: s.closedAt,
+            })
         )
         .map(cloneShift);
     },

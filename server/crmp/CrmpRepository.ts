@@ -50,6 +50,24 @@ export type CrmpFinancialShiftRepository = {
     restaurantId: number,
     operatorUserId: number
   ): Promise<FinancialShift[]>;
+  /**
+   * Shifts whose lifetime may cover committedAt on this Register.
+   * Returns 0..N — never LIMIT 1 / latest. Caller classifies uniqueness.
+   */
+  findCoveringByRegister(
+    restaurantId: number,
+    registerId: string,
+    committedAt: string
+  ): Promise<FinancialShift[]>;
+  /**
+   * Shifts whose lifetime may cover committedAt for this operator.
+   * Returns 0..N — never LIMIT 1 / latest. Caller classifies uniqueness.
+   */
+  findCoveringByOperator(
+    restaurantId: number,
+    operatorUserId: number,
+    committedAt: string
+  ): Promise<FinancialShift[]>;
   listByRegister(
     restaurantId: number,
     registerId: string

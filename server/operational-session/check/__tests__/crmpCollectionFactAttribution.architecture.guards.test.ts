@@ -78,10 +78,34 @@ describe("CRMP-CF-ATTRIBUTION-1 architecture", () => {
     const cycle = read("server/order/postConfirmOperationalRecovery.ts");
     expect(recover).toContain("listProductionCollectionFactsAwaitingDrawerAttribution");
     expect(recover).toContain("adoptSettlementAttributionAfterFinalize");
+    expect(recover).toContain("resolveSettlementContextForCollectionFact");
+    expect(recover).toContain("committedAt: fact.committedAt");
+    expect(recover).not.toContain("resolveSettlementContextForSettle");
     expect(recover).toContain("settlementRecord: null");
     expect(recover).not.toContain("commitCollectionFact");
     expect(recover).not.toContain("allocateCashierInvoiceForOrder");
     expect(recover).not.toContain("markOrderPaid");
     expect(cycle).toContain("recoverCollectionFactDrawerAttributions");
+  });
+
+  it("binds CF Drawer attribution to the Shift covering committedAt", () => {
+    const resolver = read("server/crmp/SettlementContextResolver.ts");
+    const adoption = read(
+      "server/operational-session/check/checkSettlementAttributionAdoption.ts"
+    );
+    const expected = read("shared/crmp/financialShift/expectedCash.ts");
+    const refund = read(
+      "server/operational-session/check/checkRefundIntegration.ts"
+    );
+    expect(resolver).toContain("resolveForCollectionFact");
+    expect(resolver).toContain("as_of_commit");
+    expect(resolver).toContain("findCoveringByRegister");
+    expect(resolver).toContain("findCoveringByOperator");
+    expect(adoption).toContain("collectionFactCommitFallsInShiftWindow");
+    expect(adoption).toContain("collection_fact_outside_shift_window");
+    expect(expected).not.toContain("committedAt");
+    expect(expected).toContain("Σ attributed cash tender amounts");
+    expect(refund).toContain("insertSettlementRecord");
+    expect(refund).toContain("recordKind: \"refund\"");
   });
 });

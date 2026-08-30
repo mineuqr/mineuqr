@@ -3,7 +3,19 @@
  * Repository responsibilities only — no domain rules.
  */
 
-import { and, desc, eq, gte, inArray, like, lte, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  like,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { getDb } from "../db";
 import { readMysqlAffectedRows } from "../db/mysqlAffectedRows";
 import { readMysqlLastInsertId } from "../_core/mysqlLastInsertId";
@@ -18,6 +30,7 @@ import {
 import {
   CrmpConflictError,
   CrmpNotFoundError,
+  collectionFactCommitFallsInShiftWindow,
   type CashRegister,
   type DrawerCount,
   type DrawerMovement,
@@ -582,6 +595,62 @@ export function createDrizzleCrmpUnitOfWork(
         );
       return Promise.all(
         rows.map((row) => loadShiftGraph(restaurantId, row, db))
+      );
+    },
+    async findCoveringByRegister(restaurantId, registerId, committedAt) {
+      const db = await loadDb();
+      if (!db) throw new Error("Database not available");
+      const rows = await db
+        .select()
+        .from(crmpFinancialShifts)
+        .where(
+          and(
+            eq(crmpFinancialShifts.restaurantId, restaurantId),
+            eq(crmpFinancialShifts.registerId, registerId),
+            lte(crmpFinancialShifts.openedAt, committedAt),
+            or(
+              isNull(crmpFinancialShifts.closedAt),
+              gt(crmpFinancialShifts.closedAt, committedAt)
+            )
+          )
+        );
+      const loaded = await Promise.all(
+        rows.map((row) => loadShiftGraph(restaurantId, row, db))
+      );
+      return loaded.filter((shift) =>
+        collectionFactCommitFallsInShiftWindow({
+          committedAt,
+          openedAt: shift.openedAt,
+          closedAt: shift.closedAt,
+        })
+      );
+    },
+    async findCoveringByOperator(restaurantId, operatorUserId, committedAt) {
+      const db = await loadDb();
+      if (!db) throw new Error("Database not available");
+      const rows = await db
+        .select()
+        .from(crmpFinancialShifts)
+        .where(
+          and(
+            eq(crmpFinancialShifts.restaurantId, restaurantId),
+            eq(crmpFinancialShifts.operatorUserId, operatorUserId),
+            lte(crmpFinancialShifts.openedAt, committedAt),
+            or(
+              isNull(crmpFinancialShifts.closedAt),
+              gt(crmpFinancialShifts.closedAt, committedAt)
+            )
+          )
+        );
+      const loaded = await Promise.all(
+        rows.map((row) => loadShiftGraph(restaurantId, row, db))
+      );
+      return loaded.filter((shift) =>
+        collectionFactCommitFallsInShiftWindow({
+          committedAt,
+          openedAt: shift.openedAt,
+          closedAt: shift.closedAt,
+        })
       );
     },
     async listByRegister(restaurantId, registerId) {

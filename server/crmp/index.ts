@@ -19,5 +19,6 @@ export { DrawerDomainService } from "./DrawerDomainService";
 export {
   SettlementContextResolver,
   resolveSettlementContextForSettle,
+  resolveSettlementContextForCollectionFact,
 } from "./SettlementContextResolver";
 export { newCrmpId } from "./crmpIds";

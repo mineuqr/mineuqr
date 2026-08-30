@@ -6,7 +6,7 @@ import type { CollectionFact } from "@shared/operational-session/payment/collect
 
 const mocks = vi.hoisted(() => ({
   listProductionCollectionFactsAwaitingDrawerAttribution: vi.fn(),
-  resolveSettlementContextForSettle: vi.fn(),
+  resolveSettlementContextForCollectionFact: vi.fn(),
   adoptSettlementAttributionAfterFinalize: vi.fn(),
 }));
 
@@ -16,8 +16,8 @@ vi.mock("../collection-fact/collectionFactRepository", () => ({
 }));
 
 vi.mock("../../../crmp/SettlementContextResolver", () => ({
-  resolveSettlementContextForSettle: (...a: unknown[]) =>
-    mocks.resolveSettlementContextForSettle(...a),
+  resolveSettlementContextForCollectionFact: (...a: unknown[]) =>
+    mocks.resolveSettlementContextForCollectionFact(...a),
 }));
 
 vi.mock("../../check/checkSettlementAttributionAdoption", () => ({
@@ -72,7 +72,7 @@ function fact(overrides: Partial<CollectionFact> = {}): CollectionFact {
 describe("recoverCollectionFactDrawerAttributions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.resolveSettlementContextForSettle.mockResolvedValue({
+    mocks.resolveSettlementContextForCollectionFact.mockResolvedValue({
       restaurantId: 1,
       registerId: "reg_1",
       financialShiftId: "fsh_1",
@@ -93,6 +93,14 @@ describe("recoverCollectionFactDrawerAttributions", () => {
     );
     const result = await recoverCollectionFactDrawerAttributions(25);
     expect(result).toEqual({ attempted: 1, failed: 0, created: 1 });
+    expect(mocks.resolveSettlementContextForCollectionFact).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: 1,
+        deviceId: "term-1",
+        operatorUserId: 7,
+        committedAt: "2026-08-27T12:00:00.000Z",
+      })
+    );
     expect(mocks.adoptSettlementAttributionAfterFinalize).toHaveBeenCalledWith(
       expect.objectContaining({
         restaurantId: 1,
@@ -101,6 +109,7 @@ describe("recoverCollectionFactDrawerAttributions", () => {
           collectionFactId: "cf-1",
           orderId: 55,
           amount: "92.00",
+          committedAt: "2026-08-27T12:00:00.000Z",
         }),
       })
     );
