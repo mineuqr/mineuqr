@@ -28,6 +28,12 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
     expect(styles).toContain("cartDock");
     expect(styles).toContain("overflow-x-hidden");
     expect(styles).toContain("touch-manipulation");
+    expect(styles).toContain("orderFooter");
+    expect(styles).toContain("orderLines");
+    expect(styles).toContain("catalogSort");
+    expect(styles).toContain("max-w-md");
+    expect(styles).toContain("w-[6.5rem]");
+    expect(styles).toContain("stroke-[2.25]");
   });
 
   it("Incoming is top notification + popover, not a permanent right rail", () => {

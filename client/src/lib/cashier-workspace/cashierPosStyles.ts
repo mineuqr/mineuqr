@@ -58,8 +58,13 @@ export const cashierPos = {
     "mx-auto mb-1 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-[#d1d5db] lg:hidden",
   orderSheetClose:
     "absolute end-3 top-3 z-10 flex size-11 items-center justify-center rounded-full border border-[#e5e7eb] bg-white text-[#374151] lg:hidden",
-  orderScroll:
-    "flex min-h-0 flex-1 flex-col gap-2 overflow-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+  /** Header stays fixed; items scroll; footer (totals+PAY) stays pinned */
+  orderBody: "flex min-h-0 flex-1 flex-col overflow-hidden",
+  orderHeader: "shrink-0 border-b border-[#eef0f3] px-3 pb-2 pt-1",
+  orderLines:
+    "min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-2",
+  orderFooter:
+    "shrink-0 border-t border-[#e5e7eb] bg-white px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2",
   orderMeta: "space-y-0.5 text-xs text-[#6b7280]",
   orderHeading: "text-lg font-bold tabular-nums text-[#111827]",
   orderSource: "text-xs font-semibold uppercase tracking-wide text-[#4f46e5]",
@@ -67,6 +72,33 @@ export const cashierPos = {
     "flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#d8dee6] bg-[#fafbfc] px-4 py-8 text-center",
   orderEmptyTitle: "text-sm font-semibold text-[#374151]",
   orderEmptyHint: "text-xs text-[#6b7280]",
+  ticketLine:
+    "grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2.5",
+  ticketLineName:
+    "col-span-2 min-w-0 truncate text-sm font-semibold leading-snug text-[#111827]",
+  ticketLineControls: "flex items-center gap-1.5",
+  ticketLineQty:
+    "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-white px-2 text-sm font-bold tabular-nums text-[#111827]",
+  ticketLinePrice:
+    "self-center text-end text-sm font-bold tabular-nums text-[#111827]",
+  orderScroll:
+    "flex min-h-0 flex-1 flex-col gap-2 overflow-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+  totalBox: "rounded-2xl border border-[#e5e7eb] bg-[#f8fafc] p-3",
+  totalValue: "text-2xl font-bold tabular-nums text-[#111827]",
+  catalogToolbar:
+    "flex shrink-0 items-center gap-2 border-b border-[#e5e7eb] bg-white p-3",
+  catalogSearch:
+    "min-h-12 min-w-0 flex-1 max-w-md rounded-xl border border-[#d8dee6] bg-white px-3 text-base text-[#111827] sm:max-w-sm sm:text-sm md:max-w-md lg:max-w-lg",
+  catalogSort:
+    "min-h-12 w-[7.5rem] shrink-0 rounded-xl border border-[#d8dee6] bg-white px-2 text-sm text-[#111827] sm:w-[8.5rem]",
+  catalogTools: "flex shrink-0 items-center gap-2",
+  categoryBar:
+    "flex shrink-0 gap-3.5 overflow-x-auto overscroll-x-contain px-3 pb-3.5 pt-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]",
+  categoryTile:
+    "flex h-[5.75rem] w-[6.5rem] shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border px-2.5 text-center transition-[box-shadow,background-color,border-color,transform] duration-150 motion-safe:active:scale-[0.98] sm:h-[5.5rem] sm:w-[6.25rem]",
+  categoryIcon: "size-7 shrink-0 stroke-[2.25]",
+  categoryLabel:
+    "line-clamp-2 max-w-full text-xs font-bold leading-tight tracking-tight",
   /** Mobile/tablet cart dock — keeps Current Sale one tap away */
   cartDock:
     "flex shrink-0 items-center gap-2 border-t border-[#e5e7eb] bg-white px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden",
@@ -77,18 +109,6 @@ export const cashierPos = {
   cartDockSub: "block text-xs text-[#9ca3af]",
   cartDockTotal: "shrink-0 text-base font-bold tabular-nums",
   catalog: "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#fafbfc]",
-  catalogToolbar:
-    "flex shrink-0 flex-col gap-2 border-b border-[#e5e7eb] bg-white p-3",
-  catalogSearch:
-    "min-h-12 w-full rounded-xl border border-[#d8dee6] bg-white px-3 text-base text-[#111827] sm:text-sm",
-  catalogTools: "flex flex-wrap items-center gap-2",
-  categoryBar:
-    "flex shrink-0 gap-3 overflow-x-auto overscroll-x-contain px-3 pb-3 pt-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]",
-  categoryTile:
-    "flex h-[5rem] w-[5.75rem] shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 text-center transition-[box-shadow,background-color,border-color,transform] duration-150 motion-safe:active:scale-[0.98] sm:h-[4.75rem] sm:w-[5.5rem]",
-  categoryIcon: "size-6 shrink-0 sm:size-6",
-  categoryLabel:
-    "line-clamp-2 max-w-full text-[11px] font-semibold leading-tight",
   catalogScroll:
     "min-h-0 flex-1 overflow-auto overscroll-contain p-3 sm:p-4",
   productGrid:
@@ -122,10 +142,6 @@ export const cashierPos = {
     "rounded-full bg-[#eef2ff] px-2 py-0.5 text-xs font-semibold tabular-nums text-[#4338ca]",
   contextualScroll: "min-h-0 flex-1 overflow-auto p-3",
   ticket: "flex min-h-0 flex-1 flex-col bg-white p-3",
-  ticketLine:
-    "flex items-center justify-between gap-2 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2.5",
-  totalBox: "mt-auto rounded-2xl border border-[#e5e7eb] bg-[#f8fafc] p-3",
-  totalValue: "text-2xl font-bold tabular-nums text-[#111827]",
   primaryAction:
     "min-h-12 w-full rounded-xl bg-[#4f46e5] text-base font-semibold text-white active:bg-[#3730a3] hover:bg-[#4338ca] disabled:bg-[#c7d2fe]",
   secondaryAction:

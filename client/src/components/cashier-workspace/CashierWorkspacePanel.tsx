@@ -1620,8 +1620,8 @@ export function CashierWorkspacePanel({
               >
                 <X className="size-5" />
               </button>
-              <div className={cashierPos.orderScroll}>
-                <div>
+              <div className={cashierPos.orderBody}>
+                <div className={cashierPos.orderHeader}>
                   <p className={cashierPos.orderSource}>
                     {orderSourceLabel
                       ? displayTableNumber != null
@@ -1658,7 +1658,7 @@ export function CashierWorkspacePanel({
                 </div>
 
                 {invoiceView.lines.length === 0 ? (
-                  <div className={cashierPos.orderEmpty}>
+                  <div className={cn(cashierPos.orderEmpty, "mx-3 my-2")}>
                     <p className={cashierPos.orderEmptyTitle}>
                       {t("noActiveOrder")}
                     </p>
@@ -1667,26 +1667,21 @@ export function CashierWorkspacePanel({
                     </p>
                   </div>
                 ) : (
-                  <ul className="flex min-h-0 flex-1 flex-col gap-2">
+                  <ul className={cashierPos.orderLines}>
                     {invoiceView.lines.map((line) => {
                       const menuItemId = line.menuItemId;
                       return (
                         <li key={line.key} className={cashierPos.ticketLine}>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-[#111827]">
-                              {language === "ar" ? line.nameAr : line.nameEn}
-                            </p>
-                            <p className="text-xs text-[#6b7280]">
-                              {line.unitPrice} × {line.quantity}
-                            </p>
-                          </div>
+                          <p className={cashierPos.ticketLineName}>
+                            {language === "ar" ? line.nameAr : line.nameEn}
+                          </p>
                           {invoiceView.editable && menuItemId != null ? (
-                            <div className="flex items-center gap-1">
+                            <div className={cashierPos.ticketLineControls}>
                               <Button
                                 type="button"
                                 size="icon"
                                 variant="outline"
-                                className="size-11"
+                                className="size-11 shrink-0"
                                 aria-label={
                                   line.quantity === 1
                                     ? t("removeLine")
@@ -1696,14 +1691,14 @@ export function CashierWorkspacePanel({
                               >
                                 {line.quantity === 1 ? <Trash2 /> : <Minus />}
                               </Button>
-                              <span className="w-8 text-center text-sm font-semibold text-[#111827]">
+                              <span className={cashierPos.ticketLineQty}>
                                 {line.quantity}
                               </span>
                               <Button
                                 type="button"
                                 size="icon"
                                 variant="outline"
-                                className="size-11"
+                                className="size-11 shrink-0"
                                 aria-label={t("qty")}
                                 onClick={() => changeQty(menuItemId, 1)}
                               >
@@ -1711,11 +1706,11 @@ export function CashierWorkspacePanel({
                               </Button>
                             </div>
                           ) : (
-                            <span className="w-8 text-center text-sm font-semibold text-[#111827]">
+                            <span className={cashierPos.ticketLineQty}>
                               {line.quantity}
                             </span>
                           )}
-                          <p className="w-16 text-end text-sm font-semibold tabular-nums text-[#111827]">
+                          <p className={cashierPos.ticketLinePrice}>
                             {line.lineTotal}
                           </p>
                         </li>
@@ -1724,6 +1719,7 @@ export function CashierWorkspacePanel({
                   </ul>
                 )}
 
+                <div className={cashierPos.orderFooter}>
                 <div className={cashierPos.totalBox}>
                   <p className="flex justify-between text-sm text-[#6b7280]">
                     <span>{t("ticketSubtotal")}</span>
@@ -1856,6 +1852,7 @@ export function CashierWorkspacePanel({
                 >
                   {t("payWithAmount")} — {payAmountLabel}
                 </Button>
+                </div>
               </div>
             </section>
 
@@ -1869,22 +1866,22 @@ export function CashierWorkspacePanel({
                   placeholder={t("productSearch")}
                   aria-label={t("productSearch")}
                 />
-                <div className={cashierPos.catalogTools}>
-                  <label className="flex items-center gap-2 text-xs text-[#6b7280]">
-                    <span>{t("sortBy")}</span>
-                    <select
-                      className="min-h-10 rounded-lg border border-[#d8dee6] bg-white px-2 text-sm text-[#111827]"
-                      value={catalogSort}
-                      onChange={(event) =>
-                        setCatalogSort(event.target.value as CatalogSort)
-                      }
-                    >
-                      <option value="default">{t("sortDefault")}</option>
-                      <option value="name">{t("sortName")}</option>
-                      <option value="price">{t("sortPrice")}</option>
-                    </select>
-                  </label>
-                </div>
+                <label className="sr-only" htmlFor="cashier-catalog-sort">
+                  {t("sortBy")}
+                </label>
+                <select
+                  id="cashier-catalog-sort"
+                  className={cashierPos.catalogSort}
+                  value={catalogSort}
+                  aria-label={t("sortBy")}
+                  onChange={(event) =>
+                    setCatalogSort(event.target.value as CatalogSort)
+                  }
+                >
+                  <option value="default">{t("sortDefault")}</option>
+                  <option value="name">{t("sortName")}</option>
+                  <option value="price">{t("sortPrice")}</option>
+                </select>
               </div>
               <div className={cashierPos.categoryBar}>
                 {(() => {
