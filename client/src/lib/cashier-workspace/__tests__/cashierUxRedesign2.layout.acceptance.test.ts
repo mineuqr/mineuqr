@@ -31,7 +31,8 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
     expect(styles).toContain("orderFooter");
     expect(styles).toContain("orderLines");
     expect(styles).toContain("catalogSort");
-    expect(styles).toContain("max-w-md");
+    expect(styles).toContain("topSearchSort");
+    expect(styles).toContain("summaryRow");
     expect(styles).toContain("w-[6.5rem]");
     expect(styles).toContain("stroke-[2.25]");
   });
@@ -46,6 +47,30 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
     expect(panel).not.toMatch(
       /cashierPos\.aside[\s\S]{0,200}incomingOrders/
     );
+  });
+
+  it("Search + Sort share the Incoming top control row", () => {
+    const incomingStart = panel.indexOf("cashierPos.incomingBar");
+    const bodyStart = panel.indexOf("cashierPos.body");
+    const topRegion = panel.slice(incomingStart, bodyStart);
+    expect(topRegion).toContain("cashierPos.topSearchSort");
+    expect(topRegion).toContain("cashierPos.catalogSearch");
+    expect(topRegion).toContain("cashierPos.catalogSort");
+    expect(panel.indexOf("cashierPos.categoryBar")).toBeGreaterThan(bodyStart);
+    expect(panel).not.toContain("cashierPos.catalogToolbar");
+  });
+
+  it("Current Sale keeps compact summary + independent item scroll", () => {
+    expect(styles).toContain("summaryRow");
+    expect(styles).toContain("totalRow");
+    expect(styles).toContain("text-[13px]");
+    expect(panel).toContain("cashierPos.orderLines");
+    expect(panel).toContain("cashierPos.orderFooter");
+    expect(panel.indexOf("cashierPos.orderLines")).toBeLessThan(
+      panel.indexOf("cashierPos.orderFooter")
+    );
+    expect(panel).toContain("cashierPos.summaryRow");
+    expect(panel).toContain("cashierPos.totalRow");
   });
 
   it("adapts Current Sale to a sheet/dock below lg and keeps Payment modal-only", () => {

@@ -1,7 +1,7 @@
 /**
  * CASHIER-UX-FULLSCREEN-AND-THEME-1
  * CASHIER-UX-REDESIGN-1 / CASHIER-UX-REDESIGN-2 — POS workspace tokens.
- * Redesign-2: top Incoming, left Current Sale (lg+), wide Catalog,
+ * Redesign-2: top Incoming + Search/Sort, left Current Sale (lg+), wide Catalog,
  * payment modal, adaptive tablet/mobile composition (sale sheet + cart dock).
  */
 
@@ -21,26 +21,32 @@ export const cashierPos = {
     "min-h-11 rounded-lg border border-red-400/40 bg-transparent px-3 text-sm font-medium text-red-200 active:bg-red-500/15 hover:bg-red-500/15",
   select:
     "min-h-11 min-w-[9rem] max-w-full rounded-lg border border-white/20 bg-[#1f2937] px-3 text-sm text-white",
-  /** TOP — Incoming QR notification strip */
+  /** TOP — Incoming + Search + Sort (one control region) */
   incomingBar:
-    "flex shrink-0 items-center gap-2 border-b border-[#e5e7eb] bg-white px-2 py-2 sm:gap-3 sm:px-3",
+    "flex shrink-0 flex-wrap items-center gap-2 border-b border-[#e5e7eb] bg-white px-2 py-2 sm:gap-2.5 sm:px-3",
   incomingTrigger:
-    "relative flex min-h-12 w-full max-w-full items-center gap-2 rounded-xl border border-[#e5e7eb] bg-[#fafbfc] px-3 text-start transition-colors active:bg-[#eef2ff] hover:border-[#c7d2fe] hover:bg-[#eef2ff] sm:gap-3 sm:px-4 sm:max-w-md",
+    "relative flex min-h-11 w-full max-w-full items-center gap-2 rounded-xl border border-[#e5e7eb] bg-[#fafbfc] px-3 text-start transition-colors active:bg-[#eef2ff] hover:border-[#c7d2fe] hover:bg-[#eef2ff] sm:w-auto sm:max-w-[14rem] sm:shrink-0 md:max-w-[16rem]",
   incomingTriggerActive:
-    "relative flex min-h-12 w-full max-w-full items-center gap-2 rounded-xl border-[#4f46e5] bg-[#eef2ff] px-3 text-start ring-1 ring-[#4f46e5]/25 sm:gap-3 sm:px-4 sm:max-w-md",
+    "relative flex min-h-11 w-full max-w-full items-center gap-2 rounded-xl border-[#4f46e5] bg-[#eef2ff] px-3 text-start ring-1 ring-[#4f46e5]/25 sm:w-auto sm:max-w-[14rem] sm:shrink-0 md:max-w-[16rem]",
   incomingTriggerPulse:
     "motion-safe:animate-pulse border-amber-300 bg-amber-50",
   incomingLabel: "text-sm font-semibold text-[#111827]",
   incomingHint: "hidden text-xs text-[#6b7280] sm:inline",
   incomingBadge:
-    "ms-auto flex min-h-8 min-w-8 items-center justify-center rounded-full bg-[#4f46e5] px-2 text-xs font-bold tabular-nums text-white",
+    "ms-auto flex min-h-7 min-w-7 items-center justify-center rounded-full bg-[#4f46e5] px-2 text-xs font-bold tabular-nums text-white",
   incomingBadgeIdle:
-    "ms-auto flex min-h-8 min-w-8 items-center justify-center rounded-full bg-[#e5e7eb] px-2 text-xs font-bold tabular-nums text-[#6b7280]",
+    "ms-auto flex min-h-7 min-w-7 items-center justify-center rounded-full bg-[#e5e7eb] px-2 text-xs font-bold tabular-nums text-[#6b7280]",
   incomingPanel:
     "flex max-h-[min(70dvh,32rem)] w-[min(100vw-1rem,24rem)] flex-col overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-lg",
   incomingPanelHeader:
     "flex shrink-0 items-center justify-between gap-2 border-b border-[#e5e7eb] px-4 py-3",
   incomingPanelScroll: "min-h-0 flex-1 overflow-auto overscroll-contain p-3",
+  topSearchSort:
+    "flex min-w-0 flex-1 basis-[min(100%,18rem)] items-center gap-2 sm:basis-auto sm:min-w-[14rem] md:max-w-xl lg:max-w-2xl",
+  catalogSearch:
+    "min-h-11 min-w-0 flex-1 rounded-xl border border-[#d8dee6] bg-white px-3 text-sm text-[#111827]",
+  catalogSort:
+    "min-h-11 w-[7rem] shrink-0 rounded-xl border border-[#d8dee6] bg-white px-2 text-sm text-[#111827] sm:w-[8rem]",
   /**
    * BODY — adaptive:
    * - <lg: catalog-only column (sale is sheet)
@@ -48,8 +54,7 @@ export const cashierPos = {
    */
   body: "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]",
   /** Backdrop for mobile/tablet sale sheet */
-  saleBackdrop:
-    "fixed inset-0 z-30 bg-black/40 lg:hidden",
+  saleBackdrop: "fixed inset-0 z-30 bg-black/40 lg:hidden",
   orderRail:
     "z-40 flex min-h-0 flex-col overflow-hidden border-[#d8dee6] bg-white max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[min(85dvh,42rem)] max-lg:rounded-t-2xl max-lg:border-t max-lg:shadow-[0_-8px_30px_rgba(15,23,42,0.12)] lg:relative lg:z-auto lg:max-h-none lg:rounded-none lg:border-e lg:shadow-none",
   orderRailClosed: "max-lg:hidden lg:flex",
@@ -60,38 +65,35 @@ export const cashierPos = {
     "absolute end-3 top-3 z-10 flex size-11 items-center justify-center rounded-full border border-[#e5e7eb] bg-white text-[#374151] lg:hidden",
   /** Header stays fixed; items scroll; footer (totals+PAY) stays pinned */
   orderBody: "flex min-h-0 flex-1 flex-col overflow-hidden",
-  orderHeader: "shrink-0 border-b border-[#eef0f3] px-3 pb-2 pt-1",
+  orderHeader: "shrink-0 border-b border-[#eef0f3] px-3 pb-1.5 pt-1",
   orderLines:
-    "min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-2",
+    "min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain px-3 py-1.5",
   orderFooter:
-    "shrink-0 border-t border-[#e5e7eb] bg-white px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2",
+    "shrink-0 border-t border-[#e5e7eb] bg-white px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5",
   orderMeta: "space-y-0.5 text-xs text-[#6b7280]",
-  orderHeading: "text-lg font-bold tabular-nums text-[#111827]",
+  orderHeading: "text-base font-bold tabular-nums leading-tight text-[#111827]",
   orderSource: "text-xs font-semibold uppercase tracking-wide text-[#4f46e5]",
   orderEmpty:
     "flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#d8dee6] bg-[#fafbfc] px-4 py-8 text-center",
   orderEmptyTitle: "text-sm font-semibold text-[#374151]",
   orderEmptyHint: "text-xs text-[#6b7280]",
   ticketLine:
-    "grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2.5",
+    "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-1.5",
   ticketLineName:
-    "col-span-2 min-w-0 truncate text-sm font-semibold leading-snug text-[#111827]",
-  ticketLineControls: "flex items-center gap-1.5",
+    "min-w-0 truncate text-[13px] font-medium leading-tight text-[#111827]",
+  ticketLineControls: "col-span-2 flex items-center gap-1",
   ticketLineQty:
-    "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-white px-2 text-sm font-bold tabular-nums text-[#111827]",
+    "inline-flex min-h-9 min-w-8 items-center justify-center rounded-md bg-white px-1.5 text-[13px] font-semibold tabular-nums text-[#111827]",
   ticketLinePrice:
-    "self-center text-end text-sm font-bold tabular-nums text-[#111827]",
+    "text-end text-[13px] font-semibold tabular-nums leading-tight text-[#111827]",
   orderScroll:
     "flex min-h-0 flex-1 flex-col gap-2 overflow-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-  totalBox: "rounded-2xl border border-[#e5e7eb] bg-[#f8fafc] p-3",
-  totalValue: "text-2xl font-bold tabular-nums text-[#111827]",
-  catalogToolbar:
-    "flex shrink-0 items-center gap-2 border-b border-[#e5e7eb] bg-white p-3",
-  catalogSearch:
-    "min-h-12 min-w-0 flex-1 max-w-md rounded-xl border border-[#d8dee6] bg-white px-3 text-base text-[#111827] sm:max-w-sm sm:text-sm md:max-w-md lg:max-w-lg",
-  catalogSort:
-    "min-h-12 w-[7.5rem] shrink-0 rounded-xl border border-[#d8dee6] bg-white px-2 text-sm text-[#111827] sm:w-[8.5rem]",
-  catalogTools: "flex shrink-0 items-center gap-2",
+  totalBox: "space-y-0.5",
+  summaryRow: "flex justify-between text-xs leading-5 text-[#6b7280]",
+  totalRow:
+    "mt-1 flex items-baseline justify-between border-t border-[#e5e7eb] pt-1.5",
+  totalLabel: "text-sm font-bold text-[#111827]",
+  totalValue: "text-lg font-bold tabular-nums text-[#111827]",
   categoryBar:
     "flex shrink-0 gap-3.5 overflow-x-auto overscroll-x-contain px-3 pb-3.5 pt-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]",
   categoryTile:
@@ -143,7 +145,7 @@ export const cashierPos = {
   contextualScroll: "min-h-0 flex-1 overflow-auto p-3",
   ticket: "flex min-h-0 flex-1 flex-col bg-white p-3",
   primaryAction:
-    "min-h-12 w-full rounded-xl bg-[#4f46e5] text-base font-semibold text-white active:bg-[#3730a3] hover:bg-[#4338ca] disabled:bg-[#c7d2fe]",
+    "min-h-11 w-full rounded-xl bg-[#4f46e5] text-sm font-semibold text-white active:bg-[#3730a3] hover:bg-[#4338ca] disabled:bg-[#c7d2fe]",
   secondaryAction:
     "min-h-12 w-full rounded-xl border border-[#d8dee6] bg-white text-sm font-medium text-[#111827] active:bg-[#e5e7eb] hover:bg-[#f4f5f7]",
   dangerAction:

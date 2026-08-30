@@ -1441,7 +1441,7 @@ export function CashierWorkspacePanel({
 
       {scoped && allowed ? (
         <>
-          {/* TOP — Incoming QR notification */}
+          {/* TOP — Incoming QR + Search + Sort */}
           <div className={cashierPos.incomingBar}>
             <Popover open={incomingOpen} onOpenChange={setIncomingOpen}>
               <PopoverTrigger asChild>
@@ -1590,6 +1590,31 @@ export function CashierWorkspacePanel({
                 </div>
               </PopoverContent>
             </Popover>
+            <div className={cashierPos.topSearchSort}>
+              <input
+                className={cashierPos.catalogSearch}
+                value={productSearch}
+                onChange={(event) => setProductSearch(event.target.value)}
+                placeholder={t("productSearch")}
+                aria-label={t("productSearch")}
+              />
+              <label className="sr-only" htmlFor="cashier-catalog-sort">
+                {t("sortBy")}
+              </label>
+              <select
+                id="cashier-catalog-sort"
+                className={cashierPos.catalogSort}
+                value={catalogSort}
+                aria-label={t("sortBy")}
+                onChange={(event) =>
+                  setCatalogSort(event.target.value as CatalogSort)
+                }
+              >
+                <option value="default">{t("sortDefault")}</option>
+                <option value="name">{t("sortName")}</option>
+                <option value="price">{t("sortPrice")}</option>
+              </select>
+            </div>
           </div>
 
           <div className={cashierPos.body}>
@@ -1675,13 +1700,16 @@ export function CashierWorkspacePanel({
                           <p className={cashierPos.ticketLineName}>
                             {language === "ar" ? line.nameAr : line.nameEn}
                           </p>
+                          <p className={cashierPos.ticketLinePrice}>
+                            {line.lineTotal}
+                          </p>
                           {invoiceView.editable && menuItemId != null ? (
                             <div className={cashierPos.ticketLineControls}>
                               <Button
                                 type="button"
                                 size="icon"
                                 variant="outline"
-                                className="size-11 shrink-0"
+                                className="size-9 shrink-0"
                                 aria-label={
                                   line.quantity === 1
                                     ? t("removeLine")
@@ -1692,13 +1720,13 @@ export function CashierWorkspacePanel({
                                 {line.quantity === 1 ? <Trash2 /> : <Minus />}
                               </Button>
                               <span className={cashierPos.ticketLineQty}>
-                                {line.quantity}
+                                ×{line.quantity}
                               </span>
                               <Button
                                 type="button"
                                 size="icon"
                                 variant="outline"
-                                className="size-11 shrink-0"
+                                className="size-9 shrink-0"
                                 aria-label={t("qty")}
                                 onClick={() => changeQty(menuItemId, 1)}
                               >
@@ -1706,13 +1734,15 @@ export function CashierWorkspacePanel({
                               </Button>
                             </div>
                           ) : (
-                            <span className={cashierPos.ticketLineQty}>
-                              {line.quantity}
+                            <span
+                              className={cn(
+                                cashierPos.ticketLineQty,
+                                "col-span-2 justify-self-start"
+                              )}
+                            >
+                              ×{line.quantity}
                             </span>
                           )}
-                          <p className={cashierPos.ticketLinePrice}>
-                            {line.lineTotal}
-                          </p>
                         </li>
                       );
                     })}
@@ -1721,7 +1751,7 @@ export function CashierWorkspacePanel({
 
                 <div className={cashierPos.orderFooter}>
                 <div className={cashierPos.totalBox}>
-                  <p className="flex justify-between text-sm text-[#6b7280]">
+                  <p className={cashierPos.summaryRow}>
                     <span>{t("ticketSubtotal")}</span>
                     <span className="tabular-nums">
                       {money(
@@ -1732,7 +1762,7 @@ export function CashierWorkspacePanel({
                       )}
                     </span>
                   </p>
-                  <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
+                  <p className={cashierPos.summaryRow}>
                     <span>{t("ticketDiscount")}</span>
                     <span className="tabular-nums">
                       {isPositiveDisplayMoney(
@@ -1742,7 +1772,7 @@ export function CashierWorkspacePanel({
                         : money("0.00")}
                     </span>
                   </p>
-                  <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
+                  <p className={cashierPos.summaryRow}>
                     <span>{t("paymentTax")}</span>
                     <span className="tabular-nums">
                       {money(
@@ -1752,8 +1782,8 @@ export function CashierWorkspacePanel({
                       )}
                     </span>
                   </p>
-                  <p className="mt-2 flex items-end justify-between">
-                    <span className="text-sm font-semibold text-[#111827]">
+                  <p className={cashierPos.totalRow}>
+                    <span className={cashierPos.totalLabel}>
                       {t("ticketTotal")}
                     </span>
                     <span className={cashierPos.totalValue}>
@@ -1761,7 +1791,7 @@ export function CashierWorkspacePanel({
                     </span>
                   </p>
                   {discountOpen && invoiceView.editable ? (
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-2 flex gap-2">
                       <input
                         className={cashierPos.moneyInput}
                         inputMode="decimal"
@@ -1774,7 +1804,7 @@ export function CashierWorkspacePanel({
                       />
                       <Button
                         type="button"
-                        className="min-h-12"
+                        className="min-h-11"
                         onClick={() => {
                           const next = clampCashierDiscountAmount(
                             discountDraft,
@@ -1797,7 +1827,7 @@ export function CashierWorkspacePanel({
                       <Button
                         type="button"
                         variant="outline"
-                        className="min-h-12"
+                        className="min-h-11"
                         onClick={() => {
                           setTicketDiscount("0.00");
                           setDiscountDraft("");
@@ -1811,7 +1841,7 @@ export function CashierWorkspacePanel({
                     <Button
                       type="button"
                       variant="outline"
-                      className="mt-3 min-h-11 w-full"
+                      className="mt-1.5 min-h-9 w-full text-xs"
                       disabled={ticket.length === 0}
                       onClick={() => {
                         setDiscountDraft(
@@ -1827,7 +1857,7 @@ export function CashierWorkspacePanel({
 
                 <Button
                   type="button"
-                  className={cn(cashierPos.primaryAction, "mt-3")}
+                  className={cn(cashierPos.primaryAction, "mt-2")}
                   disabled={
                     !terminalId ||
                     paymentOpen ||
@@ -1858,31 +1888,6 @@ export function CashierWorkspacePanel({
 
             {/* CENTER — wide Product Catalog */}
             <div className={cashierPos.catalog}>
-              <div className={cashierPos.catalogToolbar}>
-                <input
-                  className={cashierPos.catalogSearch}
-                  value={productSearch}
-                  onChange={(event) => setProductSearch(event.target.value)}
-                  placeholder={t("productSearch")}
-                  aria-label={t("productSearch")}
-                />
-                <label className="sr-only" htmlFor="cashier-catalog-sort">
-                  {t("sortBy")}
-                </label>
-                <select
-                  id="cashier-catalog-sort"
-                  className={cashierPos.catalogSort}
-                  value={catalogSort}
-                  aria-label={t("sortBy")}
-                  onChange={(event) =>
-                    setCatalogSort(event.target.value as CatalogSort)
-                  }
-                >
-                  <option value="default">{t("sortDefault")}</option>
-                  <option value="name">{t("sortName")}</option>
-                  <option value="price">{t("sortPrice")}</option>
-                </select>
-              </div>
               <div className={cashierPos.categoryBar}>
                 {(() => {
                   const AllIcon = cashierAllCategoryIcon();
