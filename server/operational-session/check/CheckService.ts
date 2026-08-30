@@ -44,6 +44,7 @@ import {
   billAmountDueFromCollection,
   resolveStaffSettlementLines,
   SettlementValidationError,
+  ConcurrentRefundGenerationError,
   type CheckOutcome,
   type OperationalCheck,
   type OrderSettlementDomainEvent,
@@ -2588,10 +2589,11 @@ export async function refundOrderSettlementsOnCheck(input: {
 }
 
 /**
- * ADR-ARCH-032 / REFUND-REGISTER-ADOPTION-1 —
+ * ADR-ARCH-032 / REFUND-REGISTER-ADOPTION-1 /
+ * REFUND-INVOICE-IDENTITY-AND-CONCURRENCY-HARDENING-1 —
  * Apply Refund under Check Aggregate (sole monetary authority), then
  * post-commit AttributeRefund to Register/Shift (custody only, fail-open).
- * Register never executes Refund. Never rolls back financial TX on attribution failure.
+ * Generation conflicts retry the whole Check-owned TX with a fresh budget read.
  */
 export async function applyRefundOnCheck(input: {
   restaurantId: number;
@@ -2628,9 +2630,33 @@ export async function applyRefundOnCheck(input: {
       ])
     ));
 
-  const financial = await withCheckOwnedTransaction(undefined, async (tx) =>
-    applyRefundOnCheckIntegration(input, tx)
-  );
+  const maxAttempts = 5;
+  let financial: CheckRefundMutationResult | null = null;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      financial = await withCheckOwnedTransaction(undefined, async (tx) =>
+        applyRefundOnCheckIntegration(input, tx)
+      );
+      break;
+    } catch (error) {
+      lastError = error;
+      if (
+        error instanceof ConcurrentRefundGenerationError &&
+        attempt < maxAttempts
+      ) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  if (!financial) {
+    throw lastError instanceof Error
+      ? lastError
+      : new ConcurrentRefundGenerationError(
+          `RF-GEN-04: concurrent refund generation conflict for check=${input.checkId}`
+        );
+  }
 
   const attributionBundle = await adoptRefundAttributionAfterFinalize({
     restaurantId: input.restaurantId,

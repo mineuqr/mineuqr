@@ -77,6 +77,36 @@ export async function findCashierInvoiceByOrderId(
   return assignment(row.restaurantId, row.orderId, row.sequenceNumber);
 }
 
+/**
+ * Restaurant-scoped Invoice serial → order binding.
+ * Uniqueness: (restaurantId, sequenceNumber). Never cross-tenant.
+ */
+export async function findCashierInvoiceBySequenceNumber(
+  input: { restaurantId: number; sequenceNumber: number },
+  client?: SessionDbClient
+): Promise<CashierInvoiceAssignment | null> {
+  if (!Number.isInteger(input.sequenceNumber) || input.sequenceNumber < 1) {
+    return null;
+  }
+  const db = await resolveDb(client);
+  const [row] = await db
+    .select({
+      restaurantId: cashierInvoices.restaurantId,
+      orderId: cashierInvoices.orderId,
+      sequenceNumber: cashierInvoices.sequenceNumber,
+    })
+    .from(cashierInvoices)
+    .where(
+      and(
+        eq(cashierInvoices.restaurantId, input.restaurantId),
+        eq(cashierInvoices.sequenceNumber, input.sequenceNumber)
+      )
+    )
+    .limit(1);
+  if (!row) return null;
+  return assignment(row.restaurantId, row.orderId, row.sequenceNumber);
+}
+
 /** Read-only batch Invoice serials. Restaurant-scoped. Does not allocate. */
 export async function mapCashierInvoiceNumbersByOrderIds(
   input: { restaurantId: number; orderIds: readonly number[] },

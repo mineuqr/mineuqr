@@ -65,6 +65,7 @@ export {
   useSettlementRecordsByCheck,
   useInvalidateSettlementRecordQueries,
   useCheckRefundBudget,
+  useLookupCheckRefundByInvoiceNumber,
   useLookupCheckRefundBySettlementNumber,
   useApplyCheckRefund,
 } from "./useSettlementRecordQueries";

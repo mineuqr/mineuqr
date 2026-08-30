@@ -31,6 +31,23 @@ export async function findFinanciallyCompleteMembershipForOrder(
   orderId: number,
   client?: SessionDbClient
 ): Promise<{ membership: MembershipRow; checkOutcome: string } | null> {
+  const rows = await listFinanciallyCompleteMembershipsForOrder(
+    restaurantId,
+    orderId,
+    client
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * All paid|complimentary active memberships for an order (ambiguity detection).
+ * Refund Invoice lookup must not first-pick when more than one exists.
+ */
+export async function listFinanciallyCompleteMembershipsForOrder(
+  restaurantId: number,
+  orderId: number,
+  client?: SessionDbClient
+): Promise<readonly { membership: MembershipRow; checkOutcome: string }[]> {
   const db = await resolveDb(client);
   const rows = await db
     .select({
@@ -49,11 +66,8 @@ export async function findFinanciallyCompleteMembershipForOrder(
         eq(checkOrderMembership.active, 1),
         inArray(operationalChecks.outcome, ["paid", "complimentary"])
       )
-    )
-    .limit(1);
-  const row = rows[0];
-  if (!row) return null;
-  return { membership: row.membership, checkOutcome: row.checkOutcome };
+    );
+  return rows;
 }
 
 /** Active membership on a non-void Check (blocks second enrollment). */

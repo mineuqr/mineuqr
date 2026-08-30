@@ -1,6 +1,8 @@
 /**
- * REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2 — Settlement Number → refund lookup.
- * Transport/presentation façade helpers. No money calculation beyond domain budget.
+ * REFUND-INVOICE-IDENTITY-AND-CONCURRENCY-HARDENING-1
+ * Primary human-facing Refund lookup: Original Cashier Invoice Number.
+ * Secondary/legacy: Settlement Number (ST-…).
+ * Money authority unchanged — budget still CF preferred / legacy SR.
  */
 
 import { TRPCError } from "@trpc/server";
@@ -17,12 +19,16 @@ import {
   parseSettlementOperationalIdentity,
   resolveSettlementOperationalIdentity,
 } from "@shared/operational-document-identity";
-import { getRestaurantById } from "../../../db";
 import {
-  getCheckRefundBudget,
-} from "../CheckService";
+  formatCashierInvoiceNumber,
+  parseCashierInvoiceNumber,
+} from "@shared/pos";
+import { getRestaurantById } from "../../../db";
+import { findCashierInvoiceBySequenceNumber } from "../../../pos/cashier-invoice/cashierInvoiceRepository";
+import { getCheckRefundBudget } from "../CheckService";
 import { findCheckById } from "../checkRepository";
 import { mapRowToOperationalCheck } from "../checkMapper";
+import { listFinanciallyCompleteMembershipsForOrder } from "../checkOrderMembershipRepository";
 import { listSettlementRecordsForCheck } from "../settlementRecordRepository";
 import { toSettlementRecordHistoryItemDto } from "./settlementRecordApiMapper";
 import { resolveRefundOriginalSaleAnchorForCheck } from "../checkRefundOriginalSaleResolution";
@@ -31,6 +37,8 @@ export type CheckRefundLookupDto = Readonly<{
   contractId: "REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2";
   contractVersion: 2;
   restaurantId: number;
+  /** Primary human-facing sale reference when known. */
+  invoiceNumber: string | null;
   settlementNumber: string;
   /**
    * Origin settlement document when gen=1 SR exists.
@@ -77,18 +85,13 @@ function paymentMethodSummaryFromTenders(
   return Array.from(new Set(methods)).join(", ");
 }
 
-export async function lookupCheckRefundBySettlementNumber(input: {
+async function buildCheckRefundLookupDto(input: {
   restaurantId: number;
-  settlementNumber: string;
+  checkId: number;
+  invoiceNumber: string | null;
+  /** Preferred settlement generation when looking up ST-…-N. */
+  preferredRecordGeneration?: number;
 }): Promise<CheckRefundLookupDto> {
-  const parsed = parseSettlementOperationalIdentity(input.settlementNumber);
-  if (!parsed) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "Unknown settlement number",
-    });
-  }
-
   const restaurant = await getRestaurantById(input.restaurantId);
   if (!restaurant) {
     throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
@@ -99,7 +102,7 @@ export async function lookupCheckRefundBySettlementNumber(input: {
 
   const records = await listSettlementRecordsForCheck({
     restaurantId: input.restaurantId,
-    checkId: parsed.checkId,
+    checkId: input.checkId,
   });
   const primary =
     records
@@ -112,45 +115,43 @@ export async function lookupCheckRefundBySettlementNumber(input: {
 
   const originalSale = await resolveRefundOriginalSaleAnchorForCheck({
     restaurantId: input.restaurantId,
-    checkId: parsed.checkId,
+    checkId: input.checkId,
   });
   const cfAnchor = isCollectionFactRefundAnchor(originalSale)
     ? originalSale
     : null;
 
-  const checkRow = await findCheckById(parsed.checkId);
+  const checkRow = await findCheckById(input.checkId);
   const check =
     checkRow && checkRow.restaurantId === input.restaurantId
       ? mapRowToOperationalCheck(checkRow)
       : null;
 
-  // ST- is Check identity. Gen=1 SR is a document, not original-sale identity.
-  // CF-backed paid/complimentary Checks may be looked up without a primary SR.
   if (!primary && !cfAnchor) {
     throw new TRPCError({
       code: "NOT_FOUND",
-      message: "Unknown settlement number",
+      message: "Unknown refund sale",
     });
   }
   if (!primary && !check) {
     throw new TRPCError({
       code: "NOT_FOUND",
-      message: "Unknown settlement number",
+      message: "Unknown refund sale",
     });
   }
 
-  // Prefer requested generation when it is the primary settlement publication.
   const target = primary
-    ? records.find(
-        (r) =>
-          r.recordKind === "settlement" &&
-          r.recordGeneration === parsed.recordGeneration
-      ) ?? primary
+    ? input.preferredRecordGeneration != null
+      ? (records.find(
+          (r) =>
+            r.recordKind === "settlement" &&
+            r.recordGeneration === input.preferredRecordGeneration
+        ) ?? primary)
+      : primary
     : null;
-
   const budget = await getCheckRefundBudget({
     restaurantId: input.restaurantId,
-    checkId: parsed.checkId,
+    checkId: input.checkId,
   });
   const refundable = parseRefundMoney(budget.refundableBalance);
   const settlementAt = cfAnchor
@@ -183,7 +184,7 @@ export async function lookupCheckRefundBySettlementNumber(input: {
   if (checkId == null) {
     throw new TRPCError({
       code: "NOT_FOUND",
-      message: "Unknown settlement number",
+      message: "Unknown refund sale",
     });
   }
   const currencySnapshot =
@@ -191,7 +192,7 @@ export async function lookupCheckRefundBySettlementNumber(input: {
   if (!currencySnapshot) {
     throw new TRPCError({
       code: "NOT_FOUND",
-      message: "Unknown settlement number",
+      message: "Unknown refund sale",
     });
   }
   const settlementNumber = resolveSettlementOperationalIdentity({
@@ -212,12 +213,14 @@ export async function lookupCheckRefundBySettlementNumber(input: {
     contractId: "REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2",
     contractVersion: 2,
     restaurantId: input.restaurantId,
+    invoiceNumber: input.invoiceNumber,
     settlementNumber,
     settlementRecordId: target?.settlementRecordId ?? null,
     checkId,
     sessionId: target?.sessionId ?? check?.sessionId ?? null,
     businessDay: cfAnchor?.businessDay ?? target?.businessDay ?? "",
-    settledAt: cfAnchor?.committedAt ?? target?.settledAt ?? check?.settledAt ?? null,
+    settledAt:
+      cfAnchor?.committedAt ?? target?.settledAt ?? check?.settledAt ?? null,
     paymentMethodSummary,
     originalAmount: budget.settledValue,
     previouslyRefunded: budget.appliedRefundTotal,
@@ -240,6 +243,90 @@ export async function lookupCheckRefundBySettlementNumber(input: {
     },
     rejectionCode,
   };
+}
+
+/**
+ * Primary Refund sale lookup: Original Cashier Invoice Number → Order → Check → budget.
+ */
+export async function lookupCheckRefundByInvoiceNumber(input: {
+  restaurantId: number;
+  invoiceNumber: string;
+}): Promise<CheckRefundLookupDto> {
+  const sequenceNumber = parseCashierInvoiceNumber(input.invoiceNumber);
+  if (sequenceNumber == null) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Unknown invoice number",
+    });
+  }
+
+  const invoice = await findCashierInvoiceBySequenceNumber({
+    restaurantId: input.restaurantId,
+    sequenceNumber,
+  });
+  if (!invoice) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Unknown invoice number",
+    });
+  }
+
+  const memberships = await listFinanciallyCompleteMembershipsForOrder(
+    input.restaurantId,
+    invoice.orderId
+  );
+  if (memberships.length === 0) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Unknown invoice number",
+    });
+  }
+  if (memberships.length > 1) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "Ambiguous invoice check membership",
+    });
+  }
+
+  const checkId = memberships[0]!.membership.checkId;
+  return buildCheckRefundLookupDto({
+    restaurantId: input.restaurantId,
+    checkId,
+    invoiceNumber: formatCashierInvoiceNumber(invoice.sequenceNumber),
+  });
+}
+
+/**
+ * Legacy / secondary lookup by Settlement Operational Identity (ST-…).
+ * Bare digits are NOT accepted here — Invoice is the primary digit identity.
+ */
+export async function lookupCheckRefundBySettlementNumber(input: {
+  restaurantId: number;
+  settlementNumber: string;
+}): Promise<CheckRefundLookupDto> {
+  const raw = input.settlementNumber.trim();
+  // Bare digits belong to Invoice identity — do not interpret as Check id.
+  if (/^\d{1,12}$/.test(raw)) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Unknown settlement number",
+    });
+  }
+
+  const parsed = parseSettlementOperationalIdentity(raw);
+  if (!parsed || !/^ST-/i.test(raw)) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Unknown settlement number",
+    });
+  }
+
+  return buildCheckRefundLookupDto({
+    restaurantId: input.restaurantId,
+    checkId: parsed.checkId,
+    invoiceNumber: null,
+    preferredRecordGeneration: parsed.recordGeneration,
+  });
 }
 
 export async function assertRefundPolicyAllowsApply(input: {
@@ -320,7 +407,9 @@ export async function assertRefundPolicyAllowsApply(input: {
       restaurantId: input.restaurantId,
       checkId: input.checkId,
     });
-    if (parseRefundMoney(input.amount) < parseRefundMoney(budget.refundableBalance)) {
+    if (
+      parseRefundMoney(input.amount) < parseRefundMoney(budget.refundableBalance)
+    ) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "PARTIAL_REFUND_NOT_ALLOWED",

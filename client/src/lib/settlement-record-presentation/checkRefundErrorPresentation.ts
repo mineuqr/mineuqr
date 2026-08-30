@@ -16,6 +16,8 @@ export type CheckRefundErrorKind =
   | "conflict"
   | "window_expired"
   | "unknown_settlement"
+  | "unknown_invoice"
+  | "ambiguous_invoice"
   | "generic";
 
 export function mapCheckRefundApiError(error: unknown): CheckRefundErrorKind {
@@ -37,8 +39,17 @@ export function mapCheckRefundApiError(error: unknown): CheckRefundErrorKind {
   if (hay.includes("refund_window_expired") || hay.includes("window_expired")) {
     return "window_expired";
   }
-  if (hay.includes("unknown settlement") || hay.includes("not_found")) {
+  if (hay.includes("ambiguous invoice")) {
+    return "ambiguous_invoice";
+  }
+  if (hay.includes("unknown invoice")) {
+    return "unknown_invoice";
+  }
+  if (hay.includes("unknown settlement") || hay.includes("unknown refund sale")) {
     return "unknown_settlement";
+  }
+  if (hay.includes("not_found")) {
+    return "unknown_invoice";
   }
   if (hay.includes("forbidden") || hay.includes("permission")) {
     return "permission_denied";
@@ -87,6 +98,10 @@ export function checkRefundErrorMessage(
       return settlementRecordUiLabel("refundErrorWindowExpired", language);
     case "unknown_settlement":
       return settlementRecordUiLabel("refundErrorUnknownSettlement", language);
+    case "unknown_invoice":
+      return settlementRecordUiLabel("refundErrorUnknownInvoice", language);
+    case "ambiguous_invoice":
+      return settlementRecordUiLabel("refundErrorAmbiguousInvoice", language);
     default:
       return settlementRecordUiLabel("refundErrorGeneric", language);
   }

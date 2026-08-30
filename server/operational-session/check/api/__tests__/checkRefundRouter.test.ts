@@ -18,6 +18,7 @@ vi.mock("../../CheckService", () => ({
 vi.mock("../checkRefundLookupService", () => ({
   assertRefundPolicyAllowsApply: vi.fn(async () => undefined),
   lookupCheckRefundBySettlementNumber: vi.fn(),
+  lookupCheckRefundByInvoiceNumber: vi.fn(),
 }));
 
 import { assertRestaurantAccess } from "../../../../restaurantAccess";
@@ -28,6 +29,7 @@ import {
 } from "../../CheckService";
 import {
   assertRefundPolicyAllowsApply,
+  lookupCheckRefundByInvoiceNumber,
   lookupCheckRefundBySettlementNumber,
 } from "../checkRefundLookupService";
 
@@ -53,6 +55,62 @@ describe("checkRefundRouter REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1/2", () => {
     vi.mocked(assertRefundPolicyAllowsApply).mockReset();
     vi.mocked(assertRefundPolicyAllowsApply).mockResolvedValue(undefined);
     vi.mocked(lookupCheckRefundBySettlementNumber).mockReset();
+    vi.mocked(lookupCheckRefundByInvoiceNumber).mockReset();
+  });
+
+  it("lookupByInvoiceNumber requires access and returns façade DTO", async () => {
+    vi.mocked(lookupCheckRefundByInvoiceNumber).mockResolvedValue({
+      contractId: "REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2",
+      contractVersion: 2,
+      restaurantId: 42,
+      invoiceNumber: "000050",
+      settlementNumber: "ST-000000010",
+      settlementRecordId: "sr:1:10:settlement:1",
+      checkId: 10,
+      sessionId: null,
+      businessDay: "2026-07-26",
+      settledAt: "2026-07-26T10:00:00.000Z",
+      paymentMethodSummary: "cash",
+      originalAmount: "100.00",
+      previouslyRefunded: "0.00",
+      refundableBalance: "100.00",
+      currencyCode: "SAR",
+      currencySymbol: "ر.س",
+      outcome: "paid",
+      recordKind: "settlement",
+      recordGeneration: 1,
+      eligible: true,
+      customer: null,
+      policy: {
+        version: 1,
+        refundEnabled: true,
+        windowHours: 24,
+        partialRefundAllowed: true,
+        requireReason: false,
+        requireManagerApproval: false,
+      },
+      window: {
+        windowHours: 24,
+        settlementAt: "2026-07-26T10:00:00.000Z",
+        elapsedMs: 1000,
+        windowMs: 86_400_000,
+        expired: false,
+        remainingMs: 86_399_000,
+      },
+      rejectionCode: null,
+    });
+    const caller = createVerifiedCaller();
+    const dto = await caller.checkRefund.lookupByInvoiceNumber({
+      restaurantId: 42,
+      invoiceNumber: "000050",
+    });
+    expect(assertRestaurantAccess).toHaveBeenCalledWith(
+      expect.anything(),
+      42,
+      "checkRefund.lookupByInvoiceNumber"
+    );
+    expect(dto.invoiceNumber).toBe("000050");
+    expect(dto.checkId).toBe(10);
   });
 
   it("lookupBySettlementNumber requires access and returns façade DTO", async () => {
@@ -60,6 +118,7 @@ describe("checkRefundRouter REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1/2", () => {
       contractId: "REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2",
       contractVersion: 2,
       restaurantId: 42,
+      invoiceNumber: null,
       settlementNumber: "ST-000000010",
       settlementRecordId: "sr:1:10:settlement:1",
       checkId: 10,

@@ -1,7 +1,7 @@
 /**
- * REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2
- * Settlement Ledger → مرتجع operational workflow (Settlement Number lookup).
- * Presentation only — domain money via checkRefund façade.
+ * REFUND-INVOICE-IDENTITY-AND-CONCURRENCY-HARDENING-1
+ * Settlement Ledger → مرتجع: primary lookup by Original Invoice Number.
+ * Legacy ST- remains secondary. Presentation only — money via checkRefund façade.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -21,6 +21,7 @@ import {
   mapCheckRefundApiError,
   settlementRecordUiLabel,
   useApplyCheckRefund,
+  useLookupCheckRefundByInvoiceNumber,
   useLookupCheckRefundBySettlementNumber,
   type SettlementRecordLang,
 } from "@/lib/settlement-record-presentation";
@@ -40,6 +41,10 @@ type SettlementLedgerRefundDialogProps = {
 };
 
 type Mode = "full" | "partial";
+
+function isLegacySettlementLookup(raw: string): boolean {
+  return /^ST-/i.test(raw.trim());
+}
 
 function SummaryRow({
   label,
@@ -66,7 +71,7 @@ export function SettlementLedgerRefundDialog({
   onPublished,
   onSaveAndPrint,
 }: SettlementLedgerRefundDialogProps) {
-  const [settlementNumber, setSettlementNumber] = useState("");
+  const [saleReference, setSaleReference] = useState("");
   const [lookupKey, setLookupKey] = useState("");
   const [mode, setMode] = useState<Mode>("full");
   const [amount, setAmount] = useState("");
@@ -75,10 +80,16 @@ export function SettlementLedgerRefundDialog({
   const [managerApproved, setManagerApproved] = useState(false);
   const [printAfter, setPrintAfter] = useState(false);
 
-  const lookup = useLookupCheckRefundBySettlementNumber(
-    { restaurantId, settlementNumber: lookupKey },
-    { enabled: open && lookupKey.trim().length > 0 }
+  const legacySt = isLegacySettlementLookup(lookupKey);
+  const invoiceLookup = useLookupCheckRefundByInvoiceNumber(
+    { restaurantId, invoiceNumber: lookupKey },
+    { enabled: open && lookupKey.trim().length > 0 && !legacySt }
   );
+  const settlementLookup = useLookupCheckRefundBySettlementNumber(
+    { restaurantId, settlementNumber: lookupKey },
+    { enabled: open && lookupKey.trim().length > 0 && legacySt }
+  );
+  const lookup = legacySt ? settlementLookup : invoiceLookup;
   const apply = useApplyCheckRefund();
   const options = listMonetaryPaymentMethodOptions(language);
   const data = lookup.data;
@@ -86,7 +97,7 @@ export function SettlementLedgerRefundDialog({
 
   useEffect(() => {
     if (!open) {
-      setSettlementNumber("");
+      setSaleReference("");
       setLookupKey("");
       setMode("full");
       setAmount("");
@@ -104,7 +115,7 @@ export function SettlementLedgerRefundDialog({
       setAmount(data.refundableBalance);
       setMode("full");
     }
-  }, [data?.settlementRecordId, data?.refundableBalance]);
+  }, [data?.checkId, data?.invoiceNumber, data?.refundableBalance]);
 
   const windowExpired = data?.window.expired === true;
   const policyBlocked =
@@ -123,15 +134,10 @@ export function SettlementLedgerRefundDialog({
 
   const errorMessage = useMemo(() => {
     if (lookup.error) {
-      const kind = mapCheckRefundApiError(lookup.error);
-      if (
-        String((lookup.error as { message?: string }).message ?? "")
-          .toLowerCase()
-          .includes("unknown")
-      ) {
-        return settlementRecordUiLabel("refundErrorUnknownSettlement", language);
-      }
-      return checkRefundErrorMessage(kind, language);
+      return checkRefundErrorMessage(
+        mapCheckRefundApiError(lookup.error),
+        language
+      );
     }
     if (apply.error) {
       return checkRefundErrorMessage(
@@ -144,7 +150,7 @@ export function SettlementLedgerRefundDialog({
 
   const runLookup = () => {
     apply.reset();
-    setLookupKey(settlementNumber.trim());
+    setLookupKey(saleReference.trim());
   };
 
   const submit = (andPrint: boolean) => {
@@ -196,16 +202,16 @@ export function SettlementLedgerRefundDialog({
           <div className="space-y-2">
             <label
               className="text-xs font-medium text-muted-foreground"
-              htmlFor="ledger-refund-settlement-number"
+              htmlFor="ledger-refund-invoice-number"
             >
-              {settlementRecordUiLabel("settlementNumber", language)}
+              {settlementRecordUiLabel("invoiceNumber", language)}
             </label>
             <div className="flex gap-2">
               <Input
-                id="ledger-refund-settlement-number"
-                value={settlementNumber}
-                onChange={(e) => setSettlementNumber(e.target.value)}
-                placeholder="ST-000570004"
+                id="ledger-refund-invoice-number"
+                value={saleReference}
+                onChange={(e) => setSaleReference(e.target.value)}
+                placeholder="000050"
                 autoComplete="off"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -218,7 +224,7 @@ export function SettlementLedgerRefundDialog({
                 type="button"
                 variant="secondary"
                 onClick={runLookup}
-                disabled={!settlementNumber.trim() || lookup.isFetching}
+                disabled={!saleReference.trim() || lookup.isFetching}
               >
                 {lookup.isFetching ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -240,6 +246,10 @@ export function SettlementLedgerRefundDialog({
 
           {data ? (
             <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+              <SummaryRow
+                label={settlementRecordUiLabel("invoiceNumber", language)}
+                value={data.invoiceNumber?.trim() || "—"}
+              />
               <SummaryRow
                 label={settlementRecordUiLabel("settlementNumber", language)}
                 value={data.settlementNumber}
@@ -265,7 +275,10 @@ export function SettlementLedgerRefundDialog({
                 value={`${sym}${data.originalAmount}`}
               />
               <SummaryRow
-                label={settlementRecordUiLabel("refundPreviouslyRefunded", language)}
+                label={settlementRecordUiLabel(
+                  "refundPreviouslyRefunded",
+                  language
+                )}
                 value={`${sym}${data.previouslyRefunded}`}
               />
               <SummaryRow

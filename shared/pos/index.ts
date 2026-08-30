@@ -39,6 +39,7 @@ export {
   CASHIER_INVOICE_IDENTITY_PROGRAM_ID,
   CASHIER_INVOICE_NUMBER_PAD,
   formatCashierInvoiceNumber,
+  parseCashierInvoiceNumber,
   type CashierInvoiceAssignment,
 } from "./cashierInvoiceIdentity";
 export {

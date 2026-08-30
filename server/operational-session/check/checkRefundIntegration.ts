@@ -1,18 +1,22 @@
 /**
- * REFUND-DOMAIN-IMPLEMENTATION-1 — Check Aggregate orchestration for Refund.
+ * REFUND-DOMAIN-IMPLEMENTATION-1 / REFUND-INVOICE-IDENTITY-AND-CONCURRENCY-HARDENING-1
  *
  * Sole mutation path: Check Aggregate → Domain executeRefundOnCheck →
  * Order Settlement persist + Settlement Record insert (same TX).
  *
- * ADR-ARCH-032 · ADR-ARCH-021 · ADR-ARCH-022 · ADR-ARCH-026
- * No UI · No Reporting · No Register attribution in this program.
+ * Concurrency: generation uniqueness + conflict re-read retry.
+ * Distinct requests colliding on the same generation are NOT silently
+ * already_applied when amounts differ — they conflict and retry with a
+ * fresh budget/generation.
  */
 
 import type { SessionDbClient } from "../../diningSession/sessionRepository";
 import { formatDiningSessionTimestamp } from "../../diningSession/sessionTypes";
 import {
   calculateRefundBudget,
+  ConcurrentRefundGenerationError,
   executeRefundOnCheck,
+  parseRefundMoney,
   type ExecuteRefundOnCheckResult,
   type OperationalCheck,
   type OrderSettlement,
@@ -69,18 +73,11 @@ async function loadCheckOrThrow(
   return mapRowToOperationalCheck(row);
 }
 
-/**
- * Apply Refund under Check Aggregate authority in one financial transaction.
- *
- * Atomic:
- * - Refund budget enforcement
- * - Order Settlement → refunded (when budget exhausted / targeted)
- * - Compensating Settlement Record (recordKind=refund)
- *
- * Idempotent retries: already_applied when generation / RefundId already published.
- * Register Attribution is post-commit via CheckService (REFUND-REGISTER-ADOPTION-1) — fail-open.
- */
-export async function applyRefundOnCheck(
+function amountsMatch(a: string, b: string): boolean {
+  return parseRefundMoney(a) === parseRefundMoney(b);
+}
+
+async function attemptApplyRefundOnCheck(
   input: {
     restaurantId: number;
     checkId: number;
@@ -90,15 +87,10 @@ export async function applyRefundOnCheck(
     tenderMethod?: string;
     refundId?: string;
   },
-  client?: SessionDbClient
+  client: SessionDbClient | undefined,
+  at: string,
+  check: OperationalCheck
 ): Promise<CheckRefundMutationResult> {
-  const at = formatDiningSessionTimestamp();
-  const check = await loadCheckOrThrow(
-    input.restaurantId,
-    input.checkId,
-    client
-  );
-
   const settlementRecords = await listSettlementRecordsForCheck(
     { restaurantId: input.restaurantId, checkId: input.checkId },
     client
@@ -112,7 +104,6 @@ export async function applyRefundOnCheck(
     client
   );
 
-  // Peek next generation candidate for idempotency lookup
   const maxGeneration = settlementRecords.reduce(
     (max, r) => Math.max(max, r.recordGeneration),
     0
@@ -167,7 +158,6 @@ export async function applyRefundOnCheck(
     };
   }
 
-  // Persist Order Settlement transitions
   for (const result of domainResult.orderSettlementResults) {
     if (result.outcome === "already_in_state") continue;
     const previous = orderSettlements.find(
@@ -183,7 +173,6 @@ export async function applyRefundOnCheck(
     );
   }
 
-  // Persist compensating Settlement Record (append-only)
   const srResult = domainResult.settlementRecordResult;
   if (!srResult) {
     throw new Error("RF-INV-P01: Refund apply missing Settlement Record result");
@@ -192,7 +181,6 @@ export async function applyRefundOnCheck(
   if (srResult.outcome === "applied") {
     try {
       await insertSettlementRecord(srResult.record, client);
-      // REFUND-DOCUMENT-NUMBERING-ADOPTION-1 — immutable RF- identity (identity plane).
       await allocateRefundDocumentNumber(
         {
           restaurantId: input.restaurantId,
@@ -215,28 +203,33 @@ export async function applyRefundOnCheck(
           client
         );
         if (raced) {
-          await allocateRefundDocumentNumber(
-            {
-              restaurantId: input.restaurantId,
-              settlementRecordId: raced.settlementRecordId,
-            },
-            client
+          if (amountsMatch(raced.grandTotal, input.amount)) {
+            await allocateRefundDocumentNumber(
+              {
+                restaurantId: input.restaurantId,
+                settlementRecordId: raced.settlementRecordId,
+              },
+              client
+            );
+            return {
+              outcome: "already_applied",
+              refund: {
+                ...domainResult.refund,
+                refundSettlementRecordId: raced.settlementRecordId,
+                status: "completed",
+              },
+              remainingBudget: domainResult.remainingBudget,
+              settledValue: domainResult.budget.settledValue,
+              appliedRefundTotal: domainResult.budget.appliedRefundTotal,
+              orderSettlements: domainResult.orderSettlements,
+              settlementRecord: raced,
+              events: [],
+              check,
+            };
+          }
+          throw new ConcurrentRefundGenerationError(
+            `RF-GEN-04: concurrent refund generation conflict for check=${input.checkId} (requested ${input.amount} vs published ${raced.grandTotal})`
           );
-          return {
-            outcome: "already_applied",
-            refund: {
-              ...domainResult.refund,
-              refundSettlementRecordId: raced.settlementRecordId,
-              status: "completed",
-            },
-            remainingBudget: domainResult.remainingBudget,
-            settledValue: domainResult.budget.settledValue,
-            appliedRefundTotal: domainResult.budget.appliedRefundTotal,
-            orderSettlements: domainResult.orderSettlements,
-            settlementRecord: raced,
-            events: [],
-            check,
-          };
         }
       }
       throw error;
@@ -254,6 +247,34 @@ export async function applyRefundOnCheck(
     events: domainResult.events,
     check,
   };
+}
+
+/**
+ * Apply Refund under Check Aggregate authority in one financial transaction attempt.
+ * Caller (CheckService) may retry the whole TX on ConcurrentRefundGenerationError.
+ *
+ * Same amount at same generation → already_applied (lost-response safe).
+ * Different amount at same generation → ConcurrentRefundGenerationError.
+ */
+export async function applyRefundOnCheck(
+  input: {
+    restaurantId: number;
+    checkId: number;
+    amount: string;
+    reason?: string | null;
+    allocations?: readonly Omit<RefundAllocation, "allocationId">[];
+    tenderMethod?: string;
+    refundId?: string;
+  },
+  client?: SessionDbClient
+): Promise<CheckRefundMutationResult> {
+  const at = formatDiningSessionTimestamp();
+  const check = await loadCheckOrThrow(
+    input.restaurantId,
+    input.checkId,
+    client
+  );
+  return attemptApplyRefundOnCheck(input, client, at, check);
 }
 
 /**

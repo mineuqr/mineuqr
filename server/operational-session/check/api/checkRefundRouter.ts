@@ -27,6 +27,7 @@ import {
 import { runCheckRefundApi } from "./mapCheckRefundApiError";
 import {
   assertRefundPolicyAllowsApply,
+  lookupCheckRefundByInvoiceNumber,
   lookupCheckRefundBySettlementNumber,
 } from "./checkRefundLookupService";
 
@@ -38,8 +39,12 @@ const budgetInput = restaurantInput.extend({
   checkId: z.coerce.number().int().positive(),
 });
 
-const lookupInput = restaurantInput.extend({
+const lookupSettlementInput = restaurantInput.extend({
   settlementNumber: z.string().min(1).max(64),
+});
+
+const lookupInvoiceInput = restaurantInput.extend({
+  invoiceNumber: z.string().min(1).max(32),
 });
 
 const moneyAmount = z
@@ -79,13 +84,30 @@ function toBudgetDto(
 
 /**
  * Operational Check Refund façade (Settlement Ledger entry):
- * - lookupBySettlementNumber (ADOPTION-2)
+ * - lookupByInvoiceNumber (primary human-facing identity)
+ * - lookupBySettlementNumber (legacy ST- secondary)
  * - getBudget
  * - applyOnCheck (tRPC reserves the name `apply`)
  */
 export const checkRefundRouter = router({
+  lookupByInvoiceNumber: verifiedProcedure
+    .input(lookupInvoiceInput)
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "checkRefund.lookupByInvoiceNumber"
+      );
+      return runCheckRefundApi(() =>
+        lookupCheckRefundByInvoiceNumber({
+          restaurantId: input.restaurantId,
+          invoiceNumber: input.invoiceNumber,
+        })
+      );
+    }),
+
   lookupBySettlementNumber: verifiedProcedure
-    .input(lookupInput)
+    .input(lookupSettlementInput)
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(
         ctx,

@@ -121,13 +121,13 @@ export const settlementRecordUiLabels = {
   ledgerRefundAction: { ar: "مرتجع", en: "Refund" },
   ledgerRefundTitle: { ar: "مرتجع", en: "Refund" },
   ledgerRefundBody: {
-    ar: "أدخل رقم التسوية لبدء عملية المرتجع. لا يُعدَّل المستند الأصلي.",
-    en: "Enter the Settlement Number to start a refund. The original settlement is never modified.",
+    ar: "أدخل رقم الفاتورة لبدء عملية المرتجع. لا تُعدَّل الفاتورة أو التحصيل الأصلي.",
+    en: "Enter the Invoice Number to start a refund. The original Invoice and collection are never modified.",
   },
   refundLookupAction: { ar: "بحث", en: "Lookup" },
   refundLookupHint: {
-    ar: "الإدخال اليدوي لرقم التسوية. جاهز لمسح الباركود/QR لاحقاً.",
-    en: "Manual Settlement Number entry. Extensible for barcode/QR scanners later.",
+    ar: "الإدخال اليدوي لرقم الفاتورة (مثل 000050). يمكن أيضاً إدخال رقم التسوية ST- كمسار ثانوي.",
+    en: "Manual Invoice Number entry (e.g. 000050). Settlement Number ST- remains a secondary/legacy path.",
   },
   refundOriginalAmount: { ar: "المبلغ الأصلي", en: "Original Amount" },
   refundPreviouslyRefunded: {
@@ -154,9 +154,17 @@ export const settlementRecordUiLabels = {
     ar: "رقم التسوية غير معروف.",
     en: "Unknown settlement number.",
   },
+  refundErrorUnknownInvoice: {
+    ar: "رقم الفاتورة غير معروف.",
+    en: "Unknown invoice number.",
+  },
+  refundErrorAmbiguousInvoice: {
+    ar: "رقم الفاتورة غير حاسم — راجع الدعم.",
+    en: "Invoice number is ambiguous — contact support.",
+  },
   refundErrorWindowExpired: {
-    ar: "انتهت فترة الاسترداد لهذه التسوية.",
-    en: "Refund window has expired for this settlement.",
+    ar: "انتهت فترة الاسترداد لهذه الفاتورة.",
+    en: "Refund window has expired for this invoice.",
   },
   refundConfirmTitle: { ar: "تأكيد الاسترداد", en: "Confirm Refund" },
   refundConfirmBody: {

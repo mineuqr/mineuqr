@@ -131,7 +131,22 @@ export function useCheckRefundBudget(
   });
 }
 
-/** Settlement Ledger lookup by Settlement Number (ADOPTION-2). */
+/** Primary Refund lookup by Original Cashier Invoice Number. */
+export function useLookupCheckRefundByInvoiceNumber(
+  input: { restaurantId: number; invoiceNumber: string },
+  options: Enabled = {}
+) {
+  return trpc.checkRefund.lookupByInvoiceNumber.useQuery(input, {
+    enabled:
+      (options.enabled ?? true) &&
+      input.restaurantId > 0 &&
+      input.invoiceNumber.trim().length > 0,
+    staleTime: 5_000,
+    retry: false,
+  });
+}
+
+/** Legacy / secondary Refund lookup by Settlement Number (ST-…). */
 export function useLookupCheckRefundBySettlementNumber(
   input: { restaurantId: number; settlementNumber: string },
   options: Enabled = {}
@@ -165,6 +180,7 @@ export function useApplyCheckRefund() {
           restaurantId: variables.restaurantId,
           checkId: variables.checkId,
         }),
+        utils.checkRefund.lookupByInvoiceNumber.invalidate(),
         utils.checkRefund.lookupBySettlementNumber.invalidate(),
       ]);
     },

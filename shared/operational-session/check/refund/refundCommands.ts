@@ -62,6 +62,7 @@ import {
 import { assertRefundTransitionAllowed } from "./refundLifecycle";
 import {
   assertPositiveRefundAmount,
+  formatRefundMoney,
   parseRefundMoney,
   refundMoneySub,
 } from "./refundMoney";
@@ -549,6 +550,17 @@ export function executeRefundOnCheck(
       cmd.existingRefundRecord.recordKind === "refund" &&
       cmd.existingRefundRecord.recordGeneration === budget.nextRecordGeneration
     ) {
+      const requestedAmount = assertPositiveRefundAmount(cmd.amount);
+      const publishedAmount = formatRefundMoney(
+        parseRefundMoney(cmd.existingRefundRecord.grandTotal)
+      );
+      // Same logical amount at this generation → lost-response / duplicate apply.
+      // Different amount → distinct request colliding on generation (not already_applied).
+      if (publishedAmount !== requestedAmount) {
+        throw new ConcurrentRefundGenerationError(
+          `RF-GEN-04: concurrent refund generation conflict for check=${check.id} (requested ${requestedAmount} vs published ${publishedAmount})`
+        );
+      }
       return {
         outcome: "already_applied",
         refund: cmd.existingRefund ?? {

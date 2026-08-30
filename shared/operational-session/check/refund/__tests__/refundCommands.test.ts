@@ -13,8 +13,10 @@ import {
 import {
   AlreadyRefundedError,
   calculateRefundBudget,
+  ConcurrentRefundGenerationError,
   executeRefundOnCheck,
   NoPriorSettlementError,
+  parseRefundMoney,
   RefundBudgetExceededError,
   requestRefund,
   REFUND_ADR_ID,
@@ -226,6 +228,91 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
     expect(retry.outcome).toBe("already_applied");
   });
 
+  it("distinct request at same generation (different amount) conflicts — not already_applied", () => {
+    const check = makeCheck();
+    const primary = makePrimarySettlement(check);
+    const published: SettlementRecord = {
+      ...primary,
+      settlementRecordId: "sr:1:100:refund:2",
+      recordKind: "refund",
+      recordGeneration: 2,
+      priorSettlementRecordId: primary.settlementRecordId,
+      grandTotal: "60.00",
+      subtotal: "60.00",
+      discountAmount: "0.00",
+      taxAmount: "0.00",
+      taxBreakdown: { totalTaxAmount: "0.00", lines: [] },
+      financialReference: "fin:refund:60",
+    };
+    expect(() =>
+      executeRefundOnCheck({
+        check,
+        amount: "40.00",
+        settlementRecords: [primary],
+        orderSettlements: [makeSettledOs(55)],
+        at: AT,
+        existingRefundRecord: published,
+      })
+    ).toThrow(ConcurrentRefundGenerationError);
+  });
+
+  it("sequential partials after re-read stay within original budget", () => {
+    const check = makeCheck({
+      grandTotal: "100.00",
+      subtotal: "100.00",
+      taxAmount: "0.00",
+      taxBreakdown: { totalTaxAmount: "0.00", lines: [] },
+    });
+    const paid = makePrimarySettlement(check);
+    const first = executeRefundOnCheck({
+      check,
+      amount: "60.00",
+      settlementRecords: [paid],
+      orderSettlements: [makeSettledOs(55, "100.00")],
+      at: AT,
+    });
+    expect(first.outcome).toBe("applied");
+    const second = executeRefundOnCheck({
+      check,
+      amount: "40.00",
+      settlementRecords: [paid, first.settlementRecordResult!.record],
+      orderSettlements: first.orderSettlements,
+      at: AT,
+    });
+    expect(second.outcome).toBe("applied");
+    const total =
+      parseRefundMoney(first.settlementRecordResult!.record.grandTotal) +
+      parseRefundMoney(second.settlementRecordResult!.record.grandTotal);
+    expect(total).toBe(100);
+    expect(second.remainingBudget).toBe("0.00");
+  });
+
+  it("60+60 on 100: second after first history is over-budget", () => {
+    const check = makeCheck({
+      grandTotal: "100.00",
+      subtotal: "100.00",
+      taxAmount: "0.00",
+      taxBreakdown: { totalTaxAmount: "0.00", lines: [] },
+    });
+    const paid = makePrimarySettlement(check);
+    const first = executeRefundOnCheck({
+      check,
+      amount: "60.00",
+      settlementRecords: [paid],
+      orderSettlements: [makeSettledOs(55, "100.00")],
+      at: AT,
+    });
+    expect(() =>
+      executeRefundOnCheck({
+        check,
+        amount: "60.00",
+        settlementRecords: [paid, first.settlementRecordResult!.record],
+        orderSettlements: first.orderSettlements,
+        at: AT,
+      })
+    ).toThrow(RefundBudgetExceededError);
+  });
+
   it("refund budget exceeded is rejected", () => {
     const check = makeCheck();
     const primary = makePrimarySettlement(check);
@@ -296,7 +383,7 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
     ).toThrow(/RF-INV-TEN/);
   });
 
-  it("concurrent generation: existing different record at next gen conflicts", () => {
+  it("concurrent generation: existing different amount at next gen conflicts", () => {
     const check = makeCheck();
     const primary = makePrimarySettlement(check);
     const alien: SettlementRecord = {
@@ -305,15 +392,13 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
       recordKind: "refund",
       recordGeneration: 2,
       priorSettlementRecordId: primary.settlementRecordId,
-      grandTotal: "5.00",
-      subtotal: "5.00",
+      grandTotal: "999.00",
+      subtotal: "999.00",
       discountAmount: "0.00",
       taxAmount: "0.00",
       taxBreakdown: { totalTaxAmount: "0.00", lines: [] },
       financialReference: "fin:other",
     };
-    // When settlementRecords already includes gen=2 refund, nextGeneration becomes 3 —
-    // conflict path: pass existingRefundRecord with gen matching next (2) but records without it
     expect(() =>
       executeRefundOnCheck({
         check,
@@ -321,26 +406,36 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
         settlementRecords: [primary],
         orderSettlements: [makeSettledOs(55)],
         at: AT,
-        existingRefundRecord: {
-          ...alien,
-          grandTotal: "999.00",
-          subtotal: "999.00",
-        },
+        existingRefundRecord: alien,
       })
-    ).not.toThrow(); // same generation → already_applied path
-    const conflict = executeRefundOnCheck({
+    ).toThrow(ConcurrentRefundGenerationError);
+  });
+
+  it("concurrent generation: same amount at next gen is already_applied", () => {
+    const check = makeCheck();
+    const primary = makePrimarySettlement(check);
+    const published: SettlementRecord = {
+      ...primary,
+      settlementRecordId: "sr:1:100:refund:2",
+      recordKind: "refund",
+      recordGeneration: 2,
+      priorSettlementRecordId: primary.settlementRecordId,
+      grandTotal: "10.00",
+      subtotal: "10.00",
+      discountAmount: "0.00",
+      taxAmount: "0.00",
+      taxBreakdown: { totalTaxAmount: "0.00", lines: [] },
+      financialReference: "fin:refund:10",
+    };
+    const result = executeRefundOnCheck({
       check,
       amount: "10.00",
       settlementRecords: [primary],
       orderSettlements: [makeSettledOs(55)],
       at: AT,
-      existingRefundRecord: {
-        ...alien,
-        grandTotal: "999.00",
-        subtotal: "999.00",
-      },
+      existingRefundRecord: published,
     });
-    expect(conflict.outcome).toBe("already_applied");
+    expect(result.outcome).toBe("already_applied");
   });
 
   it("does not reopen Order Settlement to pending", () => {

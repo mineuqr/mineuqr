@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { formatCashierInvoiceNumber } from "../cashierInvoiceIdentity";
+import {
+  formatCashierInvoiceNumber,
+  parseCashierInvoiceNumber,
+} from "../cashierInvoiceIdentity";
 
 describe("formatCashierInvoiceNumber", () => {
   it("pads a continuous Cashier-owned sequence to six digits", () => {
@@ -15,5 +18,21 @@ describe("formatCashierInvoiceNumber", () => {
     expect(formatCashierInvoiceNumber(-1)).toBe("");
     expect(formatCashierInvoiceNumber(1.5)).toBe("");
     expect(formatCashierInvoiceNumber(Number.NaN)).toBe("");
+  });
+});
+
+describe("parseCashierInvoiceNumber", () => {
+  it("accepts padded and bare positive digits", () => {
+    expect(parseCashierInvoiceNumber("000050")).toBe(50);
+    expect(parseCashierInvoiceNumber("50")).toBe(50);
+    expect(parseCashierInvoiceNumber(" 000126 ")).toBe(126);
+  });
+
+  it("rejects ST/RF document identities and malformed input", () => {
+    expect(parseCashierInvoiceNumber("ST-000050")).toBeNull();
+    expect(parseCashierInvoiceNumber("RF-000001")).toBeNull();
+    expect(parseCashierInvoiceNumber("")).toBeNull();
+    expect(parseCashierInvoiceNumber("0")).toBeNull();
+    expect(parseCashierInvoiceNumber("abc")).toBeNull();
   });
 });

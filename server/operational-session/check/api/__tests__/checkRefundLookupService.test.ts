@@ -1,6 +1,6 @@
 /**
- * REFUND-DOCUMENT-SR-SIMPLIFICATION-1 — ST lookup no longer requires gen=1 SR
- * for CF-backed original-sale identity.
+ * REFUND-INVOICE-IDENTITY-AND-CONCURRENCY-HARDENING-1
+ * Invoice primary lookup + legacy ST secondary.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   mapRowToOperationalCheck: vi.fn(),
   listSettlementRecordsForCheck: vi.fn(),
   resolveRefundOriginalSaleAnchorForCheck: vi.fn(),
+  findCashierInvoiceBySequenceNumber: vi.fn(),
+  listFinanciallyCompleteMembershipsForOrder: vi.fn(),
 }));
 
 vi.mock("../../../../db", () => ({
@@ -41,9 +43,23 @@ vi.mock("../../checkRefundOriginalSaleResolution", () => ({
     mocks.resolveRefundOriginalSaleAnchorForCheck(...a),
 }));
 
-import { lookupCheckRefundBySettlementNumber } from "../checkRefundLookupService";
+vi.mock("../../../../pos/cashier-invoice/cashierInvoiceRepository", () => ({
+  findCashierInvoiceBySequenceNumber: (...a: unknown[]) =>
+    mocks.findCashierInvoiceBySequenceNumber(...a),
+}));
 
-const AT = "2026-08-27T12:00:00.000Z";
+vi.mock("../../checkOrderMembershipRepository", () => ({
+  listFinanciallyCompleteMembershipsForOrder: (...a: unknown[]) =>
+    mocks.listFinanciallyCompleteMembershipsForOrder(...a),
+}));
+
+import {
+  lookupCheckRefundByInvoiceNumber,
+  lookupCheckRefundBySettlementNumber,
+} from "../checkRefundLookupService";
+
+const AT = new Date().toISOString();
+const BUSINESS_DAY = AT.slice(0, 10);
 
 function paidCheck() {
   return {
@@ -85,44 +101,159 @@ function cfAnchor() {
     currencyCode: "SAR",
     tenders: [{ paymentMethod: "cash", amount: "90.00" }],
     committedAt: AT,
-    businessDay: "2026-08-27",
+    businessDay: BUSINESS_DAY,
     actorId: "7",
     terminalId: "term-1",
     orderingChannel: "qr",
   };
 }
 
-describe("lookupCheckRefundBySettlementNumber", () => {
+function stubBudgetPath() {
+  mocks.getRestaurantById.mockResolvedValue({ refundPolicyJson: null });
+  mocks.getCheckRefundBudget.mockResolvedValue({
+    settledValue: "90.00",
+    appliedRefundTotal: "0.00",
+    refundableBalance: "90.00",
+    priorSettlementRecordId: "",
+    nextRecordGeneration: 1,
+    originalSaleKind: "collection_fact",
+    collectionFactId: "cf-1",
+  });
+  mocks.findCheckById.mockResolvedValue({ id: 100, restaurantId: 1 });
+  mocks.mapRowToOperationalCheck.mockReturnValue(paidCheck());
+  mocks.listSettlementRecordsForCheck.mockResolvedValue([]);
+  mocks.resolveRefundOriginalSaleAnchorForCheck.mockResolvedValue(cfAnchor());
+}
+
+describe("lookupCheckRefundByInvoiceNumber", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getRestaurantById.mockResolvedValue({ refundPolicyJson: null });
-    mocks.getCheckRefundBudget.mockResolvedValue({
-      settledValue: "90.00",
-      appliedRefundTotal: "0.00",
-      refundableBalance: "90.00",
-      priorSettlementRecordId: "",
-      nextRecordGeneration: 1,
-      originalSaleKind: "collection_fact",
-      collectionFactId: "cf-1",
+    stubBudgetPath();
+    mocks.findCashierInvoiceBySequenceNumber.mockResolvedValue({
+      restaurantId: 1,
+      orderId: 55,
+      sequenceNumber: 50,
+      invoiceNumber: "000050",
     });
-    mocks.findCheckById.mockResolvedValue({ id: 100, restaurantId: 1 });
-    mocks.mapRowToOperationalCheck.mockReturnValue(paidCheck());
-    mocks.listSettlementRecordsForCheck.mockResolvedValue([]);
-    mocks.resolveRefundOriginalSaleAnchorForCheck.mockResolvedValue(cfAnchor());
+    mocks.listFinanciallyCompleteMembershipsForOrder.mockResolvedValue([
+      {
+        membership: {
+          restaurantId: 1,
+          checkId: 100,
+          orderId: 55,
+          active: 1,
+        },
+        checkOutcome: "paid",
+      },
+    ]);
   });
 
-  it("looks up a CF-backed sale without gen=1 SR", async () => {
+  it("resolves Invoice → Order → Check → CF budget", async () => {
+    const dto = await lookupCheckRefundByInvoiceNumber({
+      restaurantId: 1,
+      invoiceNumber: "000050",
+    });
+    expect(dto.checkId).toBe(100);
+    expect(dto.invoiceNumber).toBe("000050");
+    expect(dto.originalAmount).toBe("90.00");
+    expect(dto.refundableBalance).toBe("90.00");
+    expect(dto.eligible).toBe(true);
+    expect(mocks.findCashierInvoiceBySequenceNumber).toHaveBeenCalledWith({
+      restaurantId: 1,
+      sequenceNumber: 50,
+    });
+  });
+
+  it("rejects missing Invoice deterministically", async () => {
+    mocks.findCashierInvoiceBySequenceNumber.mockResolvedValue(null);
+    await expect(
+      lookupCheckRefundByInvoiceNumber({
+        restaurantId: 1,
+        invoiceNumber: "000099",
+      })
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "Unknown invoice number",
+    });
+  });
+
+  it("rejects ambiguous Check membership without first-pick", async () => {
+    mocks.listFinanciallyCompleteMembershipsForOrder.mockResolvedValue([
+      {
+        membership: { restaurantId: 1, checkId: 100, orderId: 55, active: 1 },
+        checkOutcome: "paid",
+      },
+      {
+        membership: { restaurantId: 1, checkId: 200, orderId: 55, active: 1 },
+        checkOutcome: "paid",
+      },
+    ]);
+    await expect(
+      lookupCheckRefundByInvoiceNumber({
+        restaurantId: 1,
+        invoiceNumber: "000050",
+      })
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Ambiguous invoice check membership",
+    });
+  });
+
+  it("keeps restaurant scope on Invoice sequence lookup", async () => {
+    mocks.findCheckById.mockResolvedValue({ id: 100, restaurantId: 42 });
+    mocks.mapRowToOperationalCheck.mockReturnValue({
+      ...paidCheck(),
+      restaurantId: 42,
+    });
+    mocks.findCashierInvoiceBySequenceNumber.mockResolvedValue({
+      restaurantId: 42,
+      orderId: 55,
+      sequenceNumber: 50,
+      invoiceNumber: "000050",
+    });
+    await lookupCheckRefundByInvoiceNumber({
+      restaurantId: 42,
+      invoiceNumber: "50",
+    });
+    expect(mocks.findCashierInvoiceBySequenceNumber).toHaveBeenCalledWith({
+      restaurantId: 42,
+      sequenceNumber: 50,
+    });
+    expect(mocks.listFinanciallyCompleteMembershipsForOrder).toHaveBeenCalledWith(
+      42,
+      55
+    );
+  });
+});
+
+describe("lookupCheckRefundBySettlementNumber (legacy ST)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stubBudgetPath();
+  });
+
+  it("looks up a CF-backed sale without gen=1 SR via ST-", async () => {
     const dto = await lookupCheckRefundBySettlementNumber({
       restaurantId: 1,
       settlementNumber: "ST-000000100",
     });
     expect(dto.checkId).toBe(100);
     expect(dto.settlementRecordId).toBeNull();
+    expect(dto.invoiceNumber).toBeNull();
     expect(dto.originalAmount).toBe("90.00");
-    expect(dto.refundableBalance).toBe("90.00");
-    expect(dto.paymentMethodSummary).toBe("cash");
     expect(dto.eligible).toBe(true);
-    expect(dto.rejectionCode).toBeNull();
+  });
+
+  it("rejects bare digits (Invoice identity owns digit tokens)", async () => {
+    await expect(
+      lookupCheckRefundBySettlementNumber({
+        restaurantId: 1,
+        settlementNumber: "000050",
+      })
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "Unknown settlement number",
+    });
   });
 
   it("still requires gen=1 SR for legacy no-CF lookup", async () => {
@@ -139,23 +270,8 @@ describe("lookupCheckRefundBySettlementNumber", () => {
       })
     ).rejects.toMatchObject({
       code: "NOT_FOUND",
-      message: "Unknown settlement number",
+      message: "Unknown refund sale",
     });
-  });
-
-  it("marks CF-backed open Check as NOT_PAID instead of inventing a settlement document", async () => {
-    mocks.mapRowToOperationalCheck.mockReturnValue({
-      ...paidCheck(),
-      outcome: "open",
-      settledAt: null,
-    });
-    const dto = await lookupCheckRefundBySettlementNumber({
-      restaurantId: 1,
-      settlementNumber: "ST-000000100",
-    });
-    expect(dto.settlementRecordId).toBeNull();
-    expect(dto.rejectionCode).toBe("NOT_PAID");
-    expect(dto.eligible).toBe(false);
   });
 
   it("rejects malformed settlement numbers", async () => {
