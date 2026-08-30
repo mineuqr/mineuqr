@@ -90,4 +90,19 @@ describe("CASHIER-UX-REDESIGN-2 architecture", () => {
     expect(panel).not.toContain("trpc.pos.cashier");
     expect(panel).not.toContain("commitCashierProductionCollectionFact");
   });
+
+  it("makes the Product Card body the primary add target with isolated Favorite", () => {
+    const card = read(CARD);
+    const styles = read(STYLES);
+    expect(card).toContain('role="button"');
+    expect(card).toContain("onClick={handleAdd}");
+    expect(card).toContain("handleFavoriteClick");
+    expect(card).toContain("event.stopPropagation()");
+    expect(card).toContain("onToggleFavorite()");
+    expect(card).toContain("handlePlusClick");
+    expect(styles).toContain("size-10");
+    expect(styles).not.toMatch(/productAdd:[\s\S]*?size-12/);
+    expect(styles).toContain("motion-safe:active:scale-[0.99]");
+    expect(styles).toContain("productCardFlash");
+  });
 });

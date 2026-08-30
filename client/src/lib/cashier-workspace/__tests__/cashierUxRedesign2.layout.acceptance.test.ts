@@ -64,6 +64,7 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
     expect(styles).toContain("summaryRow");
     expect(styles).toContain("totalRow");
     expect(styles).toContain("text-[13px]");
+    expect(styles).toContain("space-y-1");
     expect(panel).toContain("cashierPos.orderLines");
     expect(panel).toContain("cashierPos.orderFooter");
     expect(panel.indexOf("cashierPos.orderLines")).toBeLessThan(
@@ -71,6 +72,17 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
     );
     expect(panel).toContain("cashierPos.summaryRow");
     expect(panel).toContain("cashierPos.totalRow");
+  });
+
+  it("Product Card click-to-add is primary; + is secondary size-10", () => {
+    const card = read(
+      "client/src/components/cashier-workspace/CashierProductCard.tsx"
+    );
+    expect(card).toContain('role="button"');
+    expect(card).toContain("onClick={handleAdd}");
+    expect(card).toContain("stopPropagation");
+    expect(card).toContain("onToggleFavorite");
+    expect(styles).toMatch(/productAdd:[\s\S]*?size-10/);
   });
 
   it("adapts Current Sale to a sheet/dock below lg and keeps Payment modal-only", () => {

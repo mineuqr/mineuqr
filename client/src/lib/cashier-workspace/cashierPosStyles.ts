@@ -65,35 +65,35 @@ export const cashierPos = {
     "absolute end-3 top-3 z-10 flex size-11 items-center justify-center rounded-full border border-[#e5e7eb] bg-white text-[#374151] lg:hidden",
   /** Header stays fixed; items scroll; footer (totals+PAY) stays pinned */
   orderBody: "flex min-h-0 flex-1 flex-col overflow-hidden",
-  orderHeader: "shrink-0 border-b border-[#eef0f3] px-3 pb-1.5 pt-1",
+  orderHeader: "shrink-0 border-b border-[#eef0f3] px-3 pb-1 pt-0.5",
   orderLines:
-    "min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain px-3 py-1.5",
+    "min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-2.5 py-1",
   orderFooter:
-    "shrink-0 border-t border-[#e5e7eb] bg-white px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5",
-  orderMeta: "space-y-0.5 text-xs text-[#6b7280]",
-  orderHeading: "text-base font-bold tabular-nums leading-tight text-[#111827]",
-  orderSource: "text-xs font-semibold uppercase tracking-wide text-[#4f46e5]",
+    "shrink-0 border-t border-[#e5e7eb] bg-white px-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1",
+  orderMeta: "space-y-0 text-[11px] leading-tight text-[#6b7280]",
+  orderHeading: "text-sm font-bold tabular-nums leading-tight text-[#111827]",
+  orderSource: "text-[11px] font-semibold uppercase tracking-wide text-[#4f46e5]",
   orderEmpty:
     "flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#d8dee6] bg-[#fafbfc] px-4 py-8 text-center",
   orderEmptyTitle: "text-sm font-semibold text-[#374151]",
   orderEmptyHint: "text-xs text-[#6b7280]",
   ticketLine:
-    "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-1.5",
+    "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-md border border-[#e5e7eb] bg-[#f9fafb] px-2 py-1",
   ticketLineName:
     "min-w-0 truncate text-[13px] font-medium leading-tight text-[#111827]",
-  ticketLineControls: "col-span-2 flex items-center gap-1",
+  ticketLineControls: "col-span-2 flex items-center gap-0.5",
   ticketLineQty:
-    "inline-flex min-h-9 min-w-8 items-center justify-center rounded-md bg-white px-1.5 text-[13px] font-semibold tabular-nums text-[#111827]",
+    "inline-flex min-h-9 min-w-7 items-center justify-center rounded-md bg-white px-1 text-xs font-semibold tabular-nums text-[#111827]",
   ticketLinePrice:
     "text-end text-[13px] font-semibold tabular-nums leading-tight text-[#111827]",
   orderScroll:
     "flex min-h-0 flex-1 flex-col gap-2 overflow-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-  totalBox: "space-y-0.5",
-  summaryRow: "flex justify-between text-xs leading-5 text-[#6b7280]",
+  totalBox: "space-y-0",
+  summaryRow: "flex justify-between text-[11px] leading-4 text-[#6b7280]",
   totalRow:
-    "mt-1 flex items-baseline justify-between border-t border-[#e5e7eb] pt-1.5",
+    "mt-0.5 flex items-baseline justify-between border-t border-[#e5e7eb] pt-1",
   totalLabel: "text-sm font-bold text-[#111827]",
-  totalValue: "text-lg font-bold tabular-nums text-[#111827]",
+  totalValue: "text-base font-bold tabular-nums text-[#111827] sm:text-lg",
   categoryBar:
     "flex shrink-0 gap-3.5 overflow-x-auto overscroll-x-contain px-3 pb-3.5 pt-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]",
   categoryTile:
@@ -123,15 +123,16 @@ export const cashierPos = {
   productImage: "h-28 w-full object-cover sm:h-32",
   productFallback:
     "flex h-28 items-center justify-center bg-[#eef2f6] text-2xl font-semibold text-[#6b7280] sm:h-32",
-  productBody: "flex flex-1 flex-col gap-1.5 p-3",
+  productBody: "flex flex-1 flex-col gap-1 p-3",
   productName: "line-clamp-2 text-sm font-semibold leading-snug text-[#111827]",
   productPrice: "text-base font-bold tabular-nums text-[#4f46e5]",
   productAvail:
     "text-[11px] font-medium uppercase tracking-wide text-emerald-700",
   productUnavail:
     "text-[11px] font-medium uppercase tracking-wide text-red-600",
+  /** Secondary add affordance — card body is primary target */
   productAdd:
-    "ms-auto flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#4f46e5] text-white active:bg-[#3730a3] hover:bg-[#4338ca] disabled:cursor-not-allowed disabled:bg-[#d1d5db]",
+    "ms-auto flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#4f46e5] text-white active:bg-[#3730a3] hover:bg-[#4338ca] disabled:cursor-not-allowed disabled:bg-[#d1d5db]",
   productFav:
     "absolute end-2 top-2 z-10 flex size-11 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#6b7280] shadow-sm active:text-[#4f46e5] hover:text-[#4f46e5]",
   productFavActive: "text-[#7c3aed]",
