@@ -70,6 +70,8 @@ import {
   buildRefundReverseSnapshot,
   calculateRefundBudget,
 } from "./refundBudget";
+import type { RefundOriginalTaxBasis } from "./refundTaxSnapshot";
+import { buildRefundPaymentSnapshotLines } from "./refundTenderAllocation";
 
 export type RefundCommandOutcome = "applied" | "already_applied";
 
@@ -123,6 +125,7 @@ export type RequestRefundCommand = Readonly<{
   reason?: string | null;
   refundId?: RefundId;
   at: string;
+  originalTaxBasis?: RefundOriginalTaxBasis | null;
   existingIdentities?: readonly {
     restaurantId: number;
     checkId: number;
@@ -169,7 +172,10 @@ export function requestRefund(cmd: RequestRefundCommand): RefundCommandResult {
   );
   assertAllocationsWithinRefund(amount, allocations);
 
-  const reverseSnapshot = buildRefundReverseSnapshot(amount);
+  const reverseSnapshot = buildRefundReverseSnapshot(
+    amount,
+    cmd.originalTaxBasis ?? null
+  );
   const refund: Refund = {
     refundId,
     restaurantId: cmd.restaurantId,
@@ -301,6 +307,7 @@ export type PublishCompensatingSettlementRecordCommand = Readonly<{
   }[];
   existingRecord?: SettlementRecord | null;
   tenderMethod?: string;
+  originalTenders?: readonly Readonly<{ paymentMethod: string; amount: string }>[];
   at: string;
 }>;
 
@@ -364,16 +371,14 @@ export function publishCompensatingSettlementRecord(
     orderIds: cmd.orderIds,
     orderSettlements: cmd.orderSettlements,
     paymentSnapshotOverride: [
-      {
-        settlementTransactionId: null,
-        paymentMethod: cmd.tenderMethod ?? "other",
-        amount: refund.amount,
+      ...buildRefundPaymentSnapshotLines({
+        refundAmount: refund.amount,
+        originalTenders: cmd.originalTenders ?? [],
+        explicitTenderMethod: cmd.tenderMethod,
         currencyCode: refund.currencyCode,
-        status: "refunded",
         businessTimestamp: at,
         reference: refund.refundReference,
-        externalReference: null,
-      },
+      }),
     ],
     existingIdentities: cmd.existingSettlementIdentities,
     existingRecord: cmd.existingRecord ?? null,
@@ -613,6 +618,67 @@ export function executeRefundOnCheck(
   }
 
   const amount = assertPositiveRefundAmount(cmd.amount);
+  const cfAnchor =
+    cmd.originalSaleAnchor?.kind === "collection_fact"
+      ? cmd.originalSaleAnchor
+      : null;
+
+  const primarySettlement = cmd.settlementRecords
+    .filter(
+      (r) =>
+        r.recordKind === "settlement" &&
+        (r.outcome === "paid" || r.outcome === "complimentary")
+    )
+    .sort((a, b) => a.recordGeneration - b.recordGeneration)[0];
+
+  const originalTaxBasis: RefundOriginalTaxBasis | null = cfAnchor
+    ? {
+        grandTotal: cfAnchor.originalCollectedAmount,
+        subtotal: cfAnchor.subtotal,
+        taxAmount: cfAnchor.taxAmount,
+        taxBreakdown: cfAnchor.taxBreakdown,
+      }
+    : primarySettlement
+      ? {
+          grandTotal: primarySettlement.grandTotal,
+          subtotal: primarySettlement.subtotal,
+          taxAmount: primarySettlement.taxAmount,
+          taxBreakdown: {
+            totalTaxAmount: primarySettlement.taxBreakdown.totalTaxAmount,
+            lines: primarySettlement.taxBreakdown.lines.map((line) => ({
+              componentId: line.componentId,
+              name: line.name,
+              ratePercent: line.ratePercent,
+              amount: line.amount,
+            })),
+          },
+        }
+      : {
+          grandTotal: check.grandTotal,
+          subtotal: check.subtotal,
+          taxAmount: check.taxAmount,
+          taxBreakdown: {
+            totalTaxAmount: check.taxBreakdown.totalTaxAmount,
+            lines: check.taxBreakdown.lines.map((line) => ({
+              componentId: line.componentId,
+              name: line.name,
+              ratePercent: line.ratePercent,
+              amount: line.amount,
+            })),
+          },
+        };
+
+  const originalTenders =
+    cfAnchor && cfAnchor.tenders.length > 0
+      ? cfAnchor.tenders.map((t) => ({
+          paymentMethod: String(t.paymentMethod),
+          amount: String(t.amount),
+        }))
+      : (primarySettlement?.paymentSnapshot ?? []).map((p) => ({
+          paymentMethod: String(p.paymentMethod),
+          amount: String(p.amount),
+        }));
+
   const requested = requestRefund({
     restaurantId: check.restaurantId,
     checkId: check.id,
@@ -624,14 +690,12 @@ export function executeRefundOnCheck(
     priorSettlementRecordRestaurantId: check.restaurantId,
     priorSettlementGeneration: priorRecord?.recordGeneration ?? 0,
     recordGeneration: budget.nextRecordGeneration,
-    originalCollectionFactId:
-      cmd.originalSaleAnchor?.kind === "collection_fact"
-        ? cmd.originalSaleAnchor.collectionFactId
-        : null,
+    originalCollectionFactId: cfAnchor?.collectionFactId ?? null,
     allocations: cmd.allocations,
     reason: cmd.reason,
     refundId,
     at,
+    originalTaxBasis,
   });
 
   const applied = applyRefund({
@@ -699,6 +763,7 @@ export function executeRefundOnCheck(
     orderSettlements: nextOrderSettlements,
     existingSettlementIdentities,
     tenderMethod: cmd.tenderMethod,
+    originalTenders,
     at,
   });
 

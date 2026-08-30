@@ -2658,12 +2658,34 @@ export async function applyRefundOnCheck(input: {
         );
   }
 
-  const attributionBundle = await adoptRefundAttributionAfterFinalize({
+  // Custody remains post-commit / fail-open (REFUND-REGISTER-ADOPTION-1).
+  // Retry briefly so transient CRMP failures do not drop attribution on first try.
+  let attributionBundle = await adoptRefundAttributionAfterFinalize({
     restaurantId: input.restaurantId,
     settlementContext,
     settlementRecord: financial.settlementRecord,
     at,
   });
+  for (
+    let attributionAttempt = 1;
+    attributionAttempt < 3 &&
+    (attributionBundle.attribution.outcome === "failed" ||
+      attributionBundle.attribution.outcome === "skipped");
+    attributionAttempt += 1
+  ) {
+    const retryableGaps = attributionBundle.attribution.gaps;
+    const worthRetry =
+      retryableGaps.includes("crmp_resolution_error") ||
+      retryableGaps.some((g) => g.includes("lookup")) ||
+      attributionBundle.attribution.outcome === "failed";
+    if (!worthRetry) break;
+    attributionBundle = await adoptRefundAttributionAfterFinalize({
+      restaurantId: input.restaurantId,
+      settlementContext,
+      settlementRecord: financial.settlementRecord,
+      at,
+    });
+  }
 
   return {
     ...financial,

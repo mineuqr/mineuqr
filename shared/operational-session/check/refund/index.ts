@@ -81,6 +81,13 @@ export {
 } from "./refundBudget";
 
 export {
+  allocateRefundAcrossTenders,
+  buildRefundPaymentSnapshotLines,
+} from "./refundTenderAllocation";
+
+export type { RefundOriginalTaxBasis } from "./refundTaxSnapshot";
+
+export {
   REFUND_CF_ANCHOR_PROGRAM_ID,
   resolveRefundOriginalSaleAnchor,
   isCollectionFactRefundAnchor,

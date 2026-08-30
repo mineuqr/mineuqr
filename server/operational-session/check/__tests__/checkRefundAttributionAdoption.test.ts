@@ -191,6 +191,23 @@ describe("adoptRefundAttributionAfterFinalize", () => {
     expect(bundle.attribution.gaps).toContain("financial_shift_unavailable");
   });
 
+  it("skips attribution when refund event is outside Shift window", async () => {
+    const bundle = await adoptRefundAttributionAfterFinalize(
+      {
+        restaurantId: 1,
+        settlementContext: resolvedContext(),
+        settlementRecord: refundSr("cash", "10.00"),
+        // Shift opened at t2; refund instant before open must not contaminate.
+        at: "t1",
+      },
+      { shiftService: shifts }
+    );
+    expect(bundle.attribution.outcome).toBe("skipped");
+    expect(bundle.attribution.gaps).toContain(
+      "refund_event_outside_shift_window"
+    );
+  });
+
   it("idempotent retry — already_applied", async () => {
     const first = await adoptRefundAttributionAfterFinalize(
       {

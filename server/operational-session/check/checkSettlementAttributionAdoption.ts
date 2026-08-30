@@ -510,6 +510,46 @@ export async function adoptRefundAttributionAfterFinalize(
     };
   }
 
+  const shiftService = attributionCreateDeps(deps);
+  const financialShiftId = input.settlementContext.financialShiftId!;
+  const targetShift = await shiftService.get(
+    input.restaurantId,
+    financialShiftId
+  );
+  if (!targetShift) {
+    return {
+      attribution: skippedAttribution({
+        gaps: ["financial_shift_unavailable", ...input.settlementContext.gaps],
+        reason: "Financial Shift for refund attribution was not found",
+        settlementRecordId,
+      }),
+      events: [],
+    };
+  }
+
+  // Refund-time Shift semantics: refund event instant must fall in Shift window.
+  // Never attribute to an open Shift merely because it is currently open.
+  if (
+    !collectionFactCommitFallsInShiftWindow({
+      committedAt: input.at,
+      openedAt: targetShift.openedAt,
+      closedAt: targetShift.closedAt,
+    })
+  ) {
+    return {
+      attribution: skippedAttribution({
+        gaps: [
+          "refund_event_outside_shift_window",
+          ...input.settlementContext.gaps,
+        ],
+        reason:
+          "Refund event instant is outside the selected Financial Shift lifetime",
+        settlementRecordId,
+      }),
+      events: [],
+    };
+  }
+
   const cashTenderAmount = cashCustodyAmountForRefundRecord({
     paymentSnapshot: (input.settlementRecord?.paymentSnapshot ?? []).map(
       (p) => ({
@@ -526,6 +566,6 @@ export async function adoptRefundAttributionAfterFinalize(
     collectionFactId: null,
     cashTenderAmount,
     at: input.at,
-    shiftService: attributionCreateDeps(deps),
+    shiftService,
   });
 }

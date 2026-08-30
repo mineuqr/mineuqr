@@ -305,6 +305,10 @@ describe("checkRefundIntegration", () => {
     expect(result.remainingBudget).toBe("65.00");
     expect(result.settlementRecord?.recordKind).toBe("refund");
     expect(result.settlementRecord?.priorSettlementRecordId).toBeNull();
+    // CF-backed refund prefers original tenders (fidelity) over client tenderMethod.
+    expect(result.settlementRecord?.paymentSnapshot[0]?.paymentMethod).toBe(
+      "cash"
+    );
     expect(mocks.insertSettlementRecord).toHaveBeenCalledTimes(1);
     expect(mocks.allocateRefundDocumentNumber).toHaveBeenCalled();
   });

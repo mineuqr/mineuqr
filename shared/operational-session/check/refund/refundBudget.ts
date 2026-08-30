@@ -114,26 +114,7 @@ export function calculateRefundBudget(input: {
 /**
  * Build Check-decided reverse money snapshot for a refund amount.
  * Values are supplied to Settlement Record as copy source — SR does not calculate.
+ * Tax allocation lives in refundTaxSnapshot (Phase 2 fidelity).
  */
-export function buildRefundReverseSnapshot(amount: string): {
-  subtotal: string;
-  discountAmount: string;
-  taxAmount: string;
-  grandTotal: string;
-  taxBreakdown: {
-    totalTaxAmount: string;
-    lines: readonly never[];
-  };
-} {
-  const grandTotal = formatRefundMoney(parseRefundMoney(amount));
-  return {
-    subtotal: grandTotal,
-    discountAmount: "0.00",
-    taxAmount: "0.00",
-    grandTotal,
-    taxBreakdown: {
-      totalTaxAmount: "0.00",
-      lines: [],
-    },
-  };
-}
+export { buildRefundReverseSnapshot } from "./refundTaxSnapshot";
+export type { RefundOriginalTaxBasis } from "./refundTaxSnapshot";

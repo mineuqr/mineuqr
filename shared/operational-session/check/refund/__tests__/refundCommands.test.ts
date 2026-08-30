@@ -25,6 +25,52 @@ import {
 
 const AT = "2026-07-26 14:00:00";
 
+function makeCfAnchor(
+  overrides: Partial<{
+    collectionFactId: string;
+    originalCollectedAmount: string;
+    subtotal: string;
+    taxAmount: string;
+    taxBreakdown: {
+      totalTaxAmount: string;
+      lines: readonly {
+        componentId: string;
+        name: string;
+        ratePercent: string;
+        amount: string;
+      }[];
+    };
+    tenders: readonly { paymentMethod: string; amount: string }[];
+  }> = {}
+) {
+  const amount = overrides.originalCollectedAmount ?? "90.00";
+  const taxAmount = overrides.taxAmount ?? "0.00";
+  return {
+    kind: "collection_fact" as const,
+    collectionFactId: overrides.collectionFactId ?? "cf-1",
+    paymentIntentId: "pi-1",
+    orderId: 55,
+    restaurantId: 1,
+    checkId: 100,
+    originalCollectedAmount: amount,
+    currencyCode: "SAR",
+    subtotal: overrides.subtotal ?? amount,
+    taxAmount,
+    taxBreakdown: overrides.taxBreakdown ?? {
+      totalTaxAmount: taxAmount,
+      lines: [] as const,
+    },
+    tenders: overrides.tenders ?? [
+      { paymentMethod: "cash", amount },
+    ],
+    committedAt: AT,
+    businessDay: "2026-07-26",
+    actorId: "7",
+    terminalId: "term-1",
+    orderingChannel: "qr",
+  };
+}
+
 function makeCheck(
   overrides: Partial<OperationalCheck> = {}
 ): OperationalCheck {
@@ -470,22 +516,9 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
   it("CF-backed original amount comes from Collection Fact, not gen=1 SR", () => {
     const check = makeCheck();
     const primary = makePrimarySettlement(check);
-    const originalSale = {
-      kind: "collection_fact" as const,
-      collectionFactId: "cf-1",
-      paymentIntentId: "pi-1",
-      orderId: 55,
-      restaurantId: 1,
-      checkId: 100,
-      originalCollectedAmount: "90.00",
-      currencyCode: "SAR",
+    const originalSale = makeCfAnchor({
       tenders: [{ paymentMethod: "card", amount: "90.00" }],
-      committedAt: AT,
-      businessDay: "2026-07-26",
-      actorId: "7",
-      terminalId: "term-1",
-      orderingChannel: "qr",
-    };
+    });
     const budget = calculateRefundBudget({
       restaurantId: 1,
       checkId: 100,
@@ -545,22 +578,11 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
         },
       ],
     }).record;
-    const originalSale = {
-      kind: "collection_fact" as const,
+    const originalSale = makeCfAnchor({
       collectionFactId: "cf-comp",
-      paymentIntentId: "pi-comp",
-      orderId: 55,
-      restaurantId: 1,
-      checkId: 100,
       originalCollectedAmount: "0.00",
-      currencyCode: "SAR",
       tenders: [{ paymentMethod: "other", amount: "0.00" }],
-      committedAt: AT,
-      businessDay: "2026-07-26",
-      actorId: "7",
-      terminalId: "term-1",
-      orderingChannel: "qr",
-    };
+    });
     const budget = calculateRefundBudget({
       restaurantId: 1,
       checkId: 100,
@@ -583,22 +605,7 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
 
   it("CF-backed refund identifies the original sale without gen=1 SR and persists a refund SR", () => {
     const check = makeCheck();
-    const originalSale = {
-      kind: "collection_fact" as const,
-      collectionFactId: "cf-1",
-      paymentIntentId: "pi-1",
-      orderId: 55,
-      restaurantId: 1,
-      checkId: 100,
-      originalCollectedAmount: "90.00",
-      currencyCode: "SAR",
-      tenders: [{ paymentMethod: "cash", amount: "90.00" }],
-      committedAt: AT,
-      businessDay: "2026-07-26",
-      actorId: "7",
-      terminalId: "term-1",
-      orderingChannel: "qr",
-    };
+    const originalSale = makeCfAnchor();
     const budget = calculateRefundBudget({
       restaurantId: 1,
       checkId: 100,
@@ -637,7 +644,8 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
     expect(refundDoc?.recordKind).toBe("refund");
     expect(refundDoc?.priorSettlementRecordId).toBeNull();
     expect(refundDoc?.grandTotal).toBe("10.00");
-    expect(refundDoc?.paymentSnapshot[0]?.paymentMethod).toBe("card");
+    // Original CF tenders win over client tenderMethod (multi-tender fidelity).
+    expect(refundDoc?.paymentSnapshot[0]?.paymentMethod).toBe("cash");
     expect(refundDoc?.recordGeneration).toBe(1);
 
     const second = executeRefundOnCheck({
@@ -683,24 +691,72 @@ describe("REFUND-DOMAIN-IMPLEMENTATION-1", () => {
     ).toThrow(AlreadyRefundedError);
   });
 
+  it("multi-tender CF full refund mirrors original tender split", () => {
+    const check = makeCheck({
+      grandTotal: "100.00",
+      subtotal: "100.00",
+      taxAmount: "0.00",
+    });
+    const originalSale = makeCfAnchor({
+      originalCollectedAmount: "100.00",
+      subtotal: "100.00",
+      taxAmount: "0.00",
+      tenders: [
+        { paymentMethod: "cash", amount: "40.00" },
+        { paymentMethod: "card", amount: "60.00" },
+      ],
+    });
+    const result = executeRefundOnCheck({
+      check,
+      amount: "100.00",
+      settlementRecords: [],
+      orderSettlements: [makeSettledOs(55, "100.00")],
+      at: AT,
+      originalSaleAnchor: originalSale,
+      tenderMethod: "other",
+    });
+    const snap = result.settlementRecordResult?.record.paymentSnapshot ?? [];
+    expect(snap).toHaveLength(2);
+    expect(snap.find((p) => p.paymentMethod === "cash")?.amount).toBe("40.00");
+    expect(snap.find((p) => p.paymentMethod === "card")?.amount).toBe("60.00");
+  });
+
+  it("CF-backed refund reverse snapshot mirrors original tax on full refund", () => {
+    const check = makeCheck({ grandTotal: "115.00" });
+    const originalSale = makeCfAnchor({
+      originalCollectedAmount: "115.00",
+      subtotal: "100.00",
+      taxAmount: "15.00",
+      tenders: [{ paymentMethod: "cash", amount: "115.00" }],
+      taxBreakdown: {
+        totalTaxAmount: "15.00",
+        lines: [
+          {
+            componentId: "vat",
+            name: "VAT",
+            ratePercent: "15.00",
+            amount: "15.00",
+          },
+        ],
+      },
+    });
+    const result = executeRefundOnCheck({
+      check,
+      amount: "115.00",
+      settlementRecords: [],
+      orderSettlements: [makeSettledOs(55, "115.00")],
+      at: AT,
+      originalSaleAnchor: originalSale,
+    });
+    const doc = result.settlementRecordResult?.record;
+    expect(doc?.taxAmount).toBe("15.00");
+    expect(doc?.subtotal).toBe("100.00");
+    expect(doc?.taxBreakdown.lines[0]?.amount).toBe("15.00");
+  });
+
   it("CF-backed refund retry at the same generation is already_applied", () => {
     const check = makeCheck();
-    const originalSale = {
-      kind: "collection_fact" as const,
-      collectionFactId: "cf-1",
-      paymentIntentId: "pi-1",
-      orderId: 55,
-      restaurantId: 1,
-      checkId: 100,
-      originalCollectedAmount: "90.00",
-      currencyCode: "SAR",
-      tenders: [{ paymentMethod: "cash", amount: "90.00" }],
-      committedAt: AT,
-      businessDay: "2026-07-26",
-      actorId: "7",
-      terminalId: "term-1",
-      orderingChannel: "qr",
-    };
+    const originalSale = makeCfAnchor();
     const first = executeRefundOnCheck({
       check,
       amount: "10.00",

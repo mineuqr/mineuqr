@@ -25,6 +25,18 @@ export type RefundProductionFactCandidate = Readonly<{
   amount: string;
   discountAmount: string;
   currencyCode: string;
+  /** Prefer CF freeze; missing fields default to amount / zero tax. */
+  subtotal?: string;
+  taxAmount?: string;
+  taxBreakdown?: Readonly<{
+    totalTaxAmount: string;
+    lines: readonly Readonly<{
+      componentId: string;
+      name: string;
+      ratePercent: string;
+      amount: string;
+    }>[];
+  }>;
   tenders: readonly Readonly<{ paymentMethod: string; amount: string }>[];
   checkId: number | null;
   committedAt: string;
@@ -43,6 +55,17 @@ export type CollectionFactRefundAnchor = Readonly<{
   checkId: number;
   originalCollectedAmount: string;
   currencyCode: string;
+  subtotal: string;
+  taxAmount: string;
+  taxBreakdown: Readonly<{
+    totalTaxAmount: string;
+    lines: readonly Readonly<{
+      componentId: string;
+      name: string;
+      ratePercent: string;
+      amount: string;
+    }>[];
+  }>;
   tenders: readonly Readonly<{ paymentMethod: string; amount: string }>[];
   committedAt: string;
   businessDay: string;
@@ -158,6 +181,10 @@ export function resolveRefundOriginalSaleAnchor(input: {
   const originalCollectedAmount = formatRefundMoney(
     parseRefundMoney(fact.amount)
   );
+  const taxBreakdown = fact.taxBreakdown ?? {
+    totalTaxAmount: fact.taxAmount ?? "0.00",
+    lines: [],
+  };
 
   return {
     kind: "collection_fact",
@@ -168,6 +195,21 @@ export function resolveRefundOriginalSaleAnchor(input: {
     checkId: input.checkId,
     originalCollectedAmount,
     currencyCode: fact.currencyCode,
+    subtotal: formatRefundMoney(
+      parseRefundMoney(fact.subtotal ?? fact.amount)
+    ),
+    taxAmount: formatRefundMoney(parseRefundMoney(fact.taxAmount ?? "0.00")),
+    taxBreakdown: {
+      totalTaxAmount: formatRefundMoney(
+        parseRefundMoney(taxBreakdown.totalTaxAmount ?? "0.00")
+      ),
+      lines: (taxBreakdown.lines ?? []).map((line) => ({
+        componentId: line.componentId,
+        name: line.name,
+        ratePercent: line.ratePercent,
+        amount: formatRefundMoney(parseRefundMoney(line.amount)),
+      })),
+    },
     tenders: fact.tenders,
     committedAt: fact.committedAt,
     businessDay: fact.businessDay,
