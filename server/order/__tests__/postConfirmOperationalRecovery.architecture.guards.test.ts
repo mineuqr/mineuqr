@@ -24,6 +24,7 @@ describe("POST-CONFIRM OPERATIONAL RECOVERY architecture", () => {
     expect(recovery).toContain("requeueFailedBatch");
     expect(recovery).toContain("recoverCashierPosDownstreamSettlements");
     expect(recovery).toContain("recoverCollectionFactDrawerAttributions");
+    expect(recovery).toContain("runIsolatedRecoveryTask");
   });
 
   it("recovers failed outbox via existing pending/published/failed states", () => {

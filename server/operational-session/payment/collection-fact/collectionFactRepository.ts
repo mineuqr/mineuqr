@@ -307,13 +307,23 @@ export async function listCollectionFactsByIds(
  * Incoming qr / waiter_tablet / kiosk / table_session use the same Check
  * finalizer already invoked on Confirm. Discovery is the CF row, not handoff.
  */
+export type CheckDownstreamDiscoveryOptions = {
+  readonly excludeOrderIds?: readonly number[];
+};
+
 export async function listCashierPosProductionFactsAwaitingDownstreamSettlement(
-  limit: number
+  limit: number,
+  options?: CheckDownstreamDiscoveryOptions
 ): Promise<Array<{ restaurantId: number; orderId: number }>> {
   const db = await getDb();
   if (!db) return [];
   const take = Math.min(Math.max(limit, 0), 50);
   if (take === 0) return [];
+  const excludedOrderIds = [
+    ...new Set(
+      (options?.excludeOrderIds ?? []).filter((id) => Number.isInteger(id) && id > 0)
+    ),
+  ];
   const completeMembership = db
     .select({ present: sql`1` })
     .from(checkOrderMembership)
@@ -345,7 +355,10 @@ export async function listCashierPosProductionFactsAwaitingDownstreamSettlement(
           paymentCollectionFacts.orderingChannel,
           CASHIER_FINALIZABLE_ORDERING_CHANNELS
         ),
-        notExists(completeMembership)
+        notExists(completeMembership),
+        ...(excludedOrderIds.length > 0
+          ? [notInArray(paymentCollectionFacts.orderId, excludedOrderIds)]
+          : [])
       )
     )
     .orderBy(asc(paymentCollectionFacts.committedAt))

@@ -100,6 +100,9 @@ describe("POST-PAYMENT-INCOMING-CHECK-RECOVERY-HARDENING-1 architecture", () => 
     expect(recover).not.toContain("cashier_order_handoffs");
     expect(recover).not.toContain("updateOrderStatus");
     expect(recover).not.toContain("lockOrderRowForIncomingConfirm");
+    expect(deliver).toContain("CheckOrderNotFoundError");
+    expect(deliver).toContain("DiningSessionUnavailableError");
+    expect(deliver).not.toContain('DiningSessionUnavailableError("Order not found")');
     expect(deliver).toContain("findProductionCollectionFactByOrderId");
     expect(deliver).toContain("completeCashierOperationalSettlementAfterCollectionFact");
     expect(deliver).not.toContain("commitCollectionFact");

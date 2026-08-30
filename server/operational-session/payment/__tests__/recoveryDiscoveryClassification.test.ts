@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { classifyDrawerAttributionRecovery } from "../recoveryDiscoveryClassification";
+import { CheckOrderNotFoundError } from "../../check/checkRecoveryErrors";
+import { DiningSessionUnavailableError } from "../../../diningSession/sessionTypes";
+import {
+  classifyCheckDownstreamRecovery,
+  classifyDrawerAttributionRecovery,
+} from "../recoveryDiscoveryClassification";
 
 describe("classifyDrawerAttributionRecovery", () => {
   it("maps created and already_applied to resolved work", () => {
@@ -52,6 +57,20 @@ describe("classifyDrawerAttributionRecovery", () => {
         gaps: ["financial_shift_unavailable"],
       })
     ).toBe("deferred");
+  });
+
+  it("distinguishes missing Order from database unavailability", () => {
+    const missing = new CheckOrderNotFoundError();
+    expect(missing instanceof DiningSessionUnavailableError).toBe(false);
+    expect(classifyCheckDownstreamRecovery(missing)).toBe(
+      "permanently_unrecoverable"
+    );
+    expect(
+      classifyCheckDownstreamRecovery(new DiningSessionUnavailableError())
+    ).toBe("retryable");
+    expect(classifyCheckDownstreamRecovery(new Error("query timeout"))).toBe(
+      "retryable"
+    );
   });
 
   it("does not classify restaurant isolation as retryable", () => {

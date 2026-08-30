@@ -1,6 +1,7 @@
 import type { OrderDomainEvent } from "../../../domain/events/OrderDomainEvents";
 import type { EventEnvelope } from "../EventEnvelope";
 import { ORDER_AGGREGATE_TYPE } from "../EventEnvelope";
+import { OutboxPoisonError } from "../outbox/outboxPoison";
 
 export const DOMAIN_EVENT_PAYLOAD_VERSION = 1;
 
@@ -17,9 +18,16 @@ export function deserializeDomainEventPayload(
   payloadJson: string,
   payloadVersion: number
 ): SerializedEventPayload {
-  const parsed = JSON.parse(payloadJson) as Record<string, unknown>;
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(payloadJson) as Record<string, unknown>;
+  } catch (err) {
+    throw new OutboxPoisonError(
+      err instanceof Error ? err.message : "unparseable_outbox_payload"
+    );
+  }
   if (parsed.type !== eventType) {
-    throw new Error(
+    throw new OutboxPoisonError(
       `Event type mismatch: envelope=${eventType} payload=${String(parsed.type)}`
     );
   }

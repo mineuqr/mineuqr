@@ -6,6 +6,11 @@ import type {
 import type { OutboxRepository } from "../contracts/EventInfrastructureContracts";
 import type { EventInfrastructureMetrics } from "../monitoring/EventInfrastructureMetrics";
 import { computeRetryDelayMs } from "../outbox/outboxRetrySchedule";
+import {
+  formatOutboxPoisonLastError,
+  isOutboxPoisonError,
+} from "../outbox/outboxPoison";
+import { parseEnvelopePayload } from "../serialization/domainEventSerializer";
 
 const MAX_PUBLISH_ATTEMPTS = 5;
 
@@ -44,6 +49,7 @@ export class OrderEventRelay implements EventRelay {
       };
 
       try {
+        parseEnvelopePayload(envelope);
         await this.publisher.publish(envelope);
         const publishedAt = new Date().toISOString().slice(0, 19).replace("T", " ");
         const marked = await this.outbox.markPublished(record.id, publishedAt);
@@ -54,8 +60,9 @@ export class OrderEventRelay implements EventRelay {
         }
       } catch (error) {
         const attempt = record.publishAttempts + 1;
+        const poison = isOutboxPoisonError(error);
         const message = error instanceof Error ? error.message : String(error);
-        const deadLetter = attempt >= MAX_PUBLISH_ATTEMPTS;
+        const deadLetter = poison || attempt >= MAX_PUBLISH_ATTEMPTS;
         const nextRetryAt = deadLetter
           ? null
           : new Date(Date.now() + computeRetryDelayMs(attempt))
@@ -65,7 +72,7 @@ export class OrderEventRelay implements EventRelay {
 
         await this.outbox.markPublishFailed(
           record.id,
-          message,
+          poison ? formatOutboxPoisonLastError(message) : message,
           nextRetryAt,
           deadLetter
         );

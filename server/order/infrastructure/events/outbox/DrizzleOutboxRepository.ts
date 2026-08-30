@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { and, asc, eq, lte, or, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, lte, notLike, or, isNull, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { readMysqlAffectedRows } from "../../../../db/mysqlAffectedRows";
 import {
@@ -13,6 +13,7 @@ import type {
 import type { EventEnvelope, StoredOutboxRecord } from "../EventEnvelope";
 import { serializeDomainEventPayload } from "../serialization/domainEventSerializer";
 import { nextOutboxRequeueRetryAt } from "./outboxRetrySchedule";
+import { OUTBOX_POISON_LAST_ERROR_PREFIX } from "./outboxPoison";
 
 type DbTx = Parameters<Parameters<NonNullable<Awaited<ReturnType<typeof getDb>>>["transaction"]>[0]>[0];
 
@@ -157,7 +158,18 @@ export class DrizzleOutboxRepository implements OutboxRepository {
         publishAttempts: orderDomainOutbox.publishAttempts,
       })
       .from(orderDomainOutbox)
-      .where(eq(orderDomainOutbox.status, "failed"))
+      .where(
+        and(
+          eq(orderDomainOutbox.status, "failed"),
+          or(
+            isNull(orderDomainOutbox.lastError),
+            notLike(
+              orderDomainOutbox.lastError,
+              `${OUTBOX_POISON_LAST_ERROR_PREFIX}%`
+            )
+          )
+        )
+      )
       .orderBy(asc(orderDomainOutbox.occurredAt), asc(orderDomainOutbox.sequenceNumber))
       .limit(take);
     if (failed.length === 0) return 0;
@@ -209,6 +221,14 @@ export class DrizzleEventStore {
   }
 }
 
+function parseStoredOutboxPayload(payload: string): unknown {
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return { type: "__UNPARSEABLE_OUTBOX_PAYLOAD__" };
+  }
+}
+
 function mapRowToStored(row: typeof orderDomainOutbox.$inferSelect): StoredOutboxRecord {
   return {
     id: row.id,
@@ -223,7 +243,7 @@ function mapRowToStored(row: typeof orderDomainOutbox.$inferSelect): StoredOutbo
     correlationId: row.correlationId,
     causationId: row.causationId,
     payloadVersion: row.payloadVersion,
-    payload: JSON.parse(row.payload),
+    payload: parseStoredOutboxPayload(row.payload),
     status: row.status,
     publishAttempts: row.publishAttempts,
     lastError: row.lastError,

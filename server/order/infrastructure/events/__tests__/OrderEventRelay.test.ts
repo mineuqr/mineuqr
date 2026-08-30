@@ -140,6 +140,69 @@ describe("OrderEventRelay", () => {
     );
   });
 
+  it("dead-letters a typed poison payload on the first attempt", async () => {
+    const outbox = mockOutbox({
+      fetchPendingBatch: vi.fn(async () => [
+        makeRecord({
+          id: "poison",
+          eventId: "e-poison",
+          eventType: "OrderCreated",
+          payload: { type: "OrderCancelled" },
+        }),
+      ]),
+      countPending: vi.fn(async () => 1),
+    });
+    const publisher: EventPublisher = {
+      publish: vi.fn(async () => undefined),
+    };
+    const relay = new OrderEventRelay(
+      outbox,
+      publisher,
+      new NoOpEventInfrastructureMetrics()
+    );
+    await relay.processBatch(10);
+    expect(publisher.publish).not.toHaveBeenCalled();
+    expect(outbox.markPublishFailed).toHaveBeenCalledWith(
+      "poison",
+      expect.stringMatching(/^POISON:/),
+      null,
+      true
+    );
+  });
+
+  it("publishes a newer valid event in the same batch as a poison payload", async () => {
+    const published: string[] = [];
+    const outbox = mockOutbox({
+      fetchPendingBatch: vi.fn(async () => [
+        makeRecord({
+          id: "poison",
+          eventId: "e-poison",
+          eventType: "OrderCreated",
+          payload: { type: "OrderCancelled" },
+          sequenceNumber: 1,
+        }),
+        makeRecord({
+          id: "fresh",
+          eventId: "e-fresh",
+          sequenceNumber: 2,
+        }),
+      ]),
+      countPending: vi.fn(async () => 2),
+    });
+    const relay = new OrderEventRelay(
+      outbox,
+      {
+        publish: vi.fn(async (env) => {
+          published.push(env.eventId);
+        }),
+      },
+      new NoOpEventInfrastructureMetrics()
+    );
+    const result = await relay.processBatch(10);
+    expect(result).toEqual({ processed: 2, published: 1, failed: 1, skipped: 0 });
+    expect(published).toEqual(["e-fresh"]);
+  });
+
   it("isolates publish failure so a later pending event still publishes", async () => {
     const published: string[] = [];
     const outbox = mockOutbox({

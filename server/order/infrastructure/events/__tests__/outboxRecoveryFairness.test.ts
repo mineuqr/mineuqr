@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { comparePendingOutboxForRelay } from "../outbox/outboxRecoveryFairness";
+import {
+  isOutboxPoisonLastError,
+  OUTBOX_POISON_LAST_ERROR_PREFIX,
+} from "../outbox/outboxPoison";
 import { computeRetryDelayMs, nextOutboxRequeueRetryAt } from "../outbox/outboxRetrySchedule";
 import { OrderEventRelay } from "../relay/OrderEventRelay";
 import { NoOpEventInfrastructureMetrics } from "../monitoring/EventInfrastructureMetrics";
@@ -47,6 +51,16 @@ describe("comparePendingOutboxForRelay", () => {
     expect(comparePendingOutboxForRelay(poison, newer)).toBeGreaterThan(0);
     const ordered = [poison, newer].sort(comparePendingOutboxForRelay);
     expect(ordered[0]).toBe(newer);
+  });
+});
+
+describe("outbox poison lastError", () => {
+  it("does not treat a generic publisher failure as poison", () => {
+    expect(isOutboxPoisonLastError("broker down")).toBe(false);
+    expect(isOutboxPoisonLastError(null)).toBe(false);
+    expect(
+      isOutboxPoisonLastError(`${OUTBOX_POISON_LAST_ERROR_PREFIX}type mismatch`)
+    ).toBe(true);
   });
 });
 

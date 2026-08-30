@@ -2,7 +2,13 @@
  * RECOVERY-DISCOVERY-STARVATION-HARDENING-1
  * Classify Drawer Recovery results so discovery can exclude work that cannot
  * converge under current domain rules. Does not write Financial Core.
+ *
+ * RECOVERY-RESILIENCE-AND-DURABILITY-HARDENING-1 Phase 1
+ * Check Recovery classifies typed Order-missing vs infrastructure errors.
  */
+
+import { CheckOrderNotFoundError } from "../check/checkRecoveryErrors";
+import { DiningSessionUnavailableError } from "../../diningSession/sessionTypes";
 
 export type DrawerAttributionRecoveryClass =
   | "recovered"
@@ -49,5 +55,17 @@ export function classifyDrawerAttributionRecovery(input: {
     return "retryable";
   }
   if (input.outcome === "skipped") return "deferred";
+  return "retryable";
+}
+
+export function classifyCheckDownstreamRecovery(
+  err: unknown
+): DrawerAttributionRecoveryClass {
+  if (err instanceof CheckOrderNotFoundError) {
+    return "permanently_unrecoverable";
+  }
+  if (err instanceof DiningSessionUnavailableError) {
+    return "retryable";
+  }
   return "retryable";
 }

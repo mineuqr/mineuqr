@@ -188,6 +188,7 @@ export const OPS_EVENT = {
   check_settlement_attribution_deferred_failed:
     "check_settlement_attribution_deferred_failed",
   recovery_discovery_parked: "recovery_discovery_parked",
+  recovery_cycle_task_failed: "recovery_cycle_task_failed",
   // CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1
   check_operational_settlement_deferred_failed:
     "check_operational_settlement_deferred_failed",

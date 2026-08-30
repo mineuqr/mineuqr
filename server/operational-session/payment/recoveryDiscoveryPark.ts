@@ -73,6 +73,69 @@ export function getParkedDrawerAttribution(
   return parked.get(collectionFactId);
 }
 
+export type ParkedCheckDownstream = Readonly<{
+  restaurantId: number;
+  orderId: number;
+  classification: DrawerAttributionParkClass;
+  gaps: readonly string[];
+  reason: string;
+  parkedAt: string;
+  resumeAtMs: number | null;
+}>;
+
+const parkedCheck = new Map<string, ParkedCheckDownstream>();
+
+function checkParkKey(restaurantId: number, orderId: number): string {
+  return `${restaurantId}:${orderId}`;
+}
+
+export function parkCheckDownstreamDiscovery(
+  entry: Omit<ParkedCheckDownstream, "parkedAt" | "resumeAtMs"> & {
+    nowMs?: number;
+  }
+): ParkedCheckDownstream {
+  const nowMs = entry.nowMs ?? Date.now();
+  const parkedAt = new Date(nowMs).toISOString();
+  const resumeAtMs =
+    entry.classification === "permanently_unrecoverable"
+      ? null
+      : nowMs +
+        (entry.classification === "deferred"
+          ? DRAWER_ATTRIBUTION_DEFERRED_RESUME_MS
+          : DRAWER_ATTRIBUTION_RETRYABLE_RESUME_MS);
+  const record: ParkedCheckDownstream = {
+    restaurantId: entry.restaurantId,
+    orderId: entry.orderId,
+    classification: entry.classification,
+    gaps: [...entry.gaps],
+    reason: entry.reason,
+    parkedAt,
+    resumeAtMs,
+  };
+  parkedCheck.set(checkParkKey(entry.restaurantId, entry.orderId), record);
+  return record;
+}
+
+export function listActiveParkedCheckOrderIds(nowMs = Date.now()): number[] {
+  const ids: number[] = [];
+  for (const [key, row] of parkedCheck) {
+    if (row.resumeAtMs != null && row.resumeAtMs <= nowMs) {
+      parkedCheck.delete(key);
+      continue;
+    }
+    ids.push(row.orderId);
+  }
+  return ids;
+}
+
+export function getParkedCheckDownstream(
+  restaurantId: number,
+  orderId: number
+): ParkedCheckDownstream | undefined {
+  return parkedCheck.get(checkParkKey(restaurantId, orderId));
+}
+
 export function resetDrawerAttributionDiscoveryParkForTests(): void {
   parked.clear();
+  parkedCheck.clear();
 }

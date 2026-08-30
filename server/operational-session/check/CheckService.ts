@@ -32,6 +32,7 @@ import {
   DiningSessionValidationError,
   formatDiningSessionTimestamp,
 } from "../../diningSession/sessionTypes";
+import { CheckOrderNotFoundError } from "./checkRecoveryErrors";
 import {
   businessTaxSettingsFromRestaurantRow,
   captureCurrencySnapshot,
@@ -1902,9 +1903,13 @@ export async function deliverCashierPosOperationalSettlementAfterPaid(input: {
   settlementContext?: SettlementContext;
   settlementContextHints?: SettlementContextHints;
 }): Promise<void> {
-  const order = await getOrderById(input.orderId);
+  const db = await getDb();
+  if (!db) {
+    throw new DiningSessionUnavailableError();
+  }
+  const order = await getOrderById(input.orderId, db);
   if (!order || order.restaurantId !== input.restaurantId) {
-    throw new DiningSessionUnavailableError("Order not found");
+    throw new CheckOrderNotFoundError("Order not found");
   }
   const billDiscountAmount = input.billDiscountAmount ?? "0.00";
   const snapshots = await captureSnapshotsFromBusinessSettings(

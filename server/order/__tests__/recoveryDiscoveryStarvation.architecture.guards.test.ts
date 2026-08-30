@@ -32,6 +32,9 @@ describe("RECOVERY-DISCOVERY-STARVATION-HARDENING-1 architecture", () => {
     expect(classify).toContain("no_shift_at_commit_time");
     expect(classify).toContain("permanently_unrecoverable");
     expect(classify).toContain("attribution_create_failed");
+    const parkStore = read("server/operational-session/payment/recoveryParkStore.ts");
+    expect(parkStore).toContain("orderDomainConsumerProcessed");
+    expect(parkStore).toContain("rcv.park.drawer");
     expect(journal).not.toContain("0102_");
     expect(existsSync(join(repoRoot, "drizzle/0102.sql"))).toBe(false);
   });
@@ -46,6 +49,7 @@ describe("RECOVERY-DISCOVERY-STARVATION-HARDENING-1 architecture", () => {
     const requeueStart = outbox.indexOf("async requeueFailedBatch");
     const requeue = outbox.slice(requeueStart, requeueStart + 1200);
     expect(requeue).toContain("nextOutboxRequeueRetryAt");
+    expect(requeue).toContain("OUTBOX_POISON_LAST_ERROR_PREFIX");
     expect(requeue).not.toContain("publishAttempts: 0");
     expect(requeue).not.toContain("nextRetryAt: null");
     expect(outbox).toContain("asc(orderDomainOutbox.publishAttempts)");

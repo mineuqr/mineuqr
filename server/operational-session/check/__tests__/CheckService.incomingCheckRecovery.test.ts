@@ -275,7 +275,7 @@ describe("POST-PAYMENT-INCOMING-CHECK-RECOVERY-HARDENING-1 finalizer", () => {
       expect(mocks.createOrder).not.toHaveBeenCalled();
       expect(mocks.closeSession).not.toHaveBeenCalled();
       expect(mocks.updateSessionActiveCheckId).not.toHaveBeenCalled();
-      expect(mocks.getOrderById).toHaveBeenCalledWith(88);
+      expect(mocks.getOrderById).toHaveBeenCalledWith(88, expect.anything());
     }
   );
 
@@ -331,5 +331,46 @@ describe("POST-PAYMENT-INCOMING-CHECK-RECOVERY-HARDENING-1 finalizer", () => {
     expect(mocks.commitCollectionFact).not.toHaveBeenCalled();
     expect(mocks.allocateCashierInvoiceForOrder).not.toHaveBeenCalled();
     expect(mocks.closeSession).not.toHaveBeenCalled();
+  });
+
+  it("throws CheckOrderNotFoundError when the Order row is absent and the database is available", async () => {
+    const { CheckOrderNotFoundError } = await import("../checkRecoveryErrors");
+    const { DiningSessionUnavailableError } = await import(
+      "../../../diningSession/sessionTypes"
+    );
+    mocks.getOrderById.mockResolvedValue(null);
+    await expect(
+      deliverCashierPosOperationalSettlementAfterPaid({
+        restaurantId: 1,
+        orderId: 88,
+      })
+    ).rejects.toBeInstanceOf(CheckOrderNotFoundError);
+    await expect(
+      deliverCashierPosOperationalSettlementAfterPaid({
+        restaurantId: 1,
+        orderId: 88,
+      })
+    ).rejects.not.toBeInstanceOf(DiningSessionUnavailableError);
+  });
+
+  it("throws DiningSessionUnavailableError when the database is unavailable", async () => {
+    const { CheckOrderNotFoundError } = await import("../checkRecoveryErrors");
+    const { DiningSessionUnavailableError } = await import(
+      "../../../diningSession/sessionTypes"
+    );
+    mocks.getDb.mockResolvedValue(null);
+    await expect(
+      deliverCashierPosOperationalSettlementAfterPaid({
+        restaurantId: 1,
+        orderId: 88,
+      })
+    ).rejects.toBeInstanceOf(DiningSessionUnavailableError);
+    await expect(
+      deliverCashierPosOperationalSettlementAfterPaid({
+        restaurantId: 1,
+        orderId: 88,
+      })
+    ).rejects.not.toBeInstanceOf(CheckOrderNotFoundError);
+    expect(mocks.getOrderById).not.toHaveBeenCalled();
   });
 });

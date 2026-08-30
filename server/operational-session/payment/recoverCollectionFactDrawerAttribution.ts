@@ -30,6 +30,7 @@ import {
   listActiveParkedDrawerAttributionFactIds,
   parkDrawerAttributionDiscovery,
 } from "./recoveryDiscoveryPark";
+import { getRecoveryParkStore } from "./recoveryParkStore";
 
 export const DRAWER_ATTRIBUTION_RECOVERY_PAGE_CAP = 50;
 export const DRAWER_ATTRIBUTION_RECOVERY_MAX_PAGES = 4;
@@ -93,6 +94,16 @@ export async function recoverCollectionFactDrawerAttributions(
     for (const fact of facts) {
       if (attempted >= maxCandidates || actionable >= pageSize) break;
       attempted += 1;
+      if (await getRecoveryParkStore().hasDrawer(fact.collectionFactId)) {
+        parkDrawerAttributionDiscovery({
+          collectionFactId: fact.collectionFactId,
+          restaurantId: fact.restaurantId,
+          classification: "permanently_unrecoverable",
+          gaps: ["durably_parked"],
+          reason: "durable_recovery_park",
+        });
+        continue;
+      }
       try {
         const at = new Date().toISOString();
         const settlementContext = await resolveSettlementContextForCollectionFact({
@@ -148,6 +159,9 @@ export async function recoverCollectionFactDrawerAttributions(
               : "deferred_drawer_attribution"),
         });
         parked += 1;
+        if (classification === "permanently_unrecoverable") {
+          await getRecoveryParkStore().markDrawer(fact.collectionFactId);
+        }
         logParked(fact, classification, bundle.attribution.gaps, bundle.attribution.reason);
       } catch (err) {
         failed += 1;

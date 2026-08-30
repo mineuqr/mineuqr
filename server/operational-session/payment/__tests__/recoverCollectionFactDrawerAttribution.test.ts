@@ -31,6 +31,11 @@ vi.mock("../../../_core/opsLog", () => ({
 
 import { recoverCollectionFactDrawerAttributions } from "../recoverCollectionFactDrawerAttribution";
 import { resetDrawerAttributionDiscoveryParkForTests } from "../recoveryDiscoveryPark";
+import {
+  InMemoryRecoveryParkStore,
+  resetRecoveryParkStoreForTests,
+  setRecoveryParkStoreForTests,
+} from "../recoveryParkStore";
 
 function fact(overrides: Partial<CollectionFact> = {}): CollectionFact {
   return {
@@ -73,6 +78,7 @@ function fact(overrides: Partial<CollectionFact> = {}): CollectionFact {
 describe("recoverCollectionFactDrawerAttributions", () => {
   beforeEach(() => {
     resetDrawerAttributionDiscoveryParkForTests();
+    resetRecoveryParkStoreForTests();
     vi.clearAllMocks();
     mocks.resolveSettlementContextForCollectionFact.mockResolvedValue({
       restaurantId: 1,
@@ -266,5 +272,59 @@ describe("recoverCollectionFactDrawerAttributions", () => {
     expect(mocks.resolveSettlementContextForCollectionFact).not.toHaveBeenCalledWith(
       expect.objectContaining({ committedAt: expect.not.stringMatching(/2026-08-27/) })
     );
+  });
+
+  it("keeps a permanent Drawer park after an in-memory restart", async () => {
+    const durable = new InMemoryRecoveryParkStore();
+    setRecoveryParkStoreForTests(durable);
+    mocks.listProductionCollectionFactsAwaitingDrawerAttribution.mockImplementation(
+      async (limit: number, options?: { excludeCollectionFactIds?: readonly string[] }) => {
+        const exclude = new Set(options?.excludeCollectionFactIds ?? []);
+        const row = fact({ collectionFactId: "cf-restart" });
+        if (exclude.has(row.collectionFactId)) return [];
+        return [row].slice(0, limit);
+      }
+    );
+    mocks.adoptSettlementAttributionAfterFinalize.mockResolvedValue({
+      attribution: {
+        outcome: "skipped",
+        gaps: ["no_shift_at_commit_time"],
+        reason: "no historical Shift",
+      },
+      events: [],
+    });
+
+    expect(await recoverCollectionFactDrawerAttributions(25)).toMatchObject({
+      parked: 1,
+      created: 0,
+    });
+    expect(await durable.hasDrawer("cf-restart")).toBe(true);
+
+    resetDrawerAttributionDiscoveryParkForTests();
+    expect(await recoverCollectionFactDrawerAttributions(25)).toEqual({
+      attempted: 1,
+      failed: 0,
+      created: 0,
+      parked: 0,
+    });
+    expect(mocks.adoptSettlementAttributionAfterFinalize).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not durably park a retryable writer failure", async () => {
+    const durable = new InMemoryRecoveryParkStore();
+    setRecoveryParkStoreForTests(durable);
+    mocks.listProductionCollectionFactsAwaitingDrawerAttribution.mockResolvedValue([
+      fact({ collectionFactId: "cf-retry" }),
+    ]);
+    mocks.adoptSettlementAttributionAfterFinalize.mockResolvedValue({
+      attribution: {
+        outcome: "failed",
+        gaps: ["attribution_create_failed"],
+        reason: "shift save blip",
+      },
+      events: [],
+    });
+    await recoverCollectionFactDrawerAttributions(25);
+    expect(await durable.hasDrawer("cf-retry")).toBe(false);
   });
 });
