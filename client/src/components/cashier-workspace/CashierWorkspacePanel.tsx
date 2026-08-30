@@ -7,6 +7,9 @@
  * panel until Confirm / Paid Receipt.
  * CASHIER-PASS-2-CONFIRM-FINALIZATION-1 — الدفع opens Payment UI only.
  * Confirm (تأكيد الدفع) finalizes Order + Collection Fact = PAID.
+ * CASHIER-UX-REDESIGN-1 — three-rail POS workspace (Current Order | Catalog |
+ * Contextual). Payment methods live only in Payment state (right rail /
+ * narrow overlay). Tender modes remain Cash / Network / Mixed / Complimentary.
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -17,7 +20,13 @@ import {
   AppLoadingState,
 } from "@/components/app-state";
 import { CashierPaidReceiptDialog } from "@/components/cashier-workspace/CashierPaidReceiptDialog";
+import { CashierProductCard } from "@/components/cashier-workspace/CashierProductCard";
 import { Button } from "@/components/ui/button";
+import {
+  cashierAllCategoryTint,
+  cashierFavoritesCategoryTint,
+  resolveCashierCategoryTint,
+} from "@/lib/cashier-workspace/cashierCategoryTint";
 import { cashierPaymentFlowTiming } from "@/lib/cashier-workspace/cashierPaymentFlowTiming";
 import type { CashierPaymentFlowOutcome } from "@/lib/cashier-workspace/cashierPaymentFlowTiming";
 import { resolveCashierPaymentReadiness } from "@/lib/cashier-workspace/cashierPaymentReadiness";
@@ -31,6 +40,10 @@ import {
   cashierUiLabel,
   type CashierLang,
 } from "@/lib/cashier-workspace/cashierCopy";
+import {
+  readCashierFavoriteIds,
+  toggleCashierFavoriteId,
+} from "@/lib/cashier-workspace/cashierFavoritesStorage";
 import { cashierPos } from "@/lib/cashier-workspace/cashierPosStyles";
 import {
   classifyCashierRegisterGap,
@@ -89,14 +102,17 @@ import { syncDashboardUrl } from "@/lib/dashboardUrl";
 import { formatTrpcErrorForUser } from "@/lib/trpcErrors";
 import { classifyQueryError } from "@/lib/ui-state/classifyQueryError";
 import { trpc } from "@/lib/trpc";
-import { cn, resolveImageUrl } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { CheckMoneyResult } from "@shared/operational-session";
 import type { SelectablePaymentMethod } from "@shared/operational-session";
 import { projectCashierSaleInvoiceMoney } from "@shared/operational-session";
 import type { InvoiceIntent } from "@shared/pos";
-import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+
+type CategoryFilter = number | "all" | "favorites";
+type CatalogSort = "default" | "name" | "price";
 
 type TicketLine = {
   menuItemId: number;
@@ -181,7 +197,14 @@ export function CashierWorkspacePanel({
   );
   const [ticket, setTicket] = useState<TicketLine[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<number | "all">("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [productSearch, setProductSearch] = useState("");
+  const [catalogSort, setCatalogSort] = useState<CatalogSort>("default");
+  const [favoriteIds, setFavoriteIds] = useState<number[]>(() =>
+    readCashierFavoriteIds(restaurantId)
+  );
+  const [flashItemId, setFlashItemId] = useState<number | null>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openCheck, setOpenCheck] = useState<OpenCheckResult | null>(null);
   const [paidCheckout, setPaidCheckout] = useState<PaidCheckoutResult | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<SelectablePaymentMethod | null>(
@@ -228,6 +251,10 @@ export function CashierWorkspacePanel({
     setTicket([]);
     setSelectedOrderId(null);
     setCategoryFilter("all");
+    setProductSearch("");
+    setCatalogSort("default");
+    setFavoriteIds(readCashierFavoriteIds(restaurantId));
+    setFlashItemId(null);
     setOpenCheck(null);
     setPaidCheckout(null);
     setPaymentMethod(null);
@@ -342,7 +369,7 @@ export function CashierWorkspacePanel({
   const allowed = accessQuery.data?.allowed === true;
 
   const catalogQuery = trpc.pos.read.catalog.listItems.useQuery(
-    { restaurantId, terminalId: terminalId ?? "", availableOnly: true },
+    { restaurantId, terminalId: terminalId ?? "", availableOnly: false },
     { enabled: scoped && allowed }
   );
   const ordersQuery = trpc.pos.read.orders.listActive.useQuery(
@@ -466,6 +493,9 @@ export function CashierWorkspacePanel({
           : line
       );
     });
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    setFlashItemId(item.menuItemId);
+    flashTimerRef.current = setTimeout(() => setFlashItemId(null), 280);
   }
 
   function changeQty(menuItemId: number, delta: number) {
@@ -523,23 +553,19 @@ export function CashierWorkspacePanel({
     setRegisterGap(null);
     persistDirectSaleSnapshot({
       sale,
-      phase: "payment",
+      phase: "ticket",
       checkId: null,
       paid: null,
       method: null,
       received: "",
       card: "",
     });
-    setSalePhase("payment");
+    setSalePhase("ticket");
   }
 
   async function selectOrder(orderId: number) {
     if (directSale?.orderId === orderId && !paidCheckout) {
       setSelectedOrderId(orderId);
-      const catalogSubtotal = displayTicketTotal(ticket);
-      const discount = clampCashierDiscountAmount(ticketDiscount, catalogSubtotal);
-      setTicketDiscount(discount);
-      resumePaymentSheet(applyPreparedPayableDiscount(directSale, discount));
       return;
     }
     setSelectedOrderId(orderId);
@@ -964,10 +990,42 @@ export function CashierWorkspacePanel({
     }
     return Array.from(map.values());
   }, [items]);
-  const visibleItems =
-    categoryFilter === "all"
-      ? items
-      : items.filter((item) => item.categoryId === categoryFilter);
+  const favoriteIdSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
+  const visibleItems = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    let list = items.filter((item) => {
+      if (categoryFilter === "favorites") {
+        if (!favoriteIdSet.has(item.menuItemId)) return false;
+      } else if (categoryFilter !== "all" && item.categoryId !== categoryFilter) {
+        return false;
+      }
+      if (!q) return true;
+      const name =
+        language === "ar"
+          ? `${item.nameAr} ${item.nameEn ?? ""}`
+          : `${item.nameEn ?? ""} ${item.nameAr}`;
+      return name.toLowerCase().includes(q);
+    });
+    if (catalogSort === "name") {
+      list = [...list].sort((a, b) => {
+        const an = language === "ar" ? a.nameAr : a.nameEn ?? a.nameAr;
+        const bn = language === "ar" ? b.nameAr : b.nameEn ?? b.nameAr;
+        return an.localeCompare(bn, language === "ar" ? "ar" : "en");
+      });
+    } else if (catalogSort === "price") {
+      list = [...list].sort((a, b) => a.price.localeCompare(b.price, undefined, { numeric: true }));
+    } else {
+      list = [...list].sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+    return list;
+  }, [
+    items,
+    categoryFilter,
+    favoriteIdSet,
+    productSearch,
+    catalogSort,
+    language,
+  ]);
   const orders = ordersQuery.data?.items ?? [];
   const awaitingIntents = invoiceIntentsQuery.data ?? [];
   const ticketTotal = displayTicketTotal(ticket);
@@ -1098,6 +1156,38 @@ export function CashierWorkspacePanel({
   ]);
   const money = (value: string) =>
     currencySymbol ? `${value} ${currencySymbol}` : value;
+  const selectedIncoming =
+    awaitingIntents.find((intent) => intent.orderId === selectedOrderId) ??
+    awaitingIntents.find((intent) => intent.orderId === directSale?.orderId) ??
+    null;
+  const orderSourceLabel = (() => {
+    const channel = selectedIncoming?.sourceChannel?.toLowerCase() ?? "";
+    if (channel.includes("qr")) return t("orderSourceQr");
+    if (channel.includes("waiter")) return t("orderSourceWaiter");
+    if (channel.includes("table")) return t("orderSourceTable");
+    if (directSale && directSale.orderId > 0) return t("orderSourceQr");
+    if (ticket.length > 0 || directSale) return t("orderSourceCashier");
+    return null;
+  })();
+  const displayOrderNumber =
+    (invoiceView.orderId != null && invoiceView.orderId > 0
+      ? invoiceView.orderNumber
+      : null) ??
+    (directSale && directSale.orderId > 0 ? directSale.orderNumber : null) ??
+    selectedIncoming?.orderNumber ??
+    null;
+  const displayTableNumber = selectedIncoming?.tableNumber ?? null;
+  const payAmountLabel = money(
+    sheetMoney?.grandTotal ??
+      ticketMoney?.grandTotal ??
+      ticketTotal ??
+      "0.00"
+  );
+  const contextualMode: "incoming" | "payment" | "paid" = paidCheckout
+    ? "paid"
+    : salePhase === "payment"
+      ? "payment"
+      : "incoming";
   const displayDue = amountDue ?? sheetMoney?.grandTotal ?? null;
   const tenderDraft =
     amountDue != null && tenderMode != null
@@ -1216,6 +1306,14 @@ export function CashierWorkspacePanel({
           </select>
         </label>
         <div className="ms-auto flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={cashierPos.headerBtn}
+            onClick={startNewSale}
+            disabled={paying}
+          >
+            {t("newSale")}
+          </button>
           <button type="button" className={cashierPos.headerBtn} onClick={openNewTab}>
             {t("openNewTab")}
           </button>
@@ -1310,174 +1408,103 @@ export function CashierWorkspacePanel({
 
       {scoped && allowed ? (
         <div className={cashierPos.body}>
-          <div className={cashierPos.catalog}>
-            <div className={cashierPos.categoryBar}>
-              <button
-                type="button"
-                className={
-                  categoryFilter === "all"
-                    ? cashierPos.categoryBtnActive
-                    : cashierPos.categoryBtn
-                }
-                onClick={() => setCategoryFilter("all")}
-              >
-                {t("allCategories")}
-              </button>
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  className={
-                    categoryFilter === category.id
-                      ? cashierPos.categoryBtnActive
-                      : cashierPos.categoryBtn
-                  }
-                  onClick={() => setCategoryFilter(category.id)}
-                >
-                  {categoryLabel(
-                    language,
-                    category.nameAr,
-                    category.nameEn,
-                    t("unknownCategory")
-                  )}
-                </button>
-              ))}
-            </div>
-            <div className={cashierPos.catalogScroll}>
-              {catalogQuery.isPending ? (
-                <AppLoadingState label={t("loading")} />
-              ) : visibleItems.length === 0 ? (
-                <AppEmptyState title={t("emptyCatalog")} />
-              ) : (
-                <div className={cashierPos.productGrid}>
-                  {visibleItems.map((item) => {
-                    const imageSrc = resolveImageUrl(item.imageUrl);
-                    const itemName =
-                      language === "ar" ? item.nameAr : item.nameEn ?? item.nameAr;
-                    return (
-                      <button
-                        key={item.menuItemId}
-                        type="button"
-                        className={cashierPos.productCard}
-                        onClick={() =>
-                          addItem({
-                            menuItemId: item.menuItemId,
-                            nameAr: item.nameAr,
-                            nameEn: item.nameEn,
-                            price: item.price,
-                          })
-                        }
-                        disabled={salePhase === "payment" || Boolean(paidCheckout)}
-                      >
-                        {imageSrc ? (
-                          <img src={imageSrc} alt="" className={cashierPos.productImage} />
-                        ) : (
-                          <span aria-hidden className={cashierPos.productFallback}>
-                            {itemName.slice(0, 1)}
-                          </span>
-                        )}
-                        <span className={cashierPos.productName}>{itemName}</span>
-                        <span className={cashierPos.productPrice}>{item.price}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <aside className={cashierPos.aside}>
-            <div className={cashierPos.ticket}>
-              <h2 className="mb-2 text-sm font-semibold text-[#111827]">
-                {t("saleInvoice")}
-              </h2>
-              {(invoiceView.cashierDisplayName || selectedTerminalCode || (invoiceView.orderId != null && invoiceView.orderId > 0)) ? (
-              <div className="mb-3 space-y-0.5 text-xs text-[#6b7280]">
-                {invoiceView.orderId != null && invoiceView.orderId > 0 && invoiceView.orderNumber ? (
-                  <p>
-                    {t("receiptOrderNumber")}: {invoiceView.orderNumber}
+          {/* LEFT — Current Order */}
+          <section className={cashierPos.orderRail} aria-label={t("currentOrder")}>
+            <div className={cashierPos.orderScroll}>
+              <div>
+                <p className={cashierPos.orderSource}>
+                  {orderSourceLabel
+                    ? displayTableNumber != null
+                      ? `${orderSourceLabel} · ${t("incomingTable")} ${displayTableNumber}`
+                      : orderSourceLabel
+                    : t("currentOrder")}
+                </p>
+                <h2 className={cashierPos.orderHeading}>
+                  {displayOrderNumber
+                    ? `#${displayOrderNumber}`
+                    : t("saleInvoice")}
+                </h2>
+                {(invoiceView.cashierDisplayName ||
+                  selectedTerminalCode ||
+                  (directSale?.displayReference &&
+                    directSale.displayReference !== displayOrderNumber)) ? (
+                  <div className={cashierPos.orderMeta}>
                     {directSale?.displayReference &&
-                    directSale.displayReference !== invoiceView.orderNumber
-                      ? ` · ${directSale.displayReference}`
-                      : ""}
-                  </p>
-                ) : null}
-                {invoiceView.cashierDisplayName ? (
-                  <p>
-                    {t("receiptCashier")}: {invoiceView.cashierDisplayName}
-                  </p>
-                ) : null}
-                {selectedTerminalCode ? (
-                  <p>
-                    {t("terminal")}: {selectedTerminalCode}
-                  </p>
+                    directSale.displayReference !== displayOrderNumber ? (
+                      <p>{directSale.displayReference}</p>
+                    ) : null}
+                    {invoiceView.cashierDisplayName ? (
+                      <p>
+                        {t("receiptCashier")}: {invoiceView.cashierDisplayName}
+                      </p>
+                    ) : null}
+                    {selectedTerminalCode ? (
+                      <p>
+                        {t("terminal")}: {selectedTerminalCode}
+                      </p>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
-              ) : null}
+
               {invoiceView.lines.length === 0 ? (
                 <p className="text-sm text-[#6b7280]">{t("ticketEmpty")}</p>
               ) : (
-                <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto">
-                  <li className="flex justify-between gap-2 px-1 text-xs text-[#6b7280]">
-                    <span>{t("receiptItems")}</span>
-                    <span>
-                      {t("receiptQty")} · {t("receiptUnitPrice")} ·{" "}
-                      {t("invoiceLineTotal")}
-                    </span>
-                  </li>
+                <ul className="flex min-h-0 flex-1 flex-col gap-2">
                   {invoiceView.lines.map((line) => {
                     const menuItemId = line.menuItemId;
                     return (
-                    <li key={line.key} className={cashierPos.ticketLine}>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-[#111827]">
-                          {language === "ar" ? line.nameAr : line.nameEn}
-                        </p>
-                        <p className="text-xs text-[#6b7280]">
-                          {line.unitPrice} × {line.quantity}
-                        </p>
-                      </div>
-                      {invoiceView.editable && menuItemId != null ? (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            className="size-11"
-                            aria-label={
-                              line.quantity === 1 ? t("removeLine") : t("qty")
-                            }
-                            onClick={() => changeQty(menuItemId, -1)}
-                          >
-                            {line.quantity === 1 ? <Trash2 /> : <Minus />}
-                          </Button>
+                      <li key={line.key} className={cashierPos.ticketLine}>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-[#111827]">
+                            {language === "ar" ? line.nameAr : line.nameEn}
+                          </p>
+                          <p className="text-xs text-[#6b7280]">
+                            {line.unitPrice} × {line.quantity}
+                          </p>
+                        </div>
+                        {invoiceView.editable && menuItemId != null ? (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              className="size-11"
+                              aria-label={
+                                line.quantity === 1 ? t("removeLine") : t("qty")
+                              }
+                              onClick={() => changeQty(menuItemId, -1)}
+                            >
+                              {line.quantity === 1 ? <Trash2 /> : <Minus />}
+                            </Button>
+                            <span className="w-8 text-center text-sm font-semibold text-[#111827]">
+                              {line.quantity}
+                            </span>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              className="size-11"
+                              aria-label={t("qty")}
+                              onClick={() => changeQty(menuItemId, 1)}
+                            >
+                              <Plus />
+                            </Button>
+                          </div>
+                        ) : (
                           <span className="w-8 text-center text-sm font-semibold text-[#111827]">
                             {line.quantity}
                           </span>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            className="size-11"
-                            aria-label={t("qty")}
-                            onClick={() => changeQty(menuItemId, 1)}
-                          >
-                            <Plus />
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="w-8 text-center text-sm font-semibold text-[#111827]">
-                          {line.quantity}
-                        </span>
-                      )}
-                      <p className="w-16 text-end text-sm font-semibold tabular-nums text-[#111827]">
-                        {line.lineTotal}
-                      </p>
-                    </li>
+                        )}
+                        <p className="w-16 text-end text-sm font-semibold tabular-nums text-[#111827]">
+                          {line.lineTotal}
+                        </p>
+                      </li>
                     );
                   })}
                 </ul>
               )}
+
               <div className={cashierPos.totalBox}>
                 <p className="flex justify-between text-sm text-[#6b7280]">
                   <span>{t("ticketSubtotal")}</span>
@@ -1514,14 +1541,7 @@ export function CashierWorkspacePanel({
                   <span className="text-sm font-semibold text-[#111827]">
                     {t("ticketTotal")}
                   </span>
-                  <span className={cashierPos.totalValue}>
-                    {money(
-                      sheetMoney?.grandTotal ??
-                        ticketMoney?.grandTotal ??
-                        ticketTotal ??
-                        "0.00"
-                    )}
-                  </span>
+                  <span className={cashierPos.totalValue}>{payAmountLabel}</span>
                 </p>
                 {discountOpen && invoiceView.editable ? (
                   <div className="mt-3 flex gap-2">
@@ -1585,11 +1605,13 @@ export function CashierWorkspacePanel({
                   </Button>
                 ) : null}
               </div>
+
               <Button
                 type="button"
                 className={cn(cashierPos.primaryAction, "mt-3")}
                 disabled={
                   !terminalId ||
+                  contextualMode === "payment" ||
                   (directSale
                     ? Boolean(paidCheckout)
                     : ticket.length === 0)
@@ -1609,321 +1631,533 @@ export function CashierWorkspacePanel({
                   void placeSale();
                 }}
               >
-                <ShoppingCart />
-                {t("placeSale")}
+                {t("payWithAmount")} — {payAmountLabel}
               </Button>
             </div>
+          </section>
 
-            <div className={cashierPos.checkout}>
-              <p className="mb-2 text-xs font-semibold text-[#6b7280]">
-                {t("incomingOrders")}
-              </p>
-              {invoiceIntentsQuery.isPending ? (
-                <AppLoadingState label={t("loading")} />
-              ) : awaitingIntents.length === 0 ? (
-                <p className="text-sm text-[#6b7280]">{t("noIncomingOrders")}</p>
-              ) : (
-                <ul className="mb-3 flex flex-col gap-2">
-                  {awaitingIntents.map((intent) => (
-                    <li key={intent.invoiceIntentId}>
-                      <button
-                        type="button"
-                        className={
-                          selectedOrderId === intent.orderId
-                            ? cashierPos.orderBtnActive
-                            : cashierPos.orderBtn
-                        }
-                        onClick={() => void selectOrder(intent.orderId)}
-                      >
-                        <span className="block font-medium text-[#111827]">
-                          {intent.displayReference || intent.orderNumber}
-                        </span>
-                        <span className="text-xs text-[#6b7280]">
-                          {t("incomingOperationalOrder")} {intent.orderNumber}
-                          {intent.tableNumber != null
-                            ? ` · ${t("incomingTable")} ${intent.tableNumber}`
-                            : ""}
-                          {intent.sessionId != null
-                            ? ` · session ${intent.sessionId}`
-                            : ""}{" "}
-                          · {intent.sourceChannel} · {intent.items.length}{" "}
-                          {t("incomingOrderItems")} · {intent.expectedGrandTotal}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+          {/* CENTER — Product workspace */}
+          <div className={cashierPos.catalog}>
+            <div className={cashierPos.catalogToolbar}>
+              <input
+                className={cashierPos.catalogSearch}
+                value={productSearch}
+                onChange={(event) => setProductSearch(event.target.value)}
+                placeholder={t("productSearch")}
+                aria-label={t("productSearch")}
+              />
+              <div className={cashierPos.catalogTools}>
+                <label className="flex items-center gap-2 text-xs text-[#6b7280]">
+                  <span>{t("sortBy")}</span>
+                  <select
+                    className="min-h-10 rounded-lg border border-[#d8dee6] bg-white px-2 text-sm text-[#111827]"
+                    value={catalogSort}
+                    onChange={(event) =>
+                      setCatalogSort(event.target.value as CatalogSort)
+                    }
+                  >
+                    <option value="default">{t("sortDefault")}</option>
+                    <option value="name">{t("sortName")}</option>
+                    <option value="price">{t("sortPrice")}</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div className={cashierPos.categoryBar}>
               <button
                 type="button"
-                className={cashierPos.headerBtn}
-                onClick={() => setOrdersOpen((open) => !open)}
+                className={cn(
+                  cashierPos.categoryTile,
+                  categoryFilter === "all"
+                    ? cashierAllCategoryTint().selected
+                    : cashierAllCategoryTint().idle
+                )}
+                onClick={() => setCategoryFilter("all")}
               >
-                {ordersOpen ? t("hideActiveOrders") : t("showActiveOrders")}
+                {t("allCategories")}
               </button>
-              {ordersOpen ? (
-                <div className="mt-3">
-                  {ordersQuery.isPending ? (
-                    <AppLoadingState label={t("loading")} />
-                  ) : orders.length === 0 ? (
-                    <p className="text-sm text-[#6b7280]">{t("noOrders")}</p>
-                  ) : (
-                    <>
-                      <ul className="mb-3 flex flex-col gap-2">
-                        {orders.map((order) => (
-                          <li key={order.orderId}>
-                            <button
-                              type="button"
-                              className={
-                                selectedOrderId === order.orderId
-                                  ? cashierPos.orderBtnActive
-                                  : cashierPos.orderBtn
-                              }
-                              onClick={() => void selectOrder(order.orderId)}
-                            >
-                              <span className="block font-medium text-[#111827]">
-                                {order.displayReference || order.orderNumber}
-                              </span>
-                              <span className="text-xs text-[#6b7280]">
-                                {order.status} · {order.totalAmount}
-                              </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                  {selectedOrderId != null && detailQuery.data ? (
-                    <>
-                      <p className="text-sm text-[#111827]">
-                        {t("orderCreated")}: {detailQuery.data.order.displayReference} ·{" "}
-                        {detailQuery.data.order.status}
+              <button
+                type="button"
+                className={cn(
+                  cashierPos.categoryTile,
+                  categoryFilter === "favorites"
+                    ? cashierFavoritesCategoryTint().selected
+                    : cashierFavoritesCategoryTint().idle
+                )}
+                onClick={() => setCategoryFilter("favorites")}
+              >
+                {t("favorites")}
+              </button>
+              {categories.map((category) => {
+                const tint = resolveCashierCategoryTint(category);
+                return (
+                  <button
+                    key={category.id}
+                    type="button"
+                    className={cn(
+                      cashierPos.categoryTile,
+                      categoryFilter === category.id ? tint.selected : tint.idle
+                    )}
+                    onClick={() => setCategoryFilter(category.id)}
+                  >
+                    {categoryLabel(
+                      language,
+                      category.nameAr,
+                      category.nameEn,
+                      t("unknownCategory")
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className={cashierPos.catalogScroll}>
+              {catalogQuery.isPending ? (
+                <AppLoadingState label={t("loading")} />
+              ) : visibleItems.length === 0 ? (
+                <AppEmptyState title={t("emptyCatalog")} />
+              ) : (
+                <div className={cashierPos.productGrid}>
+                  {visibleItems.map((item) => {
+                    const itemName =
+                      language === "ar"
+                        ? item.nameAr
+                        : item.nameEn ?? item.nameAr;
+                    return (
+                      <CashierProductCard
+                        key={item.menuItemId}
+                        item={{
+                          menuItemId: item.menuItemId,
+                          name: itemName,
+                          price: item.price,
+                          imageUrl: item.imageUrl,
+                          isAvailable: item.isAvailable,
+                        }}
+                        currencyLabel={money}
+                        availableLabel={t("available")}
+                        unavailableLabel={t("unavailable")}
+                        addLabel={t("addProduct")}
+                        favorite={favoriteIdSet.has(item.menuItemId)}
+                        flash={flashItemId === item.menuItemId}
+                        disabled={salePhase === "payment" || Boolean(paidCheckout)}
+                        onToggleFavorite={() => {
+                          setFavoriteIds(
+                            toggleCashierFavoriteId(
+                              restaurantId,
+                              item.menuItemId
+                            )
+                          );
+                        }}
+                        onAdd={() =>
+                          addItem({
+                            menuItemId: item.menuItemId,
+                            nameAr: item.nameAr,
+                            nameEn: item.nameEn,
+                            price: item.price,
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT — Contextual workspace */}
+          <aside className={cashierPos.aside}>
+            {contextualMode === "payment" ? (
+              <div
+                className={cashierPos.overlay}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t("paymentWorkspace")}
+              >
+                <div className={cashierPos.sheet} dir={dir}>
+                  <h2 className="text-lg font-semibold">
+                    {t("completePaymentTitle")}
+                  </h2>
+                  {sheetMoney ? (
+                    <div className="mt-4 space-y-1">
+                      <p className="flex justify-between text-sm text-[#6b7280]">
+                        <span>{t("ticketSubtotal")}</span>
+                        <span className="tabular-nums">
+                          {money(sheetMoney.subtotal)}
+                        </span>
                       </p>
-                      <div className="mt-3">
-                        <h3 className="mb-1 text-xs font-semibold text-[#6b7280]">
-                          {t("timeline")}
-                        </h3>
-                        <ul className="text-xs text-[#6b7280]">
-                          {(timelineQuery.data?.events ?? []).map((event) => (
-                            <li key={event.eventId}>
-                              {event.toStatus} · {event.occurredAt}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                      <p className="flex justify-between text-sm text-[#6b7280]">
+                        <span>{t("ticketDiscount")}</span>
+                        <span className="tabular-nums">
+                          {isPositiveDisplayMoney(sheetMoney.discount)
+                            ? `-${money(sheetMoney.discount)}`
+                            : money("0.00")}
+                        </span>
+                      </p>
+                      <p className="flex justify-between text-sm text-[#6b7280]">
+                        <span>{t("paymentTax")}</span>
+                        <span className="tabular-nums">
+                          {money(sheetMoney.taxAmount)}
+                        </span>
+                      </p>
+                    </div>
+                  ) : null}
+                  <p className="mt-4 text-sm font-medium text-[#6b7280]">
+                    {t("amountDue")}
+                  </p>
+                  <p className={cashierPos.amountDueHuge}>
+                    {amountDue
+                      ? money(amountDue)
+                      : sheetMoney
+                        ? money(sheetMoney.grandTotal)
+                        : money("0.00")}
+                  </p>
+                  {paying ? (
+                    <p className="mt-1 text-xs text-[#6b7280]">{t("paying")}</p>
+                  ) : null}
+                  <p className="mb-2 mt-4 text-sm font-medium">
+                    {t("choosePaymentMethod")}
+                  </p>
+                  <div className={cashierPos.methodGrid}>
+                    {(
+                      [
+                        ["cash", "tenderCash"],
+                        ["network", "tenderNetwork"],
+                        ["mixed", "tenderMixed"],
+                        ["complimentary", "tenderComplimentary"],
+                      ] as const
+                    ).map(([mode, label]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={
+                          tenderMode === mode
+                            ? cashierPos.methodBtnActive
+                            : cashierPos.methodBtn
+                        }
+                        onClick={() => {
+                          setTenderMode(mode);
+                          if (mode === "complimentary") {
+                            setPaymentMethod("cash");
+                            setCardTender("");
+                            setCashReceived("");
+                          } else if (mode === "cash") {
+                            setPaymentMethod("cash");
+                            setCardTender("");
+                            setCashReceived(
+                              amountDue ?? sheetMoney?.grandTotal ?? ""
+                            );
+                          } else if (mode === "network") {
+                            setPaymentMethod("card");
+                            setCashReceived("");
+                            setCardTender(
+                              amountDue ?? sheetMoney?.grandTotal ?? ""
+                            );
+                          } else {
+                            setPaymentMethod("cash");
+                            setCashReceived("");
+                            setCardTender("");
+                          }
+                        }}
+                      >
+                        {t(label)}
+                      </button>
+                    ))}
+                  </div>
+                  {tenderMode === "complimentary" ? (
+                    <p className="mt-3 text-sm text-[#6b7280]">
+                      {t("complimentaryConfirmHint")}
+                    </p>
+                  ) : null}
+                  {tenderMode === "cash" || tenderMode === "mixed" ? (
+                    <div className="mt-3">
+                      <label
+                        className="text-sm font-medium"
+                        htmlFor="cashier-tender-cash"
+                      >
+                        {tenderMode === "cash"
+                          ? t("amountReceived")
+                          : t("tenderCash")}
+                      </label>
+                      <input
+                        id="cashier-tender-cash"
+                        className={cn(cashierPos.moneyInput, "mt-1")}
+                        inputMode="decimal"
+                        disabled={paying}
+                        value={cashReceived}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          setCashReceived(next);
+                          persistDirectSaleSnapshot({
+                            received: next,
+                            method: "cash",
+                          });
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                  {tenderMode === "network" || tenderMode === "mixed" ? (
+                    <div className="mt-3">
+                      <label
+                        className="text-sm font-medium"
+                        htmlFor="cashier-tender-card"
+                      >
+                        {t("tenderNetwork")}
+                      </label>
+                      <input
+                        id="cashier-tender-card"
+                        className={cn(cashierPos.moneyInput, "mt-1")}
+                        inputMode="decimal"
+                        disabled={paying}
+                        value={cardTender}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          setCardTender(next);
+                          persistDirectSaleSnapshot({
+                            card: next,
+                            method: "card",
+                          });
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                  {tenderMode != null && tenderMode !== "complimentary" ? (
+                    <>
+                      <p className="mt-3 flex justify-between text-sm">
+                        <span>{t("totalTendered")}</span>
+                        <span className="tabular-nums font-semibold">
+                          {money(tenderedShown)}
+                        </span>
+                      </p>
+                      <p className="mt-1 flex justify-between text-sm">
+                        <span>{t("remainingAmount")}</span>
+                        <span className="tabular-nums font-semibold">
+                          {money(remainingShown ?? "0.00")}
+                        </span>
+                      </p>
                     </>
                   ) : null}
-                </div>
-              ) : null}
-            </div>
-          </aside>
-        </div>
-      ) : null}
-
-      {salePhase === "payment" ? (
-        <div className={cashierPos.overlay} role="dialog" aria-modal="true">
-          <div className={cashierPos.sheet} dir={dir}>
-                <h2 className="text-lg font-semibold">{t("completePaymentTitle")}</h2>
-                {sheetMoney ? (
-                  <div className="mt-4 space-y-1">
-                    <p className="flex justify-between text-sm text-[#6b7280]">
-                      <span>{t("ticketSubtotal")}</span>
-                      <span className="tabular-nums">{money(sheetMoney.subtotal)}</span>
-                    </p>
-                    <p className="flex justify-between text-sm text-[#6b7280]">
-                      <span>{t("ticketDiscount")}</span>
-                      <span className="tabular-nums">
-                        {isPositiveDisplayMoney(sheetMoney.discount)
-                          ? `-${money(sheetMoney.discount)}`
-                          : money("0.00")}
+                  {cashChange ? (
+                    <p className="mt-1 flex justify-between text-sm">
+                      <span>{t("changeDue")}</span>
+                      <span className="tabular-nums font-semibold">
+                        {money(cashChange)}
                       </span>
                     </p>
-                    <p className="flex justify-between text-sm text-[#6b7280]">
-                      <span>{t("paymentTax")}</span>
-                      <span className="tabular-nums">{money(sheetMoney.taxAmount)}</span>
+                  ) : null}
+                  {tenderMode !== "complimentary" &&
+                  tenderPlan &&
+                  tenderPlan.remainingCents > 0 ? (
+                    <p className="mt-1 text-sm text-red-700">
+                      {t("underpayment")}
                     </p>
-                  </div>
-                ) : null}
-                <p className="mt-4 text-sm font-medium text-[#6b7280]">
-                  {t("amountDue")}
-                </p>
-                <p className={cashierPos.amountDueHuge}>
-                  {amountDue
-                    ? money(amountDue)
-                    : sheetMoney
-                      ? money(sheetMoney.grandTotal)
-                      : money("0.00")}
-                </p>
-                {paying ? (
-                  <p className="mt-1 text-xs text-[#6b7280]">{t("paying")}</p>
-                ) : null}
-                <p className="mb-2 mt-4 text-sm font-medium">{t("selectPaymentMethod")}</p>
-                <div className="flex gap-2">
-                  {(
-                    [
-                      ["cash", "tenderCash"],
-                      ["network", "tenderNetwork"],
-                      ["mixed", "tenderMixed"],
-                      ["complimentary", "tenderComplimentary"],
-                    ] as const
-                  ).map(([mode, label]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      className={
-                        tenderMode === mode
-                          ? cashierPos.methodBtnActive
-                          : cashierPos.methodBtn
-                      }
-                      onClick={() => {
-                        setTenderMode(mode);
-                        if (mode === "complimentary") {
-                          setPaymentMethod("cash");
-                          setCardTender("");
-                          setCashReceived("");
-                        } else if (mode === "cash") {
-                          setPaymentMethod("cash");
-                          setCardTender("");
-                          setCashReceived(amountDue ?? sheetMoney?.grandTotal ?? "");
-                        } else if (mode === "network") {
-                          setPaymentMethod("card");
-                          setCashReceived("");
-                          setCardTender(amountDue ?? sheetMoney?.grandTotal ?? "");
-                        } else {
-                          setPaymentMethod("cash");
-                          setCashReceived("");
-                          setCardTender("");
-                        }
-                      }}
-                    >
-                      {t(label)}
-                    </button>
-                  ))}
-                </div>
-                {tenderMode === "complimentary" ? (
-                  <p className="mt-3 text-sm text-[#6b7280]">
-                    {t("complimentaryConfirmHint")}
-                  </p>
-                ) : null}
-                {tenderMode === "cash" || tenderMode === "mixed" ? (
-                  <div className="mt-3">
-                    <label className="text-sm font-medium" htmlFor="cashier-tender-cash">
-                      {t("tenderCash")}
-                    </label>
-                    <input
-                      id="cashier-tender-cash"
-                      className={cn(cashierPos.moneyInput, "mt-1")}
-                      inputMode="decimal"
-                      disabled={paying}
-                      value={cashReceived}
-                      onChange={(event) => {
-                        const next = event.target.value;
-                        setCashReceived(next);
-                        persistDirectSaleSnapshot({
-                          received: next,
-                          method: "cash",
-                        });
-                      }}
-                    />
-                  </div>
-                ) : null}
-                {tenderMode === "network" || tenderMode === "mixed" ? (
-                  <div className="mt-3">
-                    <label className="text-sm font-medium" htmlFor="cashier-tender-card">
-                      {t("tenderNetwork")}
-                    </label>
-                    <input
-                      id="cashier-tender-card"
-                      className={cn(cashierPos.moneyInput, "mt-1")}
-                      inputMode="decimal"
-                      disabled={paying}
-                      value={cardTender}
-                      onChange={(event) => {
-                        const next = event.target.value;
-                        setCardTender(next);
-                        persistDirectSaleSnapshot({
-                          card: next,
-                          method: "card",
-                        });
-                      }}
-                    />
-                  </div>
-                ) : null}
-                {tenderMode != null && tenderMode !== "complimentary" ? (
-                  <>
-                <p className="mt-3 flex justify-between text-sm">
-                  <span>{t("totalTendered")}</span>
-                  <span className="tabular-nums font-semibold">
-                    {money(tenderedShown)}
-                  </span>
-                </p>
-                <p className="mt-1 flex justify-between text-sm">
-                  <span>{t("remainingAmount")}</span>
-                  <span className="tabular-nums font-semibold">
-                    {money(remainingShown ?? "0.00")}
-                  </span>
-                </p>
-                  </>
-                ) : null}
-                {cashChange ? (
-                  <p className="mt-1 flex justify-between text-sm">
-                    <span>{t("changeDue")}</span>
-                    <span className="tabular-nums font-semibold">{money(cashChange)}</span>
-                  </p>
-                ) : null}
-                {tenderMode !== "complimentary" &&
-                tenderPlan &&
-                tenderPlan.remainingCents > 0 ? (
-                  <p className="mt-1 text-sm text-red-700">{t("underpayment")}</p>
-                ) : null}
-                {paymentReadiness.showCardOverTender ? (
-                  <p className="mt-1 text-sm text-red-700">{t("cardOverTender")}</p>
-                ) : null}
-                {registerGap ? (
-                  <div className={cn(cashierPos.warnBox, "mt-4")}>
-                    <p className="text-sm font-medium">{t("shiftBeforePay")}</p>
-                    <p className="mt-1 text-sm">
-                      {t(
-                        registerGap === "shift_required"
-                          ? "shiftRequired"
-                          : registerGap === "register_closed"
-                            ? "registerClosed"
-                            : "registerRequired"
-                      )}
+                  ) : null}
+                  {paymentReadiness.showCardOverTender ? (
+                    <p className="mt-1 text-sm text-red-700">
+                      {t("cardOverTender")}
                     </p>
+                  ) : null}
+                  {registerGap ? (
+                    <div className={cn(cashierPos.warnBox, "mt-4")}>
+                      <p className="text-sm font-medium">{t("shiftBeforePay")}</p>
+                      <p className="mt-1 text-sm">
+                        {t(
+                          registerGap === "shift_required"
+                            ? "shiftRequired"
+                            : registerGap === "register_closed"
+                              ? "registerClosed"
+                              : "registerRequired"
+                        )}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-3 min-h-12"
+                        onClick={openRegisterOps}
+                      >
+                        {t("openRegisterOps")}
+                      </Button>
+                    </div>
+                  ) : null}
+                  <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       type="button"
                       variant="outline"
-                      className="mt-3 min-h-12"
-                      onClick={openRegisterOps}
+                      className="min-h-12 min-w-28 flex-1"
+                      disabled={paying}
+                      onClick={cancelPaymentSheet}
                     >
-                      {t("openRegisterOps")}
+                      {t("cancelPayment")}
+                    </Button>
+                    <Button
+                      type="button"
+                      className={cn(cashierPos.primaryAction, "flex-1")}
+                      disabled={
+                        paymentReadiness.confirmDisabled || tenderMode == null
+                      }
+                      onClick={() => void completePayment()}
+                    >
+                      {paying ? t("paying") : t("confirmPayment")}
                     </Button>
                   </div>
-                ) : null}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-12 min-w-28 flex-1"
-                    disabled={paying}
-                    onClick={cancelPaymentSheet}
-                  >
-                    {t("cancelPayment")}
-                  </Button>
-                  <Button
-                    type="button"
-                    className={cn(cashierPos.primaryAction, "flex-1")}
-                    disabled={
-                      paymentReadiness.confirmDisabled ||
-                      tenderMode == null
-                    }
-                    onClick={() => void completePayment()}
-                  >
-                    {paying ? t("paying") : t("confirmPayment")}
-                  </Button>
                 </div>
-          </div>
+              </div>
+            ) : contextualMode === "paid" ? (
+              <div className={cashierPos.contextualRail}>
+                <div className={cashierPos.contextualHeader}>
+                  <h2 className={cashierPos.contextualTitle}>
+                    {t("paidWorkspaceTitle")}
+                  </h2>
+                </div>
+                <div className={cashierPos.contextualScroll}>
+                  <div className={cashierPos.paidBox}>
+                    <p className={cashierPos.paidStamp}>✓ {t("receiptPaidStamp")}</p>
+                    <p className="mt-2 text-2xl font-bold tabular-nums">
+                      {money(paidCheckout?.grandTotal ?? "0.00")}
+                    </p>
+                  </div>
+                  <div className="mt-4 flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      className={cashierPos.primaryAction}
+                      onClick={() => setPrintOpen(true)}
+                      disabled={!paidReceipt}
+                    >
+                      {t("printInvoice")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cashierPos.secondaryAction}
+                      disabled
+                    >
+                      {t("sendInvoice")}
+                    </Button>
+                    <Button
+                      type="button"
+                      className={cashierPos.secondaryAction}
+                      onClick={startNewSale}
+                    >
+                      {t("newSale")}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className={cashierPos.contextualRail}>
+                <div className={cashierPos.contextualHeader}>
+                  <h2 className={cashierPos.contextualTitle}>
+                    {t("incomingOrders")} · {t("incomingCount")}
+                  </h2>
+                  <span className={cashierPos.contextualBadge}>
+                    {awaitingIntents.length}
+                  </span>
+                </div>
+                <div className={cashierPos.contextualScroll}>
+                  {invoiceIntentsQuery.isPending ? (
+                    <AppLoadingState label={t("loading")} />
+                  ) : awaitingIntents.length === 0 ? (
+                    <p className="text-sm text-[#6b7280]">
+                      {t("noIncomingOrders")}
+                    </p>
+                  ) : (
+                    <ul className="mb-3 flex flex-col gap-2">
+                      {awaitingIntents.map((intent) => (
+                        <li key={intent.invoiceIntentId}>
+                          <button
+                            type="button"
+                            className={
+                              selectedOrderId === intent.orderId
+                                ? cashierPos.orderBtnActive
+                                : cashierPos.orderBtn
+                            }
+                            onClick={() => void selectOrder(intent.orderId)}
+                          >
+                            <span className="block font-medium text-[#111827]">
+                              #{intent.orderNumber}
+                              {intent.tableNumber != null
+                                ? ` · ${t("incomingTable")} ${intent.tableNumber}`
+                                : ""}
+                            </span>
+                            <span className="text-xs text-[#6b7280]">
+                              {t("incomingOperationalOrder")}{" "}
+                              {intent.displayReference || intent.orderNumber}
+                              {intent.sessionId != null
+                                ? ` · session ${intent.sessionId}`
+                                : ""}{" "}
+                              · {intent.sourceChannel} · {intent.items.length}{" "}
+                              {t("incomingOrderItems")} ·{" "}
+                              {intent.expectedGrandTotal}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <button
+                    type="button"
+                    className={cashierPos.secondaryAction}
+                    onClick={() => setOrdersOpen((open) => !open)}
+                  >
+                    {ordersOpen ? t("hideActiveOrders") : t("showActiveOrders")}
+                  </button>
+                  {ordersOpen ? (
+                    <div className="mt-3">
+                      {ordersQuery.isPending ? (
+                        <AppLoadingState label={t("loading")} />
+                      ) : orders.length === 0 ? (
+                        <p className="text-sm text-[#6b7280]">{t("noOrders")}</p>
+                      ) : (
+                        <ul className="mb-3 flex flex-col gap-2">
+                          {orders.map((order) => (
+                            <li key={order.orderId}>
+                              <button
+                                type="button"
+                                className={
+                                  selectedOrderId === order.orderId
+                                    ? cashierPos.orderBtnActive
+                                    : cashierPos.orderBtn
+                                }
+                                onClick={() => void selectOrder(order.orderId)}
+                              >
+                                <span className="block font-medium text-[#111827]">
+                                  {order.displayReference || order.orderNumber}
+                                </span>
+                                <span className="text-xs text-[#6b7280]">
+                                  {order.status} · {order.totalAmount}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {selectedOrderId != null && detailQuery.data ? (
+                        <>
+                          <p className="text-sm text-[#111827]">
+                            {t("orderCreated")}:{" "}
+                            {detailQuery.data.order.displayReference} ·{" "}
+                            {detailQuery.data.order.status}
+                          </p>
+                          <div className="mt-3">
+                            <h3 className="mb-1 text-xs font-semibold text-[#6b7280]">
+                              {t("timeline")}
+                            </h3>
+                            <ul className="text-xs text-[#6b7280]">
+                              {(timelineQuery.data?.events ?? []).map(
+                                (event) => (
+                                  <li key={event.eventId}>
+                                    {event.toStatus} · {event.occurredAt}
+                                  </li>
+                                )
+                              )}
+                            </ul>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </aside>
         </div>
       ) : null}
       </div>

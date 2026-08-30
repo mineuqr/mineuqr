@@ -61,7 +61,10 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
     expect(panel).not.toMatch(/SUM\s*\(\s*grandTotal/);
     expect(panel).not.toContain("pos_revenue");
     expect(panel).not.toContain("IdentityPlaceOrder");
-    expect(panel).toContain("resolveImageUrl");
+    expect(read("client/src/components/cashier-workspace/CashierProductCard.tsx")).toContain(
+      "resolveImageUrl"
+    );
+    expect(panel).toContain("CashierProductCard");
     expect(panel).toContain("categoryNameAr");
     expect(panel).toContain("tenderCash");
     expect(panel).toContain('section: "register"');

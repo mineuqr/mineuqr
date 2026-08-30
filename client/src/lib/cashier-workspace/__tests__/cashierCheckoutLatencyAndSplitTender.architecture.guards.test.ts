@@ -24,7 +24,8 @@ describe("CASHIER-CHECKOUT-LATENCY-AND-SPLIT-TENDER-1 architecture guards", () =
     expect(place).toContain("cashier-pos-inbound-accept");
     expect(place).toContain("CASHIER_POS_INBOUND_STATUS");
     expect(place).not.toContain("const accepted = await this.repository.save");
-    expect(repo).toContain("persisted.status !== snapshot.status");
+    expect(repo).toContain("persisted.status !== createStatus");
+    expect(repo).toContain("createRowStatus");
   });
 
   it("forwards existing Check settlement lines and does not invent POS money tables", () => {
@@ -32,7 +33,7 @@ describe("CASHIER-CHECKOUT-LATENCY-AND-SPLIT-TENDER-1 architecture guards", () =
     const settle = read(SETTLE);
     const router = read(ROUTER);
     const schema = read("drizzle/schema.ts");
-    expect(panel).toContain("settlements: [...plan.settlements]");
+    expect(panel).toContain("settlements: [...plan!.settlements]");
     expect(panel).toContain("resolveCashierSettlementPlan");
     expect(panel).not.toContain("pos_cash");
     expect(panel).not.toContain("pos_card");

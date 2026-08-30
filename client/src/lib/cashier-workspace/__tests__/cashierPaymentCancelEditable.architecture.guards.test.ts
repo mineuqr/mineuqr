@@ -45,15 +45,15 @@ describe("CASHIER-PAYMENT-CANCEL-RETURN-TO-EDITABLE-1 architecture guards", () =
 
   it("does not show P# / invoice date / time on the left editable SALE/INVOICE", () => {
     const panel = read(PANEL);
-    const aside = panel.slice(
-      panel.indexOf("cashierPos.aside"),
-      panel.indexOf("cashierPos.overlay")
+    const orderRail = panel.slice(
+      panel.indexOf("cashierPos.orderRail"),
+      panel.indexOf("cashierPos.catalog")
     );
-    expect(aside).not.toContain('t("receiptInvoiceNumber")');
-    expect(aside).not.toContain('t("receiptDate")');
-    expect(aside).not.toContain('t("receiptTime")');
-    expect(aside).not.toContain("invoiceView.displayReference");
-    expect(aside).not.toContain("invoiceWhen");
+    expect(orderRail).not.toContain('t("receiptInvoiceNumber")');
+    expect(orderRail).not.toContain('t("receiptDate")');
+    expect(orderRail).not.toContain('t("receiptTime")');
+    expect(orderRail).not.toContain("invoiceView.displayReference");
+    expect(orderRail).not.toContain("invoiceWhen");
     const overlay = panel.slice(panel.indexOf("cashierPos.overlay"));
     expect(overlay).not.toContain('t("receiptInvoiceNumber")');
     expect(overlay).not.toContain("directSale.displayReference");
