@@ -74,11 +74,14 @@ Domain tables/services under Saudi Compliance; no SA branching in Global Financi
 
 ## Production
 
-Pending migrate verification in this report’s commit/push section.
+| Item | Value |
+|------|-------|
+| `pnpm run db:migrate` | **SUCCESS** (`0107_saudi_tax_invoices`) |
+| Nature | Additive `CREATE TABLE` only |
 
 ## Tests
 
-Focused domain + classification + architecture + evaluation + governance + sale-customer: **PASS**  
+Focused domain + classification + architecture + evaluation + governance + sale-customer + tax-profile: **PASS**  
 `pnpm run check` (tsc): **PASS**  
 `pnpm run db:governance-check`: **PASS**
 
@@ -88,11 +91,19 @@ PASS
 
 ## Governance
 
-PASS (terminus 0107)
+PASS (terminus 0107 / 108 entries)
 
-## Commit / Push / Working Tree
+## Commit
 
-Filled after git steps.
+`7b9da32d` — `feat(tax): establish Saudi tax invoice domain foundation`
+
+## Push
+
+`origin/main` updated (`de6a6991..7b9da32d`)
+
+## Working Tree
+
+Clean after docs SHA record (if follow-up); feature commit pushed.
 
 ## Deferred
 
@@ -118,6 +129,14 @@ Filled after git steps.
 ## Open Questions
 
 Same as Needs Official Confirmation (policy, not architecture conflicts).
+
+## SHAs
+
+| Field | Value |
+|-------|-------|
+| Feature commit | `7b9da32d` |
+| HEAD == origin/main | **YES** (at feature push) |
+| Production migrate 0107 | **SUCCESS** |
 
 ## Scope certification
 
