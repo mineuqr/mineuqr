@@ -144,6 +144,7 @@ import {
 import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextResolver";
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
+import { dispatchComplianceAfterProductionCollectionFact } from "../../compliance/dispatchComplianceAfterProductionCollectionFact";
 import { dispatchBestEffortDownstreamDelivery } from "../payment/dispatchBestEffortDownstreamDelivery";
 import { buildCashierPaidReceiptProjection } from "../payment/cashierPaidReceiptProjection";
 import type { CashierPaidReceiptProjection } from "../payment/cashierPaidReceiptProjection";
@@ -2061,6 +2062,13 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
     committed && typeof committed === "object" && "fact" in committed
       ? committed.fact
       : null;
+  const commitOutcome =
+    committed &&
+    typeof committed === "object" &&
+    "outcome" in committed &&
+    (committed.outcome === "created" || committed.outcome === "replayed")
+      ? committed.outcome
+      : "created";
 
   // CASHIER-INCOMING-POSTPAYMENT-CRMP-DUPLICATE-CLEANUP-1
   // CRMP is owned by Check finalization (same as Direct). Do not attribute here.
@@ -2132,6 +2140,16 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
       terminalId: input.terminalId ?? "",
     }),
   };
+
+  if (collectionFact && "collectionFactId" in collectionFact) {
+    dispatchComplianceAfterProductionCollectionFact({
+      restaurantId: input.restaurantId,
+      orderId: input.orderId,
+      collectionFactId: collectionFact.collectionFactId,
+      committedAt: collectionFact.committedAt,
+      commitOutcome,
+    });
+  }
 
   dispatchBestEffortDownstreamDelivery({
     delivery: () =>

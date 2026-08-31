@@ -23,6 +23,7 @@ import {
   type CashierPaidMoneyFreeze,
 } from "../../operational-session/payment/collection-fact/commitCashierProductionCollectionFact";
 import { createDrizzleCollectionFactStore } from "../../operational-session/payment/collection-fact/collectionFactRepository";
+import { dispatchComplianceAfterProductionCollectionFact } from "../../compliance/dispatchComplianceAfterProductionCollectionFact";
 import { dispatchBestEffortDownstreamDelivery } from "../../operational-session/payment/dispatchBestEffortDownstreamDelivery";
 import {
   allocateCashierInvoiceForOrder,
@@ -78,6 +79,9 @@ export async function finalizeCashierPreparedInvoice(
   let dailyDisplayNumber: number | null = null;
   let identityScope: string | null = "POS";
   let invoiceNumber: string | null = null;
+  let collectionFactId: string | null = null;
+  let collectionFactCommittedAt: string | null = null;
+  let collectionFactOutcome: "created" | "replayed" = "created";
 
   const placed = await runOrderCommand(
     () =>
@@ -134,7 +138,7 @@ export async function finalizeCashierPreparedInvoice(
               tx as SessionDbClient
             );
             invoiceNumber = invoice.invoiceNumber;
-            await commitCashierProductionCollectionFact(
+            const committed = await commitCashierProductionCollectionFact(
               {
                 paymentIntentId: input.paymentIntentId,
                 idempotencyKey: input.idempotencyKey,
@@ -145,6 +149,9 @@ export async function finalizeCashierPreparedInvoice(
               },
               createDrizzleCollectionFactStore(tx as SessionDbClient)
             );
+            collectionFactId = committed.fact.collectionFactId;
+            collectionFactCommittedAt = committed.fact.committedAt;
+            collectionFactOutcome = committed.outcome;
           },
         }
       ),
@@ -182,6 +189,17 @@ export async function finalizeCashierPreparedInvoice(
     ? placed.displayReference
     : paidReceipt.displayReference;
   const receipt = { ...paidReceipt, displayReference };
+
+  if (collectionFactId && collectionFactCommittedAt) {
+    dispatchComplianceAfterProductionCollectionFact({
+      restaurantId: input.restaurantId,
+      orderId,
+      collectionFactId,
+      committedAt: collectionFactCommittedAt,
+      commitOutcome: collectionFactOutcome,
+      cashierInvoiceNumber: invoiceNumber,
+    });
+  }
 
   dispatchBestEffortDownstreamDelivery({
     delivery: () =>
