@@ -93,13 +93,13 @@ describe("mapSaudiPhase1DocumentToCashierView", () => {
     expect(view.lines).toHaveLength(1);
   });
 
-  it("maps standard tax invoice buyer VAT from document, not live customer", () => {
+  it("maps standard tax invoice with Phase 1 QR under ALWAYS_FOR_TAX_INVOICES policy", () => {
     const view = mapSaudiPhase1DocumentToCashierView(
       baseDoc({
         invoiceForm: "standard_tax_invoice",
         titles: { ar: "فاتورة ضريبية", en: "Tax Invoice" },
-        qrRequired: false,
-        qrPayloadBase64: null,
+        qrRequired: true,
+        qrPayloadBase64: "BASE64QR-STANDARD",
         buyer: {
           kind: "customer",
           customerId: 9,
@@ -117,7 +117,7 @@ describe("mapSaudiPhase1DocumentToCashierView", () => {
     expect(view.titleAr).toBe("فاتورة ضريبية");
     expect(view.buyerLabelAr).toBe("شركة النور");
     expect(view.buyerVatNumber).toBe("300111111111113");
-    expect(view.qrRequired).toBe(false);
-    expect(view.qrPayloadBase64).toBeNull();
+    expect(view.qrRequired).toBe(true);
+    expect(view.qrPayloadBase64).toBe("BASE64QR-STANDARD");
   });
 });

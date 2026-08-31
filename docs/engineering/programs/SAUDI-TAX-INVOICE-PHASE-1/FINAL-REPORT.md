@@ -10,7 +10,7 @@
 
 ## Phase 1 Requirements Implemented
 
-Electronic generation · Simplified mandatory QR · Tax Invoice title · buyer VAT on Standard · seller snapshot · storage · HTML render · numbering sequence · tenant-scoped read API
+Electronic generation · Simplified + Standard Phase 1 QR (product policy ALWAYS_FOR_TAX_INVOICES; regulatory minimum remains Simplified) · Tax Invoice title · buyer VAT on Standard · seller snapshot · storage · HTML render · numbering sequence · tenant-scoped read API
 
 ## Migration
 

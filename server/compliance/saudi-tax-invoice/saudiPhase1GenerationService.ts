@@ -1,5 +1,6 @@
 /**
  * SAUDI-TAX-INVOICE-PHASE-1
+ * SAUDI-TAX-INVOICE-PHASE-1-QR-UNIFICATION-1 — QR for Simplified + Standard.
  * Apply Phase 1 generation (number + QR + structured document) onto an existing Tax Invoice.
  * Idempotent. Does not mutate Collection Fact / PAID.
  */
@@ -7,7 +8,7 @@
 import {
   buildSaudiPhase1Document,
   buildSaudiPhase1QrPayloadBase64,
-  isSimplifiedTaxInvoiceForm,
+  saudiPhase1QrRequired,
   type SaudiPhase1Document,
   type SaudiTaxInvoice,
 } from "@shared/compliance";
@@ -68,7 +69,7 @@ export async function applySaudiPhase1Generation(
 
   const sellerName = taxInvoice.sellerSnapshot.legalName?.trim() ?? "";
   const sellerVat = sellerVatForPhase1(taxInvoice);
-  const qrRequired = isSimplifiedTaxInvoiceForm(taxInvoice.invoiceForm);
+  const qrRequired = saudiPhase1QrRequired(taxInvoice.invoiceForm);
 
   if (!sellerName) {
     return markSaudiTaxInvoicePhase1Failure({
@@ -94,31 +95,41 @@ export async function applySaudiPhase1Generation(
     });
   }
 
-  const issueTimestampIso = resolveIssueTimestampIso(taxInvoice);
-  let qrPayloadBase64: string | null = null;
+  if (!qrRequired) {
+    return markSaudiTaxInvoicePhase1Failure({
+      restaurantId: taxInvoice.restaurantId,
+      taxInvoiceId: taxInvoice.taxInvoiceId,
+      status: "retryable",
+      failureCode: "PHASE1_QR_POLICY_UNSUPPORTED_FORM",
+      failureMessage:
+        "Phase 1 generation blocked: invoice form is not eligible for Saudi Phase 1 QR policy (PAID unchanged).",
+      attemptCount: taxInvoice.attemptCount + 1,
+    });
+  }
 
-  if (qrRequired) {
-    try {
-      qrPayloadBase64 = buildSaudiPhase1QrPayloadBase64({
-        sellerName,
-        sellerVatNumber: sellerVat,
-        timestampIso: issueTimestampIso,
-        invoiceTotalWithVat: taxInvoice.monetarySnapshot.amount,
-        vatTotal: taxInvoice.monetarySnapshot.taxAmount,
-      });
-    } catch (error) {
-      return markSaudiTaxInvoicePhase1Failure({
-        restaurantId: taxInvoice.restaurantId,
-        taxInvoiceId: taxInvoice.taxInvoiceId,
-        status: "retryable",
-        failureCode: "PHASE1_QR_BUILD_FAILED",
-        failureMessage:
-          error instanceof Error
-            ? error.message
-            : "Phase 1 QR build failed (PAID unchanged).",
-        attemptCount: taxInvoice.attemptCount + 1,
-      });
-    }
+  const issueTimestampIso = resolveIssueTimestampIso(taxInvoice);
+  let qrPayloadBase64: string;
+
+  try {
+    qrPayloadBase64 = buildSaudiPhase1QrPayloadBase64({
+      sellerName,
+      sellerVatNumber: sellerVat,
+      timestampIso: issueTimestampIso,
+      invoiceTotalWithVat: taxInvoice.monetarySnapshot.amount,
+      vatTotal: taxInvoice.monetarySnapshot.taxAmount,
+    });
+  } catch (error) {
+    return markSaudiTaxInvoicePhase1Failure({
+      restaurantId: taxInvoice.restaurantId,
+      taxInvoiceId: taxInvoice.taxInvoiceId,
+      status: "retryable",
+      failureCode: "PHASE1_QR_BUILD_FAILED",
+      failureMessage:
+        error instanceof Error
+          ? error.message
+          : "Phase 1 QR build failed (PAID unchanged).",
+      attemptCount: taxInvoice.attemptCount + 1,
+    });
   }
 
   const allocated =

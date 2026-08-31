@@ -8,7 +8,11 @@ import {
   classifySaudiTaxInvoiceFoundation,
   saudiPhase1InvoiceTitles,
   isSimplifiedTaxInvoiceForm,
+  saudiPhase1QrRequired,
+  SAUDI_PHASE_1_QR_POLICY,
+  buildSaudiPhase1Document,
 } from "@shared/compliance";
+import type { SaudiTaxInvoice } from "@shared/compliance";
 
 describe("Saudi Phase 1 QR TLV (official tags 1–5)", () => {
   it("encodes and decodes seller/VAT/timestamp/totals without Phase 2 tags", () => {
@@ -83,5 +87,125 @@ describe("Saudi Phase 1 classification", () => {
     });
     expect(result.invoiceForm).toBe("simplified_tax_invoice");
     expect(result.rationaleCode).not.toMatch(/NON_TAX/i);
+  });
+});
+
+describe("SAUDI-TAX-INVOICE-PHASE-1-QR-UNIFICATION-1 policy", () => {
+  it("requires Phase 1 QR for both Simplified and Standard (product policy)", () => {
+    expect(SAUDI_PHASE_1_QR_POLICY).toBe("ALWAYS_FOR_TAX_INVOICES");
+    expect(saudiPhase1QrRequired("simplified_tax_invoice")).toBe(true);
+    expect(saudiPhase1QrRequired("standard_tax_invoice")).toBe(true);
+    expect(saudiPhase1QrRequired("undetermined")).toBe(false);
+  });
+
+  it("persists qrRequired=true on both forms when building Phase 1 documents", () => {
+    const baseInvoice = {
+      id: 1,
+      taxInvoiceId: "sti_1",
+      restaurantId: 1,
+      orderId: 1,
+      collectionFactId: "cf_1",
+      documentKind: "tax_invoice" as const,
+      status: "generated" as const,
+      partyModel: "b2c" as const,
+      invoiceForm: "simplified_tax_invoice" as const,
+      classification: {
+        partyModel: "b2c" as const,
+        invoiceForm: "simplified_tax_invoice" as const,
+        rationaleCode: "test",
+        policyStatus: "platform_invariant" as const,
+        blockingIssues: [],
+        notes: "",
+      },
+      sellerSnapshot: {
+        kind: "ready" as const,
+        profileId: 1,
+        legalName: "Seller",
+        vatRegistrationStatus: "registered",
+        vatNumber: "300000000000003",
+        registeredAddress: "Riyadh",
+      },
+      buyerSnapshot: {
+        kind: "anonymous_cash" as const,
+        customerId: null,
+        displayName: null,
+        customerType: null,
+        phone: null,
+        email: null,
+        address: null,
+        taxNumber: null,
+      },
+      linesSnapshot: {
+        source: "order_items_plus_collection_fact_composition" as const,
+        orderLines: [],
+        collectionFactComposition: [],
+        vatLineSsot: "deferred_oq_vat_1" as const,
+      },
+      monetarySnapshot: {
+        source: "collection_fact" as const,
+        subtotal: "10.00",
+        discountAmount: "0.00",
+        taxAmount: "1.50",
+        amount: "11.50",
+        currencyCode: "SAR",
+        taxAmountMeaning: "collection_fact_copy_not_saudi_vat_engine" as const,
+        oqVat1: "deferred" as const,
+      },
+      paymentSnapshot: {
+        source: "collection_fact" as const,
+        tenders: [{ paymentMethod: "cash", amount: "11.50" }],
+      },
+      sourceCustomerId: null,
+      profileReadinessAtIssuance: "ready",
+      failureCode: null,
+      failureMessage: null,
+      attemptCount: 1,
+      issuedAt: "2026-09-01T00:00:00.000Z",
+      invoiceNumber: null,
+      invoiceSequence: null,
+      issueTimestampIso: null,
+      qrPayloadBase64: null,
+      phase1Document: null,
+      createdAt: "2026-09-01T00:00:00.000Z",
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    } satisfies SaudiTaxInvoice;
+
+    const simplified = buildSaudiPhase1Document({
+      taxInvoice: baseInvoice,
+      invoiceNumber: "STI-1",
+      issueTimestampIso: "2026-09-01T00:00:00.000Z",
+      qrPayloadBase64: "QR-S",
+    });
+    expect(simplified.qrRequired).toBe(true);
+    expect(simplified.qrPayloadBase64).toBe("QR-S");
+
+    const standard = buildSaudiPhase1Document({
+      taxInvoice: {
+        ...baseInvoice,
+        partyModel: "b2b",
+        invoiceForm: "standard_tax_invoice",
+        classification: {
+          ...baseInvoice.classification,
+          partyModel: "b2b",
+          invoiceForm: "standard_tax_invoice",
+        },
+        buyerSnapshot: {
+          kind: "customer",
+          customerId: 2,
+          displayName: "Biz",
+          customerType: "business",
+          phone: null,
+          email: null,
+          address: null,
+          taxNumber: "300111111111113",
+        },
+      },
+      invoiceNumber: "STI-2",
+      issueTimestampIso: "2026-09-01T00:00:00.000Z",
+      qrPayloadBase64: "QR-T",
+    });
+    expect(standard.qrRequired).toBe(true);
+    expect(standard.qrPayloadBase64).toBe("QR-T");
+    expect(standard.buyerVatNumberDisplayed).toBe("300111111111113");
   });
 });

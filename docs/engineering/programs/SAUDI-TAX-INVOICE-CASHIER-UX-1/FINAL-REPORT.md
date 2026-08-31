@@ -45,7 +45,8 @@ Anonymous cash → **نقدًا** / Cash. No live Customer/Tax Profile query for
 ## Lines / Totals / QR
 
 Authoritative snapshot strings only.  
-Simplified: QR from persisted `qrPayloadBase64`. Standard: QR not required.
+Simplified: QR from persisted `qrPayloadBase64`. Standard: QR from the same
+persisted Phase 1 artifact (`SAUDI_PHASE_1_QR_POLICY = ALWAYS_FOR_TAX_INVOICES`).
 
 ## Print / Paper / Height
 

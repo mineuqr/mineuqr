@@ -17,6 +17,14 @@ import type {
 export const SAUDI_TAX_INVOICE_PHASE1_PROGRAM_ID =
   "SAUDI-TAX-INVOICE-PHASE-1" as const;
 
+/**
+ * SAUDI-TAX-INVOICE-PHASE-1-QR-UNIFICATION-1
+ * MineuQR product policy: Phase 1 QR on both Simplified and Standard Tax Invoices.
+ * Regulatory minimum remains Simplified-required; Standard QR is product policy,
+ * not a claim that ZATCA Phase 1 legally mandates Standard QR.
+ */
+export const SAUDI_PHASE_1_QR_POLICY = "ALWAYS_FOR_TAX_INVOICES" as const;
+
 export type SaudiPhase1InvoiceTitles = Readonly<{
   ar: string;
   en: string;
@@ -58,6 +66,19 @@ export function isSimplifiedTaxInvoiceForm(
   return form === "simplified_tax_invoice";
 }
 
+export function isStandardTaxInvoiceForm(
+  form: SaudiTaxInvoiceForm
+): boolean {
+  return form === "standard_tax_invoice";
+}
+
+/** Phase 1 QR required under SAUDI_PHASE_1_QR_POLICY = ALWAYS_FOR_TAX_INVOICES. */
+export function saudiPhase1QrRequired(form: SaudiTaxInvoiceForm): boolean {
+  return (
+    isSimplifiedTaxInvoiceForm(form) || isStandardTaxInvoiceForm(form)
+  );
+}
+
 export function buildSaudiPhase1Document(input: {
   taxInvoice: SaudiTaxInvoice;
   invoiceNumber: string;
@@ -65,7 +86,7 @@ export function buildSaudiPhase1Document(input: {
   qrPayloadBase64: string | null;
 }): SaudiPhase1Document {
   const { taxInvoice } = input;
-  const qrRequired = isSimplifiedTaxInvoiceForm(taxInvoice.invoiceForm);
+  const qrRequired = saudiPhase1QrRequired(taxInvoice.invoiceForm);
   const buyerVatNumberDisplayed =
     taxInvoice.invoiceForm === "standard_tax_invoice" &&
     taxInvoice.buyerSnapshot.kind === "customer" &&
