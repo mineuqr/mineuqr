@@ -83,6 +83,17 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(dialog).not.toContain('t("receiptPaidStamp")');
     expect(dialog).toContain('t("paidTitle")');
     expect(dialog).toContain("cashier-receipt-product");
+    expect(dialog).toContain("text-sm font-medium");
+    expect(dialog).toContain("cashier-receipt-qty");
+    expect(dialog).toContain("formatCashierReceiptLineAmount");
+    const itemRows = dialog.slice(
+      dialog.indexOf("receipt.lines.map"),
+      dialog.indexOf("space-y-1 border-t border-[#111827] pt-3")
+    );
+    expect(itemRows).toContain("formatCashierReceiptLineAmount(line.unitPrice)");
+    expect(itemRows).toContain("formatCashierReceiptLineAmount(line.lineTotal)");
+    expect(itemRows).not.toContain("formatCashierReceiptMoney(");
+    expect(dialog).toContain("formatCashierReceiptMoney(");
     expect(dialog).toContain("bg-white");
     expect(dialog).not.toContain("break-words");
     expect(dialog).not.toContain("break-all");
@@ -108,6 +119,8 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(css).toContain("CASHIER-PAID-RECEIPT-RENDER-STABILITY-1");
     expect(css).toContain("white-space: nowrap !important");
     expect(css).toContain("word-break: normal");
+    expect(css).toContain("cashier-receipt-qty");
+    expect(css).toContain("width: 44%");
   });
 
   it("does not gate Print on Settlement Record or change PAID / financial paths", () => {

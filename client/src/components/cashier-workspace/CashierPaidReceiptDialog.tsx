@@ -24,6 +24,7 @@ import {
 } from "@/lib/cashier-workspace/cashierCopy";
 import {
   formatCashierReceiptDateTime,
+  formatCashierReceiptLineAmount,
   formatCashierReceiptMoney,
   formatCashierReceiptRestaurantHeading,
   printCashierPaidReceipt,
@@ -160,13 +161,13 @@ export function CashierPaidReceiptDialog({
                     <th className="pb-1 text-start font-semibold">
                       {t("receiptItems")}
                     </th>
-                    <th className="pb-1 text-center font-semibold whitespace-nowrap">
+                    <th className="cashier-receipt-qty pb-1 text-end font-semibold whitespace-nowrap">
                       {t("receiptQty")}
                     </th>
-                    <th className="pb-1 text-end font-semibold whitespace-nowrap">
+                    <th className="cashier-receipt-unit pb-1 text-end font-semibold whitespace-nowrap">
                       {t("receiptUnitPrice")}
                     </th>
-                    <th className="pb-1 text-end font-semibold whitespace-nowrap">
+                    <th className="cashier-receipt-line-total pb-1 text-end font-semibold whitespace-nowrap">
                       {t("ticketTotal")}
                     </th>
                   </tr>
@@ -179,23 +180,17 @@ export function CashierPaidReceiptDialog({
                   ) : (
                     receipt.lines.map((line, idx) => (
                       <tr key={`${line.nameEn}-${idx}`} className="align-top">
-                        <td className="cashier-receipt-product py-0.5 pe-1 text-start leading-snug">
+                        <td className="cashier-receipt-product py-0.5 pe-2 text-start text-sm font-medium leading-snug">
                           {itemName(language, line)}
                         </td>
-                        <td className="py-0.5 text-center whitespace-nowrap tabular-nums">
+                        <td className="cashier-receipt-qty py-0.5 text-end whitespace-nowrap tabular-nums">
                           {line.quantity}
                         </td>
-                        <td className="py-0.5 text-end whitespace-nowrap tabular-nums">
-                          {formatCashierReceiptMoney(
-                            line.unitPrice,
-                            receipt.currencySymbol
-                          )}
+                        <td className="cashier-receipt-unit py-0.5 text-end whitespace-nowrap tabular-nums">
+                          {formatCashierReceiptLineAmount(line.unitPrice)}
                         </td>
-                        <td className="py-0.5 text-end whitespace-nowrap tabular-nums">
-                          {formatCashierReceiptMoney(
-                            line.lineTotal,
-                            receipt.currencySymbol
-                          )}
+                        <td className="cashier-receipt-line-total py-0.5 text-end whitespace-nowrap tabular-nums">
+                          {formatCashierReceiptLineAmount(line.lineTotal)}
                         </td>
                       </tr>
                     ))

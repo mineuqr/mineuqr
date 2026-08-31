@@ -61,6 +61,11 @@ export function formatCashierReceiptMoney(
   return `${amount} ${currencySymbol}`;
 }
 
+/** Item-row unit/total: authoritative amount string without currency suffix. */
+export function formatCashierReceiptLineAmount(amount: string): string {
+  return amount;
+}
+
 /** Receipt header: Arabic uses "مطعم …" when the stored name is not already prefixed. */
 export function formatCashierReceiptRestaurantHeading(
   restaurantName: string,

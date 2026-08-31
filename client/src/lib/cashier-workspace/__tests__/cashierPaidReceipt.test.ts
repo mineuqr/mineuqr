@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildCashierPaidReceiptSnapshot,
   formatCashierReceiptDateTime,
+  formatCashierReceiptLineAmount,
+  formatCashierReceiptMoney,
   formatCashierReceiptRestaurantHeading,
 } from "../cashierPaidReceipt";
 
@@ -64,5 +66,10 @@ describe("buildCashierPaidReceiptSnapshot", () => {
       "مطعم خالد"
     );
     expect(formatCashierReceiptRestaurantHeading("Demo", "en")).toBe("Demo");
+  });
+
+  it("formats item-row amounts without currency while summary keeps currency", () => {
+    expect(formatCashierReceiptLineAmount("10.00")).toBe("10.00");
+    expect(formatCashierReceiptMoney("10.00", "رس")).toBe("10.00 رس");
   });
 });

@@ -1208,16 +1208,19 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-col-product {
-    width: 42% !important;
+    width: 44% !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-col-qty {
-    width: 12% !important;
+    width: 11% !important;
   }
 
-  body.printing-cashier-paid-receipt .cashier-receipt-col-unit,
+  body.printing-cashier-paid-receipt .cashier-receipt-col-unit {
+    width: 22.5% !important;
+  }
+
   body.printing-cashier-paid-receipt .cashier-receipt-col-total {
-    width: 23% !important;
+    width: 22.5% !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-product {
@@ -1225,6 +1228,19 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
     word-break: normal;
     white-space: normal;
     hyphens: manual;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-receipt-qty {
+    text-align: end !important;
+    padding-inline-start: 0.125rem !important;
+    padding-inline-end: 0.25rem !important;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-receipt-unit,
+  body.printing-cashier-paid-receipt .cashier-receipt-line-total {
+    padding-inline-start: 0.25rem !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-lines td,
@@ -1260,22 +1276,38 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
 }
 
 .cashier-receipt-col-product {
-  width: 42%;
+  width: 44%;
 }
 
 .cashier-receipt-col-qty {
-  width: 12%;
+  width: 11%;
 }
 
-.cashier-receipt-col-unit,
+.cashier-receipt-col-unit {
+  width: 22.5%;
+}
+
 .cashier-receipt-col-total {
-  width: 23%;
+  width: 22.5%;
 }
 
 .cashier-receipt-product {
   overflow-wrap: break-word;
   word-break: normal;
   white-space: normal;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.cashier-receipt-qty {
+  text-align: end;
+  padding-inline-start: 0.125rem;
+  padding-inline-end: 0.25rem;
+}
+
+.cashier-receipt-unit,
+.cashier-receipt-line-total {
+  padding-inline-start: 0.25rem;
 }
 
 .cashier-receipt-restaurant-name {
