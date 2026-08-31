@@ -53,4 +53,6 @@ Non-Saudi: Paid Receipt dialog unchanged.
 
 ## Commit / remote
 
-Recorded after push.
+- Commit: `2dd4b89f` — `feat(cashier): unify Saudi tax invoice as primary post-payment document`
+- Live browser: **NOT RUN IN-AGENT**
+- Push / HEAD: updated after `git push origin main`
