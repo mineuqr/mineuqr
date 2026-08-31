@@ -73,6 +73,13 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(dialog).toContain("line.unitPrice");
     expect(dialog).toContain("line.quantity");
     expect(dialog).toContain("line.lineTotal");
+    expect(dialog).toContain("cashier-receipt-lines");
+    expect(dialog).toContain("table-fixed");
+    expect(dialog).toContain("whitespace-nowrap");
+    expect(dialog).toContain("cashier-receipt-product");
+    expect(dialog).toContain("bg-white");
+    expect(dialog).not.toContain("break-words");
+    expect(dialog).not.toContain("break-all");
     expect(dialog).toContain("receipt.subtotal");
     expect(dialog).toContain("receipt.discountAmount");
     expect(dialog).toContain("receipt.taxAmount");
@@ -87,6 +94,12 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(dialog).toContain("dir={language === \"ar\" ? \"rtl\" : \"ltr\"}");
     // One Items column header only (no duplicate section title + header)
     expect(dialog.match(/t\("receiptItems"\)/g)?.length).toBe(1);
+    expect(receiptLib).toContain("installCashierPaidReceiptPageStyle");
+    expect(receiptLib).toContain("size: 80mm auto");
+    expect(receiptLib).toContain("margin: 0");
+    expect(css).toContain("CASHIER-PAID-RECEIPT-RENDER-STABILITY-1");
+    expect(css).toContain("white-space: nowrap !important");
+    expect(css).toContain("word-break: normal");
   });
 
   it("does not gate Print on Settlement Record or change PAID / financial paths", () => {

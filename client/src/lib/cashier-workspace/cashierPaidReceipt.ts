@@ -96,17 +96,43 @@ export const CASHIER_PAID_RECEIPT_PRINT_ROOT_ID =
 export const CASHIER_PAID_RECEIPT_PRINT_BODY_CLASS =
   "printing-cashier-paid-receipt" as const;
 
+const CASHIER_PAID_RECEIPT_PAGE_STYLE_ID =
+  "cashier-paid-receipt-print-page-style" as const;
+
+/**
+ * Injects a temporary @page rule so Chrome/Edge print headers/footers
+ * (URL / title) lose margin space for this print only.
+ */
+function installCashierPaidReceiptPageStyle(): HTMLStyleElement {
+  const existing = document.getElementById(CASHIER_PAID_RECEIPT_PAGE_STYLE_ID);
+  if (existing) existing.remove();
+  const style = document.createElement("style");
+  style.id = CASHIER_PAID_RECEIPT_PAGE_STYLE_ID;
+  style.textContent = `
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+}
+`.trim();
+  document.head.appendChild(style);
+  return style;
+}
+
 export function printCashierPaidReceipt(): void {
   if (typeof window === "undefined" || typeof document === "undefined") return;
 
   const body = document.body;
   body.classList.add(CASHIER_PAID_RECEIPT_PRINT_BODY_CLASS);
+  const pageStyle = installCashierPaidReceiptPageStyle();
 
   let cleaned = false;
   const cleanup = () => {
     if (cleaned) return;
     cleaned = true;
     body.classList.remove(CASHIER_PAID_RECEIPT_PRINT_BODY_CLASS);
+    pageStyle.remove();
     window.removeEventListener("afterprint", cleanup);
   };
 

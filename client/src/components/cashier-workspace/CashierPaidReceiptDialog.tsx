@@ -2,11 +2,13 @@
  * CASHIER-PAID-RECEIPT-DATA-COMPLETENESS-1
  * CASHIER-PAID-RECEIPT-OVERFLOW-UX-1
  * CASHIER-PAID-RECEIPT-PRINT-ISOLATION-1
+ * CASHIER-PAID-RECEIPT-RENDER-STABILITY-1
  * Print the paid Cashier invoice from the Confirm HTTP projection.
  * Does not load Settlement Record. Does not require Check.
  * Closing print must not affect PAID.
  * On-screen: only the receipt body scrolls; Print/Close stay in the viewport.
  * Print: body-class isolation hides the app shell; receipt uses content height.
+ * Screen receipt forces light surface so dark-theme --background cannot paint it black.
  */
 
 import { Button } from "@/components/ui/button";
@@ -63,12 +65,12 @@ function moneyRow(
     <div
       className={
         emphasize
-          ? "flex justify-between text-base font-semibold text-[#111827]"
-          : "flex justify-between text-[#111827]"
+          ? "flex justify-between gap-2 text-base font-semibold text-[#111827]"
+          : "flex justify-between gap-2 text-[#111827]"
       }
     >
-      <span>{label}</span>
-      <span className="tabular-nums">
+      <span className="min-w-0">{label}</span>
+      <span className="shrink-0 whitespace-nowrap tabular-nums">
         {formatCashierReceiptMoney(amount, currencySymbol)}
       </span>
     </div>
@@ -91,23 +93,24 @@ export function CashierPaidReceiptDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         dir={language === "ar" ? "rtl" : "ltr"}
-        className="flex max-h-[90dvh] max-w-md flex-col overflow-hidden print:static print:top-auto print:left-auto print:h-auto print:max-h-none print:max-w-none print:translate-none print:overflow-visible print:border-0 print:shadow-none"
+        showCloseButton
+        className="flex max-h-[90dvh] max-w-md flex-col overflow-hidden border-[#e5e7eb] bg-white text-[#111827] shadow-lg print:static print:top-auto print:left-auto print:h-auto print:max-h-none print:max-w-none print:translate-none print:overflow-visible print:border-0 print:bg-white print:shadow-none"
       >
         <DialogHeader className="shrink-0 print:hidden">
-          <DialogTitle>{t("receiptTitle")}</DialogTitle>
+          <DialogTitle className="text-[#111827]">{t("receiptTitle")}</DialogTitle>
         </DialogHeader>
 
         {receipt ? (
           <div
             id="cashier-paid-receipt-print"
-            className="cashier-paid-receipt-document min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain text-sm text-[#111827] print:h-auto print:max-h-none print:flex-none print:overflow-visible"
+            className="cashier-paid-receipt-document min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-white p-1 text-sm text-[#111827] print:h-auto print:max-h-none print:flex-none print:overflow-visible print:bg-white"
           >
             {receipt.restaurantName ? (
-              <p className="text-center text-base font-semibold">
+              <p className="text-center text-base font-semibold text-[#111827]">
                 {receipt.restaurantName}
               </p>
             ) : null}
-            <div className="space-y-1 text-center">
+            <div className="space-y-1 text-center text-[#111827]">
               <p>
                 {t("receiptInvoiceNumber")}:{" "}
                 {receipt.invoiceNumber?.trim() || receipt.displayReference}
@@ -121,7 +124,7 @@ export function CashierPaidReceiptDialog({
               <p className="font-medium">{t("paidTitle")}</p>
             </div>
 
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 text-[#111827]">
               <p>
                 {t("receiptDate")}: {when.date}
               </p>
@@ -140,42 +143,61 @@ export function CashierPaidReceiptDialog({
               ) : null}
             </div>
 
-            <div className="space-y-1 border-t border-[#111827] pt-3">
-              <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_3.75rem_3.75rem] gap-x-1 border-b border-[#111827] pb-1 text-[11px] font-semibold">
-                <span>{t("receiptItems")}</span>
-                <span className="text-center">{t("receiptQty")}</span>
-                <span className="text-end">{t("receiptUnitPrice")}</span>
-                <span className="text-end">{t("ticketTotal")}</span>
-              </div>
-              {receipt.lines.length === 0 ? (
-                <p>—</p>
-              ) : (
-                receipt.lines.map((line, idx) => (
-                  <div
-                    key={`${line.nameEn}-${idx}`}
-                    className="grid grid-cols-[minmax(0,1fr)_2.25rem_3.75rem_3.75rem] gap-x-1 text-[12px] leading-snug"
-                  >
-                    <span className="min-w-0 break-words">
-                      {itemName(language, line)}
-                    </span>
-                    <span className="text-center tabular-nums">
-                      {line.quantity}
-                    </span>
-                    <span className="text-end tabular-nums">
-                      {formatCashierReceiptMoney(
-                        line.unitPrice,
-                        receipt.currencySymbol
-                      )}
-                    </span>
-                    <span className="text-end tabular-nums">
-                      {formatCashierReceiptMoney(
-                        line.lineTotal,
-                        receipt.currencySymbol
-                      )}
-                    </span>
-                  </div>
-                ))
-              )}
+            <div className="border-t border-[#111827] pt-3">
+              <table className="cashier-receipt-lines w-full table-fixed border-collapse text-[11px] text-[#111827]">
+                <colgroup>
+                  <col className="cashier-receipt-col-product" />
+                  <col className="cashier-receipt-col-qty" />
+                  <col className="cashier-receipt-col-unit" />
+                  <col className="cashier-receipt-col-total" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-[#111827]">
+                    <th className="pb-1 text-start font-semibold">
+                      {t("receiptItems")}
+                    </th>
+                    <th className="pb-1 text-center font-semibold whitespace-nowrap">
+                      {t("receiptQty")}
+                    </th>
+                    <th className="pb-1 text-end font-semibold whitespace-nowrap">
+                      {t("receiptUnitPrice")}
+                    </th>
+                    <th className="pb-1 text-end font-semibold whitespace-nowrap">
+                      {t("ticketTotal")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {receipt.lines.length === 0 ? (
+                    <tr>
+                      <td colSpan={4}>—</td>
+                    </tr>
+                  ) : (
+                    receipt.lines.map((line, idx) => (
+                      <tr key={`${line.nameEn}-${idx}`} className="align-top">
+                        <td className="cashier-receipt-product py-0.5 pe-1 text-start leading-snug">
+                          {itemName(language, line)}
+                        </td>
+                        <td className="py-0.5 text-center whitespace-nowrap tabular-nums">
+                          {line.quantity}
+                        </td>
+                        <td className="py-0.5 text-end whitespace-nowrap tabular-nums">
+                          {formatCashierReceiptMoney(
+                            line.unitPrice,
+                            receipt.currencySymbol
+                          )}
+                        </td>
+                        <td className="py-0.5 text-end whitespace-nowrap tabular-nums">
+                          {formatCashierReceiptMoney(
+                            line.lineTotal,
+                            receipt.currencySymbol
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
 
             <div className="space-y-1 border-t border-[#111827] pt-3">
@@ -200,15 +222,15 @@ export function CashierPaidReceiptDialog({
               </div>
             </div>
 
-            <div className="space-y-1 border-t border-[#111827] pt-3">
+            <div className="space-y-1 border-t border-[#111827] pt-3 text-[#111827]">
               <p className="font-medium">{t("paymentMethod")}</p>
               {receipt.tenders.map((tender, idx) => (
                 <div
                   key={`${tender.paymentMethod}-${idx}`}
-                  className="flex justify-between"
+                  className="flex justify-between gap-2"
                 >
-                  <span>{tenderLabel(language, tender.paymentMethod)}</span>
-                  <span className="tabular-nums">
+                  <span className="min-w-0">{tenderLabel(language, tender.paymentMethod)}</span>
+                  <span className="shrink-0 whitespace-nowrap tabular-nums">
                     {formatCashierReceiptMoney(
                       tender.amount,
                       receipt.currencySymbol
@@ -218,7 +240,7 @@ export function CashierPaidReceiptDialog({
               ))}
             </div>
 
-            <p className="pt-2 text-center font-semibold">
+            <p className="pt-2 text-center font-semibold text-[#111827]">
               {t("receiptPaidStamp")}
             </p>
           </div>

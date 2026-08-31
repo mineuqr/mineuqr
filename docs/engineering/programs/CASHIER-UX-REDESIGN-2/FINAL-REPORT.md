@@ -1,22 +1,25 @@
-# CASHIER-UX-REDESIGN-2 — Final Report
+# CASHIER-UX-REDESIGN-2 — Final Report (Receipt rendering)
 
-## Verdict: **PASS** (implementation + automated verification)
+## Verdict: **IMPLEMENTATION PASS** / browser Print Preview **operator-confirm**
 
-Live Print Preview was **not** executable in-agent. Blank-page root cause matched the known dialog/#root isolation class of bugs; isolation + receipt width are covered by architecture guards.
+Live Print Preview was **not** executable in-agent. Automated tests + `pnpm run check` PASS. Operator should confirm 1 / 5 / 10+ item Print Preview before treating as production-closed.
 
-## Final invoice & print correction (this pass)
+## Receipt rendering fix (this pass)
 
-1. **Current Sale row** — Name | centered Qty controls | Price | Delete (qty no longer beside price)
-2. **Duplicate الأصناف** — removed; one column header row only on receipt
-3. **Print isolation** — `printing-cashier-paid-receipt` + `display:none` on app shell (same pattern as operational ticket / shift-closing)
-4. **Root cause of blank pages** — `#root` min-height + Radix portal still in print layout without isolation
-5. **Receipt width** — printable document `max-width: 80mm`, content height (no 100vh)
-6. **Item table** — Items | Qty | Unit | Line total from snapshot (no client recalculation)
+### Root causes
+1. **Dark receipt** — Dialog used `bg-background`; app default `--background` is dark teal while body text was forced `#111827` → near-black on dark surface.
+2. **URL in print** — Not from app content; Chrome/Edge print headers/footers inject `document` URL. Fixed via temporary `@page { size: 80mm auto; margin: 0 }` during print.
+3. **Multi-item collapse** — CSS grid columns too narrow for currency strings + `break-words` allowed Arabic character fragmentation when columns squeezed.
+
+### Fixes
+- Force `bg-white text-[#111827]` on dialog + receipt document (screen and print)
+- `table-fixed` receipt table with stable col widths; `whitespace-nowrap` on qty/prices; `word-break: normal` on product names
+- Print isolation retained; page-style injection removes header/footer margin space
 
 ## Validation
 
 | Check | Result |
 |-------|--------|
-| Cashier + related Vitest | **39 files / 175 tests passed** |
-| `pnpm run check` | **passed** |
-| Live print preview | **not run in-agent** |
+| Vitest (cashier + print isolation) | **39 files / 175 tests PASS** |
+| `pnpm run check` | **PASS** (exit 0) |
+| Live print preview | **not run in-agent** — confirm 1/5/10+ items in browser |

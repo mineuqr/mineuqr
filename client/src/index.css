@@ -1183,14 +1183,99 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
     margin: 0 auto;
     padding: 2mm;
     overflow: visible !important;
-    color: #111827;
-    background: #fff;
+    color: #111827 !important;
+    background: #fff !important;
     box-sizing: border-box;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   body.printing-cashier-paid-receipt .cashier-paid-receipt-document {
     break-inside: auto;
+    color: #111827 !important;
+    background: #fff !important;
   }
+
+  /*
+   * CASHIER-PAID-RECEIPT-RENDER-STABILITY-1 —
+   * Fixed table columns on ~80mm; numeric cols never wrap; product wraps by word.
+   * Avoid word-break:break-all / break-words character fragmentation in Arabic.
+   */
+  body.printing-cashier-paid-receipt .cashier-receipt-lines {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-receipt-col-product {
+    width: 42% !important;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-receipt-col-qty {
+    width: 12% !important;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-receipt-col-unit,
+  body.printing-cashier-paid-receipt .cashier-receipt-col-total {
+    width: 23% !important;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-receipt-product {
+    overflow-wrap: break-word;
+    word-break: normal;
+    white-space: normal;
+    hyphens: manual;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-receipt-lines td,
+  body.printing-cashier-paid-receipt .cashier-receipt-lines th {
+    color: #111827 !important;
+    background: transparent !important;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-receipt-lines .whitespace-nowrap,
+  body.printing-cashier-paid-receipt .cashier-receipt-lines .tabular-nums {
+    white-space: nowrap !important;
+  }
+
+  body.printing-cashier-paid-receipt a[href]::after,
+  body.printing-cashier-paid-receipt a[href]::before {
+    content: none !important;
+  }
+}
+
+/*
+ * Screen + print: keep receipt surface light even when app --background is dark.
+ */
+.cashier-paid-receipt-document,
+#cashier-paid-receipt-print {
+  color: #111827;
+  background: #fff;
+}
+
+.cashier-receipt-lines {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.cashier-receipt-col-product {
+  width: 42%;
+}
+
+.cashier-receipt-col-qty {
+  width: 12%;
+}
+
+.cashier-receipt-col-unit,
+.cashier-receipt-col-total {
+  width: 23%;
+}
+
+.cashier-receipt-product {
+  overflow-wrap: break-word;
+  word-break: normal;
+  white-space: normal;
 }
 
 /*
@@ -1205,12 +1290,16 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
+    background: #fff !important;
+    color: #111827 !important;
   }
 
   #cashier-paid-receipt-print {
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
+    background: #fff !important;
+    color: #111827 !important;
   }
 }
 
