@@ -8,7 +8,8 @@
 |-------|-------|
 | Foundation commit | `c67af313e5efadc6e2c663ebec87a6b456e64399` |
 | Cashier-create starting SHA | `1c49a8837ff0d1cbfaa658598589cf0fa8f0157d` |
-| Cashier-create ending SHA | *(this commit after push)* |
+| Cashier-create ending SHA | `a08e6486` |
+| Cashier-create commit | `a08e6486` |
 | Commit | `fix(customer): complete cashier customer creation` |
 
 ## Existing architecture discovered
