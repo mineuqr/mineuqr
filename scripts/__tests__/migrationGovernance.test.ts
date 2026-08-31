@@ -15,27 +15,24 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0107 contiguously", () => {
+  it("journal contains canonical migrations 0000–0108 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
-    expect(journal.entries[103]?.tag).toBe("0103_realtime_bus_messages");
-    expect(journal.entries[104]?.tag).toBe("0104_saudi_tax_profiles");
-    expect(journal.entries[105]?.tag).toBe("0105_customers");
     expect(journal.entries[106]?.tag).toBe("0106_orders_customer_id");
-    expect(journal.entries[107]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(journal.entries[107]?.tag).toBe("0107_saudi_tax_invoices");
+    expect(journal.entries[108]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[108]?.tag).toBe("0108_saudi_tax_invoice_phase1");
     expect(validateJournalOrdering()).toEqual([]);
   });
 
-  it("exports certified migration tail constant at 0107", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0107_saudi_tax_invoices");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(108);
+  it("exports certified migration tail constant at 0108", () => {
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0108_saudi_tax_invoice_phase1");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(109);
     const tags = loadJournal().entries.map((e) => e.tag);
-    expect(tags).toHaveLength(108);
-    expect(tags[106]).toBe("0106_orders_customer_id");
+    expect(tags).toHaveLength(109);
+    expect(tags[107]).toBe("0107_saudi_tax_invoices");
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
-    expect(tags[tags.length - 1]).not.toBe("0106_orders_customer_id");
   });
 
   it("registers restored tail migrations 0054–0057", () => {
@@ -66,8 +63,8 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(guard).toContain("CANONICAL_MIGRATION_TAIL_TAG");
     expect(guard).toContain("CANONICAL_JOURNAL_ENTRY_COUNT");
     expect(guard).toContain("process.exit(1)");
-    expect(guard).toContain("0000–0107");
-    expect(guard).not.toContain("0000–0106");
+    expect(guard).toContain("0000–0108");
+    expect(guard).not.toContain("0000–0107");
   });
 
   it("0104 is additive saudi_tax_profiles and is not a financial rewrite", () => {
@@ -88,17 +85,19 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/DROP\s+/i);
   });
 
-  it("cannot silently regress certified terminus back to 0106", () => {
+  it("cannot silently regress certified terminus back to 0107", () => {
     const lib = readFileSync(
       join(repoRoot, "scripts/lib/migration-governance-lib.cjs"),
       "utf8"
     );
-    expect(lib).toContain('CANONICAL_MIGRATION_TAIL_TAG = "0107_saudi_tax_invoices"');
-    expect(lib).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 108");
-    expect(lib).not.toMatch(
-      /CANONICAL_MIGRATION_TAIL_TAG\s*=\s*"0106_orders_customer_id"/
+    expect(lib).toContain(
+      'CANONICAL_MIGRATION_TAIL_TAG = "0108_saudi_tax_invoice_phase1"'
     );
-    expect(lib).not.toMatch(/CANONICAL_JOURNAL_ENTRY_COUNT\s*=\s*107\b/);
+    expect(lib).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 109");
+    expect(lib).not.toMatch(
+      /CANONICAL_MIGRATION_TAIL_TAG\s*=\s*"0107_saudi_tax_invoices"/
+    );
+    expect(lib).not.toMatch(/CANONICAL_JOURNAL_ENTRY_COUNT\s*=\s*108\b/);
   });
 
   it("0105 is additive customers and is not a financial rewrite", () => {
@@ -137,6 +136,19 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).toContain("`collectionFactId`");
     expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
     expect(sql).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/DROP\s+TABLE/i);
+  });
+
+  it("0108 is additive Phase 1 fields and is not a financial rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0108_saudi_tax_invoice_phase1.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("saudi_tax_invoice_sequences");
+    expect(sql).toContain("invoiceNumber");
+    expect(sql).toContain("qrPayloadBase64");
+    expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
     expect(sql).not.toMatch(/INSERT\s+INTO/i);
     expect(sql).not.toMatch(/DROP\s+TABLE/i);
   });

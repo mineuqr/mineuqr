@@ -50,6 +50,7 @@
 | ADR-ARCH-041 | Saudi Tax Invoice Boundary & Classification | **Accepted** (evaluation) | Architecture Authority | SAUDI-TAX-INVOICE-ARCHITECTURE-EVALUATION-1 | — | Tax Invoice as Saudi compliance artifact; InvoiceClassification; post-CF lifecycle | **Implemented by ADR-043 domain foundation** | Refines 040/039/027. Customer ≠ invoice type; missing taxNumber ≠ non-tax invoice; Tax Invoice downstream of Collection Fact; PAID ≠ compliance success. Runtime domain: ADR-043. |
 | ADR-ARCH-042 | Sale ↔ Customer Relationship | **Accepted** | Architecture Authority | SALE-CUSTOMER-LINK-1 | — | Nullable orders.customerId | **Implemented** | Global Sale→Customer reference only. NULL valid. No invoice classification / VAT / ZATCA. ON DELETE SET NULL. |
 | ADR-ARCH-043 | Saudi Tax Invoice Domain Foundation | **Accepted** | Architecture Authority | SAUDI-TAX-INVOICE-DOMAIN-FOUNDATION-1 | — | saudi_tax_invoices aggregate + Saudi module ensure | **Implemented** | Implements ADR-041 domain persistence. Idempotency on CF+documentKind. Snapshots immutable after generated. No ZATCA/VAT/QR/IRN. |
+| ADR-ARCH-044 | Saudi Tax Invoice Phase 1 Generation | **Accepted** | Architecture Authority | SAUDI-TAX-INVOICE-PHASE-1 | — | Phase 1 QR/titles/numbering/render | **Implemented** | TLV QR tags 1–5; Simplified mandatory QR; Tax Invoice QR optional off; CF tax presentation (OQ-VAT-1). No Fatoora/Phase 2. |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 
@@ -100,5 +101,6 @@
 | ADR-ARCH-041 | [ADR-ARCH-041-saudi-tax-invoice-boundary.md](../adrs/ADR-ARCH-041-saudi-tax-invoice-boundary.md) |
 | ADR-ARCH-042 | [ADR-ARCH-042-sale-customer-link.md](../adrs/ADR-ARCH-042-sale-customer-link.md) |
 | ADR-ARCH-043 | [ADR-ARCH-043-saudi-tax-invoice-domain-foundation.md](../adrs/ADR-ARCH-043-saudi-tax-invoice-domain-foundation.md) |
+| ADR-ARCH-044 | [ADR-ARCH-044-saudi-tax-invoice-phase-1.md](../adrs/ADR-ARCH-044-saudi-tax-invoice-phase-1.md) |
 
 **Related:** [Blueprint](../blueprints/Order-Centric-Architecture.md) · [ADR Lifecycle](../governance/ADR-Lifecycle.md)

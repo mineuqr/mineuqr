@@ -757,6 +757,13 @@
       "when": 1786100000000,
       "tag": "0107_saudi_tax_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "5",
+      "when": 1786200000000,
+      "tag": "0108_saudi_tax_invoice_phase1",
+      "breakpoints": true
     }
   ]
 }

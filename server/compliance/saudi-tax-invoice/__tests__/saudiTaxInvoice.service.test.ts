@@ -22,6 +22,9 @@ vi.mock("../saudiTaxInvoiceRepository", () => ({
   insertSaudiTaxInvoiceRow: vi.fn(),
   upgradeSaudiTaxInvoiceRow: vi.fn(),
 }));
+vi.mock("../saudiPhase1GenerationService", () => ({
+  applySaudiPhase1Generation: vi.fn(async (invoice) => invoice),
+}));
 
 import { findCollectionFactByFactId } from "../../../operational-session/payment/collection-fact/collectionFactRepository";
 import { findSaudiTaxProfileByRestaurantId } from "../../saudi-tax-profile/saudiTaxProfileRepository";
@@ -145,6 +148,11 @@ describe("ensureSaudiTaxInvoiceForCollectionFact", () => {
       failureMessage: row.failureMessage ?? null,
       attemptCount: row.attemptCount ?? 1,
       issuedAt: row.issuedAt ?? null,
+      invoiceNumber: null,
+      invoiceSequence: null,
+      issueTimestampIso: null,
+      qrPayloadBase64: null,
+      phase1Document: null,
       createdAt: "2026-08-31T12:00:00.000Z",
       updatedAt: "2026-08-31T12:00:00.000Z",
     }));
@@ -253,6 +261,11 @@ describe("ensureSaudiTaxInvoiceForCollectionFact", () => {
       failureMessage: null,
       attemptCount: 1,
       issuedAt: "2026-08-31 12:00:00",
+      invoiceNumber: "000001",
+      invoiceSequence: 1,
+      issueTimestampIso: "2026-08-31T12:00:00.000Z",
+      qrPayloadBase64: "AQ==",
+      phase1Document: { schemaVersion: 1 },
       createdAt: "2026-08-31T12:00:00.000Z",
       updatedAt: "2026-08-31T12:00:00.000Z",
     };
@@ -318,8 +331,8 @@ describe("ensureSaudiTaxInvoiceForCollectionFact", () => {
     });
     expect(result.taxInvoice.buyerSnapshot.kind).toBe("customer");
     expect(result.taxInvoice.buyerSnapshot.taxNumber).toBe("300111111111113");
-    expect(result.taxInvoice.partyModel).toBe("unclassified");
-    expect(result.taxInvoice.invoiceForm).toBe("undetermined");
+    expect(result.taxInvoice.partyModel).toBe("b2b");
+    expect(result.taxInvoice.invoiceForm).toBe("standard_tax_invoice");
   });
 
   it("upgrades blocked_profile to generated when profile becomes READY", async () => {
@@ -383,6 +396,11 @@ describe("ensureSaudiTaxInvoiceForCollectionFact", () => {
       failureMessage: "blocked",
       attemptCount: 1,
       issuedAt: null,
+      invoiceNumber: null,
+      invoiceSequence: null,
+      issueTimestampIso: null,
+      qrPayloadBase64: null,
+      phase1Document: null,
       createdAt: "2026-08-31T12:00:00.000Z",
       updatedAt: "2026-08-31T12:00:00.000Z",
     } as never);
@@ -409,6 +427,11 @@ describe("ensureSaudiTaxInvoiceForCollectionFact", () => {
       failureMessage: row.failureMessage,
       attemptCount: row.attemptCount,
       issuedAt: row.issuedAt,
+      invoiceNumber: null,
+      invoiceSequence: null,
+      issueTimestampIso: null,
+      qrPayloadBase64: null,
+      phase1Document: null,
       createdAt: "2026-08-31T12:00:00.000Z",
       updatedAt: "2026-08-31T12:01:00.000Z",
     }));

@@ -57,6 +57,11 @@ function mapRow(row: SelectSaudiTaxInvoice): SaudiTaxInvoice {
     failureMessage: row.failureMessage ?? null,
     attemptCount: row.attemptCount,
     issuedAt: row.issuedAt ?? null,
+    invoiceNumber: row.invoiceNumber ?? null,
+    invoiceSequence: row.invoiceSequence ?? null,
+    issueTimestampIso: row.issueTimestampIso ?? null,
+    qrPayloadBase64: row.qrPayloadBase64 ?? null,
+    phase1Document: row.phase1DocumentJson ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -184,5 +189,103 @@ export async function upgradeSaudiTaxInvoiceRow(
     taxInvoiceId: input.taxInvoiceId,
   });
   if (!updated) throw new Error("Saudi Tax Invoice upgrade failed");
+  return updated;
+}
+
+export async function findSaudiTaxInvoiceByOrderId(input: {
+  restaurantId: number;
+  orderId: number;
+}): Promise<SaudiTaxInvoice | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select()
+    .from(saudiTaxInvoices)
+    .where(
+      and(
+        eq(saudiTaxInvoices.restaurantId, input.restaurantId),
+        eq(saudiTaxInvoices.orderId, input.orderId)
+      )
+    )
+    .limit(1);
+  return row ? mapRow(row) : null;
+}
+
+export type PersistSaudiPhase1ArtifactInput = Readonly<{
+  restaurantId: number;
+  taxInvoiceId: string;
+  status: SaudiTaxInvoiceStatus;
+  invoiceNumber: string;
+  invoiceSequence: number;
+  issueTimestampIso: string;
+  qrPayloadBase64: string | null;
+  phase1DocumentJson: unknown;
+  failureCode: string | null;
+  failureMessage: string | null;
+  attemptCount: number;
+}>;
+
+/** Persist Phase 1 generation fields. Must not rewrite snapshot JSON columns. */
+export async function persistSaudiPhase1Artifact(
+  input: PersistSaudiPhase1ArtifactInput
+): Promise<SaudiTaxInvoice> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(saudiTaxInvoices)
+    .set({
+      status: input.status,
+      invoiceNumber: input.invoiceNumber,
+      invoiceSequence: input.invoiceSequence,
+      issueTimestampIso: input.issueTimestampIso,
+      qrPayloadBase64: input.qrPayloadBase64,
+      phase1DocumentJson: input.phase1DocumentJson,
+      failureCode: input.failureCode,
+      failureMessage: input.failureMessage,
+      attemptCount: input.attemptCount,
+    })
+    .where(
+      and(
+        eq(saudiTaxInvoices.restaurantId, input.restaurantId),
+        eq(saudiTaxInvoices.taxInvoiceId, input.taxInvoiceId)
+      )
+    );
+  const updated = await findSaudiTaxInvoiceByTaxInvoiceId({
+    restaurantId: input.restaurantId,
+    taxInvoiceId: input.taxInvoiceId,
+  });
+  if (!updated) throw new Error("Saudi Phase 1 artifact persist failed");
+  return updated;
+}
+
+export async function markSaudiTaxInvoicePhase1Failure(input: {
+  restaurantId: number;
+  taxInvoiceId: string;
+  status: Extract<SaudiTaxInvoiceStatus, "retryable" | "failed">;
+  failureCode: string;
+  failureMessage: string;
+  attemptCount: number;
+}): Promise<SaudiTaxInvoice> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(saudiTaxInvoices)
+    .set({
+      status: input.status,
+      failureCode: input.failureCode,
+      failureMessage: input.failureMessage,
+      attemptCount: input.attemptCount,
+    })
+    .where(
+      and(
+        eq(saudiTaxInvoices.restaurantId, input.restaurantId),
+        eq(saudiTaxInvoices.taxInvoiceId, input.taxInvoiceId)
+      )
+    );
+  const updated = await findSaudiTaxInvoiceByTaxInvoiceId({
+    restaurantId: input.restaurantId,
+    taxInvoiceId: input.taxInvoiceId,
+  });
+  if (!updated) throw new Error("Saudi Phase 1 failure mark failed");
   return updated;
 }

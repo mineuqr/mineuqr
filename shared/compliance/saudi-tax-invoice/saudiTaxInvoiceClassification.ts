@@ -1,15 +1,16 @@
 /**
- * SAUDI-TAX-INVOICE-DOMAIN-FOUNDATION-1
- * Foundation classification storage helper — NOT a Saudi legal classification engine.
+ * SAUDI-TAX-INVOICE-PHASE-1 — classification for generation.
  *
  * Forbidden sole rule: customer.taxNumber ? B2B : B2C
  * Missing taxNumber MUST NOT mean non-tax invoice.
- * Customer presence MUST NOT alone decide invoice type.
+ *
+ * Phase 1 generation policy (documented; OQ-CLASS-1 remains open for individuals):
+ * - absent buyer → Simplified / B2C (platform invariant)
+ * - business + taxNumber → Tax Invoice / B2B (buyer VAT presented from snapshot)
+ * - other named buyers → Simplified / B2C (still a tax invoice; policy pending confirmation)
  */
 
-import type {
-  SaudiTaxInvoiceClassification,
-} from "./saudiTaxInvoiceContract";
+import type { SaudiTaxInvoiceClassification } from "./saudiTaxInvoiceContract";
 
 export type SaudiTaxInvoiceClassificationInput = Readonly<{
   buyerPresence: "absent" | "present";
@@ -17,11 +18,6 @@ export type SaudiTaxInvoiceClassificationInput = Readonly<{
   taxNumberPresent: boolean;
 }>;
 
-/**
- * Explicit foundation classification result for persistence.
- * Only the anonymous-buyer → B2C context path is a platform invariant.
- * Named-customer classification remains NEEDS_OFFICIAL_CONFIRMATION.
- */
 export function classifySaudiTaxInvoiceFoundation(
   input: SaudiTaxInvoiceClassificationInput
 ): SaudiTaxInvoiceClassification {
@@ -33,21 +29,32 @@ export function classifySaudiTaxInvoiceFoundation(
       policyStatus: "platform_invariant",
       blockingIssues: [],
       notes:
-        "Null Sale.customerId → B2C context → applicable Saudi tax invoice. Not a non-tax invoice. Display العميل: نقدًا is not a Customer record.",
+        "Null Sale.customerId → B2C context → Simplified Tax Invoice. Not a non-tax invoice.",
     };
   }
 
-  // Explicitly ignore taxNumber for B2B/B2C decision in this foundation.
-  void input.taxNumberPresent;
-  void input.customerType;
+  // Not taxNumber-alone. Business buyer with tax number → Standard Tax Invoice path.
+  if (input.customerType === "business" && input.taxNumberPresent) {
+    return {
+      partyModel: "b2b",
+      invoiceForm: "standard_tax_invoice",
+      rationaleCode: "PHASE1_BUSINESS_BUYER_WITH_TAX_NUMBER",
+      policyStatus: "platform_invariant",
+      blockingIssues: [],
+      notes:
+        "Business buyer with tax number → Tax Invoice form. taxNumber alone without business type does not decide B2B.",
+    };
+  }
 
+  // Named individual / business without tax number — still a tax invoice (Simplified).
+  // OQ-CLASS-1 remains open for official confirmation of this product default.
   return {
-    partyModel: "unclassified",
-    invoiceForm: "undetermined",
-    rationaleCode: "FOUNDATION_AWAITING_OFFICIAL_CLASSIFICATION_POLICY",
+    partyModel: "b2c",
+    invoiceForm: "simplified_tax_invoice",
+    rationaleCode: "PHASE1_NAMED_BUYER_DEFAULT_SIMPLIFIED",
     policyStatus: "needs_official_confirmation",
     blockingIssues: [],
     notes:
-      "Customer is buyer identity only. taxNumber presence/absence does not decide B2B/B2C or Simplified/Standard. Official classification policy required (OQ-CLASS-1).",
+      "Named buyer without business+taxNumber combination defaults to Simplified Tax Invoice for Phase 1 generation. Not a non-tax invoice. OQ-CLASS-1.",
   };
 }

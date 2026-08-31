@@ -152,6 +152,12 @@ export type SaudiTaxInvoice = Readonly<{
   failureMessage: string | null;
   attemptCount: number;
   issuedAt: string | null;
+  /** Phase 1 human invoice number (immutable once assigned). */
+  invoiceNumber: string | null;
+  invoiceSequence: number | null;
+  issueTimestampIso: string | null;
+  qrPayloadBase64: string | null;
+  phase1Document: unknown | null;
   createdAt: string;
   updatedAt: string;
 }>;

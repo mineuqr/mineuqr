@@ -435,6 +435,12 @@ export const saudiTaxInvoices = mysqlTable(
     failureMessage: text(),
     attemptCount: int().default(1).notNull(),
     issuedAt: timestamp({ mode: "string" }),
+    /** SAUDI-TAX-INVOICE-PHASE-1 — human Tax Invoice number (Compliance plane). */
+    invoiceNumber: varchar({ length: 32 }),
+    invoiceSequence: int(),
+    issueTimestampIso: varchar({ length: 64 }),
+    qrPayloadBase64: text(),
+    phase1DocumentJson: json(),
     createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
     updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
   },
@@ -445,6 +451,14 @@ export const saudiTaxInvoices = mysqlTable(
       table.restaurantId,
       table.collectionFactId,
       table.documentKind
+    ),
+    uniqueIndex("saudi_tax_invoices_restaurant_sequence_unique").on(
+      table.restaurantId,
+      table.invoiceSequence
+    ),
+    uniqueIndex("saudi_tax_invoices_restaurant_invoice_number_unique").on(
+      table.restaurantId,
+      table.invoiceNumber
     ),
     index("saudi_tax_invoices_restaurant_id").on(table.restaurantId),
     index("saudi_tax_invoices_restaurant_order").on(
@@ -464,6 +478,23 @@ export const saudiTaxInvoices = mysqlTable(
 
 export type InsertSaudiTaxInvoice = typeof saudiTaxInvoices.$inferInsert;
 export type SelectSaudiTaxInvoice = typeof saudiTaxInvoices.$inferSelect;
+
+/**
+ * SAUDI-TAX-INVOICE-PHASE-1 — restaurant-scoped Tax Invoice human number sequence.
+ * Separate from Cashier operational invoice numbers (ADR-027 planes).
+ */
+export const saudiTaxInvoiceSequences = mysqlTable(
+  "saudi_tax_invoice_sequences",
+  {
+    restaurantId: int().notNull().primaryKey(),
+    lastNumber: int().default(0).notNull(),
+  }
+);
+
+export type InsertSaudiTaxInvoiceSequence =
+  typeof saudiTaxInvoiceSequences.$inferInsert;
+export type SelectSaudiTaxInvoiceSequence =
+  typeof saudiTaxInvoiceSequences.$inferSelect;
 
 // ─── Restaurant Tables (Dining Tables) ────────────────────────────
 export const restaurantTables = mysqlTable("restaurant_tables", {

@@ -24,20 +24,11 @@ describe("Saudi Tax Invoice foundation classification", () => {
   it("does not derive B2B from taxNumber alone when customer is present", () => {
     const withTax = classifySaudiTaxInvoiceFoundation({
       buyerPresence: "present",
-      customerType: "business",
+      customerType: "individual",
       taxNumberPresent: true,
     });
-    const withoutTax = classifySaudiTaxInvoiceFoundation({
-      buyerPresence: "present",
-      customerType: "individual",
-      taxNumberPresent: false,
-    });
-    expect(withTax.partyModel).toBe("unclassified");
-    expect(withoutTax.partyModel).toBe("unclassified");
-    expect(withTax.invoiceForm).toBe("undetermined");
-    expect(withoutTax.invoiceForm).toBe("undetermined");
-    expect(withTax.policyStatus).toBe("needs_official_confirmation");
-    expect(withoutTax.policyStatus).toBe("needs_official_confirmation");
+    expect(withTax.partyModel).not.toBe("b2b");
+    expect(withTax.invoiceForm).toBe("simplified_tax_invoice");
   });
 
   it("does not treat missing taxNumber as non-tax invoice", () => {
@@ -47,7 +38,7 @@ describe("Saudi Tax Invoice foundation classification", () => {
       taxNumberPresent: false,
     });
     expect(result.rationaleCode).not.toMatch(/NON_TAX/i);
-    expect(result.notes).toContain("does not decide B2B/B2C");
+    expect(result.invoiceForm).toBe("simplified_tax_invoice");
   });
 });
 

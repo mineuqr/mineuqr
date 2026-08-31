@@ -25,6 +25,7 @@ import {
   insertSaudiTaxInvoiceRow,
   upgradeSaudiTaxInvoiceRow,
 } from "./saudiTaxInvoiceRepository";
+import { applySaudiPhase1Generation } from "./saudiPhase1GenerationService";
 import {
   buildBuyerSnapshot,
   buildLinesSnapshot,
@@ -109,8 +110,16 @@ async function loadIssuanceContext(input: EnsureSaudiTaxInvoiceInput) {
   const monetarySnapshot = buildMonetarySnapshot(collectionFact);
   const paymentSnapshot = buildPaymentSnapshot(collectionFact);
 
-  const status: SaudiTaxInvoiceStatus =
-    readiness === "READY" ? "generated" : "blocked_profile";
+  const sellerVatPresent = Boolean(profile?.vatNumber?.trim());
+  let status: SaudiTaxInvoiceStatus;
+  if (readiness !== "READY") {
+    status = "blocked_profile";
+  } else if (!sellerVatPresent) {
+    // Official Phase 1 QR tag 2 requires seller VAT number.
+    status = "retryable";
+  } else {
+    status = "generated";
+  }
 
   return {
     status,
@@ -123,6 +132,7 @@ async function loadIssuanceContext(input: EnsureSaudiTaxInvoiceInput) {
     paymentSnapshot,
     sourceCustomerId: customer?.id ?? null,
     orderId: order.id,
+    sellerVatPresent,
   };
 }
 
@@ -131,7 +141,21 @@ function toPersistFields(
   attemptCount: number
 ) {
   const issuedAt =
-    ctx.status === "generated" ? new Date().toISOString().slice(0, 19).replace("T", " ") : null;
+    ctx.status === "generated"
+      ? new Date().toISOString().slice(0, 19).replace("T", " ")
+      : null;
+
+  let failureCode: string | null = null;
+  let failureMessage: string | null = null;
+  if (ctx.status === "blocked_profile") {
+    failureCode = "PROFILE_NOT_READY";
+    failureMessage = `Saudi Tax Profile readiness is ${ctx.readiness}; Tax Invoice generation blocked (PAID unchanged).`;
+  } else if (ctx.status === "retryable" && !ctx.sellerVatPresent) {
+    failureCode = "PHASE1_SELLER_VAT_MISSING";
+    failureMessage =
+      "Phase 1 generation blocked: seller VAT number required for Phase 1 QR/invoice fields (OQ-SELLER-1 / PAID unchanged).";
+  }
+
   return {
     status: ctx.status,
     partyModel: ctx.classification.partyModel,
@@ -145,12 +169,8 @@ function toPersistFields(
     paymentSnapshotJson: ctx.paymentSnapshot,
     sourceCustomerId: ctx.sourceCustomerId,
     profileReadinessAtIssuance: ctx.readiness,
-    failureCode:
-      ctx.status === "blocked_profile" ? "PROFILE_NOT_READY" : null,
-    failureMessage:
-      ctx.status === "blocked_profile"
-        ? `Saudi Tax Profile readiness is ${ctx.readiness}; Tax Invoice generation blocked (PAID unchanged).`
-        : null,
+    failureCode,
+    failureMessage,
     attemptCount,
     issuedAt,
   };
@@ -158,6 +178,7 @@ function toPersistFields(
 
 /**
  * Idempotent ensure: same restaurant + collectionFactId + documentKind → one aggregate.
+ * Phase 1 generation runs after domain snapshot when status allows.
  */
 export async function ensureSaudiTaxInvoiceForCollectionFact(
   input: EnsureSaudiTaxInvoiceInput
@@ -170,42 +191,56 @@ export async function ensureSaudiTaxInvoiceForCollectionFact(
 
   const ctx = await loadIssuanceContext(input);
 
+  let outcome: EnsureSaudiTaxInvoiceResult["outcome"];
+  let taxInvoice: SaudiTaxInvoice;
+
   if (existing) {
     if (isSaudiTaxInvoiceSnapshotImmutable(existing.status)) {
-      return { outcome: "replayed", taxInvoice: existing };
+      outcome = "replayed";
+      taxInvoice = existing;
+    } else {
+      assertSaudiTaxInvoiceStatusTransition(existing.status, ctx.status);
+      const fields = toPersistFields(ctx, existing.attemptCount + 1);
+      taxInvoice = await upgradeSaudiTaxInvoiceRow({
+        restaurantId: input.restaurantId,
+        taxInvoiceId: existing.taxInvoiceId,
+        ...fields,
+      });
+      outcome = "upgraded";
     }
-
-    assertSaudiTaxInvoiceStatusTransition(existing.status, ctx.status);
-    const fields = toPersistFields(ctx, existing.attemptCount + 1);
-    const upgraded = await upgradeSaudiTaxInvoiceRow({
-      restaurantId: input.restaurantId,
-      taxInvoiceId: existing.taxInvoiceId,
-      ...fields,
-    });
-    return { outcome: "upgraded", taxInvoice: upgraded };
+  } else {
+    const fields = toPersistFields(ctx, 1);
+    try {
+      taxInvoice = await insertSaudiTaxInvoiceRow({
+        taxInvoiceId: buildTaxInvoiceId(),
+        restaurantId: input.restaurantId,
+        orderId: ctx.orderId,
+        collectionFactId: input.collectionFactId,
+        documentKind: "tax_invoice",
+        ...fields,
+      });
+      outcome = "created";
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) throw error;
+      const raced = await findSaudiTaxInvoiceByIdempotency({
+        restaurantId: input.restaurantId,
+        collectionFactId: input.collectionFactId,
+        documentKind: "tax_invoice",
+      });
+      if (!raced) throw error;
+      outcome = "replayed";
+      taxInvoice = raced;
+    }
   }
 
-  const fields = toPersistFields(ctx, 1);
-  try {
-    const created = await insertSaudiTaxInvoiceRow({
-      taxInvoiceId: buildTaxInvoiceId(),
-      restaurantId: input.restaurantId,
-      orderId: ctx.orderId,
-      collectionFactId: input.collectionFactId,
-      documentKind: "tax_invoice",
-      ...fields,
-    });
-    return { outcome: "created", taxInvoice: created };
-  } catch (error) {
-    if (!isDuplicateKeyError(error)) throw error;
-    const raced = await findSaudiTaxInvoiceByIdempotency({
-      restaurantId: input.restaurantId,
-      collectionFactId: input.collectionFactId,
-      documentKind: "tax_invoice",
-    });
-    if (!raced) throw error;
-    return { outcome: "replayed", taxInvoice: raced };
+  if (
+    taxInvoice.status === "generated" ||
+    taxInvoice.status === "retryable"
+  ) {
+    taxInvoice = await applySaudiPhase1Generation(taxInvoice);
   }
+
+  return { outcome, taxInvoice };
 }
 
 /** Read helper for tenant-scoped lookups (authorization must precede). */

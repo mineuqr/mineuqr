@@ -82,11 +82,11 @@ describe("SAUDI-TAX-INVOICE-DOMAIN-FOUNDATION-1 guards", () => {
       "shared/compliance/saudi-tax-invoice/saudiTaxInvoiceClassification.ts"
     );
     expect(classification).toContain("Forbidden sole rule");
-    expect(classification).toContain("taxNumber");
     expect(classification).not.toMatch(
       /taxNumberPresent\s*\?\s*["']b2b["']\s*:\s*["']b2c["']/
     );
-    expect(classification).toContain("void input.taxNumberPresent");
+    expect(classification).toContain('customerType === "business"');
+    expect(classification).toContain("taxNumber alone without business type");
   });
 
   it("Saudi module owns Tax Invoice domain registration path", () => {
