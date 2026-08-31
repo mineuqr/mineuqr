@@ -47,5 +47,5 @@ Open questions unchanged (OQ-CLASS-1, OQ-SELLER-1, OQ-VAT-1, OQ-B2G, OQ-EDU-HEAL
 
 ## Commit / remote
 
-- Commit: `2b354305` — `feat(tax): unify Saudi phase 1 tax invoice QR`
+- Commit: `c7a2d2cf` — `feat(tax): unify Saudi phase 1 tax invoice QR`
 - Push / HEAD / working tree: recorded after `git push origin main`
