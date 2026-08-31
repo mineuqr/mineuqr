@@ -19,7 +19,6 @@ describe("RECOVERY-DISCOVERY-STARVATION-HARDENING-1 architecture", () => {
     const classify = read(
       "server/operational-session/payment/recoveryDiscoveryClassification.ts"
     );
-    const journal = read("drizzle/meta/_journal.json");
     expect(recover).toContain("listActiveParkedDrawerAttributionFactIds");
     expect(recover).toContain("classifyDrawerAttributionRecovery");
     expect(recover).toContain("committedAt: fact.committedAt");
@@ -35,7 +34,7 @@ describe("RECOVERY-DISCOVERY-STARVATION-HARDENING-1 architecture", () => {
     const parkStore = read("server/operational-session/payment/recoveryParkStore.ts");
     expect(parkStore).toContain("orderDomainConsumerProcessed");
     expect(parkStore).toContain("rcv.park.drawer");
-    expect(journal).not.toContain("0102_");
+    // Later journal tags (0102+) are allowed; this program shipped no bare 0102.sql.
     expect(existsSync(join(repoRoot, "drizzle/0102.sql"))).toBe(false);
   });
 

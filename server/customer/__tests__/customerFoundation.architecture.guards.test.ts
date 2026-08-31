@@ -98,10 +98,23 @@ describe("CUSTOMER-FOUNDATION-1 architecture guards", () => {
     expect(bar).toContain("Does not mutate Collection Fact");
     expect(bar).not.toContain("settleMutation");
     expect(bar).not.toContain("completePayment");
+    expect(bar).toContain("createForPos");
+    expect(bar).toContain("إضافة عميل");
     expect(panel).toContain("CashierCustomerBar");
     expect(panel).toContain("selectedCustomer");
   });
 
+  it("Cashier createForPos reuses CustomerService — no duplicated create logic in UI", () => {
+    const router = read("server/customer/customerRouter.ts");
+    const bar = read(
+      "client/src/components/cashier-workspace/CashierCustomerBar.tsx"
+    );
+    expect(router).toContain("createForPos");
+    expect(router).toContain("from \"./CustomerService\"");
+    expect(bar).toContain("trpc.customer.createForPos");
+    expect(bar).not.toContain("insertCustomer");
+    expect(bar).not.toContain("validateCustomerCreate");
+  });
   it("Customer type does not encode invoice classification", () => {
     const contract = read("shared/customer/customerContract.ts");
     expect(contract).toContain('["individual", "business"]');

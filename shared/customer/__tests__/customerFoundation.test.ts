@@ -97,4 +97,45 @@ describe("CUSTOMER-FOUNDATION-1 validation", () => {
       }).some((i) => i.field === "displayName")
     ).toBe(true);
   });
+
+  it("Cashier create: Individual without tax number is valid", () => {
+    expect(
+      validateCustomerCreate({
+        restaurantId: 1,
+        displayName: "سارة",
+        customerType: "individual",
+        phone: "0500000000",
+        taxNumber: null,
+      })
+    ).toEqual([]);
+  });
+
+  it("Cashier create: Business without tax number is valid by global contract", () => {
+    expect(
+      validateCustomerCreate({
+        restaurantId: 1,
+        displayName: "مؤسسة النور",
+        customerType: "business",
+        taxNumber: null,
+      })
+    ).toEqual([]);
+  });
+
+  it("Cashier create: optional tax number is accepted when provided", () => {
+    expect(
+      validateCustomerCreate({
+        restaurantId: 1,
+        displayName: "مؤسسة النور",
+        customerType: "business",
+        taxNumber: "300000000000003",
+      })
+    ).toEqual([]);
+  });
+
+  it("cleared customer falls back to نقدًا display label", () => {
+    expect(cashierCustomerDisplayLabel(null, "ar")).toBe("العميل: نقدًا");
+    expect(
+      cashierCustomerDisplayLabel({ id: 9, displayName: "سارة" }, "ar")
+    ).toContain("سارة");
+  });
 });

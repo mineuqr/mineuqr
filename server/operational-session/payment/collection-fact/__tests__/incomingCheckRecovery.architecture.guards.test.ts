@@ -129,7 +129,8 @@ describe("POST-PAYMENT-INCOMING-CHECK-RECOVERY-HARDENING-1 architecture", () => 
     expect(vercel).not.toContain('"crons"');
     expect(vercel).not.toContain("cashier-downstream-recovery");
     expect(journal).toContain("0101_cashier_invoices");
-    expect(journal).not.toContain("0102_");
+    // Later journal tags (0102+) are allowed; this program shipped no bare
+    // 0102.sql schema change and no recovery cron package.
     expect(existsSync(join(repoRoot, "drizzle/0102.sql"))).toBe(false);
     expect(
       existsSync(

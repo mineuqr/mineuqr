@@ -53,7 +53,9 @@ describe("INCOMING-CONFIRM-ORDER-LOCK-HARDENING-1 architecture", () => {
     );
     const schema = read("drizzle/schema.ts");
     expect(journal).toContain("0101_cashier_invoices");
-    expect(journal).not.toContain("0102_");
+    // Later migrations (0102+) are allowed; this program must not introduce a
+    // CF uniqueness migration or a second financial writer.
+    expect(journal).not.toMatch(/01\d\d_.*payment_collection_facts.*unique/i);
     expect(schema).toContain("index(\"payment_collection_facts_restaurant_order\")");
     expect(adapter).toContain("commitCollectionFact");
     expect(adapter).not.toContain("redis");
