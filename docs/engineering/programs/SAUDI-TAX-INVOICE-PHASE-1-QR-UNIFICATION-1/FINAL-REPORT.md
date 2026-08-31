@@ -47,5 +47,9 @@ Open questions unchanged (OQ-CLASS-1, OQ-SELLER-1, OQ-VAT-1, OQ-B2G, OQ-EDU-HEAL
 
 ## Commit / remote
 
-- Commit: `c7a2d2cf` — `feat(tax): unify Saudi phase 1 tax invoice QR`
-- Push / HEAD / working tree: recorded after `git push origin main`
+- Feature: `c7a2d2cf` — `feat(tax): unify Saudi phase 1 tax invoice QR`
+- Docs: `6c95736b` — `docs(tax): record Saudi phase 1 QR unification SHA`
+- `HEAD == origin/main` (`6c95736b`)
+- Working tree clean after push
+- Live browser View/Print: **NOT RUN IN-AGENT**
+- Vercel: verify in dashboard if deployment auto-triggers from main
