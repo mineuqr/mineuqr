@@ -389,6 +389,82 @@ export const customers = mysqlTable(
 export type InsertCustomer = typeof customers.$inferInsert;
 export type SelectCustomer = typeof customers.$inferSelect;
 
+/**
+ * SAUDI-TAX-INVOICE-DOMAIN-FOUNDATION-1 — Saudi Compliance Tax Invoice aggregate.
+ * Compliance artifact only. Not financial authority. Not ZATCA/Fatoora/IRN/QR/VAT engine.
+ * Physical column names MUST match 0107_saudi_tax_invoices (camelCase).
+ */
+export const saudiTaxInvoices = mysqlTable(
+  "saudi_tax_invoices",
+  {
+    id: int().autoincrement().notNull(),
+    taxInvoiceId: varchar({ length: 128 }).notNull(),
+    restaurantId: int().notNull(),
+    orderId: int().notNull(),
+    collectionFactId: varchar({ length: 128 }).notNull(),
+    documentKind: mysqlEnum("documentKind", ["tax_invoice"])
+      .default("tax_invoice")
+      .notNull(),
+    status: mysqlEnum("status", [
+      "blocked_profile",
+      "generated",
+      "failed",
+      "retryable",
+    ]).notNull(),
+    partyModel: mysqlEnum("partyModel", [
+      "b2c",
+      "b2b",
+      "b2g",
+      "unclassified",
+    ]).notNull(),
+    invoiceForm: mysqlEnum("invoiceForm", [
+      "simplified_tax_invoice",
+      "standard_tax_invoice",
+      "undetermined",
+    ]).notNull(),
+    classificationRationaleCode: varchar({ length: 128 }).notNull(),
+    classificationJson: json().notNull(),
+    sellerSnapshotJson: json().notNull(),
+    buyerSnapshotJson: json().notNull(),
+    linesSnapshotJson: json().notNull(),
+    monetarySnapshotJson: json().notNull(),
+    paymentSnapshotJson: json().notNull(),
+    sourceCustomerId: int(),
+    profileReadinessAtIssuance: varchar({ length: 32 }),
+    failureCode: varchar({ length: 64 }),
+    failureMessage: text(),
+    attemptCount: int().default(1).notNull(),
+    issuedAt: timestamp({ mode: "string" }),
+    createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+    updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.id], name: "saudi_tax_invoices_id" }),
+    uniqueIndex("saudi_tax_invoices_tax_invoice_id_unique").on(table.taxInvoiceId),
+    uniqueIndex("saudi_tax_invoices_idempotency_unique").on(
+      table.restaurantId,
+      table.collectionFactId,
+      table.documentKind
+    ),
+    index("saudi_tax_invoices_restaurant_id").on(table.restaurantId),
+    index("saudi_tax_invoices_restaurant_order").on(
+      table.restaurantId,
+      table.orderId
+    ),
+    index("saudi_tax_invoices_restaurant_status").on(
+      table.restaurantId,
+      table.status
+    ),
+    index("saudi_tax_invoices_source_customer").on(
+      table.restaurantId,
+      table.sourceCustomerId
+    ),
+  ]
+);
+
+export type InsertSaudiTaxInvoice = typeof saudiTaxInvoices.$inferInsert;
+export type SelectSaudiTaxInvoice = typeof saudiTaxInvoices.$inferSelect;
+
 // ─── Restaurant Tables (Dining Tables) ────────────────────────────
 export const restaurantTables = mysqlTable("restaurant_tables", {
 	id: int().autoincrement().notNull(),

@@ -1,7 +1,7 @@
 /**
  * SAUDI-TAX-INVOICE-ARCHITECTURE-EVALUATION-1
- * Architecture guards — evaluation boundaries only.
- * No Tax Invoice implementation is required or permitted by these tests.
+ * Architecture guards — evaluation boundaries preserved historically.
+ * Domain foundation (0107) is a later program; these guards keep evaluation invariants.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -25,18 +25,16 @@ const GLOBAL_CORE_PATHS = [
 ] as const;
 
 const TAX_INVOICE_IMPL_MARKERS = [
-  "TaxInvoiceService",
-  "issueTaxInvoice",
+  "ensureSaudiTaxInvoiceForCollectionFact",
   "allocateIrn",
   "fatoora",
   "Fatoora",
   "generateTaxQr",
   "zatcaClearance",
-  "saudiTaxInvoice",
 ] as const;
 
 describe("SAUDI-TAX-INVOICE-ARCHITECTURE-EVALUATION-1 guards", () => {
-  it("evaluation artifacts exist and claim no implementation", () => {
+  it("evaluation artifacts still document evaluation-only scope", () => {
     const evaluation = read(
       "docs/architecture/evaluations/SAUDI-TAX-INVOICE-ARCHITECTURE-EVALUATION-1.md"
     );
@@ -52,7 +50,7 @@ describe("SAUDI-TAX-INVOICE-ARCHITECTURE-EVALUATION-1 guards", () => {
     expect(contracts).toContain("PROPOSED — NOT IMPLEMENTED");
   });
 
-  it("no Tax Invoice migration 0106 (or later tax_invoice SQL) was introduced by this program", () => {
+  it("evaluation program did not create tax_invoice SQL under 0106", () => {
     expect(existsSync(join(repoRoot, "drizzle/0106_tax_invoices.sql"))).toBe(
       false
     );
@@ -60,8 +58,7 @@ describe("SAUDI-TAX-INVOICE-ARCHITECTURE-EVALUATION-1 guards", () => {
       false
     );
     const journal = read("drizzle/meta/_journal.json");
-    expect(journal).toContain("0105_customers");
-    expect(journal).not.toContain("0106_");
+    expect(journal).toContain("0106_orders_customer_id");
   });
 
   it.each(GLOBAL_CORE_PATHS)(
@@ -135,7 +132,7 @@ describe("SAUDI-TAX-INVOICE-ARCHITECTURE-EVALUATION-1 guards", () => {
     expect(registry).toContain('SAUDI_ZATCA_COUNTRY = "SA"');
     expect(registry).toContain("normalizeCountryCode");
     expect(module).toContain('ctx.countryCode === "SA"');
-    expect(module).toContain("Boundary hook only");
+    expect(module).toContain("registerSaudiTaxInvoiceDomainHandler");
     expect(orchestrator).toContain("resolveComplianceModule");
     expect(orchestrator).toContain("onProductionCollectionFactCommitted");
   });

@@ -15,26 +15,27 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0106 contiguously", () => {
+  it("journal contains canonical migrations 0000–0107 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
     expect(journal.entries[103]?.tag).toBe("0103_realtime_bus_messages");
     expect(journal.entries[104]?.tag).toBe("0104_saudi_tax_profiles");
     expect(journal.entries[105]?.tag).toBe("0105_customers");
-    expect(journal.entries[106]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(journal.entries[106]?.tag).toBe("0106_orders_customer_id");
+    expect(journal.entries[107]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[107]?.tag).toBe("0107_saudi_tax_invoices");
     expect(validateJournalOrdering()).toEqual([]);
   });
 
-  it("exports certified migration tail constant at 0106", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0106_orders_customer_id");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(107);
+  it("exports certified migration tail constant at 0107", () => {
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0107_saudi_tax_invoices");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(108);
     const tags = loadJournal().entries.map((e) => e.tag);
-    expect(tags).toHaveLength(107);
-    expect(tags[105]).toBe("0105_customers");
+    expect(tags).toHaveLength(108);
+    expect(tags[106]).toBe("0106_orders_customer_id");
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
-    expect(tags[tags.length - 1]).not.toBe("0105_customers");
+    expect(tags[tags.length - 1]).not.toBe("0106_orders_customer_id");
   });
 
   it("registers restored tail migrations 0054–0057", () => {
@@ -65,8 +66,8 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(guard).toContain("CANONICAL_MIGRATION_TAIL_TAG");
     expect(guard).toContain("CANONICAL_JOURNAL_ENTRY_COUNT");
     expect(guard).toContain("process.exit(1)");
-    expect(guard).toContain("0000–0106");
-    expect(guard).not.toContain("0000–0105");
+    expect(guard).toContain("0000–0107");
+    expect(guard).not.toContain("0000–0106");
   });
 
   it("0104 is additive saudi_tax_profiles and is not a financial rewrite", () => {
@@ -87,17 +88,17 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/DROP\s+/i);
   });
 
-  it("cannot silently regress certified terminus back to 0105", () => {
+  it("cannot silently regress certified terminus back to 0106", () => {
     const lib = readFileSync(
       join(repoRoot, "scripts/lib/migration-governance-lib.cjs"),
       "utf8"
     );
-    expect(lib).toContain('CANONICAL_MIGRATION_TAIL_TAG = "0106_orders_customer_id"');
-    expect(lib).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 107");
+    expect(lib).toContain('CANONICAL_MIGRATION_TAIL_TAG = "0107_saudi_tax_invoices"');
+    expect(lib).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 108");
     expect(lib).not.toMatch(
-      /CANONICAL_MIGRATION_TAIL_TAG\s*=\s*"0105_customers"/
+      /CANONICAL_MIGRATION_TAIL_TAG\s*=\s*"0106_orders_customer_id"/
     );
-    expect(lib).not.toMatch(/CANONICAL_JOURNAL_ENTRY_COUNT\s*=\s*106\b/);
+    expect(lib).not.toMatch(/CANONICAL_JOURNAL_ENTRY_COUNT\s*=\s*107\b/);
   });
 
   it("0105 is additive customers and is not a financial rewrite", () => {
@@ -121,6 +122,21 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).toContain("orders_customer_id_fk");
     expect(sql).toContain("ON DELETE SET NULL");
     expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/DROP\s+TABLE/i);
+  });
+
+  it("0107 is additive saudi_tax_invoices and is not a financial rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0107_saudi_tax_invoices.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `saudi_tax_invoices`");
+    expect(sql).toContain("saudi_tax_invoices_idempotency_unique");
+    expect(sql).toContain("`taxInvoiceId`");
+    expect(sql).toContain("`collectionFactId`");
+    expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
+    expect(sql).not.toMatch(/ALTER TABLE `orders`/);
     expect(sql).not.toMatch(/INSERT\s+INTO/i);
     expect(sql).not.toMatch(/DROP\s+TABLE/i);
   });

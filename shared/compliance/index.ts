@@ -19,6 +19,11 @@ export { normalizeCountryCode } from "./countryCode";
 export { resolveComplianceModule } from "./resolveComplianceModule";
 export { noOpComplianceModule } from "./modules/noOpComplianceModule";
 export { saudiZatcaComplianceModule } from "./modules/saudiZatcaComplianceModule";
+export {
+  registerSaudiTaxInvoiceDomainHandler,
+  clearSaudiTaxInvoiceDomainHandlerForTests,
+  type SaudiTaxInvoiceDomainHandler,
+} from "./modules/saudiZatcaComplianceModule";
 
 export {
   SAUDI_TAX_PROFILE_PROGRAM_ID,
@@ -37,3 +42,32 @@ export {
   type SaudiVatNumberValidationOutcome,
   type SaudiVatRegistrationStatus,
 } from "./saudi-tax-profile";
+
+export {
+  SAUDI_TAX_INVOICE_PROGRAM_ID,
+  SAUDI_TAX_INVOICE_DOCUMENT_KINDS,
+  SAUDI_TAX_INVOICE_STATUSES,
+  SAUDI_TAX_INVOICE_PARTY_MODELS,
+  SAUDI_TAX_INVOICE_FORMS,
+  SAUDI_TAX_INVOICE_CLASSIFICATION_POLICY_STATUSES,
+  classifySaudiTaxInvoiceFoundation,
+  canTransitionSaudiTaxInvoiceStatus,
+  assertSaudiTaxInvoiceStatusTransition,
+  isSaudiTaxInvoiceSnapshotImmutable,
+  type SaudiTaxInvoiceDocumentKind,
+  type SaudiTaxInvoiceStatus,
+  type SaudiTaxInvoicePartyModel,
+  type SaudiTaxInvoiceForm,
+  type SaudiTaxInvoiceClassificationPolicyStatus,
+  type SaudiTaxInvoiceClassification,
+  type SaudiTaxInvoiceSellerSnapshot,
+  type SaudiTaxInvoiceBuyerSnapshot,
+  type SaudiTaxInvoiceOrderLineSnapshot,
+  type SaudiTaxInvoiceLinesSnapshot,
+  type SaudiTaxInvoiceMonetarySnapshot,
+  type SaudiTaxInvoicePaymentSnapshot,
+  type SaudiTaxInvoice,
+  type EnsureSaudiTaxInvoiceInput,
+  type EnsureSaudiTaxInvoiceResult,
+  type SaudiTaxInvoiceClassificationInput,
+} from "./saudi-tax-invoice";

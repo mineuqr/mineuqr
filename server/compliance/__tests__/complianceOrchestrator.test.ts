@@ -22,10 +22,9 @@ describe("ComplianceOrchestrator", () => {
 
   it("invokes Saudi module with authoritative restaurant context for SA", async () => {
     vi.mocked(resolveAuthoritativeRestaurantCountryCode).mockResolvedValue("SA");
-    const spy = vi.spyOn(
-      saudiZatcaComplianceModule,
-      "onProductionCollectionFactCommitted"
-    );
+    const spy = vi
+      .spyOn(saudiZatcaComplianceModule, "onProductionCollectionFactCommitted")
+      .mockResolvedValue(undefined);
     await orchestrateProductionCollectionFactCommitted({
       collectionFactId: "pcf_test_1",
       restaurantId: 42,
@@ -43,10 +42,9 @@ describe("ComplianceOrchestrator", () => {
 
   it("invokes NoOp module for unsupported countries", async () => {
     vi.mocked(resolveAuthoritativeRestaurantCountryCode).mockResolvedValue("US");
-    const spy = vi.spyOn(
-      noOpComplianceModule,
-      "onProductionCollectionFactCommitted"
-    );
+    const spy = vi
+      .spyOn(noOpComplianceModule, "onProductionCollectionFactCommitted")
+      .mockResolvedValue(undefined);
     await orchestrateProductionCollectionFactCommitted({
       collectionFactId: "pcf_test_2",
       restaurantId: 7,
@@ -58,9 +56,12 @@ describe("ComplianceOrchestrator", () => {
     spy.mockRestore();
   });
 
-  it("does not create tax invoices or customer records", async () => {
+  it("orchestrator routes via modules and does not own Tax Invoice persistence", async () => {
+    const orchestrator = await import("../ComplianceOrchestrator");
+    expect(String(orchestrator.orchestrateProductionCollectionFactCommitted)).not.toContain(
+      "insertSaudiTaxInvoiceRow"
+    );
     const registry = await import("@shared/compliance/resolveComplianceModule");
-    expect(String(registry.resolveComplianceModule)).not.toContain("tax_invoice");
-    expect(String(registry.resolveComplianceModule)).not.toContain("customer");
+    expect(String(registry.resolveComplianceModule)).not.toContain("insertSaudiTaxInvoiceRow");
   });
 });

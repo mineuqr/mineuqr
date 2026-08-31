@@ -9,6 +9,7 @@ import {
   type ProductionCollectionFactCommittedEvent,
 } from "@shared/compliance";
 import { resolveAuthoritativeRestaurantCountryCode } from "./restaurantCountryContext";
+import "./saudi-tax-invoice/registerSaudiTaxInvoiceDomain";
 
 export type ProductionCollectionFactComplianceInput = Readonly<{
   collectionFactId: string;
