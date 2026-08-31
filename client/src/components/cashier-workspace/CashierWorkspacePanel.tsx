@@ -1347,7 +1347,7 @@ export function CashierWorkspacePanel({
           ) : null}
         </div>
         <span className={cashierPos.status}>{operationalStatus}</span>
-        <label className="flex min-h-11 items-center gap-2 text-sm text-[#374151]">
+        <label className="flex min-h-11 items-center gap-2 text-sm text-[#111827]">
           <span>{t("terminal")}</span>
           <select
             className={cashierPos.select}
@@ -1526,7 +1526,7 @@ export function CashierWorkspacePanel({
                     {invoiceIntentsQuery.isPending ? (
                       <AppLoadingState label={t("loading")} />
                     ) : awaitingIntents.length === 0 ? (
-                      <p className="text-sm text-[#6b7280]">
+                      <p className="text-sm text-[#111827]">
                         {t("noIncomingOrders")}
                       </p>
                     ) : (
@@ -1557,7 +1557,7 @@ export function CashierWorkspacePanel({
                                     ? ` · ${t("incomingTable")} ${intent.tableNumber}`
                                     : ""}
                                 </span>
-                                <span className="mt-1 block text-xs text-[#6b7280]">
+                                <span className="mt-1 block text-xs text-[#111827]">
                                   {t("incomingOperationalOrder")}{" "}
                                   {intent.displayReference || intent.orderNumber}
                                   {" · "}
@@ -1596,7 +1596,7 @@ export function CashierWorkspacePanel({
                         {ordersQuery.isPending ? (
                           <AppLoadingState label={t("loading")} />
                         ) : orders.length === 0 ? (
-                          <p className="text-sm text-[#6b7280]">
+                          <p className="text-sm text-[#111827]">
                             {t("noOrders")}
                           </p>
                         ) : (
@@ -1619,7 +1619,7 @@ export function CashierWorkspacePanel({
                                     {order.displayReference ||
                                       order.orderNumber}
                                   </span>
-                                  <span className="text-xs text-[#6b7280]">
+                                  <span className="text-xs text-[#111827]">
                                     {order.status} · {order.totalAmount}
                                   </span>
                                 </button>
@@ -2099,13 +2099,13 @@ export function CashierWorkspacePanel({
                 </h2>
                 {sheetMoney ? (
                   <div className="mt-4 space-y-1">
-                    <p className="flex justify-between text-sm text-[#6b7280]">
+                    <p className="flex justify-between text-sm text-[#111827]">
                       <span>{t("ticketSubtotal")}</span>
                       <span className="tabular-nums">
                         {money(sheetMoney.subtotal)}
                       </span>
                     </p>
-                    <p className="flex justify-between text-sm text-[#6b7280]">
+                    <p className="flex justify-between text-sm text-[#111827]">
                       <span>{t("ticketDiscount")}</span>
                       <span className="tabular-nums">
                         {isPositiveDisplayMoney(sheetMoney.discount)
@@ -2113,7 +2113,7 @@ export function CashierWorkspacePanel({
                           : money("0.00")}
                       </span>
                     </p>
-                    <p className="flex justify-between text-sm text-[#6b7280]">
+                    <p className="flex justify-between text-sm text-[#111827]">
                       <span>{t("paymentTax")}</span>
                       <span className="tabular-nums">
                         {money(sheetMoney.taxAmount)}
@@ -2121,7 +2121,7 @@ export function CashierWorkspacePanel({
                     </p>
                   </div>
                 ) : null}
-                <p className="mt-4 text-sm font-medium text-[#6b7280]">
+                <p className="mt-4 text-sm font-medium text-[#111827]">
                   {t("amountDue")}
                 </p>
                 <p className={cashierPos.amountDueHuge}>
@@ -2132,7 +2132,7 @@ export function CashierWorkspacePanel({
                       : money("0.00")}
                 </p>
                 {paying ? (
-                  <p className="mt-1 text-xs text-[#6b7280]">{t("paying")}</p>
+                  <p className="mt-1 text-xs text-[#111827]">{t("paying")}</p>
                 ) : null}
                 <p className="mb-2 mt-4 text-sm font-medium">
                   {t("choosePaymentMethod")}
@@ -2185,7 +2185,7 @@ export function CashierWorkspacePanel({
                   ))}
                 </div>
                 {tenderMode === "complimentary" ? (
-                  <p className="mt-3 text-sm text-[#6b7280]">
+                  <p className="mt-3 text-sm text-[#111827]">
                     {t("complimentaryConfirmHint")}
                   </p>
                 ) : null}

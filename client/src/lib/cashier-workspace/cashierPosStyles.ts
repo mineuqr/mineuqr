@@ -5,6 +5,11 @@
  * payment modal, adaptive tablet/mobile composition (sale sheet + cart dock).
  */
 
+/** Primary operational text — one strong near-black across Cashier light surfaces */
+export const CASHIER_TEXT_PRIMARY = "#111827" as const;
+/** Level-4 supporting copy only (empty hints); not for labels/financials */
+export const CASHIER_TEXT_MUTED = "#374151" as const;
+
 export const cashierPos = {
   root: "cashier-pos flex h-[100dvh] min-h-0 flex-col overflow-x-hidden touch-manipulation bg-[#f4f5f7] text-[#111827]",
   header:
@@ -31,11 +36,11 @@ export const cashierPos = {
   incomingTriggerPulse:
     "motion-safe:animate-pulse border-amber-300 bg-amber-50",
   incomingLabel: "text-sm font-semibold text-[#111827]",
-  incomingHint: "hidden text-xs text-[#6b7280] sm:inline",
+  incomingHint: "hidden text-xs font-medium text-[#111827] sm:inline",
   incomingBadge:
     "ms-auto flex min-h-7 min-w-7 items-center justify-center rounded-full bg-[#4f46e5] px-2 text-xs font-bold tabular-nums text-white",
   incomingBadgeIdle:
-    "ms-auto flex min-h-7 min-w-7 items-center justify-center rounded-full bg-[#e5e7eb] px-2 text-xs font-bold tabular-nums text-[#6b7280]",
+    "ms-auto flex min-h-7 min-w-7 items-center justify-center rounded-full bg-[#e5e7eb] px-2 text-xs font-bold tabular-nums text-[#111827]",
   incomingPanel:
     "flex max-h-[min(70dvh,32rem)] w-[min(100vw-1rem,24rem)] flex-col overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-lg",
   incomingPanelHeader:
@@ -44,7 +49,7 @@ export const cashierPos = {
   topSearchSort:
     "flex min-w-0 flex-1 basis-[min(100%,18rem)] items-center gap-2 sm:basis-auto sm:min-w-[14rem] md:max-w-xl lg:max-w-2xl",
   catalogSearch:
-    "min-h-11 min-w-0 flex-1 rounded-xl border border-[#d8dee6] bg-white px-3 text-sm text-[#111827]",
+    "min-h-11 min-w-0 flex-1 rounded-xl border border-[#d8dee6] bg-white px-3 text-sm text-[#111827] placeholder:text-[#374151]",
   catalogSort:
     "min-h-11 w-[7rem] shrink-0 rounded-xl border border-[#d8dee6] bg-white px-2 text-sm text-[#111827] sm:w-[8rem]",
   /**
@@ -62,7 +67,7 @@ export const cashierPos = {
   orderSheetHandle:
     "mx-auto mb-1 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-[#d1d5db] lg:hidden",
   orderSheetClose:
-    "absolute end-3 top-3 z-10 flex size-11 items-center justify-center rounded-full border border-[#e5e7eb] bg-white text-[#374151] lg:hidden",
+    "absolute end-3 top-3 z-10 flex size-11 items-center justify-center rounded-full border border-[#e5e7eb] bg-white text-[#111827] lg:hidden",
   /** Header stays fixed; items scroll; footer (totals+PAY) stays pinned */
   orderBody: "flex min-h-0 flex-1 flex-col overflow-hidden",
   orderHeader: "shrink-0 border-b border-[#eef0f3] px-3 pb-1 pt-0.5",
@@ -70,28 +75,28 @@ export const cashierPos = {
     "min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-2.5 py-1",
   orderFooter:
     "shrink-0 border-t border-[#e5e7eb] bg-white px-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1",
-  orderMeta: "space-y-0 text-[11px] leading-tight text-[#6b7280]",
-  orderHeading: "text-sm font-bold tabular-nums leading-tight text-[#111827]",
+  orderMeta: "space-y-0 text-[11px] font-medium leading-tight text-[#111827]",
+  orderHeading: "text-base font-bold tabular-nums leading-tight text-[#111827]",
   orderSource: "text-[11px] font-semibold uppercase tracking-wide text-[#4f46e5]",
   orderEmpty:
     "flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#d8dee6] bg-[#fafbfc] px-4 py-8 text-center",
-  orderEmptyTitle: "text-sm font-semibold text-[#374151]",
-  orderEmptyHint: "text-xs text-[#6b7280]",
+  orderEmptyTitle: "text-sm font-semibold text-[#111827]",
+  orderEmptyHint: "text-xs font-medium text-[#374151]",
   ticketLine:
     "flex min-w-0 items-center gap-1.5 rounded-md border border-[#e5e7eb] bg-[#f9fafb] px-2 py-1",
   ticketLineName:
-    "min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-[#111827]",
+    "min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight text-[#111827]",
   ticketLineControls: "flex shrink-0 items-center gap-0.5",
   ticketLineQty:
     "inline-flex min-h-9 min-w-7 items-center justify-center rounded-md bg-white px-1 text-xs font-semibold tabular-nums text-[#111827]",
   ticketLinePrice:
-    "shrink-0 text-end text-[13px] font-semibold tabular-nums leading-tight text-[#4b5563]",
+    "shrink-0 text-end text-[13px] font-semibold tabular-nums leading-tight text-[#111827]",
   ticketLineDelete:
     "size-9 shrink-0 text-[#b91c1c] hover:bg-red-50 hover:text-[#991b1b]",
   orderScroll:
     "flex min-h-0 flex-1 flex-col gap-2 overflow-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
   totalBox: "space-y-0.5",
-  summaryRow: "flex justify-between text-xs leading-5 text-[#6b7280]",
+  summaryRow: "flex justify-between text-xs font-medium leading-5 text-[#111827]",
   totalRow:
     "mt-1 flex items-baseline justify-between border-t border-[#e5e7eb] pt-1.5",
   totalLabel: "text-sm font-bold text-[#111827]",
@@ -124,7 +129,7 @@ export const cashierPos = {
   productCardFlash: "ring-2 ring-[#4f46e5]/50 border-[#4f46e5]",
   productImage: "h-28 w-full object-cover sm:h-32",
   productFallback:
-    "flex h-28 items-center justify-center bg-[#eef2f6] text-2xl font-semibold text-[#6b7280] sm:h-32",
+    "flex h-28 items-center justify-center bg-[#eef2f6] text-2xl font-semibold text-[#374151] sm:h-32",
   productBody: "flex flex-1 flex-col gap-1 p-3",
   productName: "line-clamp-2 text-sm font-semibold leading-snug text-[#111827]",
   productPrice: "text-base font-bold tabular-nums text-[#4f46e5]",
@@ -136,7 +141,7 @@ export const cashierPos = {
   productAdd:
     "ms-auto flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#4f46e5] text-white active:bg-[#3730a3] hover:bg-[#4338ca] disabled:cursor-not-allowed disabled:bg-[#d1d5db]",
   productFav:
-    "absolute end-2 top-2 z-10 flex size-11 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#6b7280] shadow-sm active:text-[#4f46e5] hover:text-[#4f46e5]",
+    "absolute end-2 top-2 z-10 flex size-11 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#374151] shadow-sm active:text-[#4f46e5] hover:text-[#4f46e5]",
   productFavActive: "text-[#7c3aed]",
   aside: "flex min-h-0 flex-col overflow-hidden bg-[#f8fafc]",
   contextualRail: "flex min-h-0 flex-1 flex-col overflow-hidden bg-white",
@@ -178,4 +183,7 @@ export const cashierPos = {
     "flex min-h-[4.75rem] flex-col items-center justify-center gap-1.5 rounded-xl border-[#4f46e5] bg-[#4f46e5] px-3 text-sm font-semibold text-white ring-2 ring-[#4f46e5]/30",
   methodGrid: "grid grid-cols-2 gap-3",
   methodIcon: "size-6 shrink-0",
+  bodyText: "text-sm text-[#111827]",
+  bodyTextSm: "text-xs text-[#111827]",
+  mutedText: "text-xs font-medium text-[#374151]",
 } as const;

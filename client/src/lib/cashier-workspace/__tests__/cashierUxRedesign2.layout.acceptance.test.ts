@@ -79,10 +79,25 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
       /ticketLine:\s*"flex min-w-0 items-center/
     );
     expect(styles).toContain("ticketLineName");
-    expect(styles).toContain("flex-1 truncate text-sm font-semibold");
+    expect(styles).toContain("flex-1 truncate text-[15px] font-semibold");
+    expect(styles).toContain("CASHIER_TEXT_PRIMARY");
+    expect(styles).toContain('CASHIER_TEXT_PRIMARY = "#111827"');
+    expect(styles).toMatch(/summaryRow:[\s\S]*?text-\[#111827\]/);
     expect(styles).not.toContain("ticketLineControls: \"col-span-2");
     expect(panel).toContain("cashierPos.ticketLineDelete");
     expect(panel).toContain("changeQty(menuItemId, -line.quantity)");
+  });
+
+  it("unifies primary operational text to CASHIER_TEXT_PRIMARY", () => {
+    expect(styles).toContain('CASHIER_TEXT_PRIMARY = "#111827"');
+    expect(styles).toContain('CASHIER_TEXT_MUTED = "#374151"');
+    expect(styles).toMatch(/summaryRow:[\s\S]*?text-\[#111827\]/);
+    expect(styles).toMatch(/ticketLineName:[\s\S]*?text-\[#111827\]/);
+    expect(styles).toMatch(/ticketLinePrice:[\s\S]*?text-\[#111827\]/);
+    expect(styles).toMatch(/orderEmptyTitle:[\s\S]*?text-\[#111827\]/);
+    expect(styles).toMatch(/productPrice:[\s\S]*?text-\[#4f46e5\]/);
+    expect(styles).toMatch(/ticketLineDelete:[\s\S]*?text-\[#b91c1c\]/);
+    expect(panel).not.toContain("text-[#6b7280]");
   });
 
   it("Product Card click-to-add is primary; + is secondary size-10", () => {
