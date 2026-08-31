@@ -87,6 +87,10 @@ Stale architecture guards in Incoming Confirm Order Lock / Incoming Check Recove
 
 | Field | Value |
 |-------|-------|
-| Push | `git push origin main` |
-| HEAD == origin/main | *(after push)* |
-| Working tree | *(after push)* |
+| Push | `git push origin main` — success |
+| Feature commit | `a08e6486` |
+| Docs SHA commit | `1162d05a` |
+| HEAD == origin/main | **YES** (`1162d05a`) |
+| Working tree | **clean** |
+| Migration Governance CI | **not triggered** (no `drizzle/**` path change — correct) |
+| Vercel deploy | **success** on `1162d05a` |
