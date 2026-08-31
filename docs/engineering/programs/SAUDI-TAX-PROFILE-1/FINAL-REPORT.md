@@ -173,5 +173,11 @@ Governance protections retained: ordering, orphans, missing files, legacy orphan
 | Field | Value |
 |-------|-------|
 | Governance fix commit | `f64afd2a617ff28dadc6b79240d1404e81d49156` |
+| Docs closeout commit | `d224c90f46b67910f593490813459c90ecaa3220` |
 | Message | `fix(db): align migration governance with 0104` |
-| Push / HEAD / tree | *(after push)* |
+| Push | **SUCCESS** (`79a62604..d224c90f`) |
+| HEAD == origin/main | **YES** (`d224c90f`) |
+| Working tree | **clean** |
+| Migration Governance CI | **success** |
+| Vercel Production | **success** (sha `d224c90`, deployment `6185185391`) |
+| Final migration terminus | `0104_saudi_tax_profiles` |
