@@ -101,9 +101,20 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
     expect(panel).toContain("cashierPos.categoryIcon");
     const reviewFn = panel.slice(
       panel.indexOf("function reviewInvoiceIntent"),
-      panel.indexOf("async function selectOrder")
+      panel.indexOf("async function collectIncomingInvoice")
     );
     expect(reviewFn).toContain('setSalePhase("ticket")');
     expect(reviewFn).toContain("setSalePanelOpen(true)");
+  });
+
+  it("Collect Invoice routes directly to Payment without editable intermediate", () => {
+    expect(panel).toContain("async function collectIncomingInvoice");
+    const collectFn = panel.slice(
+      panel.indexOf("async function collectIncomingInvoice"),
+      panel.indexOf("async function selectOrder")
+    );
+    expect(collectFn).toContain("resumePaymentSheet");
+    expect(collectFn).toContain("getInvoiceIntent.fetch");
+    expect(panel).toContain("void collectIncomingInvoice(intent.orderId)");
   });
 });

@@ -88,12 +88,12 @@ export const cashierPos = {
     "text-end text-[13px] font-semibold tabular-nums leading-tight text-[#111827]",
   orderScroll:
     "flex min-h-0 flex-1 flex-col gap-2 overflow-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-  totalBox: "space-y-0",
-  summaryRow: "flex justify-between text-[11px] leading-4 text-[#6b7280]",
+  totalBox: "space-y-0.5",
+  summaryRow: "flex justify-between text-xs leading-5 text-[#6b7280]",
   totalRow:
-    "mt-0.5 flex items-baseline justify-between border-t border-[#e5e7eb] pt-1",
+    "mt-1 flex items-baseline justify-between border-t border-[#e5e7eb] pt-1.5",
   totalLabel: "text-sm font-bold text-[#111827]",
-  totalValue: "text-base font-bold tabular-nums text-[#111827] sm:text-lg",
+  totalValue: "text-lg font-bold tabular-nums text-[#111827]",
   categoryBar:
     "flex shrink-0 gap-3.5 overflow-x-auto overscroll-x-contain px-3 pb-3.5 pt-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]",
   categoryTile:
@@ -146,7 +146,7 @@ export const cashierPos = {
   contextualScroll: "min-h-0 flex-1 overflow-auto p-3",
   ticket: "flex min-h-0 flex-1 flex-col bg-white p-3",
   primaryAction:
-    "min-h-11 w-full rounded-xl bg-[#4f46e5] text-sm font-semibold text-white active:bg-[#3730a3] hover:bg-[#4338ca] disabled:bg-[#c7d2fe]",
+    "min-h-11 w-full rounded-xl bg-[#4f46e5] text-[15px] font-semibold text-white active:bg-[#3730a3] hover:bg-[#4338ca] disabled:bg-[#c7d2fe]",
   secondaryAction:
     "min-h-12 w-full rounded-xl border border-[#d8dee6] bg-white text-sm font-medium text-[#111827] active:bg-[#e5e7eb] hover:bg-[#f4f5f7]",
   dangerAction:

@@ -61,7 +61,7 @@ const COPY: Record<string, { ar: string; en: string }> = {
   cartItemsCount: { ar: "أصناف", en: "items" },
   closeSalePanel: { ar: "إغلاق الفاتورة", en: "Close sale" },
   incomingOpenPanel: { ar: "فتح الطلبات الواردة", en: "Open incoming orders" },
-  incomingPayAction: { ar: "تحميل للفاتورة", en: "Load to sale" },
+  incomingPayAction: { ar: "تحصيل الفاتورة", en: "Collect Invoice" },
   productSearch: { ar: "بحث عن صنف…", en: "Search products…" },
   sortBy: { ar: "ترتيب", en: "Sort" },
   sortDefault: { ar: "الافتراضي", en: "Default" },

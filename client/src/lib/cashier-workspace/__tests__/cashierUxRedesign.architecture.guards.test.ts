@@ -64,7 +64,7 @@ describe("CASHIER-UX-REDESIGN-2 architecture", () => {
     const panel = read(PANEL);
     const reviewFn = panel.slice(
       panel.indexOf("function reviewInvoiceIntent"),
-      panel.indexOf("async function selectOrder")
+      panel.indexOf("async function collectIncomingInvoice")
     );
     expect(reviewFn).toContain('phase: "ticket"');
     expect(reviewFn).toContain('setSalePhase("ticket")');
@@ -72,6 +72,22 @@ describe("CASHIER-UX-REDESIGN-2 architecture", () => {
     expect(panel).toContain("listInvoiceIntents.useQuery");
     expect(panel).toContain("getInvoiceIntent.fetch");
     expect(panel).toContain("incomingPulse");
+  });
+
+  it("Collect Invoice opens the existing Payment UI via resumePaymentSheet", () => {
+    const panel = read(PANEL);
+    const collectFn = panel.slice(
+      panel.indexOf("async function collectIncomingInvoice"),
+      panel.indexOf("async function selectOrder")
+    );
+    expect(collectFn).toContain("getInvoiceIntent.fetch");
+    expect(collectFn).toContain("hydrateAwaitingInvoiceIntent");
+    expect(collectFn).toContain("resumePaymentSheet");
+    expect(collectFn).not.toContain("settleMutation");
+    expect(collectFn).not.toContain("commitCashierProductionCollectionFact");
+    expect(panel).toContain('t("incomingPayAction")');
+    expect(cashierUiLabel("incomingPayAction", "ar")).toBe("تحصيل الفاتورة");
+    expect(cashierUiLabel("incomingPayAction", "en")).toBe("Collect Invoice");
   });
 
   it("keeps Confirm on settlement.initiate and icon category tiles + POS cards", () => {

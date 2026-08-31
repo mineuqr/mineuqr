@@ -537,8 +537,8 @@ export function CashierWorkspacePanel({
     );
   }
 
-  function reviewInvoiceIntent(intent: InvoiceIntent) {
-    if (intent.status !== "awaiting_cashier") return;
+  function hydrateAwaitingInvoiceIntent(intent: InvoiceIntent): DirectSale | null {
+    if (intent.status !== "awaiting_cashier") return null;
     const lines = invoiceIntentLinesToCashierView(intent.items);
     const catalogSubtotal =
       chargesSubtotalFromInvoiceLines(lines) ?? intent.expectedGrandTotal;
@@ -577,6 +577,17 @@ export function CashierWorkspacePanel({
     setPaidCheckout(null);
     setPaymentMethod(null);
     setRegisterGap(null);
+    setTenderMode(null);
+    setCashReceived("");
+    setCardTender("");
+    setPaymentDisplayMoney(preview);
+    return sale;
+  }
+
+  /** Select Incoming for view/edit — hydrate Current Sale only (no Payment). */
+  function reviewInvoiceIntent(intent: InvoiceIntent) {
+    const sale = hydrateAwaitingInvoiceIntent(intent);
+    if (!sale) return;
     persistDirectSaleSnapshot({
       sale,
       phase: "ticket",
@@ -588,6 +599,28 @@ export function CashierWorkspacePanel({
     });
     setSalePhase("ticket");
     setSalePanelOpen(true);
+  }
+
+  /**
+   * Collect Invoice — revalidate Intent, hydrate sale, open existing Payment UI
+   * (same entry as PAY / resumePaymentSheet). No editable-ticket intermediate.
+   */
+  async function collectIncomingInvoice(orderId: number) {
+    if (!terminalId || paidCheckout) return;
+    try {
+      const intent = await utils.pos.read.orders.getInvoiceIntent.fetch({
+        restaurantId,
+        terminalId,
+        orderId,
+      });
+      const sale = hydrateAwaitingInvoiceIntent(intent);
+      if (!sale) return;
+      setIncomingOpen(false);
+      setSalePanelOpen(true);
+      resumePaymentSheet(sale);
+    } catch {
+      // Settled or non-finalizable: do not open Payment.
+    }
   }
 
   async function selectOrder(orderId: number) {
@@ -1500,41 +1533,51 @@ export function CashierWorkspacePanel({
                       <ul className="flex flex-col gap-2">
                         {awaitingIntents.map((intent) => (
                           <li key={intent.invoiceIntentId}>
-                            <button
-                              type="button"
+                            <div
                               className={
                                 selectedOrderId === intent.orderId
                                   ? cashierPos.orderBtnActive
                                   : cashierPos.orderBtn
                               }
-                              onClick={() => {
-                                void selectOrder(intent.orderId);
-                                setIncomingOpen(false);
-                              }}
                             >
-                              <span className="block text-base font-semibold text-[#111827]">
-                                #{intent.orderNumber}
-                              </span>
-                              <span className="mt-0.5 block text-xs font-medium text-[#4f46e5]">
-                                {t("orderSourceQr")}
-                                {intent.tableNumber != null
-                                  ? ` · ${t("incomingTable")} ${intent.tableNumber}`
-                                  : ""}
-                              </span>
-                              <span className="mt-1 block text-xs text-[#6b7280]">
-                                {t("incomingOperationalOrder")}{" "}
-                                {intent.displayReference || intent.orderNumber}
-                                {" · "}
-                                {intent.sourceChannel}
-                                {" · "}
-                                {intent.items.length} {t("incomingOrderItems")}
-                                {" · "}
-                                {intent.expectedGrandTotal}
-                              </span>
-                              <span className="mt-2 inline-flex min-h-9 items-center rounded-lg bg-[#eef2ff] px-3 text-xs font-semibold text-[#4338ca]">
+                              <button
+                                type="button"
+                                className="w-full text-start"
+                                onClick={() => {
+                                  void selectOrder(intent.orderId);
+                                  setIncomingOpen(false);
+                                }}
+                              >
+                                <span className="block text-base font-semibold text-[#111827]">
+                                  #{intent.orderNumber}
+                                </span>
+                                <span className="mt-0.5 block text-xs font-medium text-[#4f46e5]">
+                                  {t("orderSourceQr")}
+                                  {intent.tableNumber != null
+                                    ? ` · ${t("incomingTable")} ${intent.tableNumber}`
+                                    : ""}
+                                </span>
+                                <span className="mt-1 block text-xs text-[#6b7280]">
+                                  {t("incomingOperationalOrder")}{" "}
+                                  {intent.displayReference || intent.orderNumber}
+                                  {" · "}
+                                  {intent.sourceChannel}
+                                  {" · "}
+                                  {intent.items.length} {t("incomingOrderItems")}
+                                  {" · "}
+                                  {intent.expectedGrandTotal}
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-[#4f46e5] px-3 text-sm font-semibold text-white active:bg-[#3730a3]"
+                                onClick={() => {
+                                  void collectIncomingInvoice(intent.orderId);
+                                }}
+                              >
                                 {t("incomingPayAction")}
-                              </span>
-                            </button>
+                              </button>
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -2037,7 +2080,7 @@ export function CashierWorkspacePanel({
             </button>
           </div>
 
-          {/* Payment modal — only after PAY */}
+          {/* Payment modal — after PAY or Incoming Collect Invoice */}
           {paymentOpen ? (
             <div
               className={cashierPos.overlay}

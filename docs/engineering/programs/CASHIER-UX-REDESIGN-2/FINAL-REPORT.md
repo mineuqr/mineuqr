@@ -2,31 +2,30 @@
 
 ## Verdict: **PASS** (implementation + automated verification)
 
-Live authenticated Cashier browser walkthrough was **not** executable in-agent. Structural acceptance covers hierarchy + click-to-add; operator visual check recommended for density/feel.
+Live authenticated Cashier browser path was **not** executable in-agent. Critical routing is covered by architecture/layout guards; operator should confirm Collect Invoice → Payment in a live session.
 
-## Final interaction polish (this pass)
+## Final QR collection correction (this pass)
 
-1. **Product Card click-to-add** — card body (`role="button"`) is primary add; flash + active scale feedback retained
-2. **+ button** — secondary affordance at `size-10` (was `size-12`); still adds via stopPropagation
-3. **Favorite** — `stopPropagation` + `preventDefault`; toggles only, does not add
-4. **Current Sale density** — tighter row padding/gaps; compact summary (`11px` rows); emphasized Total; pinned PAY
-5. **Preserved** — Search/Sort in Incoming top row, categories, Incoming popover (no auto-pay), payment modal-only, settlement/realtime
+1. **Collect Invoice** (`تحصيل الفاتورة`) — revalidates Intent, hydrates sale, opens existing Payment via `resumePaymentSheet` (no editable-ticket intermediate)
+2. **Select / view order** — still `reviewInvoiceIntent` → `phase: "ticket"` only
+3. **Payment UI** — same modal/sheet + `pos.settlement.initiate` (unchanged)
+4. **Cancel** — existing `cancelPaymentSheet` → editable ticket
+5. **Financial summary** — modest readability (`text-xs` rows, `text-lg` Total, `15px` PAY); item rows unchanged
+6. **Preserved** — Product Card tap-to-add, categories, Search/Sort top row, responsive sheet/dock, realtime
 
-## Layout
+## Flow
 
 ```
-TOP:     Incoming QR + Search + Sort
-LEFT:    Compact Current Sale (lg+); sheet + cart dock <lg
-CENTER:  Wide Catalog — tap card to add
-PAYMENT: Modal after PAY only
+Incoming QR → Collect Invoice → Payment Modal → Method → Confirm → Settlement → PAID
+Incoming QR → select row → Current Sale (edit) → Pay → Payment (unchanged)
 ```
 
 ## Validation
 
 | Check | Result |
 |-------|--------|
-| Cashier Vitest | **38 files / 167 tests passed** |
+| Cashier Vitest | **38 files / 169 tests passed** |
 | `pnpm run check` | **passed** |
-| Settlement | `pos.settlement.initiate` unchanged |
+| Settlement | unchanged |
 | Realtime | unchanged |
 | Live browser | **not run in-agent** |
