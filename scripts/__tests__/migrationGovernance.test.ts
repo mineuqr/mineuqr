@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0103 contiguously", () => {
+  it("journal contains canonical migrations 0000–0104 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -67,15 +67,20 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     );
     expect(journal.entries[101]?.tag).toBe("0101_cashier_invoices");
     expect(journal.entries[102]?.tag).toBe("0102_order_create_idempotency");
-    expect(journal.entries[103]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[103]?.tag).toBe("0103_realtime_bus_messages");
+    expect(journal.entries[104]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[104]?.tag).toBe("0104_saudi_tax_profiles");
     expect(validateJournalOrdering()).toEqual([]);
   });
 
-  it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0103_realtime_bus_messages");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(104);
+  it("exports certified migration tail constant at 0104", () => {
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0104_saudi_tax_profiles");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(105);
     const tags = loadJournal().entries.map((e) => e.tag);
+    expect(tags).toHaveLength(105);
+    expect(tags[103]).toBe("0103_realtime_bus_messages");
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(tags[tags.length - 1]).not.toBe("0103_realtime_bus_messages");
   });
 
   it("registers restored tail migrations 0054–0057", () => {
@@ -106,6 +111,39 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(guard).toContain("CANONICAL_MIGRATION_TAIL_TAG");
     expect(guard).toContain("CANONICAL_JOURNAL_ENTRY_COUNT");
     expect(guard).toContain("process.exit(1)");
+    expect(guard).toContain("0000–0104");
+    expect(guard).not.toContain("0000–0103");
+  });
+
+  it("0104 is additive saudi_tax_profiles and is not a financial rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0104_saudi_tax_profiles.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `saudi_tax_profiles`");
+    expect(sql).toContain("saudi_tax_profiles_restaurant_unique");
+    expect(sql).toContain("`vatRegistrationStatus`");
+    expect(sql).not.toMatch(/CREATE TABLE `payments`/);
+    expect(sql).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+    expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/^\s*UPDATE\b/im);
+    expect(sql).not.toMatch(/^\s*DELETE\b/im);
+    expect(sql).not.toMatch(/DROP\s+/i);
+  });
+
+  it("cannot silently regress certified terminus back to 0103", () => {
+    const lib = readFileSync(
+      join(repoRoot, "scripts/lib/migration-governance-lib.cjs"),
+      "utf8"
+    );
+    expect(lib).toContain('CANONICAL_MIGRATION_TAIL_TAG = "0104_saudi_tax_profiles"');
+    expect(lib).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 105");
+    expect(lib).not.toMatch(
+      /CANONICAL_MIGRATION_TAIL_TAG\s*=\s*"0103_realtime_bus_messages"/
+    );
+    expect(lib).not.toMatch(/CANONICAL_JOURNAL_ENTRY_COUNT\s*=\s*104\b/);
   });
 
   it("verify-schema covers operational device governance objects", () => {

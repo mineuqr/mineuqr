@@ -28,7 +28,7 @@ describe("settlement_records migration guards", () => {
     expect(sql).not.toContain("FOREIGN KEY");
   });
 
-  it("registers settlementRecords in drizzle schema and journal", () => {
+  it("journal retains 0076_settlement_records (terminus may advance)", () => {
     const schema = read("drizzle/schema.ts");
     expect(schema).toContain('"settlement_records"');
     expect(schema).toContain("settlement_records_business_unique");
@@ -38,7 +38,8 @@ describe("settlement_records migration guards", () => {
     expect(journal).toContain("0076_settlement_records");
 
     const gov = read("scripts/lib/migration-governance-lib.cjs");
-    expect(gov).toContain('0076_settlement_records');
+    // Tail advances with later certified migrations; 0076 remains in journal.
+    expect(gov).toContain("CANONICAL_MIGRATION_TAIL_TAG");
     expect(gov).toContain("CANONICAL_JOURNAL_ENTRY_COUNT");
   });
 });

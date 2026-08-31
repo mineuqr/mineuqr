@@ -119,3 +119,55 @@ Saudi Tax Profile architecture guards + existing multi-country compliance guards
 |-------|-------|
 | Push | `git push origin main` |
 | Commit | `2449234012dc6d4619384f36eae205f3d6594f4f` |
+
+---
+
+## Migration governance closeout (0104 terminus)
+
+### Incident
+
+Production Vercel build reached journal terminus `0104_saudi_tax_profiles` (105 entries) but failed the migration governance guard, which still expected certified terminus `0103_realtime_bus_messages` (104 entries).
+
+### Root cause
+
+Stale static certified baseline in `scripts/lib/migration-governance-lib.cjs`:
+
+- `CANONICAL_MIGRATION_TAIL_TAG = "0103_realtime_bus_messages"`
+- `CANONICAL_JOURNAL_ENTRY_COUNT = 104`
+
+Migration **0104 itself was not defective**. The guard had not been adopted after SAUDI-TAX-PROFILE-1 journalized 0104.
+
+### Correction
+
+| Artifact | Change |
+|----------|--------|
+| `scripts/lib/migration-governance-lib.cjs` | Terminus → `0104_saudi_tax_profiles`, count → **105** |
+| `scripts/migration-governance-guard.cjs` | Messages updated to `0000–0104` |
+| `scripts/__tests__/migrationGovernance.test.ts` | Protects 0103 retention + 0104 terminus; anti-regress to 0103 |
+| `settlementRecordMigration.architecture.guards.test.ts` | Align with “terminus may advance” pattern (same as 0074/0075) |
+
+Governance protections retained: ordering, orphans, missing files, legacy orphan handling, deploy exit 1.
+
+### Production migration state
+
+| Check | Result |
+|-------|--------|
+| Preflight before apply | Pending: `0104_saudi_tax_profiles` |
+| Apply | `pnpm db:migrate` — **SUCCESS** |
+| Preflight after apply | All journal hashes recorded in DB |
+| `saudi_tax_profiles` table | **PRESENT** (columns match implementation) |
+| `__drizzle_migrations` hash for 0104 | **1 row** |
+| Final repository terminus | `0104_saudi_tax_profiles` |
+
+### Governance verification
+
+| Check | Result |
+|-------|--------|
+| `pnpm run db:governance-check` | **PASS** — Last journal tag `0104_saudi_tax_profiles` |
+| Migration governance tests | **26 / 26 PASS** |
+| `pnpm run check` | **PASS** |
+| Relevant compliance/governance tests | **PASS** |
+
+### Governance closeout SHAs
+
+*(filled after commit/push)*
