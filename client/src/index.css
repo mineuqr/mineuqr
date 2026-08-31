@@ -1212,15 +1212,25 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-col-qty {
-    width: 11% !important;
+    width: 10% !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-col-unit {
-    width: 22.5% !important;
+    width: 20.5% !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-col-total {
-    width: 22.5% !important;
+    width: 20.5% !important;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-receipt-col-numeric-gutter {
+    width: 5% !important;
+    padding: 0 !important;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-receipt-numeric-gutter {
+    padding: 0 !important;
+    border: 0 !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-product {
@@ -1280,15 +1290,25 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
 }
 
 .cashier-receipt-col-qty {
-  width: 11%;
+  width: 10%;
 }
 
 .cashier-receipt-col-unit {
-  width: 22.5%;
+  width: 20.5%;
 }
 
 .cashier-receipt-col-total {
-  width: 22.5%;
+  width: 20.5%;
+}
+
+.cashier-receipt-col-numeric-gutter {
+  width: 5%;
+  padding: 0;
+}
+
+.cashier-receipt-numeric-gutter {
+  padding: 0;
+  border: 0;
 }
 
 .cashier-receipt-product {

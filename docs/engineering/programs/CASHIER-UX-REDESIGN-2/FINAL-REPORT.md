@@ -9,6 +9,11 @@
 3. **Column spacing** — Product 44% / Qty 11% / Unit 22.5% / Total 22.5%; qty end-aligned with column padding.
 4. **Unchanged** — Restaurant header, `تم الدفع`, paper 72.1×180mm, print architecture.
 
+## Changes (numeric alignment pass)
+
+- Added invisible **5% gutter column** on the receipt outer edge so Qty + Unit + Total shift right as one group.
+- **Product column unchanged** at 44%; numeric internal proportions preserved (10% / 20.5% / 20.5%).
+
 ## Validation
 
 | Check | Result |

@@ -155,6 +155,7 @@ export function CashierPaidReceiptDialog({
                   <col className="cashier-receipt-col-qty" />
                   <col className="cashier-receipt-col-unit" />
                   <col className="cashier-receipt-col-total" />
+                  <col className="cashier-receipt-col-numeric-gutter" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-[#111827]">
@@ -170,12 +171,16 @@ export function CashierPaidReceiptDialog({
                     <th className="cashier-receipt-line-total pb-1 text-end font-semibold whitespace-nowrap">
                       {t("ticketTotal")}
                     </th>
+                    <th
+                      className="cashier-receipt-numeric-gutter p-0"
+                      aria-hidden="true"
+                    />
                   </tr>
                 </thead>
                 <tbody>
                   {receipt.lines.length === 0 ? (
                     <tr>
-                      <td colSpan={4}>—</td>
+                      <td colSpan={5}>—</td>
                     </tr>
                   ) : (
                     receipt.lines.map((line, idx) => (
@@ -192,6 +197,10 @@ export function CashierPaidReceiptDialog({
                         <td className="cashier-receipt-line-total py-0.5 text-end whitespace-nowrap tabular-nums">
                           {formatCashierReceiptLineAmount(line.lineTotal)}
                         </td>
+                        <td
+                          className="cashier-receipt-numeric-gutter p-0"
+                          aria-hidden="true"
+                        />
                       </tr>
                     ))
                   )}

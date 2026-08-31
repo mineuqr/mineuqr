@@ -121,6 +121,8 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(css).toContain("word-break: normal");
     expect(css).toContain("cashier-receipt-qty");
     expect(css).toContain("width: 44%");
+    expect(css).toContain("cashier-receipt-col-numeric-gutter");
+    expect(dialog).toContain("cashier-receipt-numeric-gutter");
   });
 
   it("does not gate Print on Settlement Record or change PAID / financial paths", () => {
