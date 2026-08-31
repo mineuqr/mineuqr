@@ -14,7 +14,13 @@ Electronic generation · Simplified mandatory QR · Tax Invoice title · buyer V
 
 ## Migration
 
-`0108_saudi_tax_invoice_phase1` · terminus **109**
+`0108_saudi_tax_invoice_phase1` · terminus **109** · Production migrate **SUCCESS**
+
+## Commit / Push
+
+- Feature: `c971722c` — `feat(tax): implement Saudi e-invoicing phase 1`
+- `HEAD == origin/main`
+- Working tree clean after docs record
 
 ## Open / Needs Confirmation
 
