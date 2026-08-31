@@ -233,8 +233,9 @@ from `"saudi_tax_profiles"`.
 
 | Field | Value |
 |-------|-------|
-| Commit | *(after push)* |
+| Commit | `fcd1b0f6cf8d6ed4ab27ecdb7350e9ce00ec4a1c` |
 | Message | `fix(tax): repair Saudi tax profile schema contract` |
-| HEAD == origin/main | *(after push)* |
-| Working tree | *(after push)* |
-| Vercel | *(after deploy)* |
+| HEAD == origin/main | **YES** (`fcd1b0f6`) |
+| Working tree | **clean** (at push) |
+| Vercel | **success** — “Deployment has completed” on `fcd1b0f6` |
+| New migration | **NONE** |
