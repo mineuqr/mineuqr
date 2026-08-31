@@ -53,5 +53,6 @@ Payment was **not** awaiting Tax Invoice (fire-and-forget dispatch confirmed).
 ## Commit / remote
 
 - Commit: `ad580584` — `perf(cashier): decouple Saudi tax invoice readiness from post-payment blocking`
+- Docs: `97bbf742`
+- `HEAD == origin/main` (`97bbf742`); working tree clean
 - Live browser: **NOT RUN IN-AGENT**
-- Push / HEAD: after `git push origin main`
