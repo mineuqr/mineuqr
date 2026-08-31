@@ -119,6 +119,7 @@ import {
   RestaurantBasicInfoSection,
   RestaurantContactLinksSection,
   RestaurantFinancialPolicySection,
+  SaudiTaxProfileSection,
   WorkingHoursEditor,
 } from "@/components/RestaurantSettingsSections";
 import {
@@ -2693,7 +2694,7 @@ function OfferFormDialog({
 
 // ─── Settings Tab ─────────────────────────────────────────────
 function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => void }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [nameAr, setNameAr] = useState(restaurant.nameAr);
   const [nameEn, setNameEn] = useState(restaurant.nameEn || "");
   const [descriptionAr, setDescriptionAr] = useState(restaurant.descriptionAr || "");
@@ -2777,7 +2778,6 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
   const deleteHolidayMut = trpc.holiday.delete.useMutation({ onSuccess: () => refetchHolidays() });
 
   const { data: countries } = trpc.countryCurrency.getAll.useQuery();
-  const { language } = useLanguage();
 
   const handleCountryChange = (countryCode: string) => {
     setSelectedCountry(countryCode);
@@ -3186,6 +3186,12 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
             suggestion={taxSuggestion}
             onApplySuggestion={applyTaxSuggestion}
             onDismissSuggestion={() => setTaxSuggestion(null)}
+          />
+
+          <SaudiTaxProfileSection
+            language={language}
+            restaurantId={restaurant.id}
+            countryCode={selectedCountry || restaurant.countryCode || ""}
           />
 
           {/* Table/Room Label Toggle */}

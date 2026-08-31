@@ -314,6 +314,41 @@ export const restaurantHolidays = mysqlTable("restaurant_holidays", {
 export type InsertRestaurantHoliday = typeof restaurantHolidays.$inferInsert;
 export type SelectRestaurantHoliday = typeof restaurantHolidays.$inferSelect;
 
+/**
+ * SAUDI-TAX-PROFILE-1 — country-specific Saudi Tax Profile (Compliance Layer).
+ * One profile per restaurant. Not a Tax Invoice. Not Customer. Not ZATCA API.
+ * Jurisdiction stamp countryCode is always SA; Global Core restaurants.countryCode
+ * remains the applicability authority.
+ */
+export const saudiTaxProfiles = mysqlTable(
+  "saudi_tax_profiles",
+  {
+    id: int().autoincrement().notNull(),
+    restaurantId: int().notNull(),
+    countryCode: varchar({ length: 2 }).default("SA").notNull(),
+    legalName: varchar({ length: 255 }).notNull(),
+    vatRegistrationStatus: mysqlEnum("saudi_vat_registration_status", [
+      "unknown",
+      "not_registered",
+      "registered",
+    ])
+      .default("unknown")
+      .notNull(),
+    vatNumber: varchar({ length: 32 }),
+    registeredAddress: text(),
+    createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+    updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.id], name: "saudi_tax_profiles_id" }),
+    uniqueIndex("saudi_tax_profiles_restaurant_unique").on(table.restaurantId),
+    index("saudi_tax_profiles_restaurant_id").on(table.restaurantId),
+  ]
+);
+
+export type InsertSaudiTaxProfile = typeof saudiTaxProfiles.$inferInsert;
+export type SelectSaudiTaxProfile = typeof saudiTaxProfiles.$inferSelect;
+
 // ─── Restaurant Tables (Dining Tables) ────────────────────────────
 export const restaurantTables = mysqlTable("restaurant_tables", {
 	id: int().autoincrement().notNull(),

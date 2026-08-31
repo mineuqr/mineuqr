@@ -2,12 +2,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import type { CountryFinancialPolicySuggestion } from "@/lib/businessTaxPolicySettings";
 import { WEEKDAY_KEYS } from "@/lib/restaurantHours";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
 import type { CheckTaxMode } from "@shared/operational-session";
-import { Clock, Globe, Percent, Store } from "lucide-react";
+import type { SaudiVatRegistrationStatus } from "@shared/compliance";
+import { Clock, FileText, Globe, Percent, Store } from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 const settingsInput =
   "mt-2 h-11 rounded-xl border-border/45 bg-[#0f131a]/90 text-foreground shadow-none transition-[border-color,box-shadow,background-color] placeholder:text-muted-foreground/70 focus-visible:border-primary/45 focus-visible:ring-primary/15 disabled:opacity-45";
@@ -653,6 +658,204 @@ export function WorkingHoursEditor({
           );
         })}
       </div>
+    </section>
+  );
+}
+
+function readinessLabel(isAr: boolean, readiness: string): string {
+  if (readiness === "READY") return isAr ? "جاهز" : "Ready";
+  if (readiness === "INCOMPLETE") return isAr ? "غير مكتمل" : "Incomplete";
+  return isAr ? "غير مُعدّ" : "Not configured";
+}
+
+/**
+ * SAUDI-TAX-PROFILE-1 — Admin Settings only. Not Cashier.
+ * Shows Saudi Tax Profile when restaurant country is SA.
+ * Does not claim ZATCA integration or Tax Invoice readiness beyond profile completeness.
+ */
+export function SaudiTaxProfileSection({
+  language,
+  restaurantId,
+  countryCode,
+}: {
+  language: string;
+  restaurantId: number;
+  countryCode: string;
+}) {
+  const isAr = language === "ar";
+  const isSaudi = countryCode.trim().toUpperCase() === "SA";
+  const utils = trpc.useUtils();
+  const { data, isLoading } = trpc.saudiTaxProfile.get.useQuery(
+    { restaurantId },
+    { enabled: isSaudi && restaurantId > 0 }
+  );
+
+  const [legalName, setLegalName] = useState("");
+  const [vatStatus, setVatStatus] =
+    useState<SaudiVatRegistrationStatus>("unknown");
+  const [vatNumber, setVatNumber] = useState("");
+  const [registeredAddress, setRegisteredAddress] = useState("");
+
+  useEffect(() => {
+    if (!data?.profile) {
+      setLegalName("");
+      setVatStatus("unknown");
+      setVatNumber("");
+      setRegisteredAddress("");
+      return;
+    }
+    setLegalName(data.profile.legalName);
+    setVatStatus(data.profile.vatRegistrationStatus);
+    setVatNumber(data.profile.vatNumber ?? "");
+    setRegisteredAddress(data.profile.registeredAddress ?? "");
+  }, [data?.profile]);
+
+  const upsert = trpc.saudiTaxProfile.upsert.useMutation({
+    onSuccess: async () => {
+      await utils.saudiTaxProfile.get.invalidate({ restaurantId });
+      toast.success(
+        isAr ? "تم حفظ الملف الضريبي السعودي" : "Saudi Tax Profile saved"
+      );
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  if (!isSaudi) return null;
+
+  const readiness = data?.readiness ?? "NOT_CONFIGURED";
+
+  return (
+    <section className="space-y-5 border-t border-border/30 pt-8">
+      <SettingsSectionHeader
+        icon={FileText}
+        title={isAr ? "الملف الضريبي السعودي" : "Saudi Tax Profile"}
+        description={
+          isAr
+            ? "إعدادات البائع الضريبية للامتثال السعودي. كون الدولة = SA يعني أن وحدة الامتثال منطبقة — ولا يعني أن الملف مكتمل أو أن التكامل مع هيئة الزكاة جاهز."
+            : "Seller tax configuration for Saudi compliance. Country = SA means the Saudi compliance module is applicable — not that the profile is complete or that ZATCA is integrated."
+        }
+      />
+
+      <div className="rounded-xl border border-border/35 bg-[#10141b]/70 px-4 py-3 space-y-1">
+        <p className="text-sm font-medium text-foreground">
+          {isAr ? "حالة الملف الضريبي" : "Tax Profile status"}:{" "}
+          <span
+            className={cn(
+              readiness === "READY" ? "text-primary" : "text-amber-400"
+            )}
+          >
+            {readinessLabel(isAr, readiness)}
+          </span>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {isAr
+            ? "الامتثال السعودي منطبق. لا يُعرض كـ «مدمج مع هيئة الزكاة»."
+            : "Saudi/ZATCA compliance is applicable. This is not a “ZATCA integrated” state."}
+        </p>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">
+          {isAr ? "جاري التحميل…" : "Loading…"}
+        </p>
+      ) : (
+        <div className="space-y-4">
+          <Field label={isAr ? "الاسم القانوني / التجاري" : "Legal / business name"}>
+            <Input
+              value={legalName}
+              onChange={(e) => setLegalName(e.target.value)}
+              className={settingsInput}
+              maxLength={255}
+            />
+          </Field>
+
+          <Field
+            label={
+              isAr ? "حالة التسجيل في ضريبة القيمة المضافة" : "VAT registration status"
+            }
+          >
+            <select
+              value={vatStatus}
+              onChange={(e) =>
+                setVatStatus(e.target.value as SaudiVatRegistrationStatus)
+              }
+              className={cn(settingsInput, "w-full")}
+            >
+              <option value="unknown">
+                {isAr ? "غير معروف / غير مكتمل" : "Unknown / incomplete"}
+              </option>
+              <option value="not_registered">
+                {isAr ? "غير مسجّل في ضريبة القيمة المضافة" : "Not VAT registered"}
+              </option>
+              <option value="registered">
+                {isAr ? "مسجّل في ضريبة القيمة المضافة" : "VAT registered"}
+              </option>
+            </select>
+          </Field>
+
+          {vatStatus === "registered" ? (
+            <>
+              <Field
+                label={
+                  isAr
+                    ? "الرقم الضريبي (ضريبة القيمة المضافة)"
+                    : "VAT registration number"
+                }
+              >
+                <Input
+                  value={vatNumber}
+                  onChange={(e) => setVatNumber(e.target.value)}
+                  className={settingsInput}
+                  dir="ltr"
+                  maxLength={32}
+                  placeholder="3##############"
+                />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {isAr
+                    ? "تحقق هيكلي فقط: 15 رقماً يبدأ بـ 3. لا يوجد تحقق لدى هيئة الزكاة هنا."
+                    : "Structural check only: 15 digits starting with 3. No ZATCA remote validation here."}
+                </p>
+              </Field>
+              <Field
+                label={
+                  isAr ? "العنوان المسجّل للأعمال" : "Registered business address"
+                }
+              >
+                <Textarea
+                  value={registeredAddress}
+                  onChange={(e) => setRegisteredAddress(e.target.value)}
+                  className={settingsTextarea}
+                  rows={3}
+                />
+              </Field>
+            </>
+          ) : null}
+
+          <Button
+            type="button"
+            disabled={upsert.isPending || legalName.trim().length === 0}
+            onClick={() =>
+              upsert.mutate({
+                restaurantId,
+                legalName: legalName.trim(),
+                vatRegistrationStatus: vatStatus,
+                vatNumber: vatNumber.trim() || null,
+                registeredAddress: registeredAddress.trim() || null,
+              })
+            }
+          >
+            {upsert.isPending
+              ? isAr
+                ? "جاري الحفظ…"
+                : "Saving…"
+              : isAr
+                ? "حفظ الملف الضريبي"
+                : "Save Tax Profile"}
+          </Button>
+        </div>
+      )}
     </section>
   );
 }

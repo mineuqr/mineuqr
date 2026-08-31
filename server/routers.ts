@@ -133,6 +133,7 @@ import { checkRefundRouter } from "./operational-session/check/api/checkRefundRo
 import { splitPaymentReadRouter } from "./operational-session/check/api/splitPaymentReadRouter";
 import { multiCheckAllocationRouter } from "./operational-session/check/api/multiCheckAllocationRouter";
 import { crmpRouter } from "./crmp/api/crmpRouter";
+import { saudiTaxProfileRouter } from "./compliance/saudi-tax-profile/saudiTaxProfileRouter";
 import { listSettlementRecordsForSession } from "./operational-session/check/settlementRecordRepository";
 import {
   settleOrderPaid,
@@ -3164,6 +3165,7 @@ export const appRouter = router({
   splitPayment: splitPaymentReadRouter,
   multiCheckAllocation: multiCheckAllocationRouter,
   crmp: crmpRouter,
+  saudiTaxProfile: saudiTaxProfileRouter,
   printWorkspace: printWorkspaceRouter,
   operationalDevice: operationalDeviceRouter,
   pos: posRouter,
