@@ -355,6 +355,9 @@ export type SelectSaudiTaxProfile = typeof saudiTaxProfiles.$inferSelect;
  * CUSTOMER-FOUNDATION-1 — Global Customer (tenant-scoped).
  * Country-agnostic. Not Tax Invoice. Not Saudi-specific. Not financial authority.
  * taxNumber is optional at the Global layer for all customer types.
+ *
+ * Physical column names MUST match 0105_customers (camelCase).
+ * Do not remap enums to snake_case aliases — Production already applied 0105 as-is.
  */
 export const customers = mysqlTable(
   "customers",
@@ -362,14 +365,14 @@ export const customers = mysqlTable(
     id: int().autoincrement().notNull(),
     restaurantId: int().notNull(),
     displayName: varchar({ length: 255 }).notNull(),
-    customerType: mysqlEnum("customer_type", ["individual", "business"])
+    customerType: mysqlEnum("customerType", ["individual", "business"])
       .default("individual")
       .notNull(),
     phone: varchar({ length: 32 }),
     email: varchar({ length: 320 }),
     address: text(),
     taxNumber: varchar({ length: 64 }),
-    status: mysqlEnum("customer_status", ["active", "archived"])
+    status: mysqlEnum("status", ["active", "archived"])
       .default("active")
       .notNull(),
     createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),

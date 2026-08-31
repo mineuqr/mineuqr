@@ -94,3 +94,56 @@ Stale architecture guards in Incoming Confirm Order Lock / Incoming Check Recove
 | Working tree | **clean** |
 | Migration Governance CI | **not triggered** (no `drizzle/**` path change — correct) |
 | Vercel deploy | **success** on `1162d05a` |
+
+---
+
+## Production schema/query contract repair (`createForPos` INSERT)
+
+### Observed failure
+
+Cashier **إضافة عميل** → `customer.createForPos` reached the service, but Production INSERT failed selecting nonexistent columns:
+
+`customer_type`, `customer_status`
+
+### Root cause (evidence-based)
+
+| Contract | Evidence |
+|----------|----------|
+| Migration 0105 | Creates `` `customerType` `` and `` `status` `` — **not** snake_case aliases |
+| Production DB | Columns `customerType` / `status` **present**; `customer_type` / `customer_status` **absent** |
+| Application schema (before) | `mysqlEnum("customer_type"…)` / `mysqlEnum("customer_status"…)` |
+| INSERT | Drizzle emitted `"customer_type"` / `"customer_status"` → TiDB unknown column |
+| Journal | 0105 hash `2d973fa1…` **applied** on Production |
+
+**Single root cause:** Drizzle property→column mapping used wrong physical names. Migration 0105 and Production were correct. **No new migration required.**
+
+### Repair
+
+| Change | Detail |
+|--------|--------|
+| `drizzle/schema.ts` | `mysqlEnum("customerType"…)` + `mysqlEnum("status"…)` |
+| Architecture guards | Assert 0105 ↔ Drizzle physical names + runtime `getTableColumns` |
+| Migration | **NONE** — terminus remains `0105_customers` |
+
+### Production verification
+
+| Check | Result |
+|-------|--------|
+| Table `customers` | **EXISTS** |
+| 0105 in `__drizzle_migrations` | **YES** (hash match) |
+| Live Drizzle INSERT Individual (no tax) | **SUCCESS** (probe cleaned) |
+| Live Drizzle INSERT Business (no tax) | **SUCCESS** (probe cleaned) |
+| Live Drizzle INSERT with optional taxNumber | **SUCCESS** (probe cleaned) |
+| `pnpm run check` | **PASS** |
+| `pnpm run db:governance-check` | **PASS** — `0105_customers` |
+| Customer + Cashier + CF + governance tests | **PASS** |
+
+### Repair SHAs
+
+| Field | Value |
+|-------|-------|
+| Commit | *(after push)* |
+| Message | `fix(customer): repair production schema contract` |
+| HEAD == origin/main | *(after push)* |
+| Working tree | *(after push)* |
+| Vercel | *(after deploy)* |

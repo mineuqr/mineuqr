@@ -128,4 +128,32 @@ describe("CUSTOMER-FOUNDATION-1 architecture guards", () => {
     expect(repo).toContain("eq(customers.restaurantId, restaurantId)");
     expect(repo).toContain("eq(customers.restaurantId, filter.restaurantId)");
   });
+
+  it("0105 physical columns match Drizzle mapping (no customer_type/customer_status aliases)", () => {
+    const sql = read("drizzle/0105_customers.sql");
+    const schema = read("drizzle/schema.ts");
+    expect(sql).toContain("`customerType` enum('individual','business')");
+    expect(sql).toContain("`status` enum('active','archived')");
+    expect(sql).not.toContain("customer_type");
+    expect(sql).not.toContain("customer_status");
+    const start = schema.indexOf('mysqlTable(\n  "customers"');
+    const end = schema.indexOf("export type InsertCustomer");
+    const block = schema.slice(start, end);
+    expect(block).toContain('mysqlEnum("customerType"');
+    expect(block).toContain('mysqlEnum("status"');
+    expect(block).not.toContain('mysqlEnum("customer_type"');
+    expect(block).not.toContain('mysqlEnum("customer_status"');
+  });
+
+  it("Drizzle runtime column names match 0105 physical names", async () => {
+    const { getTableColumns } = await import("drizzle-orm");
+    const { customers } = await import("../../../drizzle/schema");
+    const cols = getTableColumns(customers);
+    expect(cols.customerType.name).toBe("customerType");
+    expect(cols.status.name).toBe("status");
+    expect(cols.customerType.name).not.toBe("customer_type");
+    expect(cols.status.name).not.toBe("customer_status");
+    expect(cols.taxNumber.name).toBe("taxNumber");
+    expect(cols.displayName.name).toBe("displayName");
+  });
 });
