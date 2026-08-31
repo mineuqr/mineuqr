@@ -52,12 +52,15 @@ describe("CASHIER-UX-REDESIGN-2 architecture", () => {
     expect(panel).toContain('tenderMode === "network"');
     expect(panel).toContain('tenderMode === "mixed"');
     expect(panel).toContain('tenderMode === "complimentary"');
+    expect(panel).toContain("methodIconWell");
+    expect(panel).toContain("methodWellCash");
     expect(panel).not.toContain("mada");
     expect(panel).not.toContain("apple_pay");
     expect(panel).not.toContain("stc_pay");
     expect(SELECTABLE_PAYMENT_METHODS).toEqual(["cash", "card"]);
     expect(cashierUiLabel("tenderCash", "en")).toBe("Cash");
     expect(cashierUiLabel("tenderNetwork", "en")).toBe("Network");
+    expect(cashierUiLabel("payWithAmount", "ar")).toBe("الدفع");
   });
 
   it("hydrates Incoming QR into Current Sale without auto-opening Payment", () => {

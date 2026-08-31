@@ -2140,49 +2140,107 @@ export function CashierWorkspacePanel({
                 <div className={cashierPos.methodGrid}>
                   {(
                     [
-                      ["cash", "tenderCash", Banknote],
-                      ["network", "tenderNetwork", CreditCard],
-                      ["mixed", "tenderMixed", Combine],
-                      ["complimentary", "tenderComplimentary", Gift],
+                      [
+                        "cash",
+                        "tenderCash",
+                        Banknote,
+                        cashierPos.methodBtnCash,
+                        cashierPos.methodBtnCashActive,
+                        cashierPos.methodWellCash,
+                        cashierPos.methodWellCashActive,
+                      ],
+                      [
+                        "network",
+                        "tenderNetwork",
+                        CreditCard,
+                        cashierPos.methodBtnNetwork,
+                        cashierPos.methodBtnNetworkActive,
+                        cashierPos.methodWellNetwork,
+                        cashierPos.methodWellNetworkActive,
+                      ],
+                      [
+                        "mixed",
+                        "tenderMixed",
+                        Combine,
+                        cashierPos.methodBtnMixed,
+                        cashierPos.methodBtnMixedActive,
+                        cashierPos.methodWellMixed,
+                        cashierPos.methodWellMixedActive,
+                      ],
+                      [
+                        "complimentary",
+                        "tenderComplimentary",
+                        Gift,
+                        cashierPos.methodBtnGift,
+                        cashierPos.methodBtnGiftActive,
+                        cashierPos.methodWellGift,
+                        cashierPos.methodWellGiftActive,
+                      ],
                     ] as const
-                  ).map(([mode, label, Icon]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      className={
-                        tenderMode === mode
-                          ? cashierPos.methodBtnActive
-                          : cashierPos.methodBtn
-                      }
-                      onClick={() => {
-                        setTenderMode(mode);
-                        if (mode === "complimentary") {
-                          setPaymentMethod("cash");
-                          setCardTender("");
-                          setCashReceived("");
-                        } else if (mode === "cash") {
-                          setPaymentMethod("cash");
-                          setCardTender("");
-                          setCashReceived(
-                            amountDue ?? sheetMoney?.grandTotal ?? ""
-                          );
-                        } else if (mode === "network") {
-                          setPaymentMethod("card");
-                          setCashReceived("");
-                          setCardTender(
-                            amountDue ?? sheetMoney?.grandTotal ?? ""
-                          );
-                        } else {
-                          setPaymentMethod("cash");
-                          setCashReceived("");
-                          setCardTender("");
-                        }
-                      }}
-                    >
-                      <Icon className={cashierPos.methodIcon} aria-hidden />
-                      <span>{t(label)}</span>
-                    </button>
-                  ))}
+                  ).map(
+                    ([
+                      mode,
+                      label,
+                      Icon,
+                      idleAccent,
+                      activeAccent,
+                      wellIdle,
+                      wellActive,
+                    ]) => {
+                      const selected = tenderMode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          className={cn(
+                            selected
+                              ? cashierPos.methodBtnActive
+                              : cashierPos.methodBtn,
+                            selected ? activeAccent : idleAccent
+                          )}
+                          onClick={() => {
+                            setTenderMode(mode);
+                            if (mode === "complimentary") {
+                              setPaymentMethod("cash");
+                              setCardTender("");
+                              setCashReceived("");
+                            } else if (mode === "cash") {
+                              setPaymentMethod("cash");
+                              setCardTender("");
+                              setCashReceived(
+                                amountDue ?? sheetMoney?.grandTotal ?? ""
+                              );
+                            } else if (mode === "network") {
+                              setPaymentMethod("card");
+                              setCashReceived("");
+                              setCardTender(
+                                amountDue ?? sheetMoney?.grandTotal ?? ""
+                              );
+                            } else {
+                              setPaymentMethod("cash");
+                              setCashReceived("");
+                              setCardTender("");
+                            }
+                          }}
+                        >
+                          <span
+                            className={cn(
+                              cashierPos.methodIconWell,
+                              selected ? wellActive : wellIdle
+                            )}
+                          >
+                            <Icon
+                              className={cashierPos.methodIcon}
+                              aria-hidden
+                            />
+                          </span>
+                          <span className={cashierPos.methodLabel}>
+                            {t(label)}
+                          </span>
+                        </button>
+                      );
+                    }
+                  )}
                 </div>
                 {tenderMode === "complimentary" ? (
                   <p className="mt-3 text-sm text-[#111827]">

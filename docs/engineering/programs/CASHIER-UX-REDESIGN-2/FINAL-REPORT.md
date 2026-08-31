@@ -2,20 +2,20 @@
 
 ## Verdict: **PASS** (implementation + automated verification)
 
-Live authenticated Cashier browser path was **not** executable in-agent. Typography/contrast covered by layout acceptance; operator visual check recommended.
+Live authenticated Cashier browser path was **not** executable in-agent. Payment card chrome covered by layout/architecture guards; operator visual check recommended.
 
-## Final typography & color polish (this pass)
+## Final Payment UI polish (this pass)
 
-1. **Product name** — `text-[15px]` (was `text-sm`), strong `#111827`, single-row preserved
-2. **Primary text token** — `CASHIER_TEXT_PRIMARY = #111827` for operational labels/financials
-3. **Muted token** — `CASHIER_TEXT_MUTED = #374151` for empty-state hints only
-4. **Semantic colors preserved** — purple price/actions, green/red availability, red delete, category tint labels, dark-header whites
-5. **Unchanged** — layout, Collect Invoice → Payment, Product Card tap-to-add, settlement/realtime
+1. **Label** — `ادفع` → `الدفع` (`payWithAmount`); EN `Payment`
+2. **Pay button** — `text-base font-bold`, `min-h-12`
+3. **Method cards** — icon wells with semantic tints (emerald/blue/violet/amber)
+4. **Interaction** — hover elevate; touch `active:scale`; selected tinted bg + ring (not solid purple fill)
+5. **Unchanged** — tender logic, settlement, Collect Invoice → Payment, methods set
 
 ## Validation
 
 | Check | Result |
 |-------|--------|
-| Cashier Vitest | **38 files / 171 tests passed** |
+| Cashier Vitest | **38 files / 172 tests passed** |
 | `pnpm run check` | **passed** |
 | Live browser | **not run in-agent** |

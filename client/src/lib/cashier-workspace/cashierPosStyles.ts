@@ -153,7 +153,7 @@ export const cashierPos = {
   contextualScroll: "min-h-0 flex-1 overflow-auto p-3",
   ticket: "flex min-h-0 flex-1 flex-col bg-white p-3",
   primaryAction:
-    "min-h-11 w-full rounded-xl bg-[#4f46e5] text-[15px] font-semibold text-white active:bg-[#3730a3] hover:bg-[#4338ca] disabled:bg-[#c7d2fe]",
+    "min-h-12 w-full rounded-xl bg-[#4f46e5] text-base font-bold tracking-tight text-white active:bg-[#3730a3] hover:bg-[#4338ca] disabled:bg-[#c7d2fe]",
   secondaryAction:
     "min-h-12 w-full rounded-xl border border-[#d8dee6] bg-white text-sm font-medium text-[#111827] active:bg-[#e5e7eb] hover:bg-[#f4f5f7]",
   dangerAction:
@@ -177,12 +177,33 @@ export const cashierPos = {
   amountDueHuge: "text-3xl font-bold tabular-nums text-[#111827] sm:text-4xl",
   moneyInput:
     "min-h-12 w-full rounded-xl border border-[#d8dee6] bg-white px-3 text-lg tabular-nums text-[#111827]",
+  /** Shared tender card chrome — hover elevates; active scales; selected via accent classes */
   methodBtn:
-    "flex min-h-[4.75rem] flex-col items-center justify-center gap-1.5 rounded-xl border border-[#d8dee6] bg-white px-3 text-sm font-semibold text-[#111827] active:bg-[#f4f5f7]",
+    "group flex min-h-[5rem] flex-col items-center justify-center gap-2 rounded-xl border bg-white px-3 text-sm font-semibold text-[#111827] transition-[transform,box-shadow,border-color,background-color] duration-150 hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)] motion-safe:active:scale-[0.98]",
   methodBtnActive:
-    "flex min-h-[4.75rem] flex-col items-center justify-center gap-1.5 rounded-xl border-[#4f46e5] bg-[#4f46e5] px-3 text-sm font-semibold text-white ring-2 ring-[#4f46e5]/30",
+    "group flex min-h-[5rem] flex-col items-center justify-center gap-2 rounded-xl border bg-white px-3 text-sm font-semibold text-[#111827] shadow-[0_2px_8px_rgba(15,23,42,0.06)] ring-2 motion-safe:active:scale-[0.98]",
+  methodBtnCash: "border-[#a7f3d0] hover:border-emerald-400",
+  methodBtnCashActive:
+    "border-emerald-500 bg-emerald-50 ring-emerald-500/35",
+  methodBtnNetwork: "border-[#bfdbfe] hover:border-blue-400",
+  methodBtnNetworkActive: "border-blue-500 bg-blue-50 ring-blue-500/35",
+  methodBtnMixed: "border-[#ddd6fe] hover:border-violet-400",
+  methodBtnMixedActive: "border-violet-500 bg-violet-50 ring-violet-500/35",
+  methodBtnGift: "border-[#fde68a] hover:border-amber-400",
+  methodBtnGiftActive: "border-amber-500 bg-amber-50 ring-amber-500/35",
+  methodIconWell:
+    "flex size-11 items-center justify-center rounded-xl transition-colors",
+  methodWellCash: "bg-emerald-100 text-emerald-700",
+  methodWellCashActive: "bg-emerald-200 text-emerald-800",
+  methodWellNetwork: "bg-blue-100 text-blue-700",
+  methodWellNetworkActive: "bg-blue-200 text-blue-800",
+  methodWellMixed: "bg-violet-100 text-violet-700",
+  methodWellMixedActive: "bg-violet-200 text-violet-800",
+  methodWellGift: "bg-amber-100 text-amber-700",
+  methodWellGiftActive: "bg-amber-200 text-amber-800",
   methodGrid: "grid grid-cols-2 gap-3",
   methodIcon: "size-6 shrink-0",
+  methodLabel: "text-sm font-semibold text-[#111827]",
   bodyText: "text-sm text-[#111827]",
   bodyTextSm: "text-xs text-[#111827]",
   mutedText: "text-xs font-medium text-[#374151]",

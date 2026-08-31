@@ -100,6 +100,19 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
     expect(panel).not.toContain("text-[#6b7280]");
   });
 
+  it("Payment method cards use accent wells with hover/active/selected chrome", () => {
+    expect(styles).toContain("methodIconWell");
+    expect(styles).toContain("methodWellCash");
+    expect(styles).toContain("methodBtnCashActive");
+    expect(styles).toContain("hover:-translate-y-px");
+    expect(styles).toContain("motion-safe:active:scale-[0.98]");
+    expect(styles).toContain("bg-emerald-100");
+    expect(styles).toContain("bg-blue-100");
+    expect(styles).toContain("bg-violet-100");
+    expect(styles).toContain("bg-amber-100");
+    expect(panel).toContain("methodWellCashActive");
+  });
+
   it("Product Card click-to-add is primary; + is secondary size-10", () => {
     const card = read(
       "client/src/components/cashier-workspace/CashierProductCard.tsx"

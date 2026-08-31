@@ -16,6 +16,8 @@ describe("cashier presentation helpers", () => {
     expect(cashierUiLabel("saleRetrySameItems", "en")).toContain("same items");
     expect(cashierUiLabel("placeSale", "ar")).toBe("الدفع");
     expect(cashierUiLabel("placeSale", "en")).toBe("Payment");
+    expect(cashierUiLabel("payWithAmount", "ar")).toBe("الدفع");
+    expect(cashierUiLabel("payWithAmount", "en")).toBe("Payment");
     expect(cashierUiLabel("salePlaced", "en")).toBe("Ready to pay");
     expect(cashierUiLabel("confirmPayment", "ar")).toBe("تأكيد الدفع");
     expect(cashierUiLabel("ticket", "en")).toBe("Sale / Invoice");

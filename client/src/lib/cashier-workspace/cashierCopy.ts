@@ -49,7 +49,7 @@ const COPY: Record<string, { ar: string; en: string }> = {
   ticketTotal: { ar: "الإجمالي", en: "Total" },
   qty: { ar: "الكمية", en: "Qty" },
   placeSale: { ar: "الدفع", en: "Payment" },
-  payWithAmount: { ar: "ادفع", en: "Pay" },
+  payWithAmount: { ar: "الدفع", en: "Payment" },
   placing: { ar: "جاري فتح الدفع…", en: "Opening payment…" },
   currentOrder: { ar: "الطلب الحالي", en: "Current order" },
   noActiveOrder: { ar: "لا يوجد طلب نشط", en: "No active order" },
