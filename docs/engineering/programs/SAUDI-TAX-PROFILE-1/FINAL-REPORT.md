@@ -170,4 +170,8 @@ Governance protections retained: ordering, orphans, missing files, legacy orphan
 
 ### Governance closeout SHAs
 
-*(filled after commit/push)*
+| Field | Value |
+|-------|-------|
+| Governance fix commit | `f64afd2a617ff28dadc6b79240d1404e81d49156` |
+| Message | `fix(db): align migration governance with 0104` |
+| Push / HEAD / tree | *(after push)* |
