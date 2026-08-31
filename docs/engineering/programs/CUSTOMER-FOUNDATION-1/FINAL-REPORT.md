@@ -7,7 +7,8 @@
 | Field | Value |
 |-------|-------|
 | Starting SHA | `dc0b4e15b6466da18950d7964a88972243c4420d` |
-| Ending SHA | *(after commit)* |
+| Ending SHA | `c67af313e5efadc6e2c663ebec87a6b456e64399` |
+| Commit SHA | `c67af313e5efadc6e2c663ebec87a6b456e64399` |
 | Commit | `feat(customer): establish global customer foundation` |
 
 ## Existing architecture discovered
@@ -67,4 +68,9 @@ No prior Customer CRM entity. Only order free-text `customerName`/`customerPhone
 
 ## Push / HEAD
 
-*(after push)*
+| Field | Value |
+|-------|-------|
+| Push | `git push origin main` |
+| Commit | `c67af313e5efadc6e2c663ebec87a6b456e64399` |
+| HEAD == origin/main | *(after push)* |
+| Working tree | *(after push)* |
