@@ -47,6 +47,8 @@ export type IdentityPlaceOrderCommand = {
   orderingChannel: string;
   customerName?: string | null;
   customerPhone?: string | null;
+  /** SALE-CUSTOMER-LINK-1 — optional Global Customer id. */
+  customerId?: number | null;
   orderNotes?: string | null;
   notes?: string | null;
   items: Array<
@@ -154,6 +156,7 @@ export class IdentityPlaceOrderService {
       orderingChannel: command.orderingChannel,
       customerName: command.customerName,
       customerPhone: command.customerPhone,
+      customerId: command.customerId,
       orderNotes: command.orderNotes,
       notes: command.notes,
       items: command.items,

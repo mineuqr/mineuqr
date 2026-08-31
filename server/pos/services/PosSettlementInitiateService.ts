@@ -85,6 +85,8 @@ export type PosSettlementInitiateCommand = {
   billDiscountAmount?: string;
   /** Cashier complimentary: zero collection CF. Not a second financial authority. */
   complimentary?: boolean;
+  /** SALE-CUSTOMER-LINK-1 — optional Global Customer id for the Sale. */
+  customerId?: number | null;
 };
 
 export type PosSettlementInitiateResult = {
@@ -897,6 +899,7 @@ export class PosSettlementInitiateService {
             idempotencyKey: input.command.idempotencyKey,
             actorUserId: context.userId,
             actorDisplayName: input.user.name,
+            customerId: input.command.customerId,
             settlementContext: crmp.settlementContext,
             settlementContextHints: {
               registerId: operational.registerId,
@@ -1012,6 +1015,30 @@ export class PosSettlementInitiateService {
       }
 
       const settlements = resolveCommandSettlements(input.command);
+
+      // SALE-CUSTOMER-LINK-1 — attach/clear customer on existing Sale before Confirm.
+      // Does not mutate Collection Fact / PAID totals.
+      if (input.command.customerId !== undefined) {
+        const { setOrderSaleCustomerId } = await import(
+          "../../order/application/setOrderSaleCustomerId"
+        );
+        const { TRPCError } = await import("@trpc/server");
+        try {
+          await setOrderSaleCustomerId({
+            restaurantId: context.restaurantId,
+            orderId: order.id,
+            customerId: input.command.customerId,
+          });
+        } catch (err) {
+          if (err instanceof TRPCError) {
+            throw new PosSettlementInitiateError(
+              "order_not_eligible",
+              err.message
+            );
+          }
+          throw err;
+        }
+      }
 
       let settled: Awaited<ReturnType<PosSettlementSettlePaid>>;
       try {

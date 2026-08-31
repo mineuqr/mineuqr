@@ -743,6 +743,13 @@
       "when": 1785900000000,
       "tag": "0105_customers",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "5",
+      "when": 1786000000000,
+      "tag": "0106_orders_customer_id",
+      "breakpoints": true
     }
   ]
 }

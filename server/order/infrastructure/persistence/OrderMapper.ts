@@ -22,6 +22,7 @@ export function mapOrderRowToAggregate(
     fulfilmentLabel: order.fulfilmentLabel ?? null,
     customerName: order.customerName ?? null,
     customerPhone: order.customerPhone ?? null,
+    customerId: order.customerId ?? null,
     notes: order.notes ?? null,
     totalAmount: String(order.totalAmount),
     orderNumber: order.orderNumber,

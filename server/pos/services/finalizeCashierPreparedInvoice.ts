@@ -30,6 +30,7 @@ import {
 } from "../cashier-invoice/cashierInvoiceRepository";
 import type { SessionDbClient } from "../../diningSession/sessionRepository";
 import type { SettlementContext } from "@shared/crmp";
+import { resolveOptionalSaleCustomerId } from "../../customer/saleCustomerLink";
 
 export type CashierPreparedInvoiceLineInput = {
   menuItemId: number;
@@ -49,6 +50,8 @@ export type FinalizeCashierPreparedInvoiceInput = {
   idempotencyKey: string;
   actorUserId: number;
   actorDisplayName?: string | null;
+  /** SALE-CUSTOMER-LINK-1 — optional Global Customer id for the Sale. */
+  customerId?: number | null;
   settlementContext?: SettlementContext;
   settlementContextHints?: {
     registerId: string;
@@ -69,6 +72,19 @@ export async function finalizeCashierPreparedInvoice(
 ): Promise<FinalizeCashierPreparedInvoiceResult> {
   if (input.items.length === 0) {
     throw new CollectionFactError("VALIDATION", "Prepared invoice items are required");
+  }
+  let saleCustomerId: number | null = null;
+  try {
+    saleCustomerId = await resolveOptionalSaleCustomerId(
+      input.restaurantId,
+      input.customerId
+    );
+  } catch (err) {
+    const { TRPCError } = await import("@trpc/server");
+    if (err instanceof TRPCError) {
+      throw new CollectionFactError("VALIDATION", err.message);
+    }
+    throw err;
   }
   const snapshots = await captureSnapshotsFromBusinessSettings(input.restaurantId);
   let freeze: CashierPaidMoneyFreeze | undefined;
@@ -95,6 +111,7 @@ export async function finalizeCashierPreparedInvoice(
           }),
           identityScope: "POS",
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+          customerId: saleCustomerId,
           items: input.items.map((item) => ({
             menuItemId: item.menuItemId,
             quantity: item.quantity,

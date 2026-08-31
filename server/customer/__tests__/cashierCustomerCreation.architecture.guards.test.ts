@@ -93,7 +93,10 @@ describe("CUSTOMER-FOUNDATION-1 cashier customer creation", () => {
       panel.indexOf("async function completePayment"),
       panel.indexOf("function returnToDashboard")
     );
-    expect(completeFn).not.toContain("selectedCustomer");
+    // SALE-CUSTOMER-LINK-1 — Confirm may pass customerId; must not mutate money.
+    expect(completeFn).toContain("customerId");
+    expect(completeFn).not.toContain("setTicketDiscount");
+    expect(completeFn).not.toContain("commitCashierProductionCollectionFact");
   });
 
   it("no new Customer migration beyond 0105 for this completion", () => {

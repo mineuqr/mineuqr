@@ -64,6 +64,8 @@ export type PlaceOrderCommand = {
   orderingChannel: string;
   customerName?: string | null;
   customerPhone?: string | null;
+  /** SALE-CUSTOMER-LINK-1 — optional Global Customer id; null = no Customer. */
+  customerId?: number | null;
   /** Order Notes — legacy `notes` kept for backward compatibility. */
   orderNotes?: string | null;
   notes?: string | null;
@@ -218,6 +220,7 @@ export class PlaceOrderService {
       fulfilmentLabel: fulfilment.fulfilmentLabel,
       customerName: command.customerName ?? null,
       customerPhone: command.customerPhone ?? null,
+      customerId: command.customerId ?? null,
       notes: orderNoteResult.value,
       totalAmount,
       orderNumber,

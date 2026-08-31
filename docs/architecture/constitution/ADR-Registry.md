@@ -48,6 +48,7 @@
 | ADR-ARCH-039 | Payment Collection Financial Authority | **Accepted** (governance) | Architecture Authority | FINANCIAL-AUTHORITY-SUPERSESSION-ADR-1 · FINANCIAL-AUTHORITY-RESET-ARCHITECTURE-1 | I-FIN-01/02 as sole rules **on certified adopted channels**; Check as PAID/refund root **on those channels**; 038 §7 after adoption | FSP Collection Fact vs Check bill | **Governance only** | Collection Fact = monetary AR **after certified adoption**. Check = operational bill. Payment = process. PAID = fact COMMIT. Revenue union. No schema/runtime authorized. All channels including Cashier remain on Check completion until adoption certification. |
 | ADR-ARCH-040 | Multi-Country Compliance Module Layer | **Accepted** | Architecture Authority | MULTI-COUNTRY-COMPLIANCE-LAYER-FOUNDATION-1 | — | Global Core vs country compliance adapters | **Foundation (registry + orchestrator + guards)** | `restaurant.countryCode` routes compliance modules downstream of Collection Fact commit. No Tax Profile, Tax Invoice, IRN, QR, or ZATCA integration. SA module is boundary-only. Refines 039 (compliance observes, does not own financial truth). |
 | ADR-ARCH-041 | Saudi Tax Invoice Boundary & Classification | **Accepted** (evaluation) | Architecture Authority | SAUDI-TAX-INVOICE-ARCHITECTURE-EVALUATION-1 | — | Tax Invoice as Saudi compliance artifact; InvoiceClassification; post-CF lifecycle | **Governance only — no runtime Tax Invoice** | Refines 040/039/027. Customer ≠ invoice type; missing taxNumber ≠ non-tax invoice; Tax Invoice downstream of Collection Fact; PAID ≠ compliance success. |
+| ADR-ARCH-042 | Sale ↔ Customer Relationship | **Accepted** | Architecture Authority | SALE-CUSTOMER-LINK-1 | — | Nullable orders.customerId | **Implemented** | Global Sale→Customer reference only. NULL valid. No invoice classification / VAT / ZATCA. ON DELETE SET NULL. |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 
@@ -96,5 +97,6 @@
 | ADR-ARCH-039 | [ADR-ARCH-039-payment-collection-financial-authority.md](../adrs/ADR-ARCH-039-payment-collection-financial-authority.md) |
 | ADR-ARCH-040 | [ADR-ARCH-040-multi-country-compliance-modules.md](../adrs/ADR-ARCH-040-multi-country-compliance-modules.md) |
 | ADR-ARCH-041 | [ADR-ARCH-041-saudi-tax-invoice-boundary.md](../adrs/ADR-ARCH-041-saudi-tax-invoice-boundary.md) |
+| ADR-ARCH-042 | [ADR-ARCH-042-sale-customer-link.md](../adrs/ADR-ARCH-042-sale-customer-link.md) |
 
 **Related:** [Blueprint](../blueprints/Order-Centric-Architecture.md) · [ADR Lifecycle](../governance/ADR-Lifecycle.md)

@@ -19,7 +19,7 @@ export type CashierDirectSaleInvoiceSnapshot = {
 };
 
 export type CashierDirectSaleSnapshot = {
-  v: 1 | 2 | 3;
+  v: 1 | 2 | 3 | 4;
   orderId: number;
   orderNumber: string;
   displayReference: string;
@@ -30,6 +30,8 @@ export type CashierDirectSaleSnapshot = {
   cashReceived: string;
   /** Presentation-only card amount. Omitted on older snapshots. */
   cardTender?: string;
+  /** SALE-CUSTOMER-LINK-1 — draft Customer selection for resume. */
+  selectedCustomer?: { id: number; displayName: string } | null;
   /** Prepared invoice from sale.create. Omitted on v1 snapshots. */
   invoice?: CashierDirectSaleInvoiceSnapshot;
   paid:
@@ -60,7 +62,10 @@ export function readCashierDirectSale(
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CashierDirectSaleSnapshot;
     if (
-      (parsed?.v !== 1 && parsed?.v !== 2 && parsed?.v !== 3) ||
+      (parsed?.v !== 1 &&
+        parsed?.v !== 2 &&
+        parsed?.v !== 3 &&
+        parsed?.v !== 4) ||
       !Number.isInteger(parsed.orderId)
     ) {
       return null;

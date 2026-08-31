@@ -102,6 +102,8 @@ const settlementInitiateInput = terminalInput
     /** Discount intent. Server calculates authoritative discount at Confirm. */
     billDiscountAmount: moneyAmountInput.optional(),
     complimentary: z.boolean().optional(),
+    /** SALE-CUSTOMER-LINK-1 — optional Global Customer id. Null clears / anonymous. */
+    customerId: z.number().int().positive().nullable().optional(),
   })
   .refine((value) => (value.items?.length ?? 0) > 0 || value.orderId != null, {
     message: "Prepared invoice items are required",
@@ -426,6 +428,7 @@ export const posRouter = router({
               settlements: input.settlements,
               billDiscountAmount: input.billDiscountAmount,
               complimentary: input.complimentary,
+              customerId: input.customerId,
             },
           });
           const { schedulePostConfirmOperationalRecovery } = await import(

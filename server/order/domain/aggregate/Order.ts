@@ -34,6 +34,11 @@ export type NewOrderProps = {
   fulfilmentLabel?: string | null;
   customerName?: string | null;
   customerPhone?: string | null;
+  /**
+   * SALE-CUSTOMER-LINK-1 — optional Global Customer id for this Sale.
+   * Null = no Customer selected. Does not set invoice type or tax behavior.
+   */
+  customerId?: number | null;
   notes?: string | null;
   totalAmount: string;
   orderNumber: string;
@@ -63,6 +68,7 @@ export class Order {
   readonly fulfilmentLabel: string | null;
   readonly customerName: string | null;
   readonly customerPhone: string | null;
+  readonly customerId: number | null;
   readonly notes: string | null;
   readonly totalAmount: string;
   readonly orderNumber: string;
@@ -86,6 +92,7 @@ export class Order {
     this.fulfilmentLabel = props.fulfilmentLabel ?? null;
     this.customerName = props.customerName ?? null;
     this.customerPhone = props.customerPhone ?? null;
+    this.customerId = props.customerId ?? null;
     this.notes = props.notes ?? null;
     this.totalAmount = props.totalAmount;
     this.orderNumber = props.orderNumber;
@@ -313,6 +320,7 @@ export class Order {
       fulfilmentLabel: this.fulfilmentLabel,
       customerName: this.customerName,
       customerPhone: this.customerPhone,
+      customerId: this.customerId,
       notes: this.notes,
       totalAmount: this.totalAmount,
       orderNumber: this.orderNumber,
@@ -342,6 +350,7 @@ export class Order {
       fulfilmentLabel: this.fulfilmentLabel,
       customerName: this.customerName,
       customerPhone: this.customerPhone,
+      customerId: this.customerId,
       notes: this.notes,
       totalAmount: this.totalAmount,
       orderNumber: this.orderNumber,

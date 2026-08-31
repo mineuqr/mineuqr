@@ -15,25 +15,26 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0105 contiguously", () => {
+  it("journal contains canonical migrations 0000–0106 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
     expect(journal.entries[103]?.tag).toBe("0103_realtime_bus_messages");
     expect(journal.entries[104]?.tag).toBe("0104_saudi_tax_profiles");
-    expect(journal.entries[105]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(journal.entries[105]?.tag).toBe("0105_customers");
+    expect(journal.entries[106]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[106]?.tag).toBe("0106_orders_customer_id");
     expect(validateJournalOrdering()).toEqual([]);
   });
 
-  it("exports certified migration tail constant at 0105", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0105_customers");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(106);
+  it("exports certified migration tail constant at 0106", () => {
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0106_orders_customer_id");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(107);
     const tags = loadJournal().entries.map((e) => e.tag);
-    expect(tags).toHaveLength(106);
-    expect(tags[104]).toBe("0104_saudi_tax_profiles");
+    expect(tags).toHaveLength(107);
+    expect(tags[105]).toBe("0105_customers");
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
-    expect(tags[tags.length - 1]).not.toBe("0104_saudi_tax_profiles");
+    expect(tags[tags.length - 1]).not.toBe("0105_customers");
   });
 
   it("registers restored tail migrations 0054–0057", () => {
@@ -64,8 +65,8 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(guard).toContain("CANONICAL_MIGRATION_TAIL_TAG");
     expect(guard).toContain("CANONICAL_JOURNAL_ENTRY_COUNT");
     expect(guard).toContain("process.exit(1)");
-    expect(guard).toContain("0000–0105");
-    expect(guard).not.toContain("0000–0104");
+    expect(guard).toContain("0000–0106");
+    expect(guard).not.toContain("0000–0105");
   });
 
   it("0104 is additive saudi_tax_profiles and is not a financial rewrite", () => {
@@ -86,17 +87,17 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/DROP\s+/i);
   });
 
-  it("cannot silently regress certified terminus back to 0104", () => {
+  it("cannot silently regress certified terminus back to 0105", () => {
     const lib = readFileSync(
       join(repoRoot, "scripts/lib/migration-governance-lib.cjs"),
       "utf8"
     );
-    expect(lib).toContain('CANONICAL_MIGRATION_TAIL_TAG = "0105_customers"');
-    expect(lib).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 106");
+    expect(lib).toContain('CANONICAL_MIGRATION_TAIL_TAG = "0106_orders_customer_id"');
+    expect(lib).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 107");
     expect(lib).not.toMatch(
-      /CANONICAL_MIGRATION_TAIL_TAG\s*=\s*"0104_saudi_tax_profiles"/
+      /CANONICAL_MIGRATION_TAIL_TAG\s*=\s*"0105_customers"/
     );
-    expect(lib).not.toMatch(/CANONICAL_JOURNAL_ENTRY_COUNT\s*=\s*105\b/);
+    expect(lib).not.toMatch(/CANONICAL_JOURNAL_ENTRY_COUNT\s*=\s*106\b/);
   });
 
   it("0105 is additive customers and is not a financial rewrite", () => {
@@ -109,6 +110,19 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
     expect(sql).not.toMatch(/INSERT\s+INTO/i);
     expect(sql).not.toMatch(/DROP\s+/i);
+  });
+
+  it("0106 adds nullable orders.customerId without financial rewrite", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0106_orders_customer_id.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("ADD COLUMN `customerId`");
+    expect(sql).toContain("orders_customer_id_fk");
+    expect(sql).toContain("ON DELETE SET NULL");
+    expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/DROP\s+TABLE/i);
   });
 
   it("verify-schema covers operational device governance objects", () => {

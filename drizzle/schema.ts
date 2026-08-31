@@ -1255,6 +1255,13 @@ export const orders = mysqlTable("orders", {
 	fulfilmentLabel: varchar({ length: 128 }),
 	customerName: varchar({ length: 255 }),
 	customerPhone: varchar({ length: 32 }),
+	/**
+	 * SALE-CUSTOMER-LINK-1 — optional Global Customer reference.
+	 * Identifies who the buyer is for this Sale. Does NOT determine invoice type,
+	 * taxability, B2B/B2C, VAT, payment, or compliance behavior.
+	 * NULL = no Customer selected (Cashier may show العميل: نقدًا as display-only).
+	 */
+	customerId: int(),
 	status: mysqlEnum(['pending','preparing','ready','served','cancelled']).default('pending').notNull(),
 	lifecycleStage: mysqlEnum(["active", "completed", "archived"]).default("active").notNull(),
 	notes: text(),
@@ -1285,6 +1292,7 @@ export const orders = mysqlTable("orders", {
 	index("orders_status").on(table.status),
 	index("orders_lifecycle_stage").on(table.lifecycleStage),
 	index("orders_session_id").on(table.sessionId),
+	index("orders_restaurant_customer_id").on(table.restaurantId, table.customerId),
 	uniqueIndex("orders_tracking_token_unique").on(table.trackingToken),
 ]);
 

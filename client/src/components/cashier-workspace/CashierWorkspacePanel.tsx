@@ -341,6 +341,14 @@ export function CashierWorkspacePanel({
         snapshot.invoice?.money.billDiscountAmount ?? "0.00";
       setTicketDiscount(restoredDiscount);
       setDiscountDraft("");
+      if (snapshot.selectedCustomer && snapshot.selectedCustomer.id > 0) {
+        setSelectedCustomer({
+          id: snapshot.selectedCustomer.id,
+          displayName: snapshot.selectedCustomer.displayName,
+        });
+      } else {
+        setSelectedCustomer(null);
+      }
       setPaidCheckout(
         snapshot.paid
           ? {
@@ -663,6 +671,7 @@ export function CashierWorkspacePanel({
     method?: SelectablePaymentMethod | null;
     received?: string;
     card?: string;
+    customer?: { id: number; displayName: string } | null;
   }) {
     const sale = next?.sale === undefined ? directSale : next.sale;
     const phase = next?.phase ?? salePhase;
@@ -671,7 +680,7 @@ export function CashierWorkspacePanel({
       return;
     }
     writeCashierDirectSale(restaurantId, {
-      v: 3,
+      v: 4,
       orderId: sale.orderId,
       orderNumber: sale.orderNumber,
       displayReference: sale.displayReference,
@@ -684,6 +693,8 @@ export function CashierWorkspacePanel({
       paymentMethod: next?.method === undefined ? paymentMethod : next.method,
       cashReceived: next?.received ?? cashReceived,
       cardTender: next?.card ?? cardTender,
+      selectedCustomer:
+        next?.customer === undefined ? selectedCustomer : next.customer,
       invoice: {
         createdAt: sale.createdAt,
         money: sale.money,
@@ -960,6 +971,9 @@ export function CashierWorkspacePanel({
           : { items: confirmItems }),
         idempotencyKey: settleKeyRef.current,
         paymentIntentId: paymentIntentRef.current,
+        ...(selectedCustomer
+          ? { customerId: selectedCustomer.id }
+          : { customerId: null }),
         ...(complimentarySale
           ? { complimentary: true }
           : {
@@ -1736,8 +1750,18 @@ export function CashierWorkspacePanel({
                     restaurantId={restaurantId}
                     language={language === "ar" ? "ar" : "en"}
                     selected={selectedCustomer}
-                    onSelect={setSelectedCustomer}
-                    onClear={() => setSelectedCustomer(null)}
+                    onSelect={(customer) => {
+                      setSelectedCustomer(customer);
+                      if (directSale) {
+                        persistDirectSaleSnapshot({ customer });
+                      }
+                    }}
+                    onClear={() => {
+                      setSelectedCustomer(null);
+                      if (directSale) {
+                        persistDirectSaleSnapshot({ customer: null });
+                      }
+                    }}
                   />
                 </div>
 
