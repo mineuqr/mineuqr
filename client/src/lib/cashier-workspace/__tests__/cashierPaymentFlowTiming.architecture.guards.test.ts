@@ -73,7 +73,18 @@ describe("CASHIER-PAYMENT-FLOW-BOUNDARY-INSTRUMENTATION-1 architecture", () => {
     expect(readSvc).toContain("getCheckById");
     expect(readSvc).not.toContain("ensureCheckForOrder");
     expect(settlementBlock).not.toContain("refetchInterval");
-    expect(panel).not.toContain("refetchInterval");
+    // SAUDI-TAX-INVOICE-CASHIER-UX-1 may poll getPhase1ByOrder after PAID.
+    // Payment / Check / settlement / active-order reads must stay non-polling.
+    expect(panel).toContain("saudiTaxInvoice.getPhase1ByOrder");
+    expect([...panel.matchAll(/refetchInterval/g)]).toHaveLength(1);
+    const saudiQueryBlock = panel.slice(
+      panel.indexOf("saudiTaxInvoice.getPhase1ByOrder"),
+      panel.indexOf("saudiTaxInvoice.getPhase1ByOrder") + 800
+    );
+    expect(saudiQueryBlock).toContain("refetchInterval");
+    expect(panel).not.toMatch(
+      /trpc\.pos\.read\.(orders|check|orderSettlement)[\s\S]{0,400}refetchInterval/
+    );
   });
 
   it("adds duration telemetry without logging financial amounts on Check read", () => {

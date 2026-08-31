@@ -212,6 +212,32 @@ const COPY: Record<string, { ar: string; en: string }> = {
   receiptUnitPrice: { ar: "السعر", en: "Price" },
   receiptVat: { ar: "الضريبة VAT", en: "VAT" },
   receiptPaidStamp: { ar: "مدفوعة", en: "Paid" },
+  taxInvoiceTitle: { ar: "الفاتورة الضريبية", en: "Tax invoice" },
+  taxInvoiceView: { ar: "عرض الفاتورة الضريبية", en: "View tax invoice" },
+  taxInvoicePrint: { ar: "طباعة الفاتورة", en: "Print tax invoice" },
+  taxInvoiceNumber: { ar: "رقم الفاتورة", en: "Invoice number" },
+  taxInvoiceSeller: { ar: "البائع", en: "Seller" },
+  taxInvoiceSellerVat: { ar: "الرقم الضريبي", en: "VAT number" },
+  taxInvoiceSellerAddress: { ar: "العنوان", en: "Address" },
+  taxInvoiceBuyer: { ar: "العميل", en: "Buyer" },
+  taxInvoiceBuyerVat: { ar: "الرقم الضريبي للمشتري", en: "Buyer VAT number" },
+  taxInvoiceQr: { ar: "رمز الاستجابة السريعة", en: "QR code" },
+  taxInvoicePreparing: {
+    ar: "جاري تجهيز الفاتورة الضريبية…",
+    en: "Preparing tax invoice…",
+  },
+  taxInvoiceUnavailable: {
+    ar: "تعذر تجهيز الفاتورة الضريبية حاليًا",
+    en: "Tax invoice is unavailable right now",
+  },
+  taxInvoiceBlockedProfile: {
+    ar: "الملف الضريبي غير جاهز للفاتورة الضريبية",
+    en: "Tax profile is not ready for the tax invoice",
+  },
+  taxInvoiceReadyHint: {
+    ar: "الفاتورة الضريبية جاهزة للعرض والطباعة",
+    en: "Tax invoice is ready to view and print",
+  },
   printUnavailable: {
     ar: "الفاتورة غير جاهزة للطباعة بعد.",
     en: "The receipt isn't ready to print yet.",

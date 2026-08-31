@@ -21,8 +21,14 @@ import {
   AppLoadingState,
 } from "@/components/app-state";
 import { CashierPaidReceiptDialog } from "@/components/cashier-workspace/CashierPaidReceiptDialog";
+import type { CashierSaudiTaxInvoiceStripState } from "@/components/cashier-workspace/CashierPaidReceiptDialog";
+import { CashierSaudiTaxInvoiceDialog } from "@/components/cashier-workspace/CashierSaudiTaxInvoiceDialog";
 import { CashierCustomerBar } from "@/components/cashier-workspace/CashierCustomerBar";
 import { CashierProductCard } from "@/components/cashier-workspace/CashierProductCard";
+import {
+  mapSaudiPhase1DocumentToCashierView,
+  printCashierSaudiTaxInvoice,
+} from "@/lib/cashier-workspace/saudiTaxInvoiceCashierView";
 import { Button } from "@/components/ui/button";
 import {
   cashierAllCategoryIcon,
@@ -181,6 +187,8 @@ type Props = {
   taxEnabled?: boolean | null;
   taxMode?: string | null;
   taxPolicyJson?: string | null;
+  /** Restaurant country — gates Saudi Tax Invoice Cashier UX only. */
+  countryCode?: string | null;
 };
 
 function isForbidden(error: unknown): boolean {
@@ -209,6 +217,7 @@ export function CashierWorkspacePanel({
   taxEnabled,
   taxMode,
   taxPolicyJson,
+  countryCode,
 }: Props) {
   const dir = language === "ar" ? "rtl" : "ltr";
   const t = (key: Parameters<typeof cashierUiLabel>[0]) =>
@@ -258,6 +267,14 @@ export function CashierWorkspacePanel({
   const [printOpen, setPrintOpen] = useState(false);
   const [paidReceipt, setPaidReceipt] =
     useState<CashierPaidReceiptSnapshot | null>(null);
+  /** SAUDI-TAX-INVOICE-CASHIER-UX-1 — resolve existing Phase 1 invoice by order. */
+  const [lastPaidOrderId, setLastPaidOrderId] = useState<number | null>(null);
+  const [taxInvoiceOpen, setTaxInvoiceOpen] = useState(false);
+  const [taxInvoicePrintPending, setTaxInvoicePrintPending] = useState(false);
+  const [taxInvoicePollTimedOut, setTaxInvoicePollTimedOut] = useState(false);
+  const taxInvoicePollStartedAtRef = useRef<number | null>(null);
+  const isSaudiCashier =
+    String(countryCode ?? "").trim().toUpperCase() === "SA";
   const [paymentBusy, setPaymentBusy] = useState(false);
   const saleInFlightRef = useRef(false);
   const payInFlightRef = useRef(false);
@@ -468,6 +485,107 @@ export function CashierWorkspacePanel({
   const registerMutation = trpc.pos.terminal.register.useMutation();
   const activateMutation = trpc.pos.terminal.activate.useMutation();
   const settleMutation = trpc.pos.settlement.initiate.useMutation();
+
+  const saudiTaxInvoicePhase1Query =
+    trpc.saudiTaxInvoice.getPhase1ByOrder.useQuery(
+      {
+        restaurantId,
+        orderId: lastPaidOrderId ?? 0,
+      },
+      {
+        enabled:
+          isSaudiCashier &&
+          lastPaidOrderId != null &&
+          (printOpen || taxInvoiceOpen),
+        refetchInterval: (query) => {
+          const started = taxInvoicePollStartedAtRef.current;
+          if (started != null && Date.now() - started > 15_000) return false;
+          const data = query.state.data;
+          if (!data) return 1_000;
+          const status = data.taxInvoice.status;
+          if (status === "blocked_profile" || status === "failed") return false;
+          if (data.document && data.taxInvoice.invoiceNumber) return false;
+          return 1_000;
+        },
+      }
+    );
+
+  const saudiTaxInvoiceDocument =
+    saudiTaxInvoicePhase1Query.data?.document ?? null;
+  const saudiTaxInvoiceStatus =
+    saudiTaxInvoicePhase1Query.data?.taxInvoice.status ?? null;
+  const saudiTaxInvoiceView = useMemo(() => {
+    if (!saudiTaxInvoiceDocument || !saudiTaxInvoiceStatus) return null;
+    return mapSaudiPhase1DocumentToCashierView(
+      saudiTaxInvoiceDocument,
+      saudiTaxInvoiceStatus
+    );
+  }, [saudiTaxInvoiceDocument, saudiTaxInvoiceStatus]);
+
+  const saudiTaxInvoiceStripState: CashierSaudiTaxInvoiceStripState =
+    useMemo(() => {
+      if (!isSaudiCashier || lastPaidOrderId == null) return "hidden";
+      if (saudiTaxInvoiceView) return "ready";
+      if (saudiTaxInvoiceStatus === "blocked_profile") return "blocked_profile";
+      if (saudiTaxInvoiceStatus === "failed") return "failed";
+      if (saudiTaxInvoiceStatus === "retryable") return "retryable";
+      if (
+        taxInvoicePollTimedOut &&
+        !saudiTaxInvoicePhase1Query.isFetching &&
+        !saudiTaxInvoiceDocument
+      ) {
+        return "unavailable";
+      }
+      if (
+        saudiTaxInvoicePhase1Query.isLoading ||
+        saudiTaxInvoicePhase1Query.isFetching ||
+        !saudiTaxInvoicePhase1Query.isFetched
+      ) {
+        return "loading";
+      }
+      if (!saudiTaxInvoicePhase1Query.data) {
+        return taxInvoicePollTimedOut ? "unavailable" : "loading";
+      }
+      return "unavailable";
+    }, [
+      isSaudiCashier,
+      lastPaidOrderId,
+      saudiTaxInvoiceView,
+      saudiTaxInvoiceStatus,
+      saudiTaxInvoiceDocument,
+      taxInvoicePollTimedOut,
+      saudiTaxInvoicePhase1Query.isLoading,
+      saudiTaxInvoicePhase1Query.isFetching,
+      saudiTaxInvoicePhase1Query.isFetched,
+      saudiTaxInvoicePhase1Query.data,
+    ]);
+
+  useEffect(() => {
+    if (
+      !isSaudiCashier ||
+      lastPaidOrderId == null ||
+      (!printOpen && !taxInvoiceOpen)
+    ) {
+      return;
+    }
+    const started = taxInvoicePollStartedAtRef.current ?? Date.now();
+    taxInvoicePollStartedAtRef.current = started;
+    const remaining = Math.max(0, 15_000 - (Date.now() - started));
+    setTaxInvoicePollTimedOut(Date.now() - started >= 15_000);
+    const id = window.setTimeout(() => setTaxInvoicePollTimedOut(true), remaining);
+    return () => window.clearTimeout(id);
+  }, [isSaudiCashier, lastPaidOrderId, printOpen, taxInvoiceOpen]);
+
+  useEffect(() => {
+    if (!taxInvoiceOpen || !taxInvoicePrintPending || !saudiTaxInvoiceView) {
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      printCashierSaudiTaxInvoice();
+      setTaxInvoicePrintPending(false);
+    }, 50);
+    return () => window.clearTimeout(handle);
+  }, [taxInvoiceOpen, taxInvoicePrintPending, saudiTaxInvoiceView]);
 
   function invalidateOrderReads() {
     void utils.pos.read.orders.listActive.invalidate();
@@ -1014,6 +1132,11 @@ export function CashierWorkspacePanel({
         `${t("paidSuccess")} · ${receipt?.invoiceNumber?.trim() || receipt?.displayReference || ""} · ${result.grandTotal}`
       );
       invalidateOrderReads();
+      if (isSaudiCashier && result.orderId) {
+        setLastPaidOrderId(result.orderId);
+        taxInvoicePollStartedAtRef.current = Date.now();
+        setTaxInvoicePollTimedOut(false);
+      }
       startNewSale();
       if (receipt) {
         setPaidReceipt(receipt);
@@ -2487,6 +2610,35 @@ export function CashierWorkspacePanel({
         language={language}
         receipt={paidReceipt}
         onOpenChange={setPrintOpen}
+        saudiTaxInvoice={
+          isSaudiCashier
+            ? {
+                state: saudiTaxInvoiceStripState,
+                documentTitle:
+                  language === "ar"
+                    ? saudiTaxInvoiceView?.titleAr ?? null
+                    : saudiTaxInvoiceView?.titleEn ?? null,
+                invoiceNumber: saudiTaxInvoiceView?.invoiceNumber ?? null,
+                onView: () => {
+                  setTaxInvoicePrintPending(false);
+                  setTaxInvoiceOpen(true);
+                },
+                onPrint: () => {
+                  setTaxInvoicePrintPending(true);
+                  setTaxInvoiceOpen(true);
+                },
+              }
+            : undefined
+        }
+      />
+      <CashierSaudiTaxInvoiceDialog
+        open={taxInvoiceOpen}
+        language={language}
+        view={saudiTaxInvoiceView}
+        onOpenChange={(open) => {
+          setTaxInvoiceOpen(open);
+          if (!open) setTaxInvoicePrintPending(false);
+        }}
       />
     </section>
   );

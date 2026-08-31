@@ -1373,6 +1373,162 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
 }
 
 /*
+ * SAUDI-TAX-INVOICE-CASHIER-UX-1
+ * Print isolation for Phase 1 Tax Invoice — separate from operational paid receipt.
+ * ~72.1mm width; content-driven height; hide Cashier shell / dialog chrome.
+ */
+@media print {
+  body.printing-cashier-saudi-tax-invoice {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  html:has(body.printing-cashier-saudi-tax-invoice) {
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice
+    > *:not(:has(#cashier-saudi-tax-invoice-print)):not(#cashier-saudi-tax-invoice-print) {
+    display: none !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice [data-slot="dialog-overlay"],
+  body.printing-cashier-saudi-tax-invoice [data-slot="dialog-close"] {
+    display: none !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice
+    [data-slot="dialog-content"]:has(#cashier-saudi-tax-invoice-print) {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    height: auto !important;
+    max-height: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice #cashier-saudi-tax-invoice-print {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    max-height: none !important;
+    max-width: 72.1mm;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2mm;
+    overflow: visible !important;
+    color: #111827 !important;
+    background: #fff !important;
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.printing-cashier-saudi-tax-invoice .cashier-saudi-tax-invoice-document {
+    break-inside: auto;
+    color: #111827 !important;
+    background: #fff !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice .cashier-saudi-tax-invoice-lines {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice .cashier-sti-col-product {
+    width: 50% !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice .cashier-sti-col-qty {
+    width: 10% !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice .cashier-sti-col-unit {
+    width: 20% !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice .cashier-sti-col-total {
+    width: 20% !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice .cashier-sti-product {
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: normal;
+    hyphens: manual;
+    line-height: 1.25 !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice .cashier-saudi-tax-invoice-lines td,
+  body.printing-cashier-saudi-tax-invoice .cashier-saudi-tax-invoice-lines th {
+    color: #111827 !important;
+    background: transparent !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice .cashier-saudi-tax-invoice-lines .whitespace-nowrap,
+  body.printing-cashier-saudi-tax-invoice .cashier-saudi-tax-invoice-lines .tabular-nums {
+    white-space: nowrap !important;
+  }
+
+  body.printing-cashier-saudi-tax-invoice a[href]::after,
+  body.printing-cashier-saudi-tax-invoice a[href]::before {
+    content: none !important;
+  }
+}
+
+.cashier-saudi-tax-invoice-document,
+#cashier-saudi-tax-invoice-print {
+  color: #111827;
+  background: #fff;
+}
+
+.cashier-saudi-tax-invoice-lines {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.cashier-sti-col-product {
+  width: 50%;
+}
+
+.cashier-sti-col-qty {
+  width: 10%;
+}
+
+.cashier-sti-col-unit {
+  width: 20%;
+}
+
+.cashier-sti-col-total {
+  width: 20%;
+}
+
+.cashier-sti-product {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+/*
  * ORDER-CARD-PRINT-ONE-PAGE-LAYOUT-FIX-1
  * Scoped to body.printing-operational-order-ticket only.
  * Does not change Cashier, Settlement, or shift-closing print surfaces.

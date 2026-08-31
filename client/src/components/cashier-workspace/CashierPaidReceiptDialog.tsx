@@ -3,12 +3,14 @@
  * CASHIER-PAID-RECEIPT-OVERFLOW-UX-1
  * CASHIER-PAID-RECEIPT-PRINT-ISOLATION-1
  * CASHIER-PAID-RECEIPT-RENDER-STABILITY-1
+ * SAUDI-TAX-INVOICE-CASHIER-UX-1 — optional Tax Invoice actions (read-only).
  * Print the paid Cashier invoice from the Confirm HTTP projection.
  * Does not load Settlement Record. Does not require Check.
  * Closing print must not affect PAID.
  * On-screen: only the receipt body scrolls; Print/Close stay in the viewport.
  * Print: body-class isolation hides the app shell; receipt uses content height.
  * Screen receipt forces light surface so dark-theme --background cannot paint it black.
+ * Operational receipt ≠ Saudi Tax Invoice — Tax Invoice actions stay separate.
  */
 
 import { Button } from "@/components/ui/button";
@@ -31,13 +33,30 @@ import {
   printCashierPaidReceipt,
   type CashierPaidReceiptSnapshot,
 } from "@/lib/cashier-workspace/cashierPaidReceipt";
-import { Printer } from "lucide-react";
+import { FileText, Printer } from "lucide-react";
+
+export type CashierSaudiTaxInvoiceStripState =
+  | "hidden"
+  | "loading"
+  | "ready"
+  | "unavailable"
+  | "blocked_profile"
+  | "failed"
+  | "retryable";
 
 type Props = {
   open: boolean;
   language: CashierLang;
   receipt: CashierPaidReceiptSnapshot | null;
   onOpenChange: (open: boolean) => void;
+  /** SA only — presentation over persisted Phase 1 Tax Invoice. */
+  saudiTaxInvoice?: {
+    state: CashierSaudiTaxInvoiceStripState;
+    documentTitle: string | null;
+    invoiceNumber: string | null;
+    onView: () => void;
+    onPrint: () => void;
+  };
 };
 
 function itemName(
@@ -76,12 +95,15 @@ export function CashierPaidReceiptDialog({
   language,
   receipt,
   onOpenChange,
+  saudiTaxInvoice,
 }: Props) {
   const t = (key: Parameters<typeof cashierUiLabel>[0]) =>
     cashierUiLabel(key, language);
   const when = receipt
     ? formatCashierReceiptDateTime(receipt.paidAt, language)
     : { date: "", time: "" };
+  const sti = saudiTaxInvoice?.state ?? "hidden";
+  const showSti = sti !== "hidden";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -221,6 +243,55 @@ export function CashierPaidReceiptDialog({
                 )}
               </div>
             </div>
+          </div>
+        ) : null}
+
+        {showSti && saudiTaxInvoice ? (
+          <div className="shrink-0 space-y-2 border-t border-[#e5e7eb] pt-3 print:hidden">
+            {sti === "ready" ? (
+              <>
+                <p className="text-sm text-[#374151]">
+                  {saudiTaxInvoice.documentTitle}
+                  {saudiTaxInvoice.invoiceNumber
+                    ? ` · ${t("taxInvoiceNumber")}: ${saudiTaxInvoice.invoiceNumber}`
+                    : null}
+                </p>
+                <p className="text-xs text-[#6b7280]">{t("taxInvoiceReadyHint")}</p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={saudiTaxInvoice.onView}
+                  >
+                    <FileText className="me-2 h-4 w-4" />
+                    {t("taxInvoiceView")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={saudiTaxInvoice.onPrint}
+                  >
+                    <Printer className="me-2 h-4 w-4" />
+                    {t("taxInvoicePrint")}
+                  </Button>
+                </div>
+              </>
+            ) : null}
+            {sti === "loading" ? (
+              <p className="text-sm text-[#6b7280]">{t("taxInvoicePreparing")}</p>
+            ) : null}
+            {sti === "unavailable" ||
+            sti === "failed" ||
+            sti === "retryable" ? (
+              <p className="text-sm text-[#6b7280]">{t("taxInvoiceUnavailable")}</p>
+            ) : null}
+            {sti === "blocked_profile" ? (
+              <p className="text-sm text-[#6b7280]">
+                {t("taxInvoiceBlockedProfile")}
+              </p>
+            ) : null}
           </div>
         ) : null}
 
