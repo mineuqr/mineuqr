@@ -142,8 +142,9 @@ Cashier **إضافة عميل** → `customer.createForPos` reached the service,
 
 | Field | Value |
 |-------|-------|
-| Commit | *(after push)* |
+| Commit | `dd4e45600a1fd690840b3353820f1e2e6b44e79d` |
 | Message | `fix(customer): repair production schema contract` |
-| HEAD == origin/main | *(after push)* |
-| Working tree | *(after push)* |
-| Vercel | *(after deploy)* |
+| HEAD == origin/main | **YES** (`dd4e4560`) |
+| Working tree | **clean** (at push) |
+| Vercel | **success** — “Deployment has completed” on `dd4e4560` |
+| New migration | **NONE** |
