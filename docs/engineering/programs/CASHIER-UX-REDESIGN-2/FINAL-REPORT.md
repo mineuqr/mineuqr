@@ -1,25 +1,19 @@
-# CASHIER-UX-REDESIGN-2 — Final Report (Receipt rendering)
+# CASHIER-UX-REDESIGN-2 — Final Report (Receipt visual polish)
 
 ## Verdict: **IMPLEMENTATION PASS** / browser Print Preview **operator-confirm**
 
-Live Print Preview was **not** executable in-agent. Automated tests + `pnpm run check` PASS. Operator should confirm 1 / 5 / 10+ item Print Preview before treating as production-closed.
+## Changes (this pass)
 
-## Receipt rendering fix (this pass)
-
-### Root causes
-1. **Dark receipt** — Dialog used `bg-background`; app default `--background` is dark teal while body text was forced `#111827` → near-black on dark surface.
-2. **URL in print** — Not from app content; Chrome/Edge print headers/footers inject `document` URL. Fixed via temporary `@page { size: 80mm auto; margin: 0 }` during print.
-3. **Multi-item collapse** — CSS grid columns too narrow for currency strings + `break-words` allowed Arabic character fragmentation when columns squeezed.
-
-### Fixes
-- Force `bg-white text-[#111827]` on dialog + receipt document (screen and print)
-- `table-fixed` receipt table with stable col widths; `whitespace-nowrap` on qty/prices; `word-break: normal` on product names
-- Print isolation retained; page-style injection removes header/footer margin space
+1. **Item typography** — Table body/header bumped one step (`11px` → `text-xs` / 12px); columns unchanged.
+2. **Duplicate paid footer** — Removed bottom `مدفوعة` / Paid stamp; `تم الدفع` remains in header block.
+3. **Restaurant heading** — Arabic receipts prefix `مطعم` when absent (`خالد` → `مطعم خالد`); Cairo 800 display styling.
+4. **Paper size** — Default `@page` set to **72.1mm × 180mm** (operator-validated); receipt max-width **72.1mm**.
+5. **Spacing** — Receipt ends after payment details; no extra bottom stamp or fixed height on content.
 
 ## Validation
 
 | Check | Result |
 |-------|--------|
-| Vitest (cashier + print isolation) | **39 files / 175 tests PASS** |
+| Vitest (cashier + print isolation) | **39 files / 176 tests PASS** |
 | `pnpm run check` | **PASS** (exit 0) |
-| Live print preview | **not run in-agent** — confirm 1/5/10+ items in browser |
+| Live print preview | **not run in-agent** |

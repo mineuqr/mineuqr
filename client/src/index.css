@@ -1125,7 +1125,7 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
  * layout (same class of bug as ORDER-CARD-PRINT-ONE-PAGE-LAYOUT-FIX-1).
  *
  * Use display:none on the app shell; print only the paid-receipt document at
- * receipt width (~80mm). Does not affect shift-closing or operational ticket.
+ * receipt width (~72.1mm). Does not affect shift-closing or operational ticket.
  */
 @media print {
   body.printing-cashier-paid-receipt {
@@ -1178,7 +1178,7 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
     position: static !important;
     height: auto !important;
     max-height: none !important;
-    max-width: 80mm;
+    max-width: 72.1mm;
     width: 100%;
     margin: 0 auto;
     padding: 2mm;
@@ -1198,7 +1198,7 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
 
   /*
    * CASHIER-PAID-RECEIPT-RENDER-STABILITY-1 —
-   * Fixed table columns on ~80mm; numeric cols never wrap; product wraps by word.
+   * Fixed table columns on ~72.1mm; numeric cols never wrap; product wraps by word.
    * Avoid word-break:break-all / break-words character fragmentation in Arabic.
    */
   body.printing-cashier-paid-receipt .cashier-receipt-lines {
@@ -1276,6 +1276,19 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
   overflow-wrap: break-word;
   word-break: normal;
   white-space: normal;
+}
+
+.cashier-receipt-restaurant-name {
+  font-family: "Cairo", var(--font-sans, sans-serif);
+  font-weight: 800;
+}
+
+@media print {
+  body.printing-cashier-paid-receipt .cashier-receipt-restaurant-name {
+    font-family: "Cairo", sans-serif !important;
+    font-weight: 800 !important;
+    color: #111827 !important;
+  }
 }
 
 /*

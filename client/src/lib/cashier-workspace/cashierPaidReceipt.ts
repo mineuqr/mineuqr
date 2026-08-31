@@ -61,6 +61,20 @@ export function formatCashierReceiptMoney(
   return `${amount} ${currencySymbol}`;
 }
 
+/** Receipt header: Arabic uses "مطعم …" when the stored name is not already prefixed. */
+export function formatCashierReceiptRestaurantHeading(
+  restaurantName: string,
+  language: CashierLang
+): string {
+  const trimmed = restaurantName.trim();
+  if (!trimmed) return "";
+  if (language === "ar") {
+    if (/^مطعم(\s|$)/u.test(trimmed)) return trimmed;
+    return `مطعم ${trimmed}`;
+  }
+  return trimmed;
+}
+
 export function formatCashierReceiptDateTime(
   iso: string,
   language: CashierLang
@@ -96,6 +110,10 @@ export const CASHIER_PAID_RECEIPT_PRINT_ROOT_ID =
 export const CASHIER_PAID_RECEIPT_PRINT_BODY_CLASS =
   "printing-cashier-paid-receipt" as const;
 
+/** Operator-validated thermal receipt paper (Chrome print preview default). */
+export const CASHIER_PAID_RECEIPT_PAPER_WIDTH_MM = 72.1;
+export const CASHIER_PAID_RECEIPT_PAPER_HEIGHT_MM = 180;
+
 const CASHIER_PAID_RECEIPT_PAGE_STYLE_ID =
   "cashier-paid-receipt-print-page-style" as const;
 
@@ -111,7 +129,7 @@ function installCashierPaidReceiptPageStyle(): HTMLStyleElement {
   style.textContent = `
 @media print {
   @page {
-    size: 80mm auto;
+    size: ${CASHIER_PAID_RECEIPT_PAPER_WIDTH_MM}mm ${CASHIER_PAID_RECEIPT_PAPER_HEIGHT_MM}mm;
     margin: 0;
   }
 }

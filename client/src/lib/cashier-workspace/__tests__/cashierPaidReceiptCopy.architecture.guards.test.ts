@@ -28,6 +28,10 @@ const RECEIPT_COPY_KEYS = [
   "receiptQty",
   "receiptUnitPrice",
   "receiptVat",
+] as const;
+
+const RECEIPT_COPY_KEYS_DEFINED = [
+  ...RECEIPT_COPY_KEYS,
   "receiptPaidStamp",
 ] as const;
 
@@ -43,5 +47,12 @@ describe("CASHIER-POST-PAYMENT-PRINT-UX-1 paid receipt copy", () => {
       expect(cashierUiLabel(key, "ar").length).toBeGreaterThan(0);
       expect(cashierUiLabel(key, "en").length).toBeGreaterThan(0);
     }
+    for (const key of RECEIPT_COPY_KEYS_DEFINED) {
+      expect(copy).toMatch(
+        new RegExp(`${key}: \\{ ar: "[^"]+", en: "[^"]+" \\}`)
+      );
+    }
+    expect(dialog).not.toContain('t("receiptPaidStamp")');
+    expect(dialog).toContain('t("paidTitle")');
   });
 });

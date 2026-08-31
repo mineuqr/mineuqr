@@ -59,7 +59,7 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(css).toContain("CASHIER-PAID-RECEIPT-PRINT-ISOLATION-1");
     expect(css).toContain("#cashier-paid-receipt-print");
     expect(css).toContain("body.printing-cashier-paid-receipt");
-    expect(css).toContain("max-width: 80mm");
+    expect(css).toContain("max-width: 72.1mm");
     expect(css).toContain("display: none !important");
     expect(css).not.toContain("body.printing-shift-closing #cashier-paid-receipt-print");
     expect(receiptLib).toContain("printCashierPaidReceipt");
@@ -76,6 +76,12 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(dialog).toContain("cashier-receipt-lines");
     expect(dialog).toContain("table-fixed");
     expect(dialog).toContain("whitespace-nowrap");
+    expect(dialog).toContain("text-xs");
+    expect(dialog).not.toContain("text-[11px]");
+    expect(dialog).toContain("cashier-receipt-restaurant-name");
+    expect(dialog).toContain("formatCashierReceiptRestaurantHeading");
+    expect(dialog).not.toContain('t("receiptPaidStamp")');
+    expect(dialog).toContain('t("paidTitle")');
     expect(dialog).toContain("cashier-receipt-product");
     expect(dialog).toContain("bg-white");
     expect(dialog).not.toContain("break-words");
@@ -95,7 +101,9 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     // One Items column header only (no duplicate section title + header)
     expect(dialog.match(/t\("receiptItems"\)/g)?.length).toBe(1);
     expect(receiptLib).toContain("installCashierPaidReceiptPageStyle");
-    expect(receiptLib).toContain("size: 80mm auto");
+    expect(receiptLib).toContain("CASHIER_PAID_RECEIPT_PAPER_WIDTH_MM = 72.1");
+    expect(receiptLib).toContain("CASHIER_PAID_RECEIPT_PAPER_HEIGHT_MM = 180");
+    expect(receiptLib).toContain("CASHIER_PAID_RECEIPT_PAPER_WIDTH_MM}mm");
     expect(receiptLib).toContain("margin: 0");
     expect(css).toContain("CASHIER-PAID-RECEIPT-RENDER-STABILITY-1");
     expect(css).toContain("white-space: nowrap !important");

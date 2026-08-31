@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCashierPaidReceiptSnapshot,
   formatCashierReceiptDateTime,
+  formatCashierReceiptRestaurantHeading,
 } from "../cashierPaidReceipt";
 
 const PROJECTION = {
@@ -55,5 +56,13 @@ describe("buildCashierPaidReceiptSnapshot", () => {
     expect(ar.time.length).toBeGreaterThan(0);
     expect(en.date.length).toBeGreaterThan(0);
     expect(en.time.length).toBeGreaterThan(0);
+  });
+
+  it("prefixes Arabic restaurant heading with مطعم when absent", () => {
+    expect(formatCashierReceiptRestaurantHeading("خالد", "ar")).toBe("مطعم خالد");
+    expect(formatCashierReceiptRestaurantHeading("مطعم خالد", "ar")).toBe(
+      "مطعم خالد"
+    );
+    expect(formatCashierReceiptRestaurantHeading("Demo", "en")).toBe("Demo");
   });
 });

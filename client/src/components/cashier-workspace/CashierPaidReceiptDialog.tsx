@@ -25,6 +25,7 @@ import {
 import {
   formatCashierReceiptDateTime,
   formatCashierReceiptMoney,
+  formatCashierReceiptRestaurantHeading,
   printCashierPaidReceipt,
   type CashierPaidReceiptSnapshot,
 } from "@/lib/cashier-workspace/cashierPaidReceipt";
@@ -106,8 +107,11 @@ export function CashierPaidReceiptDialog({
             className="cashier-paid-receipt-document min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-white p-1 text-sm text-[#111827] print:h-auto print:max-h-none print:flex-none print:overflow-visible print:bg-white"
           >
             {receipt.restaurantName ? (
-              <p className="text-center text-base font-semibold text-[#111827]">
-                {receipt.restaurantName}
+              <p className="cashier-receipt-restaurant-name text-center text-xl font-extrabold leading-tight tracking-tight text-[#111827]">
+                {formatCashierReceiptRestaurantHeading(
+                  receipt.restaurantName,
+                  language
+                )}
               </p>
             ) : null}
             <div className="space-y-1 text-center text-[#111827]">
@@ -144,7 +148,7 @@ export function CashierPaidReceiptDialog({
             </div>
 
             <div className="border-t border-[#111827] pt-3">
-              <table className="cashier-receipt-lines w-full table-fixed border-collapse text-[11px] text-[#111827]">
+              <table className="cashier-receipt-lines w-full table-fixed border-collapse text-xs text-[#111827]">
                 <colgroup>
                   <col className="cashier-receipt-col-product" />
                   <col className="cashier-receipt-col-qty" />
@@ -239,10 +243,6 @@ export function CashierPaidReceiptDialog({
                 </div>
               ))}
             </div>
-
-            <p className="pt-2 text-center font-semibold text-[#111827]">
-              {t("receiptPaidStamp")}
-            </p>
           </div>
         ) : null}
 
