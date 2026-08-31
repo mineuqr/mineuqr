@@ -1,18 +1,20 @@
-# CASHIER-UX-REDESIGN-2 — Final Report (Receipt micro-polish)
+# CASHIER-UX-REDESIGN-2 — Final Report
 
-## Verdict: **IMPLEMENTATION PASS** / browser Print Preview **operator-confirm**
+## Verdict: **PASS** (implementation + automated verification)
 
-## Changes (this pass)
+## Changes (device name + product column micro-fix)
 
-1. **Item-row currency** — Unit price and line total show amount only (`10.00`); totals section still uses `formatCashierReceiptMoney` with `رس`.
-2. **Product name** — One step larger (`text-sm` / 0.875rem) on product cells only; table header/qty/prices stay `text-xs`.
-3. **Column spacing** — Product 44% / Qty 11% / Unit 22.5% / Total 22.5%; qty end-aligned with column padding.
-4. **Unchanged** — Restaurant header, `تم الدفع`, paper 72.1×180mm, print architecture.
+1. **Device name removed** — POS/terminal id no longer rendered on the customer receipt (`terminalId` display removed from `CashierPaidReceiptDialog`).
+2. **Product column width** — Reallocated table columns: Product **50%** (was 44%), Qty **8%**, Unit **18%**, Total **19%**, gutter **5%** unchanged. Numeric group spacing tightened slightly; product font size unchanged (`text-sm` / 0.875rem).
+3. **Arabic wrapping** — Product cells use `overflow-wrap: normal` + `word-break: normal` (no break-all / character fragmentation).
 
-## Changes (payment display cleanup)
+## Unchanged
 
-- Top header shows **طريقة الدفع: …** from recorded `tenders` (cash / network / mixed).
-- Removed duplicate bottom payment-method block.
+- Paper size **72.1 × 180 mm**
+- Totals section (subtotal, discount, VAT, grand total + `رس`)
+- Payment method header line
+- Print isolation architecture
+- Financial / settlement / Cashier workflow
 
 ## Validation
 
@@ -20,4 +22,4 @@
 |-------|--------|
 | Vitest (cashier + print isolation) | **39 files / 178 tests PASS** |
 | `pnpm run check` | **PASS** (exit 0) |
-| Live print preview | **not run in-agent** |
+| Live print preview | **not run in-agent** — operator confirm 1/5/10+ items + long Arabic names |

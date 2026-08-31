@@ -1208,19 +1208,19 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-col-product {
-    width: 44% !important;
+    width: 50% !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-col-qty {
-    width: 10% !important;
+    width: 8% !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-col-unit {
-    width: 20.5% !important;
+    width: 18% !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-col-total {
-    width: 20.5% !important;
+    width: 19% !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-col-numeric-gutter {
@@ -1234,23 +1234,25 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-product {
-    overflow-wrap: break-word;
+    overflow-wrap: normal;
     word-break: normal;
     white-space: normal;
     hyphens: manual;
+    line-height: 1.25 !important;
     font-size: 0.875rem !important;
     font-weight: 500 !important;
+    padding-inline-end: 0.125rem !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-qty {
     text-align: end !important;
-    padding-inline-start: 0.125rem !important;
-    padding-inline-end: 0.25rem !important;
+    padding-inline-start: 0.0625rem !important;
+    padding-inline-end: 0.125rem !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-unit,
   body.printing-cashier-paid-receipt .cashier-receipt-line-total {
-    padding-inline-start: 0.25rem !important;
+    padding-inline-start: 0.125rem !important;
   }
 
   body.printing-cashier-paid-receipt .cashier-receipt-lines td,
@@ -1286,19 +1288,19 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
 }
 
 .cashier-receipt-col-product {
-  width: 44%;
+  width: 50%;
 }
 
 .cashier-receipt-col-qty {
-  width: 10%;
+  width: 8%;
 }
 
 .cashier-receipt-col-unit {
-  width: 20.5%;
+  width: 18%;
 }
 
 .cashier-receipt-col-total {
-  width: 20.5%;
+  width: 19%;
 }
 
 .cashier-receipt-col-numeric-gutter {
@@ -1312,22 +1314,24 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
 }
 
 .cashier-receipt-product {
-  overflow-wrap: break-word;
+  overflow-wrap: normal;
   word-break: normal;
   white-space: normal;
+  line-height: 1.25;
   font-size: 0.875rem;
   font-weight: 500;
+  padding-inline-end: 0.125rem;
 }
 
 .cashier-receipt-qty {
   text-align: end;
-  padding-inline-start: 0.125rem;
-  padding-inline-end: 0.25rem;
+  padding-inline-start: 0.0625rem;
+  padding-inline-end: 0.125rem;
 }
 
 .cashier-receipt-unit,
 .cashier-receipt-line-total {
-  padding-inline-start: 0.25rem;
+  padding-inline-start: 0.125rem;
 }
 
 .cashier-receipt-restaurant-name {

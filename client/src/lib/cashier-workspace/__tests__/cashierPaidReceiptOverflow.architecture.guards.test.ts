@@ -110,7 +110,8 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(dialog).toContain("receiptOrderNumber");
     expect(dialog).toContain("formatCashierReceiptDateTime");
     expect(dialog).toContain("receipt.cashierDisplayName");
-    expect(dialog).toContain("receipt.terminalId");
+    expect(dialog).not.toContain("receipt.terminalId");
+    expect(dialog).not.toContain('t("terminal")');
     expect(dialog).toContain("dir={language === \"ar\" ? \"rtl\" : \"ltr\"}");
     // One Items column header only (no duplicate section title + header)
     expect(dialog.match(/t\("receiptItems"\)/g)?.length).toBe(1);
@@ -124,7 +125,7 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(css).toContain("white-space: nowrap !important");
     expect(css).toContain("word-break: normal");
     expect(css).toContain("cashier-receipt-qty");
-    expect(css).toContain("width: 44%");
+    expect(css).toContain("width: 50%");
     expect(css).toContain("cashier-receipt-col-numeric-gutter");
     expect(dialog).toContain("cashier-receipt-numeric-gutter");
   });

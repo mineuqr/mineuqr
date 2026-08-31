@@ -138,11 +138,6 @@ export function CashierPaidReceiptDialog({
                   {t("receiptCashier")}: {receipt.cashierDisplayName}
                 </p>
               ) : null}
-              {receipt.terminalId ? (
-                <p>
-                  {t("terminal")}: {receipt.terminalId}
-                </p>
-              ) : null}
             </div>
 
             <div className="border-t border-[#111827] pt-3">
@@ -182,7 +177,7 @@ export function CashierPaidReceiptDialog({
                   ) : (
                     receipt.lines.map((line, idx) => (
                       <tr key={`${line.nameEn}-${idx}`} className="align-top">
-                        <td className="cashier-receipt-product py-0.5 pe-2 text-start text-sm font-medium leading-snug">
+                        <td className="cashier-receipt-product py-0.5 pe-1 text-start text-sm font-medium leading-tight">
                           {itemName(language, line)}
                         </td>
                         <td className="cashier-receipt-qty py-0.5 text-end whitespace-nowrap tabular-nums">
