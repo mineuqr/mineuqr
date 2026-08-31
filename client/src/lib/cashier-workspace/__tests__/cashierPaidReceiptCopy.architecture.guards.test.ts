@@ -53,6 +53,7 @@ describe("CASHIER-POST-PAYMENT-PRINT-UX-1 paid receipt copy", () => {
       );
     }
     expect(dialog).not.toContain('t("receiptPaidStamp")');
-    expect(dialog).toContain('t("paidTitle")');
+    expect(dialog).toContain("formatCashierReceiptPaymentMethodLine");
+    expect(dialog).not.toContain('t("paidTitle")');
   });
 });

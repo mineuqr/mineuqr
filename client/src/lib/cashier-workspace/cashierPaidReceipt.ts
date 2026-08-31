@@ -4,8 +4,9 @@
  * Does not recalculate money. Does not use the live ticket.
  */
 
+import { toCanonicalPaymentMethod } from "@shared/operational-session";
 import type { CanonicalMonetaryPaymentMethod } from "@shared/operational-session";
-import type { CashierLang } from "./cashierCopy";
+import { cashierUiLabel, type CashierLang } from "./cashierCopy";
 
 export type CashierPaidReceiptInvoiceLine = Readonly<{
   nameAr: string;
@@ -78,6 +79,66 @@ export function formatCashierReceiptRestaurantHeading(
     return `مطعم ${trimmed}`;
   }
   return trimmed;
+}
+
+type ReceiptPaymentCategory =
+  | CanonicalMonetaryPaymentMethod
+  | "complimentary";
+
+function receiptPaymentCategoriesFromTenders(
+  tenders: readonly CashierPaidReceiptTender[]
+): Set<ReceiptPaymentCategory> {
+  const methods = new Set<ReceiptPaymentCategory>();
+  for (const tender of tenders) {
+    methods.add(toCanonicalPaymentMethod(tender.paymentMethod));
+  }
+  return methods;
+}
+
+/**
+ * Single receipt header line from recorded Confirm HTTP tenders only.
+ * Does not infer method from amounts or UI state.
+ */
+export function formatCashierReceiptPaymentMethodLine(
+  tenders: readonly CashierPaidReceiptTender[],
+  language: CashierLang
+): string {
+  const label = cashierUiLabel("paymentMethod", language);
+  const methods = receiptPaymentCategoriesFromTenders(tenders);
+
+  if (methods.size === 0) {
+    return `${label}: —`;
+  }
+
+  const hasCash = methods.has("cash");
+  const hasCard = methods.has("card");
+  const hasOther = methods.has("other");
+  const hasComplimentary = methods.has("complimentary");
+
+  let methodLabel: string;
+  if (hasCash && hasCard) {
+    methodLabel = cashierUiLabel("tenderCashAndNetwork", language);
+  } else if (hasCash && methods.size === 1) {
+    methodLabel = cashierUiLabel("tenderCash", language);
+  } else if (hasCard && methods.size === 1) {
+    methodLabel = cashierUiLabel("tenderNetwork", language);
+  } else if (hasComplimentary && methods.size === 1) {
+    methodLabel = cashierUiLabel("tenderComplimentary", language);
+  } else if (hasOther && methods.size === 1) {
+    methodLabel = cashierUiLabel("tenderMixed", language);
+  } else {
+    const parts: string[] = [];
+    if (hasCash) parts.push(cashierUiLabel("tenderCash", language));
+    if (hasCard) parts.push(cashierUiLabel("tenderNetwork", language));
+    if (hasOther) parts.push(cashierUiLabel("tenderMixed", language));
+    if (hasComplimentary) {
+      parts.push(cashierUiLabel("tenderComplimentary", language));
+    }
+    const joiner = language === "ar" ? " و" : " and ";
+    methodLabel = parts.join(joiner);
+  }
+
+  return `${label}: ${methodLabel}`;
 }
 
 export function formatCashierReceiptDateTime(

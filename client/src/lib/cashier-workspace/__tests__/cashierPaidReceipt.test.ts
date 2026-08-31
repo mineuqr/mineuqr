@@ -4,6 +4,7 @@ import {
   formatCashierReceiptDateTime,
   formatCashierReceiptLineAmount,
   formatCashierReceiptMoney,
+  formatCashierReceiptPaymentMethodLine,
   formatCashierReceiptRestaurantHeading,
 } from "../cashierPaidReceipt";
 
@@ -71,5 +72,29 @@ describe("buildCashierPaidReceiptSnapshot", () => {
   it("formats item-row amounts without currency while summary keeps currency", () => {
     expect(formatCashierReceiptLineAmount("10.00")).toBe("10.00");
     expect(formatCashierReceiptMoney("10.00", "رس")).toBe("10.00 رس");
+  });
+
+  it("formats one payment-method header line from recorded tenders", () => {
+    expect(
+      formatCashierReceiptPaymentMethodLine(
+        [{ paymentMethod: "cash", amount: "13.80" }],
+        "ar"
+      )
+    ).toBe("طريقة الدفع: نقدًا");
+    expect(
+      formatCashierReceiptPaymentMethodLine(
+        [{ paymentMethod: "card", amount: "13.80" }],
+        "ar"
+      )
+    ).toBe("طريقة الدفع: شبكة");
+    expect(
+      formatCashierReceiptPaymentMethodLine(
+        [
+          { paymentMethod: "cash", amount: "6.00" },
+          { paymentMethod: "card", amount: "7.80" },
+        ],
+        "ar"
+      )
+    ).toBe("طريقة الدفع: نقدًا وشبكة");
   });
 });

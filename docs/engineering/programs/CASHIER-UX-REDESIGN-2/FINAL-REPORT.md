@@ -9,15 +9,15 @@
 3. **Column spacing** — Product 44% / Qty 11% / Unit 22.5% / Total 22.5%; qty end-aligned with column padding.
 4. **Unchanged** — Restaurant header, `تم الدفع`, paper 72.1×180mm, print architecture.
 
-## Changes (numeric alignment pass)
+## Changes (payment display cleanup)
 
-- Added invisible **5% gutter column** on the receipt outer edge so Qty + Unit + Total shift right as one group.
-- **Product column unchanged** at 44%; numeric internal proportions preserved (10% / 20.5% / 20.5%).
+- Top header shows **طريقة الدفع: …** from recorded `tenders` (cash / network / mixed).
+- Removed duplicate bottom payment-method block.
 
 ## Validation
 
 | Check | Result |
 |-------|--------|
-| Vitest (cashier + print isolation) | **39 files / 177 tests PASS** |
+| Vitest (cashier + print isolation) | **39 files / 178 tests PASS** |
 | `pnpm run check` | **PASS** (exit 0) |
 | Live print preview | **not run in-agent** |

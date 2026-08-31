@@ -26,6 +26,7 @@ import {
   formatCashierReceiptDateTime,
   formatCashierReceiptLineAmount,
   formatCashierReceiptMoney,
+  formatCashierReceiptPaymentMethodLine,
   formatCashierReceiptRestaurantHeading,
   printCashierPaidReceipt,
   type CashierPaidReceiptSnapshot,
@@ -38,15 +39,6 @@ type Props = {
   receipt: CashierPaidReceiptSnapshot | null;
   onOpenChange: (open: boolean) => void;
 };
-
-function tenderLabel(
-  language: CashierLang,
-  method: CashierPaidReceiptSnapshot["tenders"][number]["paymentMethod"]
-): string {
-  if (method === "cash") return cashierUiLabel("tenderCash", language);
-  if (method === "card") return cashierUiLabel("tenderNetwork", language);
-  return cashierUiLabel("tenderMixed", language);
-}
 
 function itemName(
   language: CashierLang,
@@ -126,7 +118,12 @@ export function CashierPaidReceiptDialog({
                   ? `${receipt.displayReference} · ${receipt.orderNumber}`
                   : receipt.orderNumber}
               </p>
-              <p className="font-medium">{t("paidTitle")}</p>
+              <p className="font-medium">
+                {formatCashierReceiptPaymentMethodLine(
+                  receipt.tenders,
+                  language
+                )}
+              </p>
             </div>
 
             <div className="space-y-0.5 text-[#111827]">
@@ -228,24 +225,6 @@ export function CashierPaidReceiptDialog({
                   true
                 )}
               </div>
-            </div>
-
-            <div className="space-y-1 border-t border-[#111827] pt-3 text-[#111827]">
-              <p className="font-medium">{t("paymentMethod")}</p>
-              {receipt.tenders.map((tender, idx) => (
-                <div
-                  key={`${tender.paymentMethod}-${idx}`}
-                  className="flex justify-between gap-2"
-                >
-                  <span className="min-w-0">{tenderLabel(language, tender.paymentMethod)}</span>
-                  <span className="shrink-0 whitespace-nowrap tabular-nums">
-                    {formatCashierReceiptMoney(
-                      tender.amount,
-                      receipt.currencySymbol
-                    )}
-                  </span>
-                </div>
-              ))}
             </div>
           </div>
         ) : null}

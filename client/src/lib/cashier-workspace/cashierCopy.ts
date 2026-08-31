@@ -173,6 +173,7 @@ const COPY: Record<string, { ar: string; en: string }> = {
   },
   tenderCash: { ar: "نقدًا", en: "Cash" },
   tenderNetwork: { ar: "شبكة", en: "Network" },
+  tenderCashAndNetwork: { ar: "نقدًا وشبكة", en: "Cash and network" },
   tenderMixed: { ar: "تسوية", en: "Mixed" },
   tenderComplimentary: { ar: "ضيافة", en: "Complimentary" },
   complimentaryConfirmHint: {

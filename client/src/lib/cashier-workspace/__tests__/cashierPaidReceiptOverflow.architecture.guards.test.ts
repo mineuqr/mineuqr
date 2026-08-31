@@ -81,7 +81,10 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(dialog).toContain("cashier-receipt-restaurant-name");
     expect(dialog).toContain("formatCashierReceiptRestaurantHeading");
     expect(dialog).not.toContain('t("receiptPaidStamp")');
-    expect(dialog).toContain('t("paidTitle")');
+    expect(dialog).toContain("formatCashierReceiptPaymentMethodLine");
+    expect(dialog).not.toContain('t("paidTitle")');
+    expect(dialog).not.toContain('t("paymentMethod")');
+    expect(dialog).not.toContain("receipt.tenders.map");
     expect(dialog).toContain("cashier-receipt-product");
     expect(dialog).toContain("text-sm font-medium");
     expect(dialog).toContain("cashier-receipt-qty");
@@ -101,7 +104,7 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(dialog).toContain("receipt.discountAmount");
     expect(dialog).toContain("receipt.taxAmount");
     expect(dialog).toContain("receipt.grandTotal");
-    expect(dialog).toContain("receipt.tenders.map");
+    expect(dialog).toContain("receipt.tenders");
     expect(dialog).toContain("receipt.displayReference");
     expect(dialog).toContain("receipt.invoiceNumber");
     expect(dialog).toContain("receiptOrderNumber");
@@ -111,6 +114,7 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(dialog).toContain("dir={language === \"ar\" ? \"rtl\" : \"ltr\"}");
     // One Items column header only (no duplicate section title + header)
     expect(dialog.match(/t\("receiptItems"\)/g)?.length).toBe(1);
+    expect(receiptLib).toContain("formatCashierReceiptPaymentMethodLine");
     expect(receiptLib).toContain("installCashierPaidReceiptPageStyle");
     expect(receiptLib).toContain("CASHIER_PAID_RECEIPT_PAPER_WIDTH_MM = 72.1");
     expect(receiptLib).toContain("CASHIER_PAID_RECEIPT_PAPER_HEIGHT_MM = 180");
