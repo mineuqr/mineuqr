@@ -62,10 +62,9 @@ describe("SAUDI-TAX-INVOICE-CASHIER-UX-1 architecture guards", () => {
 
   it("Operational receipt remains distinct from Saudi Tax Invoice", () => {
     const receipt = read(RECEIPT);
-    expect(receipt).toContain("Operational receipt ≠ Saudi Tax Invoice");
-    expect(receipt).toContain("saudiTaxInvoice");
-    expect(receipt).toContain("taxInvoiceView");
+    expect(receipt).toContain("SAUDI-TAX-INVOICE-CASHIER-DOCUMENT-UNIFICATION-1");
     expect(receipt).toContain("cashier-paid-receipt-print");
+    expect(receipt).not.toContain("taxInvoiceView");
     expect(read(DIALOG)).toContain("CASHIER_SAUDI_TAX_INVOICE_PRINT_ROOT_ID");
     expect(read(MAPPER)).toContain("cashier-saudi-tax-invoice-print");
   });
@@ -82,11 +81,11 @@ describe("SAUDI-TAX-INVOICE-CASHIER-UX-1 architecture guards", () => {
     expect(stiBlock).toContain("height: auto !important");
   });
 
-  it("Saudi UX is gated by countryCode SA from Dashboard", () => {
+  it("Saudi UX is gated by centralized document policy from Dashboard countryCode", () => {
     const panel = read(PANEL);
     const dashboard = read("client/src/pages/Dashboard.tsx");
     expect(panel).toContain("countryCode");
-    expect(panel).toContain('=== "SA"');
+    expect(panel).toContain("isSaudiEInvoiceCustomerFacingDocument");
     expect(dashboard).toContain("countryCode=");
     expect(dashboard).toContain("CashierWorkspacePanel");
   });

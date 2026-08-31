@@ -85,6 +85,12 @@ describe("CASHIER-CHECKOUT-PRINT-FLOW-1 architecture guards", () => {
     expect(completeFn).toContain("startNewSale()");
     expect(completeFn).toContain("setPaidReceipt(receipt)");
     expect(completeFn).toContain("setPrintOpen(true)");
+    expect(completeFn).toContain("setTaxInvoiceOpen(true)");
+    expect(completeFn).toContain("isSaudiCashier && result.orderId");
+    expect(panel).toContain("isSaudiEInvoiceCustomerFacingDocument");
+    expect(completeFn.indexOf("startNewSale()")).toBeLessThan(
+      completeFn.indexOf("setTaxInvoiceOpen(true)")
+    );
     expect(completeFn.indexOf("startNewSale()")).toBeLessThan(
       completeFn.indexOf("setPrintOpen(true)")
     );

@@ -1,5 +1,6 @@
 /**
  * SAUDI-TAX-INVOICE-CASHIER-UX-1
+ * SAUDI-TAX-INVOICE-CASHIER-DOCUMENT-UNIFICATION-1 — primary customer-facing dialog.
  * View/Print dialog for persisted Phase 1 Saudi Tax Invoice.
  * Does not generate Tax Invoice. Does not recalculate VAT.
  */
@@ -24,10 +25,24 @@ import { formatCashierReceiptDateTime } from "@/lib/cashier-workspace/cashierPai
 import { QRCodeSVG } from "qrcode.react";
 import { Printer } from "lucide-react";
 
+export type CashierSaudiTaxInvoiceAvailability =
+  | "loading"
+  | "ready"
+  | "unavailable"
+  | "blocked_profile"
+  | "failed"
+  | "retryable";
+
 type Props = {
   open: boolean;
   language: CashierLang;
   view: CashierSaudiTaxInvoiceViewModel | null;
+  availability: CashierSaudiTaxInvoiceAvailability;
+  /** Financial success banner — not a second invoice document. */
+  paymentSuccess?: {
+    amountLabel: string;
+    referenceLabel: string;
+  } | null;
   onOpenChange: (open: boolean) => void;
 };
 
@@ -35,6 +50,8 @@ export function CashierSaudiTaxInvoiceDialog({
   open,
   language,
   view,
+  availability,
+  paymentSuccess,
   onOpenChange,
 }: Props) {
   const t = (key: Parameters<typeof cashierUiLabel>[0]) =>
@@ -46,6 +63,7 @@ export function CashierSaudiTaxInvoiceDialog({
   const title = language === "ar" ? view?.titleAr : view?.titleEn;
   const buyer =
     language === "ar" ? view?.buyerLabelAr : view?.buyerLabelEn;
+  const ready = availability === "ready" && view != null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -56,11 +74,47 @@ export function CashierSaudiTaxInvoiceDialog({
       >
         <DialogHeader className="shrink-0 print:hidden">
           <DialogTitle className="text-[#111827]">
-            {title ?? t("taxInvoiceTitle")}
+            {ready
+              ? (title ?? t("taxInvoiceTitle"))
+              : t("taxInvoiceTitle")}
           </DialogTitle>
         </DialogHeader>
 
-        {view ? (
+        {paymentSuccess ? (
+          <div className="shrink-0 space-y-1 border-b border-[#e5e7eb] pb-3 print:hidden">
+            <p className="text-base font-semibold text-[#111827]">
+              ✓ {t("paidSuccess")}
+            </p>
+            <p className="text-2xl font-bold tabular-nums text-[#111827]">
+              {paymentSuccess.amountLabel}
+            </p>
+            {paymentSuccess.referenceLabel ? (
+              <p className="text-sm text-[#6b7280]">
+                {paymentSuccess.referenceLabel}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!ready ? (
+          <div className="shrink-0 space-y-2 py-2 print:hidden">
+            {availability === "loading" ? (
+              <p className="text-sm text-[#6b7280]">{t("taxInvoicePreparing")}</p>
+            ) : null}
+            {availability === "unavailable" ||
+            availability === "failed" ||
+            availability === "retryable" ? (
+              <p className="text-sm text-[#6b7280]">{t("taxInvoiceUnavailable")}</p>
+            ) : null}
+            {availability === "blocked_profile" ? (
+              <p className="text-sm text-[#6b7280]">
+                {t("taxInvoiceBlockedProfile")}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {ready && view ? (
           <div
             id={CASHIER_SAUDI_TAX_INVOICE_PRINT_ROOT_ID}
             className="cashier-saudi-tax-invoice-document min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-white p-1 text-sm text-[#111827] print:h-auto print:max-h-none print:flex-none print:overflow-visible print:bg-white"
@@ -199,7 +253,7 @@ export function CashierSaudiTaxInvoiceDialog({
           <Button
             type="button"
             className="flex-1"
-            disabled={!view}
+            disabled={!ready}
             onClick={() => printCashierSaudiTaxInvoice()}
           >
             <Printer className="me-2 h-4 w-4" />

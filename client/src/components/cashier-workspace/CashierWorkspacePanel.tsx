@@ -21,10 +21,13 @@ import {
   AppLoadingState,
 } from "@/components/app-state";
 import { CashierPaidReceiptDialog } from "@/components/cashier-workspace/CashierPaidReceiptDialog";
-import type { CashierSaudiTaxInvoiceStripState } from "@/components/cashier-workspace/CashierPaidReceiptDialog";
-import { CashierSaudiTaxInvoiceDialog } from "@/components/cashier-workspace/CashierSaudiTaxInvoiceDialog";
+import {
+  CashierSaudiTaxInvoiceDialog,
+  type CashierSaudiTaxInvoiceAvailability,
+} from "@/components/cashier-workspace/CashierSaudiTaxInvoiceDialog";
 import { CashierCustomerBar } from "@/components/cashier-workspace/CashierCustomerBar";
 import { CashierProductCard } from "@/components/cashier-workspace/CashierProductCard";
+import { isSaudiEInvoiceCustomerFacingDocument } from "@/lib/cashier-workspace/saudiCashierDocumentPolicy";
 import {
   mapSaudiPhase1DocumentToCashierView,
   printCashierSaudiTaxInvoice,
@@ -273,8 +276,7 @@ export function CashierWorkspacePanel({
   const [taxInvoicePrintPending, setTaxInvoicePrintPending] = useState(false);
   const [taxInvoicePollTimedOut, setTaxInvoicePollTimedOut] = useState(false);
   const taxInvoicePollStartedAtRef = useRef<number | null>(null);
-  const isSaudiCashier =
-    String(countryCode ?? "").trim().toUpperCase() === "SA";
+  const isSaudiCashier = isSaudiEInvoiceCustomerFacingDocument(countryCode);
   const [paymentBusy, setPaymentBusy] = useState(false);
   const saleInFlightRef = useRef(false);
   const payInFlightRef = useRef(false);
@@ -522,9 +524,9 @@ export function CashierWorkspacePanel({
     );
   }, [saudiTaxInvoiceDocument, saudiTaxInvoiceStatus]);
 
-  const saudiTaxInvoiceStripState: CashierSaudiTaxInvoiceStripState =
+  const saudiTaxInvoiceStripState: CashierSaudiTaxInvoiceAvailability =
     useMemo(() => {
-      if (!isSaudiCashier || lastPaidOrderId == null) return "hidden";
+      if (!isSaudiCashier || lastPaidOrderId == null) return "unavailable";
       if (saudiTaxInvoiceView) return "ready";
       if (saudiTaxInvoiceStatus === "blocked_profile") return "blocked_profile";
       if (saudiTaxInvoiceStatus === "failed") return "failed";
@@ -1140,6 +1142,14 @@ export function CashierWorkspacePanel({
       startNewSale();
       if (receipt) {
         setPaidReceipt(receipt);
+      }
+      // SAUDI-TAX-INVOICE-CASHIER-DOCUMENT-UNIFICATION-1:
+      // Saudi → Tax Invoice as sole customer-facing document.
+      // Non-Saudi → operational Paid Receipt dialog (unchanged).
+      if (isSaudiCashier && result.orderId) {
+        setTaxInvoicePrintPending(false);
+        setTaxInvoiceOpen(true);
+      } else if (receipt) {
         setPrintOpen(true);
       }
     } catch (error) {
@@ -2577,10 +2587,21 @@ export function CashierWorkspacePanel({
                   <Button
                     type="button"
                     className={cashierPos.primaryAction}
-                    onClick={() => setPrintOpen(true)}
-                    disabled={!paidReceipt}
+                    onClick={() => {
+                      if (isSaudiCashier && lastPaidOrderId != null) {
+                        setTaxInvoicePrintPending(false);
+                        setTaxInvoiceOpen(true);
+                        return;
+                      }
+                      setPrintOpen(true);
+                    }}
+                    disabled={
+                      isSaudiCashier
+                        ? lastPaidOrderId == null
+                        : !paidReceipt
+                    }
                   >
-                    {t("printInvoice")}
+                    {isSaudiCashier ? t("taxInvoiceView") : t("printInvoice")}
                   </Button>
                   <Button
                     type="button"
@@ -2610,31 +2631,27 @@ export function CashierWorkspacePanel({
         language={language}
         receipt={paidReceipt}
         onOpenChange={setPrintOpen}
-        saudiTaxInvoice={
-          isSaudiCashier
-            ? {
-                state: saudiTaxInvoiceStripState,
-                documentTitle:
-                  language === "ar"
-                    ? saudiTaxInvoiceView?.titleAr ?? null
-                    : saudiTaxInvoiceView?.titleEn ?? null,
-                invoiceNumber: saudiTaxInvoiceView?.invoiceNumber ?? null,
-                onView: () => {
-                  setTaxInvoicePrintPending(false);
-                  setTaxInvoiceOpen(true);
-                },
-                onPrint: () => {
-                  setTaxInvoicePrintPending(true);
-                  setTaxInvoiceOpen(true);
-                },
-              }
-            : undefined
-        }
       />
       <CashierSaudiTaxInvoiceDialog
         open={taxInvoiceOpen}
         language={language}
         view={saudiTaxInvoiceView}
+        availability={
+          isSaudiCashier && lastPaidOrderId != null
+            ? saudiTaxInvoiceStripState
+            : "unavailable"
+        }
+        paymentSuccess={
+          paidReceipt
+            ? {
+                amountLabel: money(paidReceipt.grandTotal),
+                referenceLabel:
+                  paidReceipt.invoiceNumber?.trim() ||
+                  paidReceipt.displayReference ||
+                  "",
+              }
+            : null
+        }
         onOpenChange={(open) => {
           setTaxInvoiceOpen(open);
           if (!open) setTaxInvoicePrintPending(false);
