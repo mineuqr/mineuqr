@@ -276,6 +276,8 @@ export function CashierWorkspacePanel({
   const [taxInvoicePrintPending, setTaxInvoicePrintPending] = useState(false);
   const [taxInvoicePollTimedOut, setTaxInvoicePollTimedOut] = useState(false);
   const taxInvoicePollStartedAtRef = useRef<number | null>(null);
+  /** Perf.now at PAID for async Tax Invoice READY measurement (flow ends at dialog open). */
+  const saudiPaidPerfMsRef = useRef<number | null>(null);
   const isSaudiCashier = isSaudiEInvoiceCustomerFacingDocument(countryCode);
   const [paymentBusy, setPaymentBusy] = useState(false);
   const saleInFlightRef = useRef(false);
@@ -493,6 +495,7 @@ export function CashierWorkspacePanel({
       {
         restaurantId,
         orderId: lastPaidOrderId ?? 0,
+        includeHtml: false,
       },
       {
         enabled:
@@ -503,11 +506,11 @@ export function CashierWorkspacePanel({
           const started = taxInvoicePollStartedAtRef.current;
           if (started != null && Date.now() - started > 15_000) return false;
           const data = query.state.data;
-          if (!data) return 1_000;
+          if (!data) return 300;
           const status = data.taxInvoice.status;
           if (status === "blocked_profile" || status === "failed") return false;
           if (data.document && data.taxInvoice.invoiceNumber) return false;
-          return 1_000;
+          return 300;
         },
       }
     );
@@ -577,6 +580,20 @@ export function CashierWorkspacePanel({
     const id = window.setTimeout(() => setTaxInvoicePollTimedOut(true), remaining);
     return () => window.clearTimeout(id);
   }, [isSaudiCashier, lastPaidOrderId, printOpen, taxInvoiceOpen]);
+
+  useEffect(() => {
+    if (!saudiTaxInvoiceView || !isSaudiCashier) return;
+    const paidAt = saudiPaidPerfMsRef.current;
+    if (paidAt == null) return;
+    const paidToReadyMs = Math.round(performance.now() - paidAt);
+    saudiPaidPerfMsRef.current = null;
+    if (import.meta.env.DEV) {
+      console.info(
+        "[cashier][saudi-tax-invoice] paidToTaxInvoiceReadyMs",
+        paidToReadyMs
+      );
+    }
+  }, [saudiTaxInvoiceView, isSaudiCashier]);
 
   useEffect(() => {
     if (!taxInvoiceOpen || !taxInvoicePrintPending || !saudiTaxInvoiceView) {
@@ -1129,11 +1146,9 @@ export function CashierWorkspacePanel({
         cashierFlowIdRef.current,
         "CASHIER_PAYMENT_SUCCESS"
       );
-      endCashierPaymentFlow("completed");
       toast.success(
         `${t("paidSuccess")} · ${receipt?.invoiceNumber?.trim() || receipt?.displayReference || ""} · ${result.grandTotal}`
       );
-      invalidateOrderReads();
       if (isSaudiCashier && result.orderId) {
         setLastPaidOrderId(result.orderId);
         taxInvoicePollStartedAtRef.current = Date.now();
@@ -1143,15 +1158,25 @@ export function CashierWorkspacePanel({
       if (receipt) {
         setPaidReceipt(receipt);
       }
-      // SAUDI-TAX-INVOICE-CASHIER-DOCUMENT-UNIFICATION-1:
-      // Saudi → Tax Invoice as sole customer-facing document.
-      // Non-Saudi → operational Paid Receipt dialog (unchanged).
+      // SAUDI-TAX-INVOICE-CASHIER-DOCUMENT-UNIFICATION-1 +
+      // SAUDI-TAX-INVOICE-CASHIER-POST-PAYMENT-PERFORMANCE-1:
+      // Open post-payment UI immediately after PAID; do not await Tax Invoice.
+      // Defer POS invalidations so they do not contend with first Tax Invoice read.
       if (isSaudiCashier && result.orderId) {
         setTaxInvoicePrintPending(false);
         setTaxInvoiceOpen(true);
+        cashierPaymentFlowTiming.mark(
+          cashierFlowIdRef.current,
+          "CASHIER_TAX_INVOICE_DIALOG_OPEN"
+        );
+        saudiPaidPerfMsRef.current = performance.now();
       } else if (receipt) {
         setPrintOpen(true);
       }
+      endCashierPaymentFlow("completed");
+      queueMicrotask(() => {
+        invalidateOrderReads();
+      });
     } catch (error) {
       const gap = classifyCashierRegisterGap(error);
       if (gap) {

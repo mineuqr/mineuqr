@@ -18,6 +18,7 @@ export const saudiTaxInvoiceRouter = router({
       z.object({
         restaurantId: z.number().int().positive(),
         taxInvoiceId: z.string().min(1).max(128),
+        includeHtml: z.boolean().optional(),
       })
     )
     .query(async ({ input, ctx }) => {
@@ -34,6 +35,8 @@ export const saudiTaxInvoiceRouter = router({
       z.object({
         restaurantId: z.number().int().positive(),
         orderId: z.number().int().positive(),
+        /** Cashier omits HTML; PNG QR render is expensive on poll path. */
+        includeHtml: z.boolean().optional(),
       })
     )
     .query(async ({ input, ctx }) => {

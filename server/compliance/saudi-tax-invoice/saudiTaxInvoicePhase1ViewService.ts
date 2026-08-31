@@ -1,5 +1,7 @@
 /**
  * SAUDI-TAX-INVOICE-PHASE-1
+ * SAUDI-TAX-INVOICE-CASHIER-POST-PAYMENT-PERFORMANCE-1 —
+ * Cashier reads document/json; HTML+QR PNG is optional (expensive).
  * Tenant-scoped Tax Invoice read / render for Phase 1 electronic documents.
  */
 
@@ -26,6 +28,8 @@ async function ensurePhase1Ready(
 export async function getSaudiTaxInvoicePhase1View(input: {
   restaurantId: number;
   taxInvoiceId: string;
+  /** Default false — Cashier does not need HTML; QR PNG render is costly. */
+  includeHtml?: boolean;
 }): Promise<{
   taxInvoice: SaudiTaxInvoice;
   document: SaudiPhase1Document | null;
@@ -36,13 +40,18 @@ export async function getSaudiTaxInvoicePhase1View(input: {
   const taxInvoice = await ensurePhase1Ready(found);
   const document =
     (taxInvoice.phase1Document as SaudiPhase1Document | null) ?? null;
-  const html = document ? await renderSaudiPhase1InvoiceHtml(document) : null;
+  const includeHtml = input.includeHtml === true;
+  const html =
+    includeHtml && document
+      ? await renderSaudiPhase1InvoiceHtml(document)
+      : null;
   return { taxInvoice, document, html };
 }
 
 export async function getSaudiTaxInvoicePhase1ViewByOrder(input: {
   restaurantId: number;
   orderId: number;
+  includeHtml?: boolean;
 }): Promise<{
   taxInvoice: SaudiTaxInvoice;
   document: SaudiPhase1Document | null;
@@ -53,5 +62,6 @@ export async function getSaudiTaxInvoicePhase1ViewByOrder(input: {
   return getSaudiTaxInvoicePhase1View({
     restaurantId: input.restaurantId,
     taxInvoiceId: found.taxInvoiceId,
+    includeHtml: input.includeHtml,
   });
 }

@@ -22,6 +22,8 @@ export const CASHIER_PAYMENT_FLOW_MARKS = [
   "CASHIER_SETTLEMENT_REQUEST_START",
   "CASHIER_SETTLEMENT_RESPONSE",
   "CASHIER_PAYMENT_SUCCESS",
+  /** SAUDI-TAX-INVOICE-CASHIER-POST-PAYMENT-PERFORMANCE-1 */
+  "CASHIER_TAX_INVOICE_DIALOG_OPEN",
 ] as const;
 
 export type CashierPaymentFlowMark =
@@ -64,6 +66,8 @@ export type CashierPaymentFlowSnapshot = {
   settlementStartAt: string | null;
   settlementEndAt: string | null;
   paymentSuccessAt: string | null;
+  taxInvoiceDialogOpenAt: string | null;
+  taxInvoiceReadyAt: string | null;
   saleDurationMs: number | null;
   workflowEntryDurationMs: number | null;
   intakeDurationMs: number | null;
@@ -71,6 +75,8 @@ export type CashierPaymentFlowSnapshot = {
   userThinkTimeMs: number | null;
   settlementDurationMs: number | null;
   postSettlementUiMs: number | null;
+  paidToTaxInvoiceDialogMs: number | null;
+  paidToTaxInvoiceReadyMs: number | null;
 };
 
 type FlowRecord = {
@@ -180,6 +186,8 @@ export class CashierPaymentFlowTimingRegistry {
       settlementStartAt: iso(m.CASHIER_SETTLEMENT_REQUEST_START),
       settlementEndAt: iso(m.CASHIER_SETTLEMENT_RESPONSE),
       paymentSuccessAt: iso(m.CASHIER_PAYMENT_SUCCESS),
+      taxInvoiceDialogOpenAt: iso(m.CASHIER_TAX_INVOICE_DIALOG_OPEN),
+      taxInvoiceReadyAt: null,
       saleDurationMs: elapsed(
         m.CASHIER_SALE_REQUEST_START,
         m.CASHIER_SALE_RESPONSE
@@ -208,6 +216,11 @@ export class CashierPaymentFlowTimingRegistry {
         m.CASHIER_SETTLEMENT_RESPONSE,
         m.CASHIER_PAYMENT_SUCCESS
       ),
+      paidToTaxInvoiceDialogMs: elapsed(
+        m.CASHIER_PAYMENT_SUCCESS,
+        m.CASHIER_TAX_INVOICE_DIALOG_OPEN
+      ),
+      paidToTaxInvoiceReadyMs: null,
     };
   }
 
