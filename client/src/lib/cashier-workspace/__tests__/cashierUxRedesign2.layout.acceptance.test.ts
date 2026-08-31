@@ -74,6 +74,17 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
     expect(panel).toContain("cashierPos.totalRow");
   });
 
+  it("Current Sale item rows stay single-line: name, price, qty, delete", () => {
+    expect(styles).toMatch(
+      /ticketLine:\s*"flex min-w-0 items-center/
+    );
+    expect(styles).toContain("ticketLineName");
+    expect(styles).toContain("flex-1 truncate text-sm font-semibold");
+    expect(styles).not.toContain("ticketLineControls: \"col-span-2");
+    expect(panel).toContain("cashierPos.ticketLineDelete");
+    expect(panel).toContain("changeQty(menuItemId, -line.quantity)");
+  });
+
   it("Product Card click-to-add is primary; + is secondary size-10", () => {
     const card = read(
       "client/src/components/cashier-workspace/CashierProductCard.tsx"

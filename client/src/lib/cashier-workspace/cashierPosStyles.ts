@@ -78,14 +78,16 @@ export const cashierPos = {
   orderEmptyTitle: "text-sm font-semibold text-[#374151]",
   orderEmptyHint: "text-xs text-[#6b7280]",
   ticketLine:
-    "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-md border border-[#e5e7eb] bg-[#f9fafb] px-2 py-1",
+    "flex min-w-0 items-center gap-1.5 rounded-md border border-[#e5e7eb] bg-[#f9fafb] px-2 py-1",
   ticketLineName:
-    "min-w-0 truncate text-[13px] font-medium leading-tight text-[#111827]",
-  ticketLineControls: "col-span-2 flex items-center gap-0.5",
+    "min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-[#111827]",
+  ticketLineControls: "flex shrink-0 items-center gap-0.5",
   ticketLineQty:
     "inline-flex min-h-9 min-w-7 items-center justify-center rounded-md bg-white px-1 text-xs font-semibold tabular-nums text-[#111827]",
   ticketLinePrice:
-    "text-end text-[13px] font-semibold tabular-nums leading-tight text-[#111827]",
+    "shrink-0 text-end text-[13px] font-semibold tabular-nums leading-tight text-[#4b5563]",
+  ticketLineDelete:
+    "size-9 shrink-0 text-[#b91c1c] hover:bg-red-50 hover:text-[#991b1b]",
   orderScroll:
     "flex min-h-0 flex-1 flex-col gap-2 overflow-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
   totalBox: "space-y-0.5",

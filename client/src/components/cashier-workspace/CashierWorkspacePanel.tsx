@@ -1747,43 +1747,48 @@ export function CashierWorkspacePanel({
                             {line.lineTotal}
                           </p>
                           {invoiceView.editable && menuItemId != null ? (
-                            <div className={cashierPos.ticketLineControls}>
+                            <>
+                              <div className={cashierPos.ticketLineControls}>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="outline"
+                                  className="size-9 shrink-0"
+                                  aria-label={t("qty")}
+                                  onClick={() => changeQty(menuItemId, -1)}
+                                >
+                                  <Minus />
+                                </Button>
+                                <span className={cashierPos.ticketLineQty}>
+                                  {line.quantity}
+                                </span>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="outline"
+                                  className="size-9 shrink-0"
+                                  aria-label={t("qty")}
+                                  onClick={() => changeQty(menuItemId, 1)}
+                                >
+                                  <Plus />
+                                </Button>
+                              </div>
                               <Button
                                 type="button"
                                 size="icon"
-                                variant="outline"
-                                className="size-9 shrink-0"
-                                aria-label={
-                                  line.quantity === 1
-                                    ? t("removeLine")
-                                    : t("qty")
+                                variant="ghost"
+                                className={cashierPos.ticketLineDelete}
+                                aria-label={t("removeLine")}
+                                onClick={() =>
+                                  changeQty(menuItemId, -line.quantity)
                                 }
-                                onClick={() => changeQty(menuItemId, -1)}
                               >
-                                {line.quantity === 1 ? <Trash2 /> : <Minus />}
+                                <Trash2 />
                               </Button>
-                              <span className={cashierPos.ticketLineQty}>
-                                ×{line.quantity}
-                              </span>
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="outline"
-                                className="size-9 shrink-0"
-                                aria-label={t("qty")}
-                                onClick={() => changeQty(menuItemId, 1)}
-                              >
-                                <Plus />
-                              </Button>
-                            </div>
+                            </>
                           ) : (
-                            <span
-                              className={cn(
-                                cashierPos.ticketLineQty,
-                                "col-span-2 justify-self-start"
-                              )}
-                            >
-                              ×{line.quantity}
+                            <span className={cashierPos.ticketLineQty}>
+                              {line.quantity}
                             </span>
                           )}
                         </li>
