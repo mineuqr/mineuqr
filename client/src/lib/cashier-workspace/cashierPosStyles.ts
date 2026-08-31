@@ -86,11 +86,13 @@ export const cashierPos = {
     "flex min-w-0 items-center gap-1.5 rounded-md border border-[#e5e7eb] bg-[#f9fafb] px-2 py-1",
   ticketLineName:
     "min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight text-[#111827]",
-  ticketLineControls: "flex shrink-0 items-center gap-0.5",
+  /** Distinct centered qty column — not attached to price */
+  ticketLineControls:
+    "flex w-[6.75rem] shrink-0 items-center justify-center gap-0.5",
   ticketLineQty:
-    "inline-flex min-h-9 min-w-7 items-center justify-center rounded-md bg-white px-1 text-xs font-semibold tabular-nums text-[#111827]",
+    "inline-flex min-h-9 min-w-8 items-center justify-center rounded-md bg-white px-1 text-xs font-semibold tabular-nums text-[#111827]",
   ticketLinePrice:
-    "shrink-0 text-end text-[13px] font-semibold tabular-nums leading-tight text-[#111827]",
+    "w-[4.25rem] shrink-0 text-end text-[13px] font-semibold tabular-nums leading-tight text-[#111827]",
   ticketLineDelete:
     "size-9 shrink-0 text-[#b91c1c] hover:bg-red-50 hover:text-[#991b1b]",
   orderScroll:

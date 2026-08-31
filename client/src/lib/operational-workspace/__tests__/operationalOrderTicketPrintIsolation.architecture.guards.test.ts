@@ -60,7 +60,9 @@ describe("ORDER-CARD-PRINT-ONE-PAGE-LAYOUT-FIX-1 architecture", () => {
     expect(css).toContain("FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1");
     expect(css).toContain("body.printing-shift-closing");
     expect(css).toContain("#cashier-paid-receipt-print");
-    expect(read(CASHIER)).toContain("window.print()");
+    expect(css).toContain("body.printing-cashier-paid-receipt");
+    expect(read(CASHIER)).toContain("printCashierPaidReceipt()");
+    expect(read(CASHIER)).not.toContain("window.print()");
     expect(read(CASHIER)).not.toContain("printing-operational-order-ticket");
     expect(read(SETTLEMENT)).toContain("window.print()");
     expect(read(SETTLEMENT)).not.toContain("printing-operational-order-ticket");

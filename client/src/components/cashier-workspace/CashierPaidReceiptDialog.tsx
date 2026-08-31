@@ -1,11 +1,12 @@
 /**
  * CASHIER-PAID-RECEIPT-DATA-COMPLETENESS-1
  * CASHIER-PAID-RECEIPT-OVERFLOW-UX-1
+ * CASHIER-PAID-RECEIPT-PRINT-ISOLATION-1
  * Print the paid Cashier invoice from the Confirm HTTP projection.
  * Does not load Settlement Record. Does not require Check.
  * Closing print must not affect PAID.
  * On-screen: only the receipt body scrolls; Print/Close stay in the viewport.
- * Print: overflow constraints are lifted so the full snapshot prints.
+ * Print: body-class isolation hides the app shell; receipt uses content height.
  */
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import {
 import {
   formatCashierReceiptDateTime,
   formatCashierReceiptMoney,
+  printCashierPaidReceipt,
   type CashierPaidReceiptSnapshot,
 } from "@/lib/cashier-workspace/cashierPaidReceipt";
 import { Printer } from "lucide-react";
@@ -61,8 +63,8 @@ function moneyRow(
     <div
       className={
         emphasize
-          ? "flex justify-between text-base font-semibold"
-          : "flex justify-between"
+          ? "flex justify-between text-base font-semibold text-[#111827]"
+          : "flex justify-between text-[#111827]"
       }
     >
       <span>{label}</span>
@@ -98,7 +100,7 @@ export function CashierPaidReceiptDialog({
         {receipt ? (
           <div
             id="cashier-paid-receipt-print"
-            className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain text-sm print:h-auto print:max-h-none print:flex-none print:overflow-visible"
+            className="cashier-paid-receipt-document min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain text-sm text-[#111827] print:h-auto print:max-h-none print:flex-none print:overflow-visible"
           >
             {receipt.restaurantName ? (
               <p className="text-center text-base font-semibold">
@@ -110,13 +112,13 @@ export function CashierPaidReceiptDialog({
                 {t("receiptInvoiceNumber")}:{" "}
                 {receipt.invoiceNumber?.trim() || receipt.displayReference}
               </p>
-              <p className="text-muted-foreground">
+              <p>
                 {t("receiptOrderNumber")}:{" "}
                 {receipt.displayReference !== receipt.orderNumber
                   ? `${receipt.displayReference} · ${receipt.orderNumber}`
                   : receipt.orderNumber}
               </p>
-              <p className="text-muted-foreground">{t("paidTitle")}</p>
+              <p className="font-medium">{t("paidTitle")}</p>
             </div>
 
             <div className="space-y-0.5">
@@ -138,13 +140,12 @@ export function CashierPaidReceiptDialog({
               ) : null}
             </div>
 
-            <div className="space-y-1 border-t pt-3">
-              <p className="font-medium">{t("receiptItems")}</p>
-              <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="space-y-1 border-t border-[#111827] pt-3">
+              <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_3.75rem_3.75rem] gap-x-1 border-b border-[#111827] pb-1 text-[11px] font-semibold">
                 <span>{t("receiptItems")}</span>
-                <span>
-                  {t("receiptQty")} · {t("receiptUnitPrice")}
-                </span>
+                <span className="text-center">{t("receiptQty")}</span>
+                <span className="text-end">{t("receiptUnitPrice")}</span>
+                <span className="text-end">{t("ticketTotal")}</span>
               </div>
               {receipt.lines.length === 0 ? (
                 <p>—</p>
@@ -152,15 +153,23 @@ export function CashierPaidReceiptDialog({
                 receipt.lines.map((line, idx) => (
                   <div
                     key={`${line.nameEn}-${idx}`}
-                    className="flex justify-between gap-2"
+                    className="grid grid-cols-[minmax(0,1fr)_2.25rem_3.75rem_3.75rem] gap-x-1 text-[12px] leading-snug"
                   >
-                    <span>
+                    <span className="min-w-0 break-words">
                       {itemName(language, line)}
                     </span>
-                    <span className="tabular-nums">
-                      {line.quantity} ·{" "}
+                    <span className="text-center tabular-nums">
+                      {line.quantity}
+                    </span>
+                    <span className="text-end tabular-nums">
                       {formatCashierReceiptMoney(
                         line.unitPrice,
+                        receipt.currencySymbol
+                      )}
+                    </span>
+                    <span className="text-end tabular-nums">
+                      {formatCashierReceiptMoney(
+                        line.lineTotal,
                         receipt.currencySymbol
                       )}
                     </span>
@@ -169,7 +178,7 @@ export function CashierPaidReceiptDialog({
               )}
             </div>
 
-            <div className="space-y-1 border-t pt-3">
+            <div className="space-y-1 border-t border-[#111827] pt-3">
               {moneyRow(
                 t("ticketSubtotal"),
                 receipt.subtotal,
@@ -181,7 +190,7 @@ export function CashierPaidReceiptDialog({
                 receipt.currencySymbol
               )}
               {moneyRow(t("receiptVat"), receipt.taxAmount, receipt.currencySymbol)}
-              <div className="border-t pt-1">
+              <div className="border-t border-[#111827] pt-1">
                 {moneyRow(
                   t("ticketTotal"),
                   receipt.grandTotal,
@@ -191,7 +200,7 @@ export function CashierPaidReceiptDialog({
               </div>
             </div>
 
-            <div className="space-y-1 border-t pt-3">
+            <div className="space-y-1 border-t border-[#111827] pt-3">
               <p className="font-medium">{t("paymentMethod")}</p>
               {receipt.tenders.map((tender, idx) => (
                 <div
@@ -220,7 +229,7 @@ export function CashierPaidReceiptDialog({
             type="button"
             className="flex-1"
             disabled={!receipt}
-            onClick={() => window.print()}
+            onClick={() => printCashierPaidReceipt()}
           >
             <Printer className="me-2 h-4 w-4" />
             {t("printInvoice")}

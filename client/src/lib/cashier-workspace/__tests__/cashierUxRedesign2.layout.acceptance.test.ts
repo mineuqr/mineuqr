@@ -74,18 +74,24 @@ describe("CASHIER-UX-REDESIGN-2 layout acceptance", () => {
     expect(panel).toContain("cashierPos.totalRow");
   });
 
-  it("Current Sale item rows stay single-line: name, price, qty, delete", () => {
+  it("Current Sale item rows stay single-line: name, qty, price, delete", () => {
     expect(styles).toMatch(
       /ticketLine:\s*"flex min-w-0 items-center/
     );
     expect(styles).toContain("ticketLineName");
     expect(styles).toContain("flex-1 truncate text-[15px] font-semibold");
-    expect(styles).toContain("CASHIER_TEXT_PRIMARY");
-    expect(styles).toContain('CASHIER_TEXT_PRIMARY = "#111827"');
-    expect(styles).toMatch(/summaryRow:[\s\S]*?text-\[#111827\]/);
+    expect(styles).toContain("w-[6.75rem] shrink-0 items-center justify-center");
+    expect(styles).toContain("w-[4.25rem] shrink-0 text-end");
     expect(styles).not.toContain("ticketLineControls: \"col-span-2");
     expect(panel).toContain("cashierPos.ticketLineDelete");
     expect(panel).toContain("changeQty(menuItemId, -line.quantity)");
+    const lineBlock = panel.slice(
+      panel.indexOf("cashierPos.ticketLineName"),
+      panel.indexOf("cashierPos.orderFooter")
+    );
+    expect(lineBlock.indexOf("ticketLineControls")).toBeLessThan(
+      lineBlock.indexOf("ticketLinePrice")
+    );
   });
 
   it("unifies primary operational text to CASHIER_TEXT_PRIMARY", () => {

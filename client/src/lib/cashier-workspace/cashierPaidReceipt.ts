@@ -83,3 +83,34 @@ export function formatCashierReceiptDateTime(
     }).format(parsed),
   };
 }
+
+/**
+ * CASHIER-PAID-RECEIPT-PRINT-ISOLATION-1 —
+ * Same window.print() path as operational ticket / shift-closing.
+ * Body class hides the app shell (display:none) so #root min-height cannot
+ * produce blank first/second pages in print preview.
+ */
+export const CASHIER_PAID_RECEIPT_PRINT_ROOT_ID =
+  "cashier-paid-receipt-print" as const;
+
+export const CASHIER_PAID_RECEIPT_PRINT_BODY_CLASS =
+  "printing-cashier-paid-receipt" as const;
+
+export function printCashierPaidReceipt(): void {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  const body = document.body;
+  body.classList.add(CASHIER_PAID_RECEIPT_PRINT_BODY_CLASS);
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    body.classList.remove(CASHIER_PAID_RECEIPT_PRINT_BODY_CLASS);
+    window.removeEventListener("afterprint", cleanup);
+  };
+
+  window.addEventListener("afterprint", cleanup);
+  window.print();
+  window.setTimeout(cleanup, 2_000);
+}

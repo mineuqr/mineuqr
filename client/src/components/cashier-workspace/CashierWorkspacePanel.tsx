@@ -1743,9 +1743,6 @@ export function CashierWorkspacePanel({
                           <p className={cashierPos.ticketLineName}>
                             {language === "ar" ? line.nameAr : line.nameEn}
                           </p>
-                          <p className={cashierPos.ticketLinePrice}>
-                            {line.lineTotal}
-                          </p>
                           {invoiceView.editable && menuItemId != null ? (
                             <>
                               <div className={cashierPos.ticketLineControls}>
@@ -1773,6 +1770,9 @@ export function CashierWorkspacePanel({
                                   <Plus />
                                 </Button>
                               </div>
+                              <p className={cashierPos.ticketLinePrice}>
+                                {line.lineTotal}
+                              </p>
                               <Button
                                 type="button"
                                 size="icon"
@@ -1787,9 +1787,21 @@ export function CashierWorkspacePanel({
                               </Button>
                             </>
                           ) : (
-                            <span className={cashierPos.ticketLineQty}>
-                              {line.quantity}
-                            </span>
+                            <>
+                              <span
+                                className={cn(
+                                  cashierPos.ticketLineControls,
+                                  "pointer-events-none"
+                                )}
+                              >
+                                <span className={cashierPos.ticketLineQty}>
+                                  {line.quantity}
+                                </span>
+                              </span>
+                              <p className={cashierPos.ticketLinePrice}>
+                                {line.lineTotal}
+                              </p>
+                            </>
                           )}
                         </li>
                       );

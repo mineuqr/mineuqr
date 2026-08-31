@@ -42,26 +42,37 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
       dialog.indexOf("flex shrink-0 gap-2 print:hidden")
     );
     expect(footer).toContain("{t(\"receiptClose\")}");
-    expect(footer).toContain("window.print()");
+    expect(footer).toContain("printCashierPaidReceipt()");
     expect(footer).not.toContain("overflow-y-auto");
   });
 
   it("prints the complete snapshot instead of the on-screen scroll clip", () => {
     const dialog = read(DIALOG);
     const css = read(INDEX_CSS);
+    const receiptLib = read(
+      "client/src/lib/cashier-workspace/cashierPaidReceipt.ts"
+    );
     expect(dialog).toContain("print:overflow-visible");
     expect(dialog).toContain("print:max-h-none");
     expect(dialog).toContain("print:h-auto");
     expect(css).toContain("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1");
+    expect(css).toContain("CASHIER-PAID-RECEIPT-PRINT-ISOLATION-1");
     expect(css).toContain("#cashier-paid-receipt-print");
-    expect(css).toContain("overflow: visible !important");
+    expect(css).toContain("body.printing-cashier-paid-receipt");
+    expect(css).toContain("max-width: 80mm");
+    expect(css).toContain("display: none !important");
     expect(css).not.toContain("body.printing-shift-closing #cashier-paid-receipt-print");
+    expect(receiptLib).toContain("printCashierPaidReceipt");
+    expect(receiptLib).toContain("CASHIER_PAID_RECEIPT_PRINT_BODY_CLASS");
+    expect(dialog).toContain("printCashierPaidReceipt()");
+    expect(dialog).not.toContain("window.print()");
     expect(dialog).toContain("receipt.lines.map");
     expect(dialog).not.toContain(".slice(");
     expect(dialog).not.toContain("maxLines");
     expect(dialog).not.toContain("line-clamp");
     expect(dialog).toContain("line.unitPrice");
     expect(dialog).toContain("line.quantity");
+    expect(dialog).toContain("line.lineTotal");
     expect(dialog).toContain("receipt.subtotal");
     expect(dialog).toContain("receipt.discountAmount");
     expect(dialog).toContain("receipt.taxAmount");
@@ -74,12 +85,15 @@ describe("CASHIER-PAID-RECEIPT-OVERFLOW-UX-1 architecture guards", () => {
     expect(dialog).toContain("receipt.cashierDisplayName");
     expect(dialog).toContain("receipt.terminalId");
     expect(dialog).toContain("dir={language === \"ar\" ? \"rtl\" : \"ltr\"}");
+    // One Items column header only (no duplicate section title + header)
+    expect(dialog.match(/t\("receiptItems"\)/g)?.length).toBe(1);
   });
 
   it("does not gate Print on Settlement Record or change PAID / financial paths", () => {
     const dialog = read(DIALOG);
     const panel = read(PANEL);
-    expect(dialog).toContain("window.print()");
+    expect(dialog).toContain("printCashierPaidReceipt()");
+    expect(dialog).not.toContain("window.print()");
     expect(dialog).not.toContain("settlementRecordId");
     expect(dialog).not.toContain("useSettlementRecordReceipt");
     expect(dialog).not.toContain("settlementRecord.getReceipt");

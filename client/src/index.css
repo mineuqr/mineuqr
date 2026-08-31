@@ -1118,9 +1118,84 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
 
 /*
  * CASHIER-PAID-RECEIPT-OVERFLOW-UX-1
- * On-screen receipt body uses overflow-y-auto so Print/Close stay visible.
- * Print must lift that clip so every invoice line and total is printed.
- * Scoped to the paid-receipt dialog; does not change shift-closing isolation.
+ * CASHIER-PAID-RECEIPT-PRINT-ISOLATION-1
+ *
+ * Root cause of blank / duplicate pages: without body-class isolation, #root
+ * min-height:100% and the Radix dialog portal still participate in print
+ * layout (same class of bug as ORDER-CARD-PRINT-ONE-PAGE-LAYOUT-FIX-1).
+ *
+ * Use display:none on the app shell; print only the paid-receipt document at
+ * receipt width (~80mm). Does not affect shift-closing or operational ticket.
+ */
+@media print {
+  body.printing-cashier-paid-receipt {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  html:has(body.printing-cashier-paid-receipt) {
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body.printing-cashier-paid-receipt
+    > *:not(:has(#cashier-paid-receipt-print)):not(#cashier-paid-receipt-print) {
+    display: none !important;
+  }
+
+  body.printing-cashier-paid-receipt [data-slot="dialog-overlay"],
+  body.printing-cashier-paid-receipt [data-slot="dialog-close"] {
+    display: none !important;
+  }
+
+  body.printing-cashier-paid-receipt
+    [data-slot="dialog-content"]:has(#cashier-paid-receipt-print) {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    height: auto !important;
+    max-height: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  body.printing-cashier-paid-receipt #cashier-paid-receipt-print {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    max-height: none !important;
+    max-width: 80mm;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2mm;
+    overflow: visible !important;
+    color: #111827;
+    background: #fff;
+    box-sizing: border-box;
+  }
+
+  body.printing-cashier-paid-receipt .cashier-paid-receipt-document {
+    break-inside: auto;
+  }
+}
+
+/*
+ * Legacy overflow lift kept for non-isolated print paths; isolation above is
+ * authoritative when body.printing-cashier-paid-receipt is present.
  */
 @media print {
   [data-slot="dialog-content"]:has(#cashier-paid-receipt-print) {

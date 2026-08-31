@@ -99,7 +99,8 @@ describe("CASHIER-CHECKOUT-PRINT-FLOW-1 architecture guards", () => {
     expect(panel).not.toContain("pos_sales");
     expect(receipt).not.toContain("useSettlementRecordReceipt");
     expect(receipt).not.toContain("settlementRecord.getReceipt");
-    expect(receipt).toContain("window.print()");
+    expect(receipt).toContain("printCashierPaidReceipt()");
+    expect(receipt).not.toContain("window.print()");
     expect(read(HISTORY)).toContain("SettlementReceiptDialog");
     expect(read(SESSION_RECEIPT)).toContain("useSettlementRecordReceipt");
     expect(read("client/src/lib/settlement-record-presentation/useSettlementRecordQueries.ts")).toContain(
