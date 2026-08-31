@@ -21,6 +21,7 @@ import {
   AppLoadingState,
 } from "@/components/app-state";
 import { CashierPaidReceiptDialog } from "@/components/cashier-workspace/CashierPaidReceiptDialog";
+import { CashierCustomerBar } from "@/components/cashier-workspace/CashierCustomerBar";
 import { CashierProductCard } from "@/components/cashier-workspace/CashierProductCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -237,6 +238,10 @@ export function CashierWorkspacePanel({
   );
   const [directSale, setDirectSale] = useState<DirectSale | null>(null);
   const [salePhase, setSalePhase] = useState<DirectSalePhase>("ticket");
+  const [selectedCustomer, setSelectedCustomer] = useState<{
+    id: number;
+    displayName: string;
+  } | null>(null);
   const [cashReceived, setCashReceived] = useState("");
   const [cardTender, setCardTender] = useState("");
   const [tenderMode, setTenderMode] = useState<CashierTenderMode | null>(null);
@@ -726,6 +731,7 @@ export function CashierWorkspacePanel({
     setRegisterGap(null);
     setDirectSale(null);
     setSalePhase("ticket");
+    setSelectedCustomer(null);
     setCashReceived("");
     setCardTender("");
     setTenderMode(null);
@@ -1723,6 +1729,16 @@ export function CashierWorkspacePanel({
                       ) : null}
                     </div>
                   ) : null}
+                </div>
+
+                <div className="mx-3 mb-2">
+                  <CashierCustomerBar
+                    restaurantId={restaurantId}
+                    language={language === "ar" ? "ar" : "en"}
+                    selected={selectedCustomer}
+                    onSelect={setSelectedCustomer}
+                    onClear={() => setSelectedCustomer(null)}
+                  />
                 </div>
 
                 {invoiceView.lines.length === 0 ? (

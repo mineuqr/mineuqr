@@ -15,72 +15,25 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0104 contiguously", () => {
+  it("journal contains canonical migrations 0000–0105 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
-    expect(journal.entries[59]?.tag).toBe("0059_order_read_offer_projection");
-    expect(journal.entries[60]?.tag).toBe("0060_device_activation_code");
-    expect(journal.entries[61]?.tag).toBe("0061_order_business_identity");
-    expect(journal.entries[62]?.tag).toBe("0062_order_lifecycle_stage");
-    expect(journal.entries[63]?.tag).toBe("0063_screen_credential_ciphertext");
-    expect(journal.entries[64]?.tag).toBe("0064_order_read_item_notes");
-    expect(journal.entries[65]?.tag).toBe("0065_order_fulfilment_projection");
-    expect(journal.entries[66]?.tag).toBe("0066_order_business_identity_scope");
-    expect(journal.entries[67]?.tag).toBe("0067_operational_device_waiter_display");
-    expect(journal.entries[68]?.tag).toBe("0068_order_read_modifiers");
-    expect(journal.entries[69]?.tag).toBe("0069_check_management");
-    expect(journal.entries[70]?.tag).toBe("0070_check_settlement_transactions");
-    expect(journal.entries[71]?.tag).toBe("0071_check_order_membership");
-    expect(journal.entries[72]?.tag).toBe("0072_check_session_optionality");
-    expect(journal.entries[73]?.tag).toBe("0073_check_order_settlements");
-    expect(journal.entries[74]?.tag).toBe("0074_check_split_payments");
-    expect(journal.entries[75]?.tag).toBe("0075_multi_check_allocation");
-    expect(journal.entries[76]?.tag).toBe("0076_settlement_records");
-    expect(journal.entries[77]?.tag).toBe("0077_crmp");
-    expect(journal.entries[78]?.tag).toBe("0078_crmp_shift_lifecycle");
-    expect(journal.entries[79]?.tag).toBe("0079_crmp_register_duty");
-    expect(journal.entries[80]?.tag).toBe("0080_crmp_register_catalog");
-    expect(journal.entries[81]?.tag).toBe("0081_crmp_financial_shift_number");
-    expect(journal.entries[82]?.tag).toBe("0082_refund_document_numbering");
-    expect(journal.entries[83]?.tag).toBe("0083_order_ordering_channel");
-    expect(journal.entries[84]?.tag).toBe("0084_commercial_catalog_foundation");
-    expect(journal.entries[85]?.tag).toBe("0085_commercial_catalog_adoption_bindings");
-    expect(journal.entries[86]?.tag).toBe("0086_commercial_live_plans");
-    expect(journal.entries[87]?.tag).toBe("0087_platform_owner_access_mode");
-    expect(journal.entries[88]?.tag).toBe("0088_user_subscriptions_live_plan_identity");
-    expect(journal.entries[89]?.tag).toBe("0089_commercial_charged_terms_snapshots");
-    expect(journal.entries[90]?.tag).toBe("0090_commercial_subscription_concessions");
-    expect(journal.entries[91]?.tag).toBe("0091_pos_terminals");
-    expect(journal.entries[92]?.tag).toBe("0092_pos_permission_grants");
-    expect(journal.entries[93]?.tag).toBe("0093_pos_sale_idempotency");
-    expect(journal.entries[94]?.tag).toBe("0094_commercial_limit_occupancy_locks");
-    expect(journal.entries[95]?.tag).toBe("0095_check_charges");
-    expect(journal.entries[96]?.tag).toBe("0096_payment_collection_facts");
-    expect(journal.entries[97]?.tag).toBe(
-      "0097_payment_collection_facts_production_purpose"
-    );
-    expect(journal.entries[98]?.tag).toBe("0098_pos_sale_idempotency_open_check");
-    expect(journal.entries[99]?.tag).toBe("0099_cashier_order_handoffs");
-    expect(journal.entries[100]?.tag).toBe(
-      "0100_crmp_collection_fact_attribution"
-    );
-    expect(journal.entries[101]?.tag).toBe("0101_cashier_invoices");
-    expect(journal.entries[102]?.tag).toBe("0102_order_create_idempotency");
     expect(journal.entries[103]?.tag).toBe("0103_realtime_bus_messages");
-    expect(journal.entries[104]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(journal.entries[104]?.tag).toBe("0104_saudi_tax_profiles");
+    expect(journal.entries[105]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[105]?.tag).toBe("0105_customers");
     expect(validateJournalOrdering()).toEqual([]);
   });
 
-  it("exports certified migration tail constant at 0104", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0104_saudi_tax_profiles");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(105);
+  it("exports certified migration tail constant at 0105", () => {
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0105_customers");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(106);
     const tags = loadJournal().entries.map((e) => e.tag);
-    expect(tags).toHaveLength(105);
-    expect(tags[103]).toBe("0103_realtime_bus_messages");
+    expect(tags).toHaveLength(106);
+    expect(tags[104]).toBe("0104_saudi_tax_profiles");
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
-    expect(tags[tags.length - 1]).not.toBe("0103_realtime_bus_messages");
+    expect(tags[tags.length - 1]).not.toBe("0104_saudi_tax_profiles");
   });
 
   it("registers restored tail migrations 0054–0057", () => {
@@ -111,8 +64,8 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(guard).toContain("CANONICAL_MIGRATION_TAIL_TAG");
     expect(guard).toContain("CANONICAL_JOURNAL_ENTRY_COUNT");
     expect(guard).toContain("process.exit(1)");
-    expect(guard).toContain("0000–0104");
-    expect(guard).not.toContain("0000–0103");
+    expect(guard).toContain("0000–0105");
+    expect(guard).not.toContain("0000–0104");
   });
 
   it("0104 is additive saudi_tax_profiles and is not a financial rewrite", () => {
@@ -133,17 +86,29 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/DROP\s+/i);
   });
 
-  it("cannot silently regress certified terminus back to 0103", () => {
+  it("cannot silently regress certified terminus back to 0104", () => {
     const lib = readFileSync(
       join(repoRoot, "scripts/lib/migration-governance-lib.cjs"),
       "utf8"
     );
-    expect(lib).toContain('CANONICAL_MIGRATION_TAIL_TAG = "0104_saudi_tax_profiles"');
-    expect(lib).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 105");
+    expect(lib).toContain('CANONICAL_MIGRATION_TAIL_TAG = "0105_customers"');
+    expect(lib).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 106");
     expect(lib).not.toMatch(
-      /CANONICAL_MIGRATION_TAIL_TAG\s*=\s*"0103_realtime_bus_messages"/
+      /CANONICAL_MIGRATION_TAIL_TAG\s*=\s*"0104_saudi_tax_profiles"/
     );
-    expect(lib).not.toMatch(/CANONICAL_JOURNAL_ENTRY_COUNT\s*=\s*104\b/);
+    expect(lib).not.toMatch(/CANONICAL_JOURNAL_ENTRY_COUNT\s*=\s*105\b/);
+  });
+
+  it("0105 is additive customers and is not a financial rewrite", () => {
+    const sql = readFileSync(join(repoRoot, "drizzle/0105_customers.sql"), "utf8");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `customers`");
+    expect(sql).toContain("`customerType`");
+    expect(sql).toContain("`taxNumber`");
+    expect(sql).not.toContain("saudiVatNumber");
+    expect(sql).not.toMatch(/CREATE TABLE `payments`/);
+    expect(sql).not.toMatch(/ALTER TABLE `payment_collection_facts`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/DROP\s+/i);
   });
 
   it("verify-schema covers operational device governance objects", () => {

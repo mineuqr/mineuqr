@@ -22,6 +22,7 @@ import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection"
 import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
 import { OperationalSnapshotSection } from "@/components/dashboard/OperationalSnapshotSection";
 import { ReportsTab } from "@/components/dashboard/ReportsTab";
+import { CustomersTab } from "@/components/dashboard/CustomersTab";
 import { SettlementHistoryPanel } from "@/components/settlement-record/SettlementHistoryPanel";
 import { RegisterOperationsPanel } from "@/components/register-operations/RegisterOperationsPanel";
 import { RegisterCatalogPanel } from "@/components/register-catalog/RegisterCatalogPanel";
@@ -171,6 +172,7 @@ function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: strin
     categories: t("dashboard.categoriesAndItems"),
     offers: t("dashboard.offers"),
     tables: language === "ar" ? "الطاولات" : "Tables",
+    customers: language === "ar" ? "العملاء" : "Customers",
     qr: language === "ar" ? "رموز QR" : "QR Codes",
     templates: language === "ar" ? "قوالب المنيو" : "Menu Templates",
     settings: t("dashboard.settings"),
@@ -1263,6 +1265,10 @@ function RestaurantDetail({
         ) : (
         <TablesTab restaurantId={restaurantId} restaurant={restaurant} />
         ))}
+
+      {activeTab === "customers" && (
+        <CustomersTab restaurantId={restaurantId} />
+      )}
 
       {activeTab === "qr" &&
         (entitlementsReady && !canManageQr ? (

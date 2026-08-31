@@ -204,6 +204,13 @@ export function RestaurantDashboardSidebar({
               } satisfies NavItem,
             ]
           : []),
+        {
+          id: "customers",
+          label: language === "ar" ? "العملاء" : "Customers",
+          icon: UsersRound,
+          active: restaurantTab === "customers",
+          onClick: () => onRestaurantTabChange!("customers"),
+        } satisfies NavItem,
         ...(canManageDesign
           ? [
               {

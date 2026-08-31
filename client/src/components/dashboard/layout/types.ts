@@ -16,6 +16,7 @@ export type RestaurantTab =
   | "categories"
   | "offers"
   | "tables"
+  | "customers"
   | "qr"
   | "templates"
   | "settings";

@@ -29,6 +29,7 @@ function sectionToRestaurantTab(section: string | null | undefined): RestaurantT
     categories: "categories",
     offers: "offers",
     tables: "tables",
+    customers: "customers",
     qr: "qr",
     templates: "templates",
     settings: "settings",
