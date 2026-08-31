@@ -181,3 +181,60 @@ Governance protections retained: ordering, orphans, missing files, legacy orphan
 | Migration Governance CI | **success** |
 | Vercel Production | **success** (sha `d224c90`, deployment `6185185391`) |
 | Final migration terminus | `0104_saudi_tax_profiles` |
+
+---
+
+## Schema/query contract repair (Production GET failure)
+
+### Observed failure
+
+Admin Settings / `saudiTaxProfile.get` failed with a query selecting nonexistent column:
+
+`saudi_vat_registration_status`
+
+from `"saudi_tax_profiles"`.
+
+### Root cause (evidence-based)
+
+| Contract | Evidence |
+|----------|----------|
+| Migration 0104 | Creates `` `vatRegistrationStatus` enum(...) `` — **not** `saudi_vat_registration_status` |
+| Production DB | `SHOW COLUMNS`: physical column **`vatRegistrationStatus`**; `saudi_vat_registration_status` **absent** (count 0) |
+| Application schema | `drizzle/schema.ts` mapped `vatRegistrationStatus: mysqlEnum("saudi_vat_registration_status", …)` |
+| Query | Drizzle SELECT emitted `"saudi_vat_registration_status"` → TiDB unknown column → GET crash |
+| Git history | Drift introduced in same commit as foundation (`24492340`); migration SQL was correct from day one |
+
+**Single root cause:** Drizzle property→column mapping used a wrong physical name. Production schema and migration 0104 were correct. **No new migration required.**
+
+### Repair
+
+| Change | Detail |
+|--------|--------|
+| `drizzle/schema.ts` | `mysqlEnum("vatRegistrationStatus", …)` — match 0104 / Production |
+| Architecture guards | Assert migration ↔ Drizzle physical name; runtime `getTableColumns` name check |
+| Migration | **NONE** — 0104 preserved; terminus remains `0105_customers` |
+
+### Production verification (pre-deploy DB + post-deploy app)
+
+| Check | Result |
+|-------|--------|
+| Production host | `gateway01…/mineuqr` |
+| Column `vatRegistrationStatus` | **PRESENT** |
+| Column `saudi_vat_registration_status` | **ABSENT** |
+| Drizzle `getTableColumns(…).name` after fix | `vatRegistrationStatus` |
+| Live Drizzle `.select().from(saudiTaxProfiles)` against Production | **SUCCESS** (empty rows OK) |
+| New migration | **Not required / not created** |
+| `pnpm run check` | **PASS** |
+| `pnpm run db:governance-check` | **PASS** — terminus `0105_customers` |
+| Focused Saudi + compliance tests | **PASS** |
+| Customer / CF / Cashier / governance regressions | **PASS** |
+
+### Repair SHAs
+
+| Field | Value |
+|-------|-------|
+| Commit | *(after push)* |
+| Message | `fix(tax): repair Saudi tax profile schema contract` |
+| HEAD == origin/main | *(after push)* |
+| Working tree | *(after push)* |
+| Vercel | *(after deploy)* |

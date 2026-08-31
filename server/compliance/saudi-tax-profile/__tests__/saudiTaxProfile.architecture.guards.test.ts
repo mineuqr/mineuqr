@@ -128,4 +128,40 @@ describe("SAUDI-TAX-PROFILE-1 architecture guards", () => {
     expect(module).toContain("profileRequired");
     expect(module).toContain('ctx.countryCode === "SA"');
   });
+
+  it("0104 physical vatRegistrationStatus matches Drizzle column mapping (no saudi_vat alias)", () => {
+    const sql = read("drizzle/0104_saudi_tax_profiles.sql");
+    const schema = read("drizzle/schema.ts");
+    expect(sql).toContain("`vatRegistrationStatus` enum('unknown','not_registered','registered')");
+    expect(sql).not.toContain("saudi_vat_registration_status");
+    expect(schema).toContain('mysqlEnum("vatRegistrationStatus"');
+    expect(schema).not.toContain('mysqlEnum("saudi_vat_registration_status"');
+    // Property and physical column must share the migration name so SELECT
+    // does not emit a nonexistent saudi_vat_registration_status column.
+    const profileStart = schema.indexOf('mysqlTable(\n  "saudi_tax_profiles"');
+    const profileEnd = schema.indexOf("export type InsertSaudiTaxProfile");
+    const block = schema.slice(profileStart, profileEnd);
+    expect(block).toContain("vatRegistrationStatus: mysqlEnum(\"vatRegistrationStatus\"");
+    expect(block).not.toContain("saudi_vat_registration_status");
+  });
+
+  it("Drizzle runtime column name for vatRegistrationStatus is the 0104 physical name", async () => {
+    const { getTableColumns } = await import("drizzle-orm");
+    const { saudiTaxProfiles } = await import("../../../../drizzle/schema");
+    const cols = getTableColumns(saudiTaxProfiles);
+    expect(cols.vatRegistrationStatus.name).toBe("vatRegistrationStatus");
+    expect(cols.vatRegistrationStatus.name).not.toBe(
+      "saudi_vat_registration_status"
+    );
+  });
+
+  it("repository SELECT/UPSERT use saudiTaxProfiles mapping without inventing columns", () => {
+    const repo = read(
+      "server/compliance/saudi-tax-profile/saudiTaxProfileRepository.ts"
+    );
+    expect(repo).toContain("from(saudiTaxProfiles)");
+    expect(repo).toContain("vatRegistrationStatus");
+    expect(repo).not.toContain("saudi_vat_registration_status");
+    expect(repo).not.toContain("sql`");
+  });
 });

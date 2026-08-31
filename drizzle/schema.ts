@@ -327,7 +327,9 @@ export const saudiTaxProfiles = mysqlTable(
     restaurantId: int().notNull(),
     countryCode: varchar({ length: 2 }).default("SA").notNull(),
     legalName: varchar({ length: 255 }).notNull(),
-    vatRegistrationStatus: mysqlEnum("saudi_vat_registration_status", [
+    // Physical column must match 0104_saudi_tax_profiles (`vatRegistrationStatus`).
+    // Do not remap to a snake_case alias — Production already applied 0104 as-is.
+    vatRegistrationStatus: mysqlEnum("vatRegistrationStatus", [
       "unknown",
       "not_registered",
       "registered",
