@@ -1,4 +1,4 @@
-import type { OperationalDeviceRole } from "../../../../server/operational-device/domain/deviceRoles";
+import type { OperationalDeviceRole } from "../../../../../server/operational-device/domain/deviceRoles";
 
 /**
  * KITCHEN-READY-ACTION-UNIFICATION-1

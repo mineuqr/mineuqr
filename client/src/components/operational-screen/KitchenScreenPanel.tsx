@@ -23,13 +23,17 @@ import { useOperationalDeviceOrderActions } from "@/lib/operational-screen/inter
 import { resolveOperationalScreenAction } from "@/lib/operational-screen/interaction/deviceOrderExecutionCapabilities";
 import type { OperationalAction } from "@/lib/operational-workspace/operationalActions";
 import { useKitchenRuntimeStream } from "@/lib/operational-screen/kitchen/useKitchenRuntimeStream";
-import { useRuntimeContext } from "./OperationalScreenRuntimeProvider";
+import {
+  useRuntimeContext,
+  useScreenRuntime,
+} from "./OperationalScreenRuntimeProvider";
 import { cn } from "@/lib/utils";
 
 const KITCHEN_STATUSES = ["pending", "preparing", "ready"] as const;
 
 export function KitchenScreenPanel() {
   const context = useRuntimeContext();
+  const { categoryFilter } = useScreenRuntime();
   const language = context.presentation.language;
   const isAr = language === "ar";
   const densityModel = context.resolvedDensityModel;
@@ -39,6 +43,7 @@ export function KitchenScreenPanel() {
     isLoading,
     isError,
     isShowingStaleData,
+    isFiltered,
     operatorMessage,
     retry,
     isRefetching,
@@ -78,6 +83,7 @@ export function KitchenScreenPanel() {
 
   const counts = queue?.meta.counts ?? { pending: 0, preparing: 0, ready: 0 };
   const delayed = countDelayedKitchenTickets(tickets);
+  const filterCategoryCount = categoryFilter?.selectedCategories.length ?? 0;
 
   if (isLoading && !queue && !isError) {
     return <KitchenOperationalLoadingState language={language} />;
@@ -98,6 +104,19 @@ export function KitchenScreenPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2.5 sm:gap-3">
       <KitchenQueueSummaryBar counts={counts} delayed={delayed} language={language} />
+
+      {/* KITCHEN-REALTIME-HARDENING-1 — UX clarity only; does not change filter semantics. */}
+      {isFiltered && filterCategoryCount > 0 ? (
+        <div
+          className="rounded-lg border border-border/30 bg-[#12161f]/60 px-3 py-1.5 text-xs font-medium text-muted-foreground"
+          data-kitchen-filter-active="true"
+          data-kitchen-filter-count={filterCategoryCount}
+        >
+          {isAr
+            ? `تصفية نشطة: ${filterCategoryCount} فئة — الطلبات خارج التصفية مخفية عمداً`
+            : `Filter active: ${filterCategoryCount} categories — non-matching tickets are intentionally hidden`}
+        </div>
+      ) : null}
 
       {isShowingStaleData ? <KitchenStaleDataBanner language={language} /> : null}
 

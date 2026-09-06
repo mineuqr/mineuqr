@@ -5,6 +5,7 @@
 
 import {
   DEFAULT_CLIENT_CAPABILITIES,
+  DEFAULT_SERVER_CAPABILITIES,
   RealtimeSequenceTracker,
   type RealtimeChannel,
   type RealtimeClientCapabilities,
@@ -14,6 +15,7 @@ import {
 import {
   noteRealtimeClientCatchUp,
   noteRealtimeClientFallback,
+  noteRealtimeClientHeartbeatTimeout,
   noteRealtimeClientHintReceived,
   noteRealtimeClientReconnectAttempt,
   noteRealtimeClientReconnectSuccess,
@@ -57,6 +59,17 @@ export type RealtimeConnectOptions = {
 /** Renew this many ms before `expiresAt` so the next open is never already expired. */
 export const REALTIME_TICKET_RENEWAL_SKEW_MS = 60_000;
 
+/**
+ * KITCHEN-REALTIME-HARDENING-1 — treat SSE as dead after this many missed
+ * server heartbeat intervals (server default 15s). Hints / catch_up also
+ * count as liveness. Does not make events authoritative.
+ */
+export const REALTIME_HEARTBEAT_MISS_LIMIT = 3;
+export const REALTIME_HEARTBEAT_TIMEOUT_MS =
+  DEFAULT_SERVER_CAPABILITIES.heartbeatIntervalMs * REALTIME_HEARTBEAT_MISS_LIMIT;
+/** How often the client checks for heartbeat silence while live. */
+export const REALTIME_HEARTBEAT_WATCHDOG_INTERVAL_MS = 5_000;
+
 /** Client uses the server ISO expiry; server validates Unix seconds. Same instant. */
 export function realtimeTicketNeedsRefresh(
   expiresAtIso: string | undefined,
@@ -86,6 +99,8 @@ export class RealtimePlatformClient {
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private renewalTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatWatchdogTimer: ReturnType<typeof setInterval> | null = null;
+  private lastRealtimeActivityAt = 0;
   private options: RealtimeConnectOptions | null = null;
   private everLive = false;
   private refreshInFlight = false;
@@ -142,6 +157,7 @@ export class RealtimePlatformClient {
       clearTimeout(this.renewalTimer);
       this.renewalTimer = null;
     }
+    this.stopHeartbeatWatchdog();
     if (typeof document !== "undefined") {
       document.removeEventListener("visibilitychange", this.boundVisibility);
     }
@@ -162,9 +178,68 @@ export class RealtimePlatformClient {
     return this.seq.size();
   }
 
+  /** Test / diagnostics — last SSE activity (ready/heartbeat/hint/catch_up). */
+  getLastRealtimeActivityAt(): number {
+    return this.lastRealtimeActivityAt;
+  }
+
   private setState(state: RealtimeConnectionState): void {
     this.state = state;
     emitState(this.options?.handlers, state);
+    if (state !== "live") {
+      this.stopHeartbeatWatchdog();
+    }
+  }
+
+  private noteRealtimeActivity(): void {
+    this.lastRealtimeActivityAt = Date.now();
+  }
+
+  private heartbeatWatchdogEnabled(): boolean {
+    const caps = {
+      ...DEFAULT_CLIENT_CAPABILITIES,
+      ...this.options?.clientCapabilities,
+    };
+    return caps.heartbeat === true;
+  }
+
+  private startHeartbeatWatchdog(): void {
+    this.stopHeartbeatWatchdog();
+    if (!this.heartbeatWatchdogEnabled()) return;
+    this.noteRealtimeActivity();
+    this.heartbeatWatchdogTimer = setInterval(() => {
+      this.checkHeartbeatFreshness();
+    }, REALTIME_HEARTBEAT_WATCHDOG_INTERVAL_MS);
+  }
+
+  private stopHeartbeatWatchdog(): void {
+    if (this.heartbeatWatchdogTimer) {
+      clearInterval(this.heartbeatWatchdogTimer);
+      this.heartbeatWatchdogTimer = null;
+    }
+  }
+
+  private isHeartbeatStale(nowMs: number = Date.now()): boolean {
+    if (!this.heartbeatWatchdogEnabled()) return false;
+    if (this.state !== "live") return false;
+    if (this.lastRealtimeActivityAt <= 0) return false;
+    return nowMs - this.lastRealtimeActivityAt >= REALTIME_HEARTBEAT_TIMEOUT_MS;
+  }
+
+  private checkHeartbeatFreshness(): void {
+    if (!this.isHeartbeatStale()) return;
+    this.handleHeartbeatTimeout();
+  }
+
+  private handleHeartbeatTimeout(): void {
+    if (this.state !== "live") return;
+    noteRealtimeClientHeartbeatTimeout();
+    this.stopHeartbeatWatchdog();
+    if (this.source) {
+      this.source.close();
+      this.source = null;
+    }
+    this.scheduleReconnect();
   }
 
   private openSource(): void {
@@ -186,13 +261,16 @@ export class RealtimePlatformClient {
       this.reconnectAttempts = 0;
       this.everLive = true;
       noteRealtimeClientReconnectSuccess();
+      this.noteRealtimeActivity();
       this.setState("live");
+      this.startHeartbeatWatchdog();
     });
 
     source.addEventListener("platform.catch_up", (ev) => {
       const msg = ev as MessageEvent;
       if (msg.lastEventId) this.lastEventId = msg.lastEventId;
       const data = safeParse(msg.data);
+      this.noteRealtimeActivity();
       noteRealtimeClientCatchUp();
       this.options?.handlers?.onCatchUp?.({
         reason: (data?.reason as string) ?? "catch_up",
@@ -200,7 +278,7 @@ export class RealtimePlatformClient {
     });
 
     source.addEventListener("platform.heartbeat", () => {
-      /* keepalive */
+      this.noteRealtimeActivity();
     });
 
     // Listen for known hint event names via generic message + typed events.
@@ -237,6 +315,7 @@ export class RealtimePlatformClient {
         const first = this.recentPublicHintKeys.values().next().value;
         if (first) this.recentPublicHintKeys.delete(first);
       }
+      this.noteRealtimeActivity();
       noteRealtimeClientHintReceived();
       this.options?.handlers?.onHint?.(data as unknown as RealtimeHint);
       return;
@@ -262,6 +341,7 @@ export class RealtimePlatformClient {
     }
 
     // Hints never write cache — only notify. Features invalidate/refetch.
+    this.noteRealtimeActivity();
     noteRealtimeClientHintReceived();
     this.options?.handlers?.onHint?.(hint);
   }
@@ -378,9 +458,17 @@ export class RealtimePlatformClient {
 
   private onVisibility(): void {
     if (typeof document === "undefined" || !this.options) return;
-    if (document.visibilityState === "visible" && this.state === "poll_only") {
+    if (document.visibilityState !== "visible") return;
+
+    // KITCHEN-REALTIME-HARDENING-1 — resume from poll_only, or recover a
+    // dead-but-live SSE that browsers throttled while the tab was hidden.
+    if (this.state === "poll_only") {
       this.reconnectAttempts = 0;
       void this.openSourceAfterCredentialRefresh();
+      return;
+    }
+    if (this.isHeartbeatStale()) {
+      this.handleHeartbeatTimeout();
     }
   }
 }

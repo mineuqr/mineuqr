@@ -44,4 +44,17 @@ describe("REALTIME-ARCHITECTURE-REGRESSION-GUARD-1 client convergence", () => {
     expect(block).not.toContain("setQueryData");
     expect(block).not.toContain("totalAmount");
   });
+
+  it("KITCHEN-REALTIME-HARDENING-1: heartbeat notes liveness without writing cache", () => {
+    const client = read(
+      "client/src/lib/realtime-platform/RealtimePlatformClient.ts"
+    );
+    const heartbeat = client.slice(
+      client.indexOf('source.addEventListener("platform.heartbeat"'),
+      client.indexOf("// Listen for known hint event names")
+    );
+    expect(heartbeat).toContain("noteRealtimeActivity");
+    expect(heartbeat).not.toContain("setQueryData");
+    expect(client).toContain("handleHeartbeatTimeout");
+  });
 });

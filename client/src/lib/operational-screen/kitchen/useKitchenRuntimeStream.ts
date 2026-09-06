@@ -5,9 +5,10 @@
  * REALTIME-KITCHEN-ADOPTION-1 — kitchen channel
  * REALTIME-EXPO-ADOPTION-1 — expo channel
  * Queue fetch is gated by kitchen_queue capability, not display role.
+ * KITCHEN-REALTIME-HARDENING-1 — visibility-aware polling + return-to-visible refetch.
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DATA_POLL_INTERVAL_MS,
   DATA_POLL_REALTIME_RECOVERY_MS,
@@ -31,9 +32,23 @@ import { kitchenQueueStatusForRole } from "./kitchenActiveQueue";
 
 export type { KitchenProjectionDiagnostics, KitchenRuntimeStream };
 
-function useVisiblePollingEnabled(): boolean {
-  if (typeof document === "undefined") return true;
-  return document.visibilityState === "visible";
+/** KITCHEN-REALTIME-HARDENING-1 — reactive document visibility for poll gating. */
+export function useVisiblePollingEnabled(): boolean {
+  const [visible, setVisible] = useState(() => {
+    if (typeof document === "undefined") return true;
+    return document.visibilityState === "visible";
+  });
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onVisibility = () => {
+      setVisible(document.visibilityState === "visible");
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  return visible;
 }
 
 export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
@@ -43,6 +58,7 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
   const { categoryFilter, categoryFilterPredicate, context, configurationHealth, rolePlatform, screenState } =
     useScreenRuntime();
   const visible = useVisiblePollingEnabled();
+  const wasHiddenRef = useRef(false);
   const kitchenQueueSupported = isCapabilitySupported(context?.runtimeCapabilities, "kitchen_queue");
   const language = context?.presentation.language ?? "en";
   const restaurantId = context?.identity.restaurantId;
@@ -83,6 +99,16 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
       structuralSharing: kitchenQueueStructuralSharing,
     }
   );
+
+  useEffect(() => {
+    if (!visible) {
+      wasHiddenRef.current = true;
+      return;
+    }
+    if (!wasHiddenRef.current || !kitchenQueueSupported) return;
+    wasHiddenRef.current = false;
+    void queueQuery.refetch();
+  }, [visible, kitchenQueueSupported, queueQuery.refetch]);
 
   useEffect(() => {
     if (!queueQuery.isSuccess || queueQuery.isFetching) return;
