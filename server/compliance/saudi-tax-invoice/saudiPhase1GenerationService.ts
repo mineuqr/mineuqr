@@ -14,6 +14,7 @@ import {
 } from "@shared/compliance";
 import { allocateSaudiTaxInvoiceNumber } from "./saudiTaxInvoiceNumberAllocator";
 import {
+  findSaudiTaxInvoiceByTaxInvoiceId,
   markSaudiTaxInvoicePhase1Failure,
   persistSaudiPhase1Artifact,
 } from "./saudiTaxInvoiceRepository";
@@ -48,66 +49,76 @@ export async function applySaudiPhase1Generation(
     return taxInvoice;
   }
 
-  if (taxInvoice.status === "blocked_profile") {
-    return taxInvoice;
+  // CASHIER-TAX-INVOICE-PREPARING-STATE-LATENCY-1 — peer ensure may have finished.
+  const latest = await findSaudiTaxInvoiceByTaxInvoiceId({
+    restaurantId: taxInvoice.restaurantId,
+    taxInvoiceId: taxInvoice.taxInvoiceId,
+  });
+  if (latest?.phase1Document && latest.invoiceNumber) {
+    return latest;
+  }
+  const working = latest ?? taxInvoice;
+
+  if (working.status === "blocked_profile") {
+    return working;
   }
 
   if (
-    taxInvoice.invoiceForm === "undetermined" ||
-    taxInvoice.partyModel === "unclassified"
+    working.invoiceForm === "undetermined" ||
+    working.partyModel === "unclassified"
   ) {
     return markSaudiTaxInvoicePhase1Failure({
-      restaurantId: taxInvoice.restaurantId,
-      taxInvoiceId: taxInvoice.taxInvoiceId,
+      restaurantId: working.restaurantId,
+      taxInvoiceId: working.taxInvoiceId,
       status: "retryable",
       failureCode: "CLASSIFICATION_UNRESOLVED",
       failureMessage:
         "Phase 1 generation blocked: invoice classification is unresolved (PAID unchanged).",
-      attemptCount: taxInvoice.attemptCount + 1,
+      attemptCount: working.attemptCount + 1,
     });
   }
 
-  const sellerName = taxInvoice.sellerSnapshot.legalName?.trim() ?? "";
-  const sellerVat = sellerVatForPhase1(taxInvoice);
-  const qrRequired = saudiPhase1QrRequired(taxInvoice.invoiceForm);
+  const sellerName = working.sellerSnapshot.legalName?.trim() ?? "";
+  const sellerVat = sellerVatForPhase1(working);
+  const qrRequired = saudiPhase1QrRequired(working.invoiceForm);
 
   if (!sellerName) {
     return markSaudiTaxInvoicePhase1Failure({
-      restaurantId: taxInvoice.restaurantId,
-      taxInvoiceId: taxInvoice.taxInvoiceId,
+      restaurantId: working.restaurantId,
+      taxInvoiceId: working.taxInvoiceId,
       status: "retryable",
       failureCode: "PHASE1_SELLER_NAME_MISSING",
       failureMessage:
         "Phase 1 generation blocked: seller legal name missing (PAID unchanged).",
-      attemptCount: taxInvoice.attemptCount + 1,
+      attemptCount: working.attemptCount + 1,
     });
   }
 
   if (!sellerVat) {
     return markSaudiTaxInvoicePhase1Failure({
-      restaurantId: taxInvoice.restaurantId,
-      taxInvoiceId: taxInvoice.taxInvoiceId,
+      restaurantId: working.restaurantId,
+      taxInvoiceId: working.taxInvoiceId,
       status: "retryable",
       failureCode: "PHASE1_SELLER_VAT_MISSING",
       failureMessage:
         "Phase 1 generation blocked: seller VAT number required for Phase 1 QR/invoice fields (OQ-SELLER-1 / PAID unchanged).",
-      attemptCount: taxInvoice.attemptCount + 1,
+      attemptCount: working.attemptCount + 1,
     });
   }
 
   if (!qrRequired) {
     return markSaudiTaxInvoicePhase1Failure({
-      restaurantId: taxInvoice.restaurantId,
-      taxInvoiceId: taxInvoice.taxInvoiceId,
+      restaurantId: working.restaurantId,
+      taxInvoiceId: working.taxInvoiceId,
       status: "retryable",
       failureCode: "PHASE1_QR_POLICY_UNSUPPORTED_FORM",
       failureMessage:
         "Phase 1 generation blocked: invoice form is not eligible for Saudi Phase 1 QR policy (PAID unchanged).",
-      attemptCount: taxInvoice.attemptCount + 1,
+      attemptCount: working.attemptCount + 1,
     });
   }
 
-  const issueTimestampIso = resolveIssueTimestampIso(taxInvoice);
+  const issueTimestampIso = resolveIssueTimestampIso(working);
   let qrPayloadBase64: string;
 
   try {
@@ -115,41 +126,41 @@ export async function applySaudiPhase1Generation(
       sellerName,
       sellerVatNumber: sellerVat,
       timestampIso: issueTimestampIso,
-      invoiceTotalWithVat: taxInvoice.monetarySnapshot.amount,
-      vatTotal: taxInvoice.monetarySnapshot.taxAmount,
+      invoiceTotalWithVat: working.monetarySnapshot.amount,
+      vatTotal: working.monetarySnapshot.taxAmount,
     });
   } catch (error) {
     return markSaudiTaxInvoicePhase1Failure({
-      restaurantId: taxInvoice.restaurantId,
-      taxInvoiceId: taxInvoice.taxInvoiceId,
+      restaurantId: working.restaurantId,
+      taxInvoiceId: working.taxInvoiceId,
       status: "retryable",
       failureCode: "PHASE1_QR_BUILD_FAILED",
       failureMessage:
         error instanceof Error
           ? error.message
           : "Phase 1 QR build failed (PAID unchanged).",
-      attemptCount: taxInvoice.attemptCount + 1,
+      attemptCount: working.attemptCount + 1,
     });
   }
 
   const allocated =
-    taxInvoice.invoiceNumber && taxInvoice.invoiceSequence != null
+    working.invoiceNumber && working.invoiceSequence != null
       ? {
-          invoiceNumber: taxInvoice.invoiceNumber,
-          sequenceNumber: taxInvoice.invoiceSequence,
+          invoiceNumber: working.invoiceNumber,
+          sequenceNumber: working.invoiceSequence,
         }
-      : await allocateSaudiTaxInvoiceNumber(taxInvoice.restaurantId);
+      : await allocateSaudiTaxInvoiceNumber(working.restaurantId);
 
   const document: SaudiPhase1Document = buildSaudiPhase1Document({
-    taxInvoice,
+    taxInvoice: working,
     invoiceNumber: allocated.invoiceNumber,
     issueTimestampIso,
     qrPayloadBase64,
   });
 
   return persistSaudiPhase1Artifact({
-    restaurantId: taxInvoice.restaurantId,
-    taxInvoiceId: taxInvoice.taxInvoiceId,
+    restaurantId: working.restaurantId,
+    taxInvoiceId: working.taxInvoiceId,
     status: "generated",
     invoiceNumber: allocated.invoiceNumber,
     invoiceSequence: allocated.sequenceNumber,
@@ -158,6 +169,6 @@ export async function applySaudiPhase1Generation(
     phase1DocumentJson: document,
     failureCode: null,
     failureMessage: null,
-    attemptCount: taxInvoice.attemptCount,
+    attemptCount: working.attemptCount,
   });
 }

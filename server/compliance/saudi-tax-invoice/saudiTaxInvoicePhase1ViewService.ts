@@ -5,7 +5,9 @@
  * CASHIER-POST-PAYMENT-TAX-INVOICE-LATENCY-REDUCTION-1 —
  * If the Tax Invoice row is missing on Cashier read, ensure from the
  * production Collection Fact (idempotent; does not mutate CF/PAID).
- * Tenant-scoped Tax Invoice read / render for Phase 1 electronic documents.
+ * CASHIER-TAX-INVOICE-PREPARING-STATE-LATENCY-1 —
+ * Prefer waiting briefly for background Compliance before read-path ensure
+ * to avoid duplicate Phase 1 / sequence contention during "preparing".
  */
 
 import type { SaudiPhase1Document, SaudiTaxInvoice } from "@shared/compliance";
@@ -19,6 +21,14 @@ import { applySaudiPhase1Generation } from "./saudiPhase1GenerationService";
 import { renderSaudiPhase1InvoiceHtml } from "./saudiPhase1RenderHtml";
 import { ensureSaudiTaxInvoiceForCollectionFact } from "./saudiTaxInvoiceService";
 
+/** Prefer background completion before starting a second ensure. */
+const READ_PATH_WAIT_FOR_BACKGROUND_MS = 1200;
+const READ_PATH_WAIT_STEP_MS = 40;
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function ensurePhase1Ready(
   taxInvoice: SaudiTaxInvoice
 ): Promise<SaudiTaxInvoice> {
@@ -29,6 +39,19 @@ async function ensurePhase1Ready(
     return applySaudiPhase1Generation(taxInvoice);
   }
   return taxInvoice;
+}
+
+async function waitForSaudiTaxInvoiceRow(input: {
+  restaurantId: number;
+  orderId: number;
+}): Promise<SaudiTaxInvoice | null> {
+  const deadline = Date.now() + READ_PATH_WAIT_FOR_BACKGROUND_MS;
+  for (;;) {
+    const found = await findSaudiTaxInvoiceByOrderId(input);
+    if (found) return found;
+    if (Date.now() >= deadline) return null;
+    await sleep(READ_PATH_WAIT_STEP_MS);
+  }
 }
 
 /**
@@ -89,6 +112,10 @@ export async function getSaudiTaxInvoicePhase1ViewByOrder(input: {
   html: string | null;
 } | null> {
   let found = await findSaudiTaxInvoiceByOrderId(input);
+  if (!found) {
+    // Prefer background Compliance completion (same CF) before a second ensure.
+    found = await waitForSaudiTaxInvoiceRow(input);
+  }
   if (!found) {
     found = await ensureSaudiTaxInvoiceRowForOrderRead(input);
   }

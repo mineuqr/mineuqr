@@ -1,6 +1,6 @@
 /**
- * SAUDI-TAX-INVOICE-PHASE-1
- * Restaurant-scoped Tax Invoice number allocator (Compliance plane).
+ * CASHIER-TAX-INVOICE-PREPARING-STATE-LATENCY-1
+ * Atomic restaurant-scoped Tax Invoice number allocation.
  */
 
 import { eq, sql } from "drizzle-orm";
@@ -14,24 +14,34 @@ export async function allocateSaudiTaxInvoiceNumber(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await db
-    .insert(saudiTaxInvoiceSequences)
-    .values({ restaurantId, lastNumber: 0 })
-    .onDuplicateKeyUpdate({ set: { lastNumber: sql`${saudiTaxInvoiceSequences.lastNumber}` } });
+  const sequenceNumber = await db.transaction(async (tx) => {
+    await tx
+      .insert(saudiTaxInvoiceSequences)
+      .values({ restaurantId, lastNumber: 0 })
+      .onDuplicateKeyUpdate({
+        set: { lastNumber: sql`${saudiTaxInvoiceSequences.lastNumber}` },
+      });
 
-  await db
-    .update(saudiTaxInvoiceSequences)
-    .set({ lastNumber: sql`${saudiTaxInvoiceSequences.lastNumber} + 1` })
-    .where(eq(saudiTaxInvoiceSequences.restaurantId, restaurantId));
+    await tx.execute(
+      sql`SELECT \`lastNumber\` FROM \`saudi_tax_invoice_sequences\` WHERE \`restaurantId\` = ${restaurantId} FOR UPDATE`
+    );
 
-  const [row] = await db
-    .select()
-    .from(saudiTaxInvoiceSequences)
-    .where(eq(saudiTaxInvoiceSequences.restaurantId, restaurantId))
-    .limit(1);
-  if (!row) throw new Error("Tax Invoice sequence allocate failed");
+    await tx
+      .update(saudiTaxInvoiceSequences)
+      .set({ lastNumber: sql`${saudiTaxInvoiceSequences.lastNumber} + 1` })
+      .where(eq(saudiTaxInvoiceSequences.restaurantId, restaurantId));
+
+    const [row] = await tx
+      .select()
+      .from(saudiTaxInvoiceSequences)
+      .where(eq(saudiTaxInvoiceSequences.restaurantId, restaurantId))
+      .limit(1);
+    if (!row) throw new Error("Tax Invoice sequence allocate failed");
+    return row.lastNumber;
+  });
+
   return {
-    sequenceNumber: row.lastNumber,
-    invoiceNumber: formatSaudiTaxInvoiceNumber(row.lastNumber),
+    sequenceNumber,
+    invoiceNumber: formatSaudiTaxInvoiceNumber(sequenceNumber),
   };
 }

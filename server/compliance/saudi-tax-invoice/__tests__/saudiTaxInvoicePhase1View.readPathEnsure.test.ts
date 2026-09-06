@@ -1,7 +1,7 @@
 /**
- * CASHIER-POST-PAYMENT-TAX-INVOICE-LATENCY-REDUCTION-1 — read-path ensure.
+ * CASHIER-TAX-INVOICE-PREPARING-STATE-LATENCY-1 — read-path ensure.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../saudiTaxInvoiceRepository", () => ({
   findSaudiTaxInvoiceByTaxInvoiceId: vi.fn(),
@@ -40,13 +40,47 @@ const findByOrder = vi.mocked(findSaudiTaxInvoiceByOrderId);
 const ensure = vi.mocked(ensureSaudiTaxInvoiceForCollectionFact);
 const findFact = vi.mocked(findProductionCollectionFactByOrderId);
 
-describe("getPhase1ByOrder read-path ensure", () => {
+describe("getPhase1ByOrder preparing-state read path", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
   });
 
-  it("ensures from production Collection Fact when Tax Invoice row is missing", async () => {
-    findByOrder.mockResolvedValueOnce(null);
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("waits for background row before ensure when initially missing", async () => {
+    findByOrder
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        taxInvoiceId: "sti_1",
+        invoiceNumber: "TI-1",
+        status: "generated",
+        phase1Document: {
+          taxInvoiceId: "sti_1",
+          invoiceNumber: "TI-1",
+          qrRequired: true,
+          qrPayloadBase64: "AQ==",
+        },
+      } as never);
+
+    const pending = getSaudiTaxInvoicePhase1ViewByOrder({
+      restaurantId: 1,
+      orderId: 99,
+      includeHtml: false,
+    });
+    await vi.advanceTimersByTimeAsync(80);
+    const result = await pending;
+
+    expect(ensure).not.toHaveBeenCalled();
+    expect(result?.document?.invoiceNumber).toBe("TI-1");
+    expect(findByOrder.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("ensures from production Collection Fact after wait if still missing", async () => {
+    findByOrder.mockResolvedValue(null);
     findFact.mockResolvedValue({
       collectionFactId: "pcf_1",
       committedAt: "2026-09-06 11:00:00",
@@ -66,11 +100,13 @@ describe("getPhase1ByOrder read-path ensure", () => {
       },
     } as never);
 
-    const result = await getSaudiTaxInvoicePhase1ViewByOrder({
+    const pending = getSaudiTaxInvoicePhase1ViewByOrder({
       restaurantId: 1,
       orderId: 99,
       includeHtml: false,
     });
+    await vi.advanceTimersByTimeAsync(1300);
+    const result = await pending;
 
     expect(ensure).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -84,7 +120,7 @@ describe("getPhase1ByOrder read-path ensure", () => {
     expect(result?.html).toBeNull();
   });
 
-  it("does not ensure when a Tax Invoice row already exists", async () => {
+  it("does not wait or ensure when a Tax Invoice row already exists", async () => {
     findByOrder.mockResolvedValue({
       taxInvoiceId: "sti_1",
       invoiceNumber: "TI-1",
@@ -97,12 +133,14 @@ describe("getPhase1ByOrder read-path ensure", () => {
       },
     } as never);
 
-    await getSaudiTaxInvoicePhase1ViewByOrder({
+    const result = await getSaudiTaxInvoicePhase1ViewByOrder({
       restaurantId: 1,
       orderId: 99,
     });
 
+    expect(result?.document?.invoiceNumber).toBe("TI-1");
     expect(ensure).not.toHaveBeenCalled();
     expect(findFact).not.toHaveBeenCalled();
+    expect(findByOrder).toHaveBeenCalledTimes(1);
   });
 });

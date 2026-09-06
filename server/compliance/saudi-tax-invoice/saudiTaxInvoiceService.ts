@@ -33,6 +33,7 @@ import {
   buildPaymentSnapshot,
   buildSellerSnapshot,
 } from "./saudiTaxInvoiceSnapshotBuilder";
+import { runSaudiTaxInvoiceEnsureSingleFlight } from "./saudiTaxInvoiceEnsureSingleFlight";
 
 function buildTaxInvoiceId(): string {
   return `sti_${randomUUID()}`;
@@ -183,8 +184,19 @@ function toPersistFields(
 /**
  * Idempotent ensure: same restaurant + collectionFactId + documentKind → one aggregate.
  * Phase 1 generation runs after domain snapshot when status allows.
+ * CASHIER-TAX-INVOICE-PREPARING-STATE-LATENCY-1 — single-flight per collectionFactId
+ * collapses concurrent background + Cashier read-path ensure on one isolate.
  */
 export async function ensureSaudiTaxInvoiceForCollectionFact(
+  input: EnsureSaudiTaxInvoiceInput
+): Promise<EnsureSaudiTaxInvoiceResult> {
+  const flightKey = `${input.restaurantId}:${input.collectionFactId}:tax_invoice`;
+  return runSaudiTaxInvoiceEnsureSingleFlight(flightKey, () =>
+    ensureSaudiTaxInvoiceForCollectionFactUnlogged(input)
+  );
+}
+
+async function ensureSaudiTaxInvoiceForCollectionFactUnlogged(
   input: EnsureSaudiTaxInvoiceInput
 ): Promise<EnsureSaudiTaxInvoiceResult> {
   const existing = await findSaudiTaxInvoiceByIdempotency({

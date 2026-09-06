@@ -41,7 +41,8 @@ describe("SAUDI-TAX-INVOICE-CASHIER-POST-PAYMENT-PERFORMANCE-1", () => {
     expect(panel).not.toMatch(/return 1_000/);
     expect(view).toContain("includeHtml === true");
     expect(view).toContain("renderSaudiPhase1InvoiceHtml");
-    expect(panel).toContain("queueMicrotask");
+    expect(panel).toContain("saudiTaxInvoiceInvalidatePendingRef");
+    expect(panel).toContain("modalOpenToReadyMs");
     expect(panel).toContain("setTaxInvoiceOpen(true)");
     expect(panel.indexOf("setTaxInvoiceOpen(true)")).toBeLessThan(
       panel.indexOf("endCashierPaymentFlow(\"completed\")")

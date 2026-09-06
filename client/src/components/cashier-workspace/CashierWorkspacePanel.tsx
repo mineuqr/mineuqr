@@ -276,8 +276,9 @@ export function CashierWorkspacePanel({
   const [taxInvoicePrintPending, setTaxInvoicePrintPending] = useState(false);
   const [taxInvoicePollTimedOut, setTaxInvoicePollTimedOut] = useState(false);
   const taxInvoicePollStartedAtRef = useRef<number | null>(null);
-  /** Perf.now at PAID for async Tax Invoice READY measurement (flow ends at dialog open). */
-  const saudiPaidPerfMsRef = useRef<number | null>(null);
+  /** Perf.now at Tax Invoice dialog open — preparing→READY metric. */
+  const saudiTaxInvoiceDialogOpenPerfMsRef = useRef<number | null>(null);
+  const saudiTaxInvoiceInvalidatePendingRef = useRef(false);
   const isSaudiCashier = isSaudiEInvoiceCustomerFacingDocument(countryCode);
   const [paymentBusy, setPaymentBusy] = useState(false);
   const saleInFlightRef = useRef(false);
@@ -583,15 +584,19 @@ export function CashierWorkspacePanel({
 
   useEffect(() => {
     if (!saudiTaxInvoiceView || !isSaudiCashier) return;
-    const paidAt = saudiPaidPerfMsRef.current;
-    if (paidAt == null) return;
-    const paidToReadyMs = Math.round(performance.now() - paidAt);
-    saudiPaidPerfMsRef.current = null;
-    if (import.meta.env.DEV) {
-      console.info(
-        "[cashier][saudi-tax-invoice] paidToTaxInvoiceReadyMs",
-        paidToReadyMs
-      );
+    const openedAt = saudiTaxInvoiceDialogOpenPerfMsRef.current;
+    if (openedAt == null) return;
+    const modalOpenToReadyMs = Math.round(performance.now() - openedAt);
+    saudiTaxInvoiceDialogOpenPerfMsRef.current = null;
+    console.info(
+      "[cashier][saudi-tax-invoice] modalOpenToReadyMs",
+      modalOpenToReadyMs
+    );
+    if (saudiTaxInvoiceInvalidatePendingRef.current) {
+      saudiTaxInvoiceInvalidatePendingRef.current = false;
+      queueMicrotask(() => {
+        invalidateOrderReads();
+      });
     }
   }, [saudiTaxInvoiceView, isSaudiCashier]);
 
@@ -605,6 +610,18 @@ export function CashierWorkspacePanel({
     }, 50);
     return () => window.clearTimeout(handle);
   }, [taxInvoiceOpen, taxInvoicePrintPending, saudiTaxInvoiceView]);
+
+  // Fallback: if Tax Invoice never becomes ready, still refresh POS reads.
+  useEffect(() => {
+    if (!saudiTaxInvoiceInvalidatePendingRef.current) return;
+    if (!isSaudiCashier || !taxInvoiceOpen) return;
+    const id = window.setTimeout(() => {
+      if (!saudiTaxInvoiceInvalidatePendingRef.current) return;
+      saudiTaxInvoiceInvalidatePendingRef.current = false;
+      invalidateOrderReads();
+    }, 5_000);
+    return () => window.clearTimeout(id);
+  }, [isSaudiCashier, taxInvoiceOpen, lastPaidOrderId]);
 
   function invalidateOrderReads() {
     void utils.pos.read.orders.listActive.invalidate();
@@ -1169,14 +1186,20 @@ export function CashierWorkspacePanel({
           cashierFlowIdRef.current,
           "CASHIER_TAX_INVOICE_DIALOG_OPEN"
         );
-        saudiPaidPerfMsRef.current = performance.now();
+        saudiTaxInvoiceDialogOpenPerfMsRef.current = performance.now();
+        // CASHIER-TAX-INVOICE-PREPARING-STATE-LATENCY-1 — defer POS read
+        // invalidations until Tax Invoice READY so they do not contend with
+        // Compliance / getPhase1ByOrder during "preparing".
+        saudiTaxInvoiceInvalidatePendingRef.current = true;
       } else if (receipt) {
         setPrintOpen(true);
       }
       endCashierPaymentFlow("completed");
-      queueMicrotask(() => {
-        invalidateOrderReads();
-      });
+      if (!(isSaudiCashier && result.orderId)) {
+        queueMicrotask(() => {
+          invalidateOrderReads();
+        });
+      }
     } catch (error) {
       const gap = classifyCashierRegisterGap(error);
       if (gap) {
