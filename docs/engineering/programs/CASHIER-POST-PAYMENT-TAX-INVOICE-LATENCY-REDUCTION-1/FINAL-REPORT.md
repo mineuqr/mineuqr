@@ -78,4 +78,4 @@ See commit. Primary: `continueAfterHttp.ts`, `dispatchComplianceAfterProductionC
 
 ## 9. COMMITS
 
-(Filled after commit.)
+- `ee82c1a7` — `perf(cashier): cut post-PAID Tax Invoice delay via Compliance-first dispatch`
