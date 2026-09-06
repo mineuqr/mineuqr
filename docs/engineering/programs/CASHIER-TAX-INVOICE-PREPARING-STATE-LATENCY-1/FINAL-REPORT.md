@@ -72,7 +72,7 @@ See commit. Primary: `saudiTaxInvoicePhase1ViewService.ts`, `saudiTaxInvoiceEnsu
 
 ## 9. COMMITS
 
-(Filled after commit.)
+- `47957415` — preparing-state latency fix
 
 ## Validation checklist (one Saudi Confirm after deploy)
 
