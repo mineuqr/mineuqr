@@ -7,6 +7,7 @@ import type {
 import {
   buildKitchenReadMeta,
   clampKitchenQueueLimit,
+  ticketMatchesKitchenQueueStatus,
 } from "../contracts/kitchenQueryContracts";
 import type { QueueOrderingPolicy } from "../domain/ordering/QueueOrderingPolicy";
 import { fifoByCreatedAtPolicy } from "../domain/ordering/FifoByCreatedAtPolicy";
@@ -63,23 +64,19 @@ export class KitchenReadService {
     );
 
     const allTickets = this.composer.composeTickets(orders, timelines, now);
-    const counts = countByStatus(allTickets);
-
-    const sortedAll = this.orderingPolicy.sort(allTickets, {
-      restaurantId: query.restaurantId,
-      now,
-    });
-    const truncated = sortedAll.slice(0, limit);
-
-    const filtered =
+    const scopedTickets =
       statusFilter === "all"
-        ? truncated
-        : truncated.filter((ticket) => ticket.status === statusFilter);
+        ? allTickets
+        : allTickets.filter((ticket) =>
+            ticketMatchesKitchenQueueStatus(ticket.status, statusFilter)
+          );
+    const counts = countByStatus(scopedTickets);
 
-    const sortedFiltered = this.orderingPolicy.sort(filtered, {
+    const sortedAll = this.orderingPolicy.sort(scopedTickets, {
       restaurantId: query.restaurantId,
       now,
     });
+    const sortedFiltered = sortedAll.slice(0, limit);
 
     const columns = partitionColumns(sortedFiltered);
     for (const key of ["pending", "preparing", "ready"] as const) {

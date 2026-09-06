@@ -2,21 +2,29 @@ import { describe, expect, it } from "vitest";
 import { mapKitchenTicketPresentation } from "@/lib/order-presentation/mapOrderPresentation";
 import { resolveOperationalScreenAction } from "../../interaction/deviceOrderExecutionCapabilities";
 import {
-  EXPO_EXCLUSIVE_OPERATIONAL_LIFECYCLE_ACTIONS,
+  EXPO_OPERATIONAL_SERVE_ACTIONS,
+  OPERATIONAL_SCREEN_MARK_READY_ROLES,
   operationalScreenExposesMarkReady,
   resolveExpoOperationalScreenAction,
   rolesExposingMarkReadyOnOperationalScreen,
 } from "../expoWorkspaceContract";
 
 describe("EXPO-WORKSPACE-ARCHITECTURE-1 capability ownership", () => {
-  it("defines mark-ready as Expo-exclusive on the operational screen", () => {
-    expect(EXPO_EXCLUSIVE_OPERATIONAL_LIFECYCLE_ACTIONS).toEqual(["mark-ready"]);
+  it("shares mark-ready with Kitchen and keeps serve-order off Kitchen", () => {
+    expect(OPERATIONAL_SCREEN_MARK_READY_ROLES).toEqual([
+      "kitchen_display",
+      "expo_display",
+    ]);
+    expect(EXPO_OPERATIONAL_SERVE_ACTIONS).toEqual(["serve-order"]);
   });
 
-  it("Expo is the only operational screen role exposing mark-ready", () => {
-    expect(rolesExposingMarkReadyOnOperationalScreen()).toEqual(["expo_display"]);
+  it("Kitchen and Expo expose mark-ready; Pickup does not", () => {
+    expect(rolesExposingMarkReadyOnOperationalScreen()).toEqual([
+      "kitchen_display",
+      "expo_display",
+    ]);
     expect(operationalScreenExposesMarkReady("expo_display")).toBe(true);
-    expect(operationalScreenExposesMarkReady("kitchen_display")).toBe(false);
+    expect(operationalScreenExposesMarkReady("kitchen_display")).toBe(true);
     expect(operationalScreenExposesMarkReady("pickup_display")).toBe(false);
   });
 
@@ -26,9 +34,11 @@ describe("EXPO-WORKSPACE-ARCHITECTURE-1 capability ownership", () => {
     expect(resolveExpoOperationalScreenAction("pending")).toBeNull();
   });
 
-  it("Kitchen exposes no completion capability on the operational screen", () => {
+  it("Kitchen owns Ready only — not serve", () => {
     expect(resolveOperationalScreenAction("kitchen_display", "pending")).toBeNull();
-    expect(resolveOperationalScreenAction("kitchen_display", "preparing")).toBeNull();
+    expect(resolveOperationalScreenAction("kitchen_display", "preparing")?.id).toBe(
+      "mark-ready"
+    );
     expect(resolveOperationalScreenAction("kitchen_display", "ready")).toBeNull();
   });
 

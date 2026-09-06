@@ -65,7 +65,7 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
     expect(paid.some((a) => a.id === "send-to-cashier")).toBe(false);
   });
 
-  it("POS cashier_pos exposes تم التقديم on operational lists and never Cancel", () => {
+  it("POS cashier_pos exposes جاهز while preparing and تم التقديم when ready, never Cancel", () => {
     const paidPending = getOrdersWorkspaceActions("pending", {
       sessionless: true,
       unpaidSessionless: false,
@@ -80,10 +80,19 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
       unpaidSessionless: true,
       orderingChannel: "cashier_pos",
     });
-    expect(unpaid.map((a) => a.id)).toEqual(["serve-order", "print-order"]);
-    expect(unpaid[0]?.labelAr).toBe("تم التقديم");
+    expect(unpaid.map((a) => a.id)).toEqual(["mark-ready", "print-order"]);
+    expect(unpaid[0]?.labelAr).toBe("جاهز");
+    expect(unpaid.some((a) => a.id === "serve-order")).toBe(false);
     expect(unpaid.some((a) => a.id === "accept-order")).toBe(false);
     expect(unpaid.some((a) => a.id === "cancel-order")).toBe(false);
+
+    const paidReady = getOrdersWorkspaceActions("ready", {
+      sessionless: true,
+      unpaidSessionless: false,
+      orderingChannel: "cashier_pos",
+    });
+    expect(paidReady.map((a) => a.id)).toEqual(["serve-order", "print-order"]);
+    expect(paidReady[0]?.labelAr).toBe("تم التقديم");
 
     const paidServed = getOrdersWorkspaceActions("served", {
       sessionless: true,

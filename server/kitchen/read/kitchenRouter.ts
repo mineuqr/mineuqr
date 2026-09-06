@@ -5,7 +5,7 @@ import { kitchenReadService } from "./services/KitchenReadService";
 
 const getQueueInput = z.object({
   restaurantId: z.coerce.number().int().positive(),
-  status: z.enum(["pending", "preparing", "ready", "all"]).optional(),
+  status: z.enum(["pending", "preparing", "ready", "all", "active"]).optional(),
   limit: z.number().int().positive().max(200).optional(),
 });
 

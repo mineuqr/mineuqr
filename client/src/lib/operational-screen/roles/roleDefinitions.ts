@@ -159,8 +159,8 @@ export const kitchenDisplayRole = createOperationalRoleDefinition("kitchen_displ
 });
 
 export const expoDisplayRole = createOperationalRoleDefinition("expo_display", {
-  en: "Expo coordination workspace — final operational review and Ready transition.",
-  ar: "مساحة تنسيق الإكسبو — المراجعة التشغيلية النهائية وانتقال الجاهز.",
+  en: "Expo coordination workspace — final operational review and serve.",
+  ar: "مساحة تنسيق الإكسبو — المراجعة التشغيلية النهائية وتقديم الطلب.",
 });
 
 export const pickupDisplayRole = createBlockedRoleDefinition(

@@ -49,7 +49,7 @@ const heartbeatInput = z.object({
 });
 
 const kitchenQueueInput = z.object({
-  status: z.enum(["pending", "preparing", "ready", "all"]).optional(),
+  status: z.enum(["pending", "preparing", "ready", "all", "active"]).optional(),
   limit: z.number().int().positive().max(200).optional(),
 });
 

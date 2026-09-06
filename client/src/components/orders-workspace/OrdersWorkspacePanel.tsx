@@ -159,6 +159,7 @@ export function OrdersWorkspacePanel({
       utils.order.listUnpaidCounterPickup.invalidate(),
       utils.crmp.financialShift.getTenderSummary.invalidate(),
       utils.kitchen.read.getQueue.invalidate({ restaurantId, status: "all" }),
+      utils.kitchen.read.getQueue.invalidate({ restaurantId, status: "active" }),
     ]);
   }, [restaurantId, utils]);
 

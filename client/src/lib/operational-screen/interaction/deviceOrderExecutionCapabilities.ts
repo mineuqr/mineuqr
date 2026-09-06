@@ -14,10 +14,14 @@ import {
 const OPERATIONAL_SCREEN_EXCLUDED_ACTIONS: OperationalActionId[] = ["accept-order"];
 
 /**
- * KITCHEN-LIFECYCLE-OWNERSHIP-1 — kitchen runtime is not the owner of order completion.
- * Partial category projections cannot truthfully complete the full order lifecycle.
+ * KITCHEN-READY-ACTION-UNIFICATION-1 — Kitchen may mark displayed orders Ready
+ * (preparing → ready) only. Serve remains Orders / Expo / Pickup.
  */
-const KITCHEN_RUNTIME_FORBIDDEN_LIFECYCLE_ACTIONS: OperationalActionId[] = ["mark-ready"];
+const KITCHEN_READY_ACTION: OperationalAction = {
+  ...getOperationalActionById("mark-ready"),
+  labelEn: "Ready",
+  labelAr: "جاهز",
+};
 
 export function canExecuteOperationalTicketActions(role: OperationalDeviceRole): boolean {
   return rolePermitsOrderExecution(role);
@@ -31,11 +35,8 @@ export function resolveOperationalScreenAction(
   if (!actionId || OPERATIONAL_SCREEN_EXCLUDED_ACTIONS.includes(actionId)) {
     return null;
   }
-  if (
-    role === "kitchen_display" &&
-    KITCHEN_RUNTIME_FORBIDDEN_LIFECYCLE_ACTIONS.includes(actionId)
-  ) {
-    return null;
+  if (role === "kitchen_display" && actionId === "mark-ready") {
+    return KITCHEN_READY_ACTION;
   }
   return getOperationalActionById(actionId);
 }

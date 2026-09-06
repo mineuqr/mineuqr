@@ -10,7 +10,10 @@
 
 ## 1. Executive Summary
 
-EXPO-WORKSPACE-ARCHITECTURE-1 establishes Expo as the **Final Operational Coordination Workspace** — the exclusive operational-screen owner of the **Ready** (`mark-ready`) transition after Kitchen Runtime became execution-only (KITCHEN-LIFECYCLE-OWNERSHIP-1). This program documents ownership boundaries, validates capability and presentation contracts, and adds regression guards. No API, database, UI redesign, or runtime pipeline changes were made.
+> **Ready exclusivity SUPERSEDED by KITCHEN-READY-ACTION-UNIFICATION-1 (2026-09-06).**
+> Kitchen Screen and Expo now share `mark-ready`. Expo remains the operational-screen owner of `serve-order` with Pickup. Kitchen still cannot serve.
+
+EXPO-WORKSPACE-ARCHITECTURE-1 established Expo as the **Final Operational Coordination Workspace** — historically the exclusive operational-screen owner of the **Ready** (`mark-ready`) transition after Kitchen Runtime became execution-only (KITCHEN-LIFECYCLE-OWNERSHIP-1). This program documents ownership boundaries, validates capability and presentation contracts, and adds regression guards. No API, database, UI redesign, or runtime pipeline changes were made.
 
 ---
 

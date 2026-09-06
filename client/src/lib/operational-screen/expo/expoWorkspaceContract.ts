@@ -3,13 +3,18 @@ import type { OperationalActionId } from "@/lib/operational-workspace/operationa
 import { resolveOperationalScreenAction } from "../interaction/deviceOrderExecutionCapabilities";
 
 /**
- * EXPO-WORKSPACE-ARCHITECTURE-1 — Expo is the Final Operational Coordination Workspace.
- * Order completion (Ready transition) is owned exclusively by Expo on the operational screen.
+ * KITCHEN-READY-ACTION-UNIFICATION-1
+ * Ready (`mark-ready`) is shared on the operational screen:
+ * Kitchen Screen and Expo may both transition preparing → ready.
+ * Expo additionally owns serve-order. Kitchen does not.
  */
-export const EXPO_EXCLUSIVE_OPERATIONAL_LIFECYCLE_ACTIONS = ["mark-ready"] as const satisfies readonly OperationalActionId[];
+export const OPERATIONAL_SCREEN_MARK_READY_ROLES = [
+  "kitchen_display",
+  "expo_display",
+] as const satisfies readonly OperationalDeviceRole[];
 
-export type ExpoExclusiveOperationalLifecycleAction =
-  (typeof EXPO_EXCLUSIVE_OPERATIONAL_LIFECYCLE_ACTIONS)[number];
+/** Expo-owned serve transition — Kitchen must not gain serve-order. */
+export const EXPO_OPERATIONAL_SERVE_ACTIONS = ["serve-order"] as const satisfies readonly OperationalActionId[];
 
 const OPERATIONAL_SCREEN_ROLES: OperationalDeviceRole[] = [
   "kitchen_display",
@@ -26,7 +31,7 @@ export function operationalScreenExposesMarkReady(role: OperationalDeviceRole): 
   return resolveOperationalScreenAction(role, "preparing")?.id === "mark-ready";
 }
 
-/** Roles that may expose mark-ready on the operational screen — Expo only. */
+/** Roles that may expose mark-ready on the operational screen — Kitchen and Expo. */
 export function rolesExposingMarkReadyOnOperationalScreen(): OperationalDeviceRole[] {
   return OPERATIONAL_SCREEN_ROLES.filter(operationalScreenExposesMarkReady);
 }

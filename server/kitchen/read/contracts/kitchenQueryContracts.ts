@@ -14,7 +14,17 @@ export const KITCHEN_QUEUE_MAX_LIMIT = 200 as const;
 export const KITCHEN_ORDERING_POLICY_FIFO = "fifo-by-created-at" as const;
 
 export type KitchenPipelineStatus = "pending" | "preparing" | "ready";
-export type KitchenQueueStatusFilter = KitchenPipelineStatus | "all";
+/** `active` = not yet ready (pending + preparing). Expo still uses `all`. */
+export type KitchenQueueStatusFilter = KitchenPipelineStatus | "all" | "active";
+
+export function ticketMatchesKitchenQueueStatus(
+  status: KitchenPipelineStatus,
+  filter: KitchenQueueStatusFilter
+): boolean {
+  if (filter === "all") return true;
+  if (filter === "active") return status !== "ready";
+  return status === filter;
+}
 
 export type KitchenQueueQuery = {
   restaurantId: number;

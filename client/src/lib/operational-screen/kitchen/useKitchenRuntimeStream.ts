@@ -27,6 +27,7 @@ import { kitchenQueueStructuralSharing } from "@/lib/read-freshness/queryStructu
 import { scheduleKitchenQueueInvalidation } from "./kitchenQueueInvalidationCoordinator";
 import { useKitchenRuntimeRealtime } from "./useKitchenRuntimeRealtime";
 import { useExpoRuntimeRealtime } from "./useExpoRuntimeRealtime";
+import { kitchenQueueStatusForRole } from "./kitchenActiveQueue";
 
 export type { KitchenProjectionDiagnostics, KitchenRuntimeStream };
 
@@ -70,7 +71,10 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
   const pollMs = realtimePrimary ? DATA_POLL_REALTIME_RECOVERY_MS : DATA_POLL_INTERVAL_MS;
 
   const queueQuery = screenTrpc.operationalDevice.runtime.getKitchenQueue.useQuery(
-    { status: "all", limit: 200 },
+    {
+      status: kitchenQueueStatusForRole(role),
+      limit: 200,
+    },
     {
       enabled: kitchenQueueSupported,
       refetchInterval: visible && kitchenQueueSupported ? pollMs : false,

@@ -110,6 +110,32 @@ describe("KitchenReadService", () => {
     expect(result.columns.pending[0]?.orderId).toBe(2);
   });
 
+  it("active kitchen queue excludes ready orders", async () => {
+    const port: OrderReadQueryPort = {
+      listPipelineOrders: vi.fn().mockResolvedValue([]),
+      listTimelinesForOrders: vi.fn().mockResolvedValue(new Map()),
+    };
+    const composer = {
+      composeTickets: vi.fn().mockReturnValue([
+        sampleTicket("pending", 1, "2026-07-04T10:00:00"),
+        sampleTicket("preparing", 2, "2026-07-04T10:05:00"),
+        sampleTicket("ready", 3, "2026-07-04T10:10:00"),
+      ]),
+    };
+
+    const service = new KitchenReadService(port, composer as never);
+    const result = await service.getQueue({ restaurantId: 1, status: "active" });
+
+    expect(result.tickets.map((ticket) => ticket.status).sort()).toEqual([
+      "pending",
+      "preparing",
+    ]);
+    expect(result.tickets.some((ticket) => ticket.status === "ready")).toBe(false);
+    expect(result.columns.ready).toEqual([]);
+    expect(result.meta.counts).toEqual({ pending: 1, preparing: 1, ready: 0 });
+    expect(result.meta.totalVisible).toBe(2);
+  });
+
   it("filters by status", async () => {
     const port: OrderReadQueryPort = {
       listPipelineOrders: vi.fn().mockResolvedValue([]),

@@ -1,7 +1,9 @@
 /**
- * ORDERS-POS-KITCHEN-LIFECYCLE-1
+ * ORDERS-POS-KITCHEN-LIFECYCLE-1 / KITCHEN-READY-ACTION-UNIFICATION-1
  * Cashier/POS uses the existing Order lifecycle. Confirm Sale is inbound
- * acceptance; remaining operational completion is served (تم التقديم).
+ * acceptance (preparing). Ready is preparing → ready. تم التقديم remains
+ * the final operational transition (ready → served). The serve walk still
+ * completes leftover earlier statuses when Served is invoked.
  */
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 import type { OrderStatus } from "../domain/value-objects/OrderStatus";

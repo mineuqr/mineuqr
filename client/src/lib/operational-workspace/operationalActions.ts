@@ -159,6 +159,14 @@ function isCashierPosOrder(channel: string | null | undefined): boolean {
   return channel === ORDERING_CHANNEL_CASHIER_POS;
 }
 
+const CASHIER_POS_READY: OperationalAction = {
+  id: "mark-ready",
+  targetStatus: "ready",
+  labelEn: "Ready",
+  labelAr: "جاهز",
+  variant: "primary",
+};
+
 const CASHIER_POS_SERVE: OperationalAction = {
   id: "serve-order",
   targetStatus: "served",
@@ -178,6 +186,10 @@ function getCashierPosOrdersActions(
   // Unpaid cashier_pos is not listed; void remains the existing money path.
   // Served is terminal — تم التقديم must not remain as a live action.
   if (status === "served") return withPrintAction([], status);
+  // KITCHEN-READY-ACTION-UNIFICATION-1 — cashier preparing → ready → served.
+  if (status === "preparing") return withPrintAction([CASHIER_POS_READY], status);
+  if (status === "ready") return withPrintAction([CASHIER_POS_SERVE], status);
+  // Leftover pending cashier_pos: تم التقديم still walks to served.
   return withPrintAction([CASHIER_POS_SERVE], status);
 }
 

@@ -181,7 +181,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
     expect(presentation.items.lines[0]?.modifiers).toEqual([]);
   });
 
-  it("KITCHEN-LIFECYCLE-OWNERSHIP-1: kitchen ticket presentation excludes mark-ready", () => {
+  it("KITCHEN-READY-ACTION-UNIFICATION-1: kitchen ticket mapper still excludes mark-ready (runtime owns actions)", () => {
     const presentation = mapKitchenTicketPresentation({
       orderId: 8,
       orderNumber: "ORD-0008",

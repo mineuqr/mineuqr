@@ -45,6 +45,9 @@ describe("deviceOrderExecution", () => {
       ok: false,
       code: "role_forbidden",
     });
+    expect(validateDeviceOrderAction("kitchen_display", "mark-ready", "preparing")).toEqual({
+      ok: true,
+    });
     expect(validateDeviceOrderAction("kitchen_display", "mark-ready", "pending")).toEqual({
       ok: false,
       code: "status_mismatch",

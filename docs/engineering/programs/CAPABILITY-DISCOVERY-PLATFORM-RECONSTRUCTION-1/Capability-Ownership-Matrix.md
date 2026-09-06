@@ -58,7 +58,7 @@
 |---------|------|----------|----------|
 | CAP-33 Order settle vs Ordering channel | Shared responsibility (documented primary = Order) | StaffCounterPickup APIs under `order.*` | Accepted / documented |
 | CAP-30 vs CAP-29 | Nested context | Screen pairing lives under `operational-device` | Accepted composition |
-| CAP-47 vs CAP-26 | Shared UI panel; split action ownership | Expo owns mark-ready; Kitchen forbids mark-ready | Intentional specialization |
+| CAP-47 vs CAP-26 | Shared UI panel; split action ownership | Kitchen and Expo share mark-ready; Kitchen cannot serve (KITCHEN-READY-ACTION-UNIFICATION-1) | Intentional specialization |
 | CAP-08 vs CAP-16 | Custody vs money | CRMP fail-open attribution; Check owns money | Constitutional (not leak) |
 | CAP-22 vs CAP-43 | Naming collision risk | Different routers `reporting.*` vs `analytics.*` | Controlled |
 | CAP-05 `tableLabel` as “Hotel” | Marketing leak into packaging | FEATURE_KEYS hotelMode — not Discovery owner | Drift (see Legacy Mapping) |

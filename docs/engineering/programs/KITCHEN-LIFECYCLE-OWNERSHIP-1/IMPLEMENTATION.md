@@ -1,10 +1,15 @@
 # KITCHEN-LIFECYCLE-OWNERSHIP-1 — Kitchen Runtime Lifecycle Ownership Correction
 ## Phase C — Certification Report
 
+> **SUPERSEDED IN PART by KITCHEN-READY-ACTION-UNIFICATION-1 (2026-09-06).**
+> Kitchen Screen may now mark displayed orders Ready (`preparing → ready`).
+> It does **not** gain serve-order or other lifecycle mutations.
+> This document remains the historical certification of the observation-only rule.
+
 **Program:** KITCHEN-LIFECYCLE-OWNERSHIP-1  
 **Type:** Architecture Ownership Correction  
 **Date:** 2026-07-13  
-**Decision:** **CERTIFIED**
+**Decision:** **CERTIFIED** (Ready exclusion superseded)
 
 ---
 

@@ -120,6 +120,7 @@ export function useOrderStatusActions(
           orderId: vars.id,
         }),
         utils.kitchen.read.getQueue.invalidate({ restaurantId, status: "all" }),
+        utils.kitchen.read.getQueue.invalidate({ restaurantId, status: "active" }),
       ]).finally(() => {
         noteOrderLifecycleClientPhase(
           active,

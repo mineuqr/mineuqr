@@ -111,16 +111,22 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(kitchenScreen).not.toContain("accept-order");
   });
 
-  it("KITCHEN-LIFECYCLE-OWNERSHIP-1: kitchen runtime excludes order completion", () => {
+  it("KITCHEN-READY-ACTION-UNIFICATION-1: kitchen runtime may mark ready only", () => {
     const capabilities = read(
       "client/src/lib/operational-screen/interaction/deviceOrderExecutionCapabilities.ts"
     );
     const kitchenScreen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
     const mapper = read("client/src/lib/order-presentation/mapOrderPresentation.ts");
-    expect(capabilities).toContain("KITCHEN_RUNTIME_FORBIDDEN_LIFECYCLE_ACTIONS");
+    const stream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");
+    const activeQueue = read("client/src/lib/operational-screen/kitchen/kitchenActiveQueue.ts");
+    expect(capabilities).toContain("KITCHEN_READY_ACTION");
     expect(capabilities).toContain('"mark-ready"');
+    expect(capabilities).not.toContain("KITCHEN_RUNTIME_FORBIDDEN_LIFECYCLE_ACTIONS");
+    expect(kitchenScreen).toContain("resolveOperationalScreenAction");
     expect(kitchenScreen).not.toContain("mark-ready");
     expect(mapper).not.toContain('id: "mark-ready"');
+    expect(stream).toContain("kitchenQueueStatusForRole");
+    expect(activeQueue).toContain('"active"');
   });
 
   it("FF-OSC-03: kitchen queue fetched in runtime stream, not presentation", () => {
@@ -216,15 +222,16 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(manager).not.toContain("announcedPendingOrderIds");
   });
 
-  it("EXPO-WORKSPACE-ARCHITECTURE-1: Expo owns mark-ready on operational screen", () => {
+  it("KITCHEN-READY-ACTION-UNIFICATION-1: Kitchen and Expo share mark-ready; Kitchen cannot serve", () => {
     const capabilities = read(
       "client/src/lib/operational-screen/interaction/deviceOrderExecutionCapabilities.ts"
     );
     const contract = read("client/src/lib/operational-screen/expo/expoWorkspaceContract.ts");
     const kitchenPanel = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
-    expect(capabilities).toContain("KITCHEN_RUNTIME_FORBIDDEN_LIFECYCLE_ACTIONS");
+    expect(capabilities).toContain("KITCHEN_READY_ACTION");
     expect(capabilities).toContain('"mark-ready"');
-    expect(contract).toContain("EXPO_EXCLUSIVE_OPERATIONAL_LIFECYCLE_ACTIONS");
+    expect(contract).toContain("OPERATIONAL_SCREEN_MARK_READY_ROLES");
+    expect(contract).toContain("EXPO_OPERATIONAL_SERVE_ACTIONS");
     expect(contract).toContain("operationalScreenExposesMarkReady");
     expect(kitchenPanel).toContain("resolveOperationalScreenAction");
     expect(kitchenPanel).not.toContain("mark-ready");

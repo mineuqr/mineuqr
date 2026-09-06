@@ -99,9 +99,32 @@ describe("ORDER-LIFECYCLE-GUARD-1 AdvanceOrderStatusService authority", () => {
   it("persists preparing → ready and ready → served", async () => {
     const ready = await run("preparing", "ready");
     expect(ready.result.newStatus).toBe("ready");
+    expect(guardMocks.assertOrderCompletable).not.toHaveBeenCalled();
     const served = await run("ready", "served");
     expect(served.result.newStatus).toBe("served");
     expect(served.result.events.some((e) => e.type === "OrderStatusChanged")).toBe(true);
+  });
+
+  it("rejects served → ready and treats a second Ready as idempotent", async () => {
+    const served = realOrder("served");
+    vi.mocked(repo.findById).mockResolvedValue(served);
+    await expect(
+      svc.execute({ orderId: 21, targetStatus: "ready", actor })
+    ).rejects.toBeInstanceOf(OrderAlreadyCompletedError);
+    expect(served.status).toBe("served");
+    expect(repo.save).not.toHaveBeenCalled();
+
+    const alreadyReady = realOrder("ready");
+    vi.mocked(repo.findById).mockResolvedValue(alreadyReady);
+    const result = await svc.execute({
+      orderId: 21,
+      targetStatus: "ready",
+      actor,
+    });
+    expect(result.previousStatus).toBe("ready");
+    expect(result.newStatus).toBe("ready");
+    expect(result.events).toEqual([]);
+    expect(repo.save).not.toHaveBeenCalled();
   });
 
   it("persists pending → cancelled only", async () => {
