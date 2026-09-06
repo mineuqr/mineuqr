@@ -14,9 +14,11 @@ describe("POST-CONFIRM OPERATIONAL RECOVERY architecture", () => {
     const settle = read("server/pos/services/PosSettlementInitiateService.ts");
     const router = read("server/pos/api/posRouter.ts");
     const recovery = read("server/order/postConfirmOperationalRecovery.ts");
-    expect(finalize).toContain("awaitRelay: false");
+    expect(finalize).toContain('awaitRelay: "skip"');
     expect(finalize).not.toContain("awaitRelay: true");
-    expect(finalize).toContain("dispatchBestEffortDownstreamDelivery");
+    expect(finalize).toContain("afterCompliance");
+    expect(finalize).toContain("scheduleDeferredOrderEventRelay");
+    expect(finalize).toContain("dispatchComplianceAfterProductionCollectionFact");
     expect(settle).toContain("scheduleCashierPosOperationalSettlementAfterPaid");
     expect(router).toContain("schedulePostConfirmOperationalRecovery()");
     expect(router).not.toContain("await runPostConfirmOperationalRecoveryCycle");

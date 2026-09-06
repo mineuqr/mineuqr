@@ -44,6 +44,13 @@ describe("ORDER-SUBMISSION-LATENCY-REMEDIATION-1 — deferred place-order relay"
     expect(relay.runOrderEventRelayBatch).toHaveBeenCalledTimes(1);
   });
 
+  it("awaitRelay skip leaves relay for the caller", async () => {
+    relay.runOrderEventRelayBatch.mockClear();
+    await runOrderCommand(async () => "placed", { awaitRelay: "skip" });
+    await new Promise((resolve) => setTimeout(resolve, RELAY_DELAY_MS + 40));
+    expect(relay.runOrderEventRelayBatch).not.toHaveBeenCalled();
+  });
+
   it("place-order entry points opt out of awaited relay", () => {
     const routers = read("server/routers.ts");
     const waiterDevice = read(

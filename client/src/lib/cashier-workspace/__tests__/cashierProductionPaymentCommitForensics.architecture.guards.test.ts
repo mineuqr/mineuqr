@@ -35,7 +35,8 @@ describe("CASHIER-COLLECTION-FACT-CRITICAL-PATH-2", () => {
     const check = read("server/operational-session/check/CheckService.ts");
     const cashier = sliceCashierSettle(check);
     expect(confirm).toContain("deferOperationalSettlementAfterCollectionFact: true");
-    expect(cashier).toContain("dispatchBestEffortDownstreamDelivery");
+    expect(cashier).toContain("dispatchComplianceAfterProductionCollectionFact");
+    expect(cashier).toContain("afterCompliance");
     expect(cashier).toContain("deliverCashierPosOperationalSettlementAfterPaid");
     expect(cashier).not.toContain("await completeCashierOperationalSettlementAfterCollectionFact");
     expect(cashier).not.toContain("ensureRemainingCashierDownstreamSettlement");

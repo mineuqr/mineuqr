@@ -10,7 +10,10 @@ import { CollectionFactError } from "@shared/operational-session/payment/collect
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import type { IdentityPlaceOrderService } from "../../order/application/IdentityPlaceOrderService";
-import { runOrderCommand } from "../../order/application/mapOrderDomainError";
+import {
+  runOrderCommand,
+  scheduleDeferredOrderEventRelay,
+} from "../../order/application/mapOrderDomainError";
 import {
   captureSnapshotsFromBusinessSettings,
   deliverCashierPosOperationalSettlementAfterPaid,
@@ -24,7 +27,6 @@ import {
 } from "../../operational-session/payment/collection-fact/commitCashierProductionCollectionFact";
 import { createDrizzleCollectionFactStore } from "../../operational-session/payment/collection-fact/collectionFactRepository";
 import { dispatchComplianceAfterProductionCollectionFact } from "../../compliance/dispatchComplianceAfterProductionCollectionFact";
-import { dispatchBestEffortDownstreamDelivery } from "../../operational-session/payment/dispatchBestEffortDownstreamDelivery";
 import {
   allocateCashierInvoiceForOrder,
 } from "../cashier-invoice/cashierInvoiceRepository";
@@ -172,7 +174,9 @@ export async function finalizeCashierPreparedInvoice(
           },
         }
       ),
-    { awaitRelay: false }
+    // CASHIER-POST-PAYMENT-TAX-INVOICE-LATENCY-REDUCTION-1 — do not race
+    // outbox relay against Compliance; schedule relay after Compliance.
+    { awaitRelay: "skip" }
   );
 
   const orderId = placed.order.id;
@@ -207,28 +211,17 @@ export async function finalizeCashierPreparedInvoice(
     : paidReceipt.displayReference;
   const receipt = { ...paidReceipt, displayReference };
 
-  if (collectionFactId && collectionFactCommittedAt) {
-    dispatchComplianceAfterProductionCollectionFact({
-      restaurantId: input.restaurantId,
-      orderId,
-      collectionFactId,
-      committedAt: collectionFactCommittedAt,
-      commitOutcome: collectionFactOutcome,
-      cashierInvoiceNumber: invoiceNumber,
-    });
-  }
-
-  dispatchBestEffortDownstreamDelivery({
-    delivery: () =>
-      deliverCashierPosOperationalSettlementAfterPaid({
+  const runOperationalSettlementAndRelay = async () => {
+    try {
+      await deliverCashierPosOperationalSettlementAfterPaid({
         restaurantId: input.restaurantId,
         orderId,
         billDiscountAmount: input.billDiscountAmount ?? "0.00",
         settlements: input.settlements,
         settlementContext: input.settlementContext,
         settlementContextHints: input.settlementContextHints,
-      }),
-    onFailure: (err: unknown) => {
+      });
+    } catch (err: unknown) {
       opsLog({
         type: OPS_EVENT.check_operational_settlement_deferred_failed,
         category: "ORDER",
@@ -241,8 +234,29 @@ export async function finalizeCashierPreparedInvoice(
           error: err instanceof Error ? err.message : String(err),
         },
       });
-    },
-  });
+    } finally {
+      scheduleDeferredOrderEventRelay();
+    }
+  };
+
+  // CASHIER-POST-PAYMENT-TAX-INVOICE-LATENCY-REDUCTION-1
+  // CF/PAID already committed. Sequence: Compliance → settlement → relay.
+  // HTTP returns without awaiting (continueAfterHttp / waitUntil).
+  if (collectionFactId && collectionFactCommittedAt) {
+    dispatchComplianceAfterProductionCollectionFact(
+      {
+        restaurantId: input.restaurantId,
+        orderId,
+        collectionFactId,
+        committedAt: collectionFactCommittedAt,
+        commitOutcome: collectionFactOutcome,
+        cashierInvoiceNumber: invoiceNumber,
+      },
+      { afterCompliance: runOperationalSettlementAndRelay }
+    );
+  } else {
+    void runOperationalSettlementAndRelay();
+  }
 
   return {
     orderId,

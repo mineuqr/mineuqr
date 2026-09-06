@@ -16,15 +16,14 @@ describe("SAUDI-TAX-INVOICE-CASHIER-POST-PAYMENT-PERFORMANCE-1", () => {
     const dispatch = read(
       "server/compliance/dispatchComplianceAfterProductionCollectionFact.ts"
     );
-    const bestEffort = read(
-      "server/operational-session/payment/dispatchBestEffortDownstreamDelivery.ts"
-    );
+    const continueAfter = read("server/_core/continueAfterHttp.ts");
     const finalize = read(
       "server/pos/services/finalizeCashierPreparedInvoice.ts"
     );
-    expect(dispatch).toContain("dispatchBestEffortDownstreamDelivery");
-    expect(bestEffort).toContain("void input.delivery().catch");
+    expect(dispatch).toContain("continueAfterHttp");
+    expect(continueAfter).toContain("waitUntil");
     expect(finalize).toContain("dispatchComplianceAfterProductionCollectionFact");
+    expect(finalize).toContain("afterCompliance");
     expect(finalize).not.toMatch(
       /await\s+dispatchComplianceAfterProductionCollectionFact/
     );

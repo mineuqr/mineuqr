@@ -21,7 +21,9 @@ describe("CASHIER-PASS-2-CONFIRM-FINALIZATION-1", () => {
     expect(finalize).toContain("createDrizzleCollectionFactStore(tx");
     expect(finalize).toContain("freezeCashierPosPayableFromOrder");
     expect(finalize).toContain("enrollCheck: false");
-    expect(finalize).toContain("awaitRelay: false");
+    expect(finalize).toContain('awaitRelay: "skip"');
+    expect(finalize).toContain("scheduleDeferredOrderEventRelay");
+    expect(finalize).toContain("afterCompliance");
     expect(finalize).not.toContain("enrollCheck: true");
     expect(finalize).not.toContain("ensureCheckForOrder");
     expect(settle).toContain("finalizeCashierPreparedInvoice");

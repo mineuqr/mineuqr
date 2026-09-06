@@ -57,10 +57,16 @@ async function loadIssuanceContext(input: EnsureSaudiTaxInvoiceInput) {
     throw new Error("Saudi Tax Invoice domain is SA-only");
   }
 
-  const collectionFact = await findCollectionFactByFactId({
-    restaurantId: input.restaurantId,
-    collectionFactId: input.collectionFactId,
-  });
+  // CASHIER-POST-PAYMENT-TAX-INVOICE-LATENCY-REDUCTION-1 — independent reads in parallel.
+  const [collectionFact, order, profile] = await Promise.all([
+    findCollectionFactByFactId({
+      restaurantId: input.restaurantId,
+      collectionFactId: input.collectionFactId,
+    }),
+    getOrderById(input.orderId),
+    findSaudiTaxProfileByRestaurantId(input.restaurantId),
+  ]);
+
   if (!collectionFact) {
     throw new Error(
       `Collection Fact not found for Tax Invoice: ${input.collectionFactId}`
@@ -69,23 +75,21 @@ async function loadIssuanceContext(input: EnsureSaudiTaxInvoiceInput) {
   if (collectionFact.orderId !== input.orderId) {
     throw new Error("Collection Fact orderId mismatch for Tax Invoice");
   }
-
-  const order = await getOrderById(input.orderId);
   if (!order || order.restaurantId !== input.restaurantId) {
     throw new Error(
       `Sale/order not found or cross-tenant for Tax Invoice: ${input.orderId}`
     );
   }
 
-  const profile = await findSaudiTaxProfileByRestaurantId(input.restaurantId);
   const { readiness } = evaluateSaudiTaxProfileReadiness(profile);
 
-  let customer = null;
-  if (order.customerId != null) {
-    customer = await findCustomerById(input.restaurantId, order.customerId);
-  }
+  const [orderItems, customer] = await Promise.all([
+    getOrderItemsByOrderId(input.orderId),
+    order.customerId != null
+      ? findCustomerById(input.restaurantId, order.customerId)
+      : Promise.resolve(null),
+  ]);
 
-  const orderItems = await getOrderItemsByOrderId(input.orderId);
   const classification = classifySaudiTaxInvoiceFoundation({
     buyerPresence: customer ? "present" : "absent",
     customerType: customer?.customerType ?? null,
@@ -189,25 +193,32 @@ export async function ensureSaudiTaxInvoiceForCollectionFact(
     documentKind: "tax_invoice",
   });
 
+  // Immutable replay: skip re-loading issuance context (Customer evaluation + latency).
+  if (existing && isSaudiTaxInvoiceSnapshotImmutable(existing.status)) {
+    let taxInvoice = existing;
+    if (
+      taxInvoice.status === "generated" ||
+      taxInvoice.status === "retryable"
+    ) {
+      taxInvoice = await applySaudiPhase1Generation(taxInvoice);
+    }
+    return { outcome: "replayed", taxInvoice };
+  }
+
   const ctx = await loadIssuanceContext(input);
 
   let outcome: EnsureSaudiTaxInvoiceResult["outcome"];
   let taxInvoice: SaudiTaxInvoice;
 
   if (existing) {
-    if (isSaudiTaxInvoiceSnapshotImmutable(existing.status)) {
-      outcome = "replayed";
-      taxInvoice = existing;
-    } else {
-      assertSaudiTaxInvoiceStatusTransition(existing.status, ctx.status);
-      const fields = toPersistFields(ctx, existing.attemptCount + 1);
-      taxInvoice = await upgradeSaudiTaxInvoiceRow({
-        restaurantId: input.restaurantId,
-        taxInvoiceId: existing.taxInvoiceId,
-        ...fields,
-      });
-      outcome = "upgraded";
-    }
+    assertSaudiTaxInvoiceStatusTransition(existing.status, ctx.status);
+    const fields = toPersistFields(ctx, existing.attemptCount + 1);
+    taxInvoice = await upgradeSaudiTaxInvoiceRow({
+      restaurantId: input.restaurantId,
+      taxInvoiceId: existing.taxInvoiceId,
+      ...fields,
+    });
+    outcome = "upgraded";
   } else {
     const fields = toPersistFields(ctx, 1);
     try {

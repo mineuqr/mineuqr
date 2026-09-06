@@ -55,8 +55,10 @@ export type RunOrderCommandOptions = {
    * ORDER-LIFECYCLE-LATENCY-REMEDIATION-1
    * When false, outbox relay runs after the command returns (not on the HTTP
    * critical path). Default true preserves prior place-order / sync behavior.
+   * CASHIER-POST-PAYMENT-TAX-INVOICE-LATENCY-REDUCTION-1 — `"skip"` leaves
+   * relay unscheduled so the caller can run Compliance before relay/settlement.
    */
-  awaitRelay?: boolean;
+  awaitRelay?: boolean | "skip";
 };
 
 async function runOrderEventRelaySafe(latencyActive: boolean): Promise<void> {
@@ -102,6 +104,15 @@ function scheduleOrderEventRelay(latencyActive: boolean): void {
 }
 
 /**
+ * CASHIER-POST-PAYMENT-TAX-INVOICE-LATENCY-REDUCTION-1
+ * Public kick for callers that used `awaitRelay: "skip"` and must schedule
+ * relay only after Compliance completes.
+ */
+export function scheduleDeferredOrderEventRelay(): void {
+  scheduleOrderEventRelay(false);
+}
+
+/**
  * Runs an order write command, then relays outbox events.
  * ORDER-LIFECYCLE-LATENCY-REMEDIATION-1 — status transitions may defer relay.
  */
@@ -109,7 +120,7 @@ export async function runOrderCommand<T>(
   fn: () => Promise<T>,
   options?: RunOrderCommandOptions
 ): Promise<T> {
-  const awaitRelay = options?.awaitRelay !== false;
+  const relayMode = options?.awaitRelay;
   const latencyActive = Boolean(getOrderLifecycleLatencyContext());
   try {
     if (latencyActive) markOrderLifecycleLatency("command_start");
@@ -123,13 +134,17 @@ export async function runOrderCommand<T>(
       markOrderLifecycleLatency("command_complete");
     }
 
-    if (awaitRelay) {
+    if (relayMode === "skip") {
+      if (latencyActive) {
+        noteOrderLifecycleMeta("event_relay_mode", "caller_scheduled");
+      }
+    } else if (relayMode === false) {
+      scheduleOrderEventRelay(latencyActive);
+    } else {
       if (latencyActive) {
         noteOrderLifecycleMeta("event_relay_mode", "awaited");
       }
       await runOrderEventRelaySafe(latencyActive);
-    } else {
-      scheduleOrderEventRelay(latencyActive);
     }
 
     return result;

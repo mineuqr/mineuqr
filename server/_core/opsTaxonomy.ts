@@ -192,6 +192,11 @@ export const OPS_EVENT = {
   // CASHIER-COLLECTION-FACT-CRITICAL-PATH-DECOUPLING-1
   check_operational_settlement_deferred_failed:
     "check_operational_settlement_deferred_failed",
+  /** CASHIER-POST-PAYMENT-TAX-INVOICE-LATENCY-REDUCTION-1 */
+  compliance_after_collection_fact_completed:
+    "compliance_after_collection_fact_completed",
+  compliance_after_collection_fact_failed:
+    "compliance_after_collection_fact_failed",
   cashier_downstream_settlement_recovery:
     "cashier_downstream_settlement_recovery",
   cashier_downstream_settlement_recovery_failed:

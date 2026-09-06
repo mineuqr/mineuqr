@@ -2142,41 +2142,70 @@ export async function settleCashierPosOrderPaidByIdDetailed(input: {
   };
 
   if (collectionFact && "collectionFactId" in collectionFact) {
-    dispatchComplianceAfterProductionCollectionFact({
-      restaurantId: input.restaurantId,
-      orderId: input.orderId,
-      collectionFactId: collectionFact.collectionFactId,
-      committedAt: collectionFact.committedAt,
-      commitOutcome,
-    });
-  }
-
-  dispatchBestEffortDownstreamDelivery({
-    delivery: () =>
-      deliverCashierPosOperationalSettlementAfterPaid({
+    dispatchComplianceAfterProductionCollectionFact(
+      {
         restaurantId: input.restaurantId,
         orderId: input.orderId,
-        billDiscountAmount,
-        settlements: input.settlements,
-        settlementContext: input.settlementContext,
-        settlementContextHints: input.settlementContextHints,
-      }),
-    onFailure: (err: unknown) => {
-      opsLog({
-        type: OPS_EVENT.check_operational_settlement_deferred_failed,
-        category: "ORDER",
-        severity: "warn",
-        ts: new Date().toISOString(),
-        restaurantId: input.restaurantId,
-        action: "cashierDownstreamDelivery",
-        metadata: {
-          checkId: CASHIER_CONFIRM_UNASSIGNED_CHECK_ID,
-          orderId: input.orderId,
-          error: err instanceof Error ? err.message : String(err),
+        collectionFactId: collectionFact.collectionFactId,
+        committedAt: collectionFact.committedAt,
+        commitOutcome,
+      },
+      {
+        afterCompliance: async () => {
+          await deliverCashierPosOperationalSettlementAfterPaid({
+            restaurantId: input.restaurantId,
+            orderId: input.orderId,
+            billDiscountAmount,
+            settlements: input.settlements,
+            settlementContext: input.settlementContext,
+            settlementContextHints: input.settlementContextHints,
+          });
         },
-      });
-    },
-  });
+        onAfterComplianceFailure: (err: unknown) => {
+          opsLog({
+            type: OPS_EVENT.check_operational_settlement_deferred_failed,
+            category: "ORDER",
+            severity: "warn",
+            ts: new Date().toISOString(),
+            restaurantId: input.restaurantId,
+            action: "cashierDownstreamDelivery",
+            metadata: {
+              checkId: CASHIER_CONFIRM_UNASSIGNED_CHECK_ID,
+              orderId: input.orderId,
+              error: err instanceof Error ? err.message : String(err),
+            },
+          });
+        },
+      }
+    );
+  } else {
+    dispatchBestEffortDownstreamDelivery({
+      delivery: () =>
+        deliverCashierPosOperationalSettlementAfterPaid({
+          restaurantId: input.restaurantId,
+          orderId: input.orderId,
+          billDiscountAmount,
+          settlements: input.settlements,
+          settlementContext: input.settlementContext,
+          settlementContextHints: input.settlementContextHints,
+        }),
+      onFailure: (err: unknown) => {
+        opsLog({
+          type: OPS_EVENT.check_operational_settlement_deferred_failed,
+          category: "ORDER",
+          severity: "warn",
+          ts: new Date().toISOString(),
+          restaurantId: input.restaurantId,
+          action: "cashierDownstreamDelivery",
+          metadata: {
+            checkId: CASHIER_CONFIRM_UNASSIGNED_CHECK_ID,
+            orderId: input.orderId,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
+      },
+    });
+  }
   return result;
 }
 

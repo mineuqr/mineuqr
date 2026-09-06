@@ -42,6 +42,10 @@ vi.mock("../../payment/dispatchBestEffortDownstreamDelivery", () => ({
   dispatchBestEffortDownstreamDelivery: () => undefined,
 }));
 
+vi.mock("../../../compliance/dispatchComplianceAfterProductionCollectionFact", () => ({
+  dispatchComplianceAfterProductionCollectionFact: () => undefined,
+}));
+
 vi.mock("../../../db", () => ({
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),

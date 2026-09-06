@@ -142,6 +142,25 @@ vi.mock("../../payment/dispatchBestEffortDownstreamDelivery", () => ({
   },
 }));
 
+vi.mock("../../../compliance/dispatchComplianceAfterProductionCollectionFact", () => ({
+  dispatchComplianceAfterProductionCollectionFact: (
+    _input: unknown,
+    options?: {
+      afterCompliance?: () => Promise<void>;
+      onAfterComplianceFailure?: (error: unknown) => void;
+    }
+  ) => {
+    if (!mocks.dispatchDownstream.current) return;
+    void (async () => {
+      try {
+        if (options?.afterCompliance) await options.afterCompliance();
+      } catch (error) {
+        options?.onAfterComplianceFailure?.(error);
+      }
+    })();
+  },
+}));
+
 vi.mock("../../crmp/SettlementContextResolver", () => ({
   resolveSettlementContextForSettle: vi.fn(),
 }));
